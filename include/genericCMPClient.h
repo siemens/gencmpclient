@@ -136,8 +136,6 @@ CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, int reason);
 /* does not free any creds, truststore, tls, new_key, or exts, so they can be reused */
 void CMPclient_finish(CMP_CTX *ctx);
 
-int CMPclient_demo(void);
-
 #ifdef LOCAL_DEFS
 /* CREDENTIALS helpers */
 /* certs is name of a file in PKCS#12 format; primary cert is of client */

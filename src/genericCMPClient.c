@@ -8,7 +8,6 @@
  ******************************************************************************/
 
 #include <string.h>
-#include <SecUtils/verify.h>
 #include <genericCMPClient.h>
 
 /* TODO remove when CMP_CTX_get0_newPkey() has become available */
@@ -168,8 +167,7 @@ static BIO *tls_http_cb(CMP_CTX *ctx, BIO *hbio, int connect)
     if (ssl_ctx != NULL) {
         X509_STORE *ts = SSL_CTX_get_cert_store(ssl_ctx);
         if (ts != NULL) {
-            /* indicate if CMP_PKIMESSAGE_http_perform() with TLS is active */
-            (void)X509_STORE_set_ex_data(ts, X509_STORE_EX_DATA_SBIO, sbio);
+            (void)STORE_set0_tls_bio(ts, sbio);
         }
     }
     return hbio;

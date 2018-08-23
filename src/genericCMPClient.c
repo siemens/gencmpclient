@@ -11,10 +11,11 @@
 #include <genericCMPClient.h>
 
 /* TODO remove when CMP_CTX_get0_newPkey() has become available */
-#include <openssl/cmp_int.h>
+#include <cmp_int.h>
 static EVP_PKEY *CMP_CTX_get0_newPkey(const CMP_CTX *ctx) {
     return ctx == NULL ? NULL : ctx->newPkey;
 }
+/* end TODO remove when CMP_CTX_get0_newPkey() has become available */
 
 static int CMPOSSL_error()
 {

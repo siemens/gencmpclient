@@ -13,14 +13,14 @@
 /* for low-level CMP API, in particular, type CMP_CTX */
 #include <openssl/cmp.h>
 #ifndef LOCAL_DEFS
-#include <SecUtils/log.h>
-#include <SecUtils/credentials.h>
-#include <SecUtils/extensions.h>
+#include <SecUtils/util/log.h>
+#include <SecUtils/credentials/credentials.h>
+#include <SecUtils/util/extensions.h>
 
-#include <SecUtils/key.h>
-#include <SecUtils/files.h>
-#include <SecUtils/store.h>
-#include <SecUtils/tls.h>
+#include <SecUtils/credentials/key.h>
+#include <SecUtils/storage/files.h>
+#include <SecUtils/credentials/store.h>
+#include <SecUtils/connections/tls.h>
 #define TLS_new(truststore, creds, ciphers) TLS_CTX_new(1, truststore, creds, ciphers)
 #define TLS_free(tls) TLS_CTX_free(tls)
 

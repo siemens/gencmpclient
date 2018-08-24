@@ -16,7 +16,7 @@ SECUTILS=../securityUtilities
 CC = gcc
 
 CFLAGS = -g -O0 -c -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Werror -Woverflow #-Wconversion #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
-CFLAGS += -I$(SECUTILS)/include -I../include
+CFLAGS += -I$(SECUTILS)/include -I../$(SECUTILS)/include -I../include
 
 LIBS = -lSecUtils -lcrypto -lssl -lxml2 -luta -lz -lm -lpthread # -lssl -lcrypto -lxmlsec1 -lxml2
 

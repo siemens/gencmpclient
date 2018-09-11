@@ -7,8 +7,8 @@
  * @copyright (c) Siemens AG 2018 all rights reserved
  ******************************************************************************/
 
-#include <SecUtils/verify.h>
-#include <SecUtils/files_icv.h>
+#include <SecUtils/credentials/verify.h>
+#include <SecUtils/storage/files_icv.h>
 #include <genericCMPClient.h>
 
 static int CMPclient_demo(void)

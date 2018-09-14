@@ -16,11 +16,11 @@ SECUTILS=../securityUtilities
 CC = gcc
 
 CFLAGS = -g -O0 -c -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Werror -Woverflow #-Wconversion #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
-CFLAGS += -I$(SECUTILS)/include -I../$(SECUTILS)/include -I../include
+CFLAGS += -I$(SECUTILS)/include -I../include
 
 LIBS = -lSecUtils -lcrypto -lssl -lxml2 -luta -lz -lm -lpthread # -lssl -lcrypto -lxmlsec1 -lxml2
 
-LDFLAGS = -L$(SECUTILS)/$(LIB) -L$(SECUTILS)/lib -Wl,-rpath=securityUtilities/lib $(LIBS) # -Wl,-rpath=.. #-Wl,-rpath-link,../
+LDFLAGS = -L$(SECUTILS)/$(LIB) -L$(SECUTILS)/lib -Wl,-rpath=securityUtilities $(LIBS) # -Wl,-rpath=.. #-Wl,-rpath-link,../
 
 OBJS = genericCMPClient$(OBJ) cmpClientDemo$(OBJ)
 
@@ -34,8 +34,8 @@ TGT = ../cmpClientDemo$(EXE)
 
 ########## targets
 
-.PHONY: all
-all:	$(TGT)
+.PHONY: build
+build:	$(TGT)
 ifeq ($(OS),Windows_NT)
 	@echo "Copying DLLs to base directory for convenient use with Windows"
 	@cp -a $(SECUTILS)/$(LIB)/$(DLLS) .. || true # --no-preserve=mode
@@ -60,8 +60,8 @@ $(OBJS): %$(OBJ):%.c
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"
 
-.PHONY: build
-build: all
+.PHONY: all
+all: build
 	mkdir 2>/dev/null $(ARCHIVEDIR) || true
 	rsync -a $(TGT) $(ARCHIVE)
 

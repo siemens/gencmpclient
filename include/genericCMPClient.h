@@ -12,7 +12,7 @@
 
 /* for low-level CMP API, in particular, type CMP_CTX */
 #include <openssl/cmp.h>
-#ifndef LOCAL_DEFS
+
 #include <SecUtils/util/log.h>
 #include <SecUtils/credentials/credentials.h>
 #include <SecUtils/util/extensions.h>
@@ -21,12 +21,8 @@
 #include <SecUtils/storage/files.h>
 #include <SecUtils/credentials/store.h>
 #include <SecUtils/connections/tls.h>
-#define TLS_new(truststore, creds, ciphers) TLS_CTX_new(1, truststore, creds, ciphers)
+#define TLS_new(truststore, creds, ciphers) TLS_CTX_new(true/* client */, truststore, creds, ciphers)
 #define TLS_free(tls) TLS_CTX_free(tls)
-
-#endif
-
-typedef int bool; /* Boolean value: FALSE or TRUE */
 
 /* error codes are defined in openssl/cmperr.h */
 typedef int CMP_err; /* should better be defined and used in openssl/cmp.h */
@@ -40,6 +36,12 @@ typedef int CMP_err; /* should better be defined and used in openssl/cmp.h */
 
 #ifdef LOCAL_DEFS
 
+#ifndef __cplusplus
+typedef enum { false = 0, true = 1 } bool; /* Boolean value */
+#endif
+
+#define OPTIONAL /* this marker will get ignored by compiler */
+
 /* log callback function */
 /* these two decls are going to be moved to openssl/cmp.h */
 /* declarations resemble those from bio/bss_log.c and syslog.h */
@@ -47,9 +49,6 @@ typedef enum {LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERROR,
               LOG_WARN, LOG_NOTE, LOG_INFO, LOG_DEBUG} severity;
 typedef bool (*cmp_log_cb_t_) (OPTIONAL const char *file, int lineno,
                               severity level, const char *msg);
-
-
-#define OPTIONAL /* this marker will get ignored by compiler */
 
 typedef struct credentials {
     OPTIONAL EVP_PKEY *pkey;        /*!< can refer to HW key store via engine */

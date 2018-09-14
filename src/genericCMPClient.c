@@ -58,7 +58,7 @@ static int CMP_certConf_cb(CMP_CTX *ctx, const X509 *cert, int failure, const ch
        certs during IR and if MSG_SIG_ALG is used, cf. RFC 4210, 5.3.2 */
 
     if (out_trusted != NULL &&
-        0 == CMP_validate_cert_path(ctx, out_trusted, cert, 1)) {
+        !CMP_validate_cert_path(ctx, out_trusted, cert, true)) {
         failure = CMP_PKIFAILUREINFO_incorrectData;
     }
 
@@ -95,29 +95,29 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL cmp_log_cb_t log_fn,
     }
 
     LOG_init(log_fn);
-    if (0 == CMP_log_init() || /* this call needs to be done first */
+    if (!CMP_log_init() || /* this call needs to be done first */
         pctx == NULL ||
         NULL == (ctx = CMP_CTX_create()) ||
-        0 == CMP_CTX_set_log_cb(ctx, log_fn)) {
+        !CMP_CTX_set_log_cb(ctx, log_fn)) {
         goto err;
     }
-    if ((cmp_truststore != NULL && 0 == CMP_CTX_set0_trustedStore(ctx, cmp_truststore)) ||
-        (untrusted      != NULL && 0 == CMP_CTX_set1_untrusted_certs(ctx, untrusted))) {
+    if ((cmp_truststore != NULL && !CMP_CTX_set0_trustedStore(ctx, cmp_truststore)) ||
+        (untrusted      != NULL && !CMP_CTX_set1_untrusted_certs(ctx, untrusted))) {
         goto err;
     }
 
     if (creds) {
-        if ((creds->pkey != NULL && 0 == CMP_CTX_set1_pkey(ctx, creds->pkey)) ||
-            (creds->cert != NULL && 0 == CMP_CTX_set1_clCert(ctx, creds->cert)) ||
-            (sk_X509_num(creds->chain) > 0 && 0 == CMP_CTX_set1_extraCertsOut(ctx, creds->chain)) ||
+        if ((creds->pkey != NULL && !CMP_CTX_set1_pkey(ctx, creds->pkey)) ||
+            (creds->cert != NULL && !CMP_CTX_set1_clCert(ctx, creds->cert)) ||
+            (sk_X509_num(creds->chain) > 0 && !CMP_CTX_set1_extraCertsOut(ctx, creds->chain)) ||
             (creds->pwd != NULL &&
-             0 == CMP_CTX_set1_secretValue(ctx, (unsigned char*) creds->pwd, strlen(creds->pwd))) ||
+             !CMP_CTX_set1_secretValue(ctx, (unsigned char*) creds->pwd, strlen(creds->pwd))) ||
             (creds->pwdref != NULL &&
-             0 == CMP_CTX_set1_referenceValue(ctx, (unsigned char *)creds->pwdref, strlen(creds->pwdref)))) {
+             !CMP_CTX_set1_referenceValue(ctx, (unsigned char *)creds->pwdref, strlen(creds->pwdref)))) {
             goto err;
         }
     } else {
-        if (0 == CMP_CTX_set_option(ctx, CMP_CTX_OPT_UNPROTECTED_SEND, 1)) {
+        if (!CMP_CTX_set_option(ctx, CMP_CTX_OPT_UNPROTECTED_SEND, 1)) {
             goto err;
         }
     }
@@ -129,21 +129,21 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL cmp_log_cb_t log_fn,
             CMP_CTX_delete(ctx);
             return CMP_R_UNKNOWN_ALGORITHM_ID;
         }
-        if (0 == CMP_CTX_set_option(ctx, CMP_CTX_OPT_DIGEST_ALGNID, nid)) {
+        if (!CMP_CTX_set_option(ctx, CMP_CTX_OPT_DIGEST_ALGNID, nid)) {
             goto err;
         }
     }
 
-    if ((transfer_fn != NULL && 0 == CMP_CTX_set_transfer_cb(ctx, transfer_fn)) ||
-        (total_timeout >= 0 && 0 == CMP_CTX_set_option(ctx, CMP_CTX_OPT_TOTALTIMEOUT, total_timeout))) {
+    if ((transfer_fn != NULL && !CMP_CTX_set_transfer_cb(ctx, transfer_fn)) ||
+        (total_timeout >= 0 && !CMP_CTX_set_option(ctx, CMP_CTX_OPT_TOTALTIMEOUT, total_timeout))) {
         goto err;
     }
     if (new_cert_truststore != NULL &&
-        (0 == CMP_CTX_set_certConf_cb(ctx, CMP_certConf_cb) ||
-         0 == CMP_CTX_set_certConf_cb_arg(ctx, new_cert_truststore))) {
+        (!CMP_CTX_set_certConf_cb(ctx, CMP_certConf_cb) ||
+         !CMP_CTX_set_certConf_cb_arg(ctx, new_cert_truststore))) {
         goto err;
     }
-    if (0 == CMP_CTX_set_option(ctx, CMP_CTX_OPT_IMPLICITCONFIRM, implicit_confirm)) {
+    if (!CMP_CTX_set_option(ctx, CMP_CTX_OPT_IMPLICITCONFIRM, implicit_confirm)) {
         goto err;
     }
 
@@ -159,8 +159,8 @@ static BIO *tls_http_cb(CMP_CTX *ctx, BIO *hbio, int connect)
 {
     SSL_CTX *ssl_ctx = CMP_CTX_get_http_cb_arg(ctx);
     BIO *sbio = NULL;
-    if (connect) {
-        sbio = BIO_new_ssl(CMP_CTX_get_http_cb_arg(ctx), 1/* client */);
+    if (connect != 0) {
+        sbio = BIO_new_ssl(CMP_CTX_get_http_cb_arg(ctx), true/* client */);
         hbio = sbio ? BIO_push(sbio, hbio): NULL;
     } else {
         /* as a workaround for OpenSSL double free, do not pop the sbio, but
@@ -192,8 +192,8 @@ CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx,
     if (port < 0) {
         return CMP_R_INVALID_ARGS;
     }
-    if (0 == CMP_CTX_set1_serverName(ctx, buf) ||
-        (port > 0 && 0 == CMP_CTX_set_serverPort(ctx, port))) {
+    if (!CMP_CTX_set1_serverName(ctx, buf) ||
+        (port > 0 && !CMP_CTX_set_serverPort(ctx, port))) {
         goto err;
     }
 
@@ -213,21 +213,21 @@ CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx,
             if (port < 0) {
                 return CMP_R_INVALID_ARGS;
             }
-            if (0 == CMP_CTX_set1_proxyName(ctx, buf) ||
-                (port > 0 && 0 == CMP_CTX_set_proxyPort(ctx, port))) {
+            if (!CMP_CTX_set1_proxyName(ctx, buf) ||
+                (port > 0 && !CMP_CTX_set_proxyPort(ctx, port))) {
                 goto err;
             }
         }
     }
 
-    if (0 == CMP_CTX_set1_serverPath(ctx, path) ||
-        (timeout >= 0 && 0 == CMP_CTX_set_option(ctx, CMP_CTX_OPT_MSGTIMEOUT, timeout))) {
+    if (!CMP_CTX_set1_serverPath(ctx, path) ||
+        (timeout >= 0 && !CMP_CTX_set_option(ctx, CMP_CTX_OPT_MSGTIMEOUT, timeout))) {
         goto err;
     }
 
     if (tls != NULL &&
-        (0 == CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
-         0 == CMP_CTX_set_http_cb_arg(ctx, (void *)tls))) {
+        (!CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
+         !CMP_CTX_set_http_cb_arg(ctx, (void *)tls))) {
         goto err;
     }
 
@@ -247,8 +247,8 @@ static X509_EXTENSIONS *exts_dup(X509_EXTENSIONS *extin /* may be NULL */)
     if (extin) {
         int i;
         for (i = 0; i < sk_X509_EXTENSION_num(extin); i++) {
-            if (!sk_X509_EXTENSION_push(exts, X509_EXTENSION_dup(
-                                                                 sk_X509_EXTENSION_value(extin, i)))) {
+            X509_EXTENSION *ext = X509_EXTENSION_dup(sk_X509_EXTENSION_value(extin, i));
+            if (!sk_X509_EXTENSION_push(exts, ext)) {
                 goto err;
             }
         }
@@ -270,18 +270,18 @@ CMP_err CMPclient_setup_certreq(CMP_CTX *ctx,
         return CMP_R_NULL_ARGUMENT;
     }
 
-    if ((old_cert != NULL && 0 == CMP_CTX_set1_oldClCert(ctx, old_cert)) ||
-        (new_key  != NULL && 0 == CMP_CTX_set1_newPkey(ctx, new_key))) {
+    if ((old_cert != NULL && !CMP_CTX_set1_oldClCert(ctx, old_cert)) ||
+        (new_key  != NULL && !CMP_CTX_set1_newPkey(ctx, new_key))) {
         goto err;
     }
 
     if (subject != NULL) {
-        X509_NAME *n = UTIL_parse_name(subject, MBSTRING_ASC, 0);
+        X509_NAME *n = UTIL_parse_name(subject, MBSTRING_ASC, false);
         if (NULL == n) {
             CMP_printf(ctx, FL_ERROR, "Unable to parse subject DN '%s'", subject);
             return CMP_R_INVALID_ARGS;
         }
-        if (0 == CMP_CTX_set1_subjectName(ctx, n)) {
+        if (!CMP_CTX_set1_subjectName(ctx, n)) {
             X509_NAME_free(n);
             goto err;
         }
@@ -290,12 +290,12 @@ CMP_err CMPclient_setup_certreq(CMP_CTX *ctx,
 
     if (exts != NULL) {
         X509_EXTENSIONS *exts_copy = exts_dup((X509_EXTENSIONS *)exts); /* TODO use instead CMP_CTX_set1_reqExtensions() when available */
-        if (exts_copy == NULL || 0 == CMP_CTX_set0_reqExtensions(ctx, exts_copy)) {
+        if (exts_copy == NULL || !CMP_CTX_set0_reqExtensions(ctx, exts_copy)) {
             goto err;
         }
     }
 
-    if (p10csr != NULL && 0 == CMP_CTX_set1_p10CSR(ctx, p10csr)) {
+    if (p10csr != NULL && !CMP_CTX_set1_p10CSR(ctx, p10csr)) {
         goto err;
     }
 
@@ -427,9 +427,9 @@ CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, int reason)
     }
 
     if ((reason >= CRL_REASON_NONE &&
-	 0 ==CMP_CTX_set_option(ctx, CMP_CTX_OPT_REVOCATION_REASON, reason)) ||
-	0 == CMP_CTX_set1_oldClCert(ctx, cert) ||
-        0 == CMP_exec_RR_ses(ctx)) {
+	 !CMP_CTX_set_option(ctx, CMP_CTX_OPT_REVOCATION_REASON, reason)) ||
+	!CMP_CTX_set1_oldClCert(ctx, cert) ||
+        !CMP_exec_RR_ses(ctx)) {
 	goto err;
     }
     return CMP_OK;

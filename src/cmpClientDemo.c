@@ -36,9 +36,9 @@ static int CMPclient_demo(void)
             crls = CRLs_load(file, OPTIONAL desc);
         }
         const char *CRLs_url = NULL;
-        bool use_CDPs = 1;
+        bool use_CDPs = true;
         const char *OCSP_url = NULL;
-        bool use_AIAs = 0;
+        bool use_AIAs = false;
         if (!cmp_truststore || !crls ||
             !STORE_set_parameters(cmp_truststore, OPTIONAL vpm, OPTIONAL crls, 
                                   OPTIONAL CRLs_url, use_CDPs,
@@ -69,7 +69,7 @@ static int CMPclient_demo(void)
         new_cert_truststore = STORE_load(file, OPTIONAL desc);
     }
 
-    bool implicit_confirm = 0;
+    bool implicit_confirm = false;
     err = CMPclient_prepare(&ctx, OPTIONAL log_fn,
                             OPTIONAL cmp_truststore, OPTIONAL untrusted,
                             OPTIONAL creds, OPTIONAL digest,
@@ -102,9 +102,9 @@ static int CMPclient_demo(void)
             crls = CRLs_load(file, OPTIONAL desc);
         }
         const char *CRLs_url = NULL;
-        bool use_CDPs = 1;
+        bool use_CDPs = true;
         const char *OCSP_url = NULL;
-        bool use_AIAs = 0;
+        bool use_AIAs = false;
         if (!tls_truststore || !crls ||
             !STORE_set_parameters(tls_truststore, OPTIONAL vpm,
                                   OPTIONAL crls,

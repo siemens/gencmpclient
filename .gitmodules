@@ -1,0 +1,3 @@
+[submodule "securityUtilities"]
+	path = securityUtilities
+	url = git@code.siemens.com:mo_mm_linux_distribution/securityUtilities.git

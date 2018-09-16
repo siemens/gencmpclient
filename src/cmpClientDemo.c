@@ -8,7 +8,7 @@
  ******************************************************************************/
 
 #include <SecUtils/credentials/verify.h>
-#include <SecUtils/storage/files_icv.h>
+#include <SecUtils/storage/files.h>
 #include <genericCMPClient.h>
 
 static int CMPclient_demo(void)
@@ -176,7 +176,7 @@ static int CMPclient_demo(void)
         const char *source = NULL/* plain file */;
         const char *desc = "credentials including newly enrolled certificate";
         if (!CREDENTIALS_save(creds, file, OPTIONAL source, OPTIONAL desc) ||
-            !FILES_store_cert_pem_icv(creds->cert, "certs/new.crt", "newly enrolled cert")) {
+            !FILES_store_cert(creds->cert, "certs/new.crt", FORMAT_PEM, "newly enrolled cert")) {
             goto err;
         }
     }

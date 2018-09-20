@@ -1,4 +1,4 @@
-This is the code repository for the cross-division generic CMP client library based on CMPforOpenSSL.
+This is the code repository for the cross-division generic CMP client library based on [CMPforOpenSSL](https://github.com/mpeylo/cmpossl).
 
 
 # Getting the library
@@ -9,13 +9,13 @@ git clone --recurse-submodules git@code.siemens.com:product-pki/genCMPClient.git
 ```
 
 This will download also the underlying [Security Utilities (SecUtils)](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities) library,
-including the required [CMPforOpenSSL](https://github.com/mpeylo/cmpossl) extension to OpenSSL (currently version 1.1.0.f) and some further, minor dependencies (namely, interface and test submodules).
+including the required CMPforOpenSSL extension to OpenSSL (currently version 1.1.0.f) and some further, minor dependencies (namely, interface and test submodules).
 
 
 # Building the library
 
-Build the library with `make`.
-This also builds its submodule(s) and demo application.
+Change to the newly created directory with `cd genCMPClient` and build the library with `make`.
+This also builds its dependencies and a simple demo application.
 
 **Imporant Note:** the Security Utilities usually make use of the [Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library for device-level secure storage of passwords and integriy protection of files.
 Since this library is not yet generally available Siemens-wide the SecUtils are so far integrated in a way that the use of the UTA lib is disabled (via `SEC_NO_UTA=1`). This means that secure storage of protection credentials for private keys and trusted certificates needs to be solved by other means.

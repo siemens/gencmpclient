@@ -21,9 +21,10 @@ build:	buildCMPforOpenSSL
 clean:
 	$(MAKE) -C securityUtilities clean #libclean
 	$(MAKE) -C src clean
+	rm certs/new.*
 
 test:
-	./cmpClientDemo
+	./cmpClientDemo$(EXE)
 
 all:	build test
 
@@ -52,12 +53,14 @@ ${configCMPforOpenSSL_trigger}: ${unpackCMPforOpenSSL_trigger}
 
 makeCMPforOpenSSL_trigger=stage/openssl-*/*crypto*$(DLL)
 ${makeCMPforOpenSSL_trigger}: ${configCMPforOpenSSL_trigger}
-	cd stage/openssl-* && RC=windres make build_generated depend build_libs_nodep apps/openssl$(EXE) ./tools/c_rehash # this list of targets avoids building needless tests
+	cd stage/openssl-* && RC=windres make build_generated depend build_libs_nodep apps/openssl$(EXE) ./tools/c_rehash
+	# the above detailed list of targets avoids building needless tests
 	@echo "##### finished building CMPforOpenSSL ######\n"
 
 installCMPforOpenSSL_trigger=bin/openssl$(EXE)
 ${installCMPforOpenSSL_trigger}: ${makeCMPforOpenSSL_trigger}
-	cd stage/openssl-* && make install_dev >/dev/null && make install_runtime # this list of targets avoids building needless tests
+	cd stage/openssl-* && make install_dev >/dev/null && make install_runtime
+	# the above list of targets avoids building needless tests
 	@echo "##### finished installing CMPforOpenSSL ######\n"
 
 DIRS=stage lib bin

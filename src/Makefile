@@ -20,7 +20,7 @@ CFLAGS += -I$(SECUTILS)/include -I../include
 
 LIBS = -lSecUtils -lssl -lcrypto # -lssl -lcrypto -lxmlsec1 -lxml2 -luta -lz -lm -lpthread
 
-LDFLAGS = -L$(SECUTILS) -Wl,-rpath=securityUtilities $(LIBS) # #-Wl,-rpath-link,../
+LDFLAGS = -L$(SECUTILS) -L../lib -Wl,-rpath=securityUtilities $(LIBS) # #-Wl,-rpath-link,../
 
 OBJS = genericCMPClient$(OBJ) cmpClientDemo$(OBJ)
 
@@ -38,7 +38,7 @@ TGT = ../cmpClientDemo$(EXE)
 build:	$(TGT)
 ifeq ($(OS),Windows_NT)
 	@echo "Copying DLLs to base directory for convenient use with Windows"
-	@cp -a $(SECUTILS)/$(DLLS) .. # --no-preserve=mode
+	@cp -a $(SECUTILS)/$(DLLS) ../bin/*.dll .. # --no-preserve=mode
 endif
 
 cmpClientDemo$(OBJ): cmpClientDemo.c ../include/genericCMPClient.h

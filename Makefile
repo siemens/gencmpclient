@@ -14,8 +14,7 @@ endif
 
 .phony: build clean test all
 build:	buildCMPforOpenSSL
-	cd securityUtilities && git submodule update --init --recursive
-	#cp -a include/operators.h securityUtilities/include/
+	#cd securityUtilities && git submodule update --init --recursive
 	SEC_NO_UTA=1 $(MAKE) -C securityUtilities build
 	$(MAKE) -C src build
 

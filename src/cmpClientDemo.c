@@ -15,9 +15,17 @@ static int CMPclient_demo(void)
 {
     CMP_err err = CMP_OK;
 
-    CMP_CTX *ctx = NULL;
-    cmp_log_cb_t log_fn = NULL;
     X509_STORE *cmp_truststore = NULL;
+    CREDENTIALS *creds = NULL;
+    X509_STORE *new_cert_truststore = NULL;
+    CMP_CTX *ctx = NULL;
+    X509_STORE *tls_truststore = NULL;
+    CREDENTIALS *tls_creds = NULL;
+    SSL_CTX *tls = NULL;
+    EVP_PKEY *new_key = NULL;
+    X509_EXTENSIONS *exts = NULL;
+    CREDENTIALS *new_creds = NULL;
+
     STACK_OF(X509) *untrusted = NULL;
     {
         {
@@ -47,7 +55,6 @@ static int CMPclient_demo(void)
             goto err;
         }
     }
-    CREDENTIALS *creds = NULL;
     {
         const char *certs = "certs/ppki_playground_cmp_signer.p12";
         const char *pkey = certs;
@@ -62,7 +69,6 @@ static int CMPclient_demo(void)
     const char *digest = "sha256";
     cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     int total_timeout = 100;
-    X509_STORE *new_cert_truststore = NULL;
     {
         const char *file = "certs/trusted/PPKIPlaygroundECCRootCAv10.crt";
         const char *desc = "trusted certs for verifying new cert";
@@ -70,6 +76,7 @@ static int CMPclient_demo(void)
     }
 
     bool implicit_confirm = false;
+    cmp_log_cb_t log_fn = NULL;
     err = CMPclient_prepare(&ctx, OPTIONAL log_fn,
                             OPTIONAL cmp_truststore, OPTIONAL untrusted,
                             OPTIONAL creds, OPTIONAL digest,
@@ -87,7 +94,6 @@ static int CMPclient_demo(void)
     const char *server = "ppki-playground.ct.siemens.com:443";
     const char *path = "/ejbca/publicweb/cmp/PlaygroundECC";
     int timeout = 10;
-    X509_STORE *tls_truststore = NULL;
     {
         {
             const char *file = "certs/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt";
@@ -114,7 +120,6 @@ static int CMPclient_demo(void)
             goto err;
         }
     }
-    CREDENTIALS *tls_creds = NULL;
     {
         const char *tls_certs = "certs/ppki_playground_tls.p12";
         const char *tls_pkey = tls_certs;
@@ -127,21 +132,23 @@ static int CMPclient_demo(void)
         }
     }
     char *ciphers = "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH";
-    SSL_CTX *tls = TLS_new(OPTIONAL tls_truststore, OPTIONAL tls_creds, OPTIONAL ciphers);
+    tls = TLS_new(OPTIONAL tls_truststore, OPTIONAL tls_creds, OPTIONAL ciphers);
+    if (!tls) {
+        err = -5;
+        goto err;
+    }
     err = CMPclient_setup_HTTP(ctx, server, path, timeout, OPTIONAL tls, NULL/* proxy */);
     if (err != CMP_OK) {
         goto err;
     }
 
-    CREDENTIALS *new_creds = NULL;
     const char *subject = "/CN=test-API/OU=PPKI Playground"
         "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
-    EVP_PKEY *new_key = KEY_new("secp521r1");
+    new_key = KEY_new("secp521r1");
     if (new_key == NULL) {
-        err = -5;
+        err = -6;
         goto err;
     }
-    X509_EXTENSIONS *exts = NULL;
     {
         exts = EXTENSIONS_new();
         BIO *policy_sections = BIO_new(BIO_s_mem());
@@ -161,7 +168,7 @@ static int CMPclient_demo(void)
                                 "critical, @pkiPolicy", policy_sections)) {
             BIO_free(policy_sections);
             EXTENSIONS_free(exts);
-            err = -6;
+            err = -7;
             goto err;
         }
         BIO_free(policy_sections);

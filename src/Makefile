@@ -38,7 +38,7 @@ TGT = ../cmpClientDemo$(EXE)
 build:	$(TGT)
 ifeq ($(OS),Windows_NT)
 	@echo "Copying DLLs to base directory for convenient use with Windows"
-	@cp -a $(SECUTILS)/$(LIB)/$(DLLS) .. || true # --no-preserve=mode
+	@cp -a $(SECUTILS)/$(DLLS) .. # --no-preserve=mode
 endif
 
 cmpClientDemo$(OBJ): cmpClientDemo.c ../include/genericCMPClient.h

@@ -107,13 +107,16 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL cmp_log_cb_t log_fn,
     }
 
     if (creds) {
-        if ((creds->pkey != NULL && !CMP_CTX_set1_pkey(ctx, creds->pkey)) ||
-            (creds->cert != NULL && !CMP_CTX_set1_clCert(ctx, creds->cert)) ||
-            (sk_X509_num(creds->chain) > 0 && !CMP_CTX_set1_extraCertsOut(ctx, creds->chain)) ||
-            (creds->pwd != NULL &&
-             !CMP_CTX_set1_secretValue(ctx, (unsigned char*) creds->pwd, strlen(creds->pwd))) ||
-            (creds->pwdref != NULL &&
-             !CMP_CTX_set1_referenceValue(ctx, (unsigned char *)creds->pwdref, strlen(creds->pwdref)))) {
+        const EVP_PKEY *pkey = CREDENTIALS_get_pkey(creds);
+        const X509 *cert = CREDENTIALS_get_cert(creds);
+        STACK_OF(X509) *chain = CREDENTIALS_get_chain(creds);
+        const char *pwd = CREDENTIALS_get_pwd(creds);
+        const char *pwdref = CREDENTIALS_get_pwdref(creds);
+        if ((pkey != NULL && !CMP_CTX_set1_pkey(ctx, pkey)) ||
+            (cert != NULL && !CMP_CTX_set1_clCert(ctx, cert)) ||
+            (sk_X509_num(chain) > 0 && !CMP_CTX_set1_extraCertsOut(ctx, chain)) ||
+            (pwd != NULL && !CMP_CTX_set1_secretValue(ctx, (unsigned char*) pwd, strlen(pwd))) ||
+            (pwdref != NULL && !CMP_CTX_set1_referenceValue(ctx, (unsigned char *)pwdref, strlen(pwdref)))) {
             goto err;
         }
     } else {

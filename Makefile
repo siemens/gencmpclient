@@ -8,18 +8,23 @@ else
 #   LIB=lib
 endif
 
+SECUTILS=securityUtilities
+
 ################################################################
 # generic CMP Client lib and demo
 ################################################################
 
 .phony: build clean clean_uta test all
+ifndef USE_UTA
+    export SEC_NO_UTA=1
+endif
 build:	buildCMPforOpenSSL
-	#cd securityUtilities && git submodule update --init --recursive
-	SEC_NO_UTA=1 $(MAKE) -C securityUtilities build
+	#cd $(SECUTILS) && git submodule update --init --recursive
+	CFLAGS="-I../openssl/include" LDFLAGS=" -L../openssl -Wl,-rpath=../openssl" $(MAKE) -C $(SECUTILS) build
 	$(MAKE) -C src build
 
 clean_uta:
-	$(MAKE) -C securityUtilities clean_uta
+	$(MAKE) -C $(SECUTILS) clean_uta
 
 clean:
 	$(MAKE) -C src clean
@@ -36,7 +41,7 @@ all:	build test
 ################################################################
 
 ROOTDIR=$(PWD)
-TAR=securityUtilities/tar
+TAR=$(SECUTILS)/tar
 
 unpackCMPforOpenSSL_trigger=openssl/Configure
 ${unpackCMPforOpenSSL_trigger}: $(TAR)/openssl-*tar.gz $(TAR)/openssl-*_cmp-*
@@ -70,7 +75,7 @@ openssl:
 	mkdir $(DIRS)
 
 allclean: clean
-	$(MAKE) -C securityUtilities clean #libclean
+	$(MAKE) -C $(SECUTILS) clean #libclean
 	rm -Rf $(DIRS)
 
 .phony: buildCMPforOpenSSL

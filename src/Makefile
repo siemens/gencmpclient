@@ -2,12 +2,12 @@ ifeq ($(OS),Windows_NT)
     EXE=.exe
     DLL=.dll
     OBJ=.obj
-    LIB=bin
+#   LIB=bin
 else
     EXE=
     DLL=.so
     OBJ=.o
-    LIB=lib
+#   LIB=lib
 endif
 
 ARCHIVE=../bin # for Jenkins
@@ -16,11 +16,11 @@ SECUTILS=../securityUtilities
 CC = gcc
 
 CFLAGS = -g -O0 -c -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Werror -Woverflow #-Wconversion #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
-CFLAGS += -I$(SECUTILS)/include -I../include
+CFLAGS += -I$(SECUTILS)/include -I../include -I../openssl/include
 
-LIBS = -lSecUtils -lssl -lcrypto # -lssl -lcrypto -lxmlsec1 -lxml2 -luta -lz -lm -lpthread
+LIBS = -lSecUtils -lssl -lcrypto # -luta -lxmlsec1 -lxml2 -lz -lm -lpthread
 
-LDFLAGS = -L$(SECUTILS) -L../lib -Wl,-rpath=securityUtilities $(LIBS) # #-Wl,-rpath-link,../
+LDFLAGS = -L$(SECUTILS) -L../openssl -Wl,-rpath=securityUtilities $(LIBS) -Wl,-rpath=openssl
 
 OBJS = genericCMPClient$(OBJ) cmpClientDemo$(OBJ)
 
@@ -38,7 +38,7 @@ TGT = ../cmpClientDemo$(EXE)
 build:	$(TGT)
 ifeq ($(OS),Windows_NT)
 	@echo "Copying DLLs to base directory for convenient use with Windows"
-	@cp -a $(SECUTILS)/$(DLLS) ../bin/*.dll .. # --no-preserve=mode
+	@cp -a $(SECUTILS)/$(DLLS) ../openssl/$(DLLS) .. # --no-preserve=mode
 endif
 
 cmpClientDemo$(OBJ): cmpClientDemo.c ../include/genericCMPClient.h
@@ -51,8 +51,7 @@ $(TGT): $(OBJS)
 $(DEPS): %.d:%.c
 	$(CC) $(CFLAGS) -MM $< >$@
 
-# TODO: dependency on certMgr/genericCMPClient.h is not used
-include $(DEPS) # fires also for 'make clean' :(
+-include $(DEPS)
 
 $(OBJS): %$(OBJ):%.c
 	$(CC) $(CFLAGS) $< -o $@

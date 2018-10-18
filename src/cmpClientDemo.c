@@ -31,26 +31,22 @@ static int CMPclient_demo(void)
         {
             const char *file = "certs/trusted/PPKIPlaygroundECCRootCAv10.crt, "
                 "certs/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt";
-            const char *desc = "trusted certs for CMP level";
-            cmp_truststore = STORE_load(file, OPTIONAL desc);
+            cmp_truststore = STORE_load(file, "trusted certs for CMP level");
         }
         const X509_VERIFY_PARAM *vpm = NULL;
         STACK_OF(X509_CRL) *crls = NULL;
         {
-            const char *file = "certs/crls/PPKIPlaygroundInfrastructureRootCAv10.crl, "/* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE " */
-                "certs/crls/PPKIPlaygroundECCRootCAv10.crl";
+            const char *file = "certs/crls/PPKIPlaygroundInfrastructureRootCAv10.crl, "/* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
+                "certs/crls/PPKIPlaygroundECCRootCAv10.crl";/* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+ECC+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
 
-            const char *desc = "CRLs for CMP level";
-            crls = CRLs_load(file, OPTIONAL desc);
+            crls = CRLs_load(file, "CRLs for CMP level");
         }
         const char *CRLs_url = NULL;
-        bool use_CDPs = true;
         const char *OCSP_url = NULL;
-        bool use_AIAs = false;
-        if (!cmp_truststore || !crls ||
-            !STORE_set_parameters(cmp_truststore, OPTIONAL vpm, OPTIONAL crls, 
-                                  OPTIONAL CRLs_url, use_CDPs,
-                                  OPTIONAL OCSP_url, use_AIAs)) {
+        if (cmp_truststore == NULL || crls == NULL ||
+            !STORE_set_parameters(cmp_truststore, OPTIONAL vpm, crls,
+                                  OPTIONAL CRLs_url, true/* use_CDPs */,
+                                  OPTIONAL OCSP_url, false/* use_AIAs */)) {
             err = -1;
             goto err;
         }
@@ -58,10 +54,8 @@ static int CMPclient_demo(void)
     {
         const char *certs = "certs/ppki_playground_cmp_signer.p12";
         const char *pkey = certs;
-        const char *source = "pass:12345";
-        const char *desc = "credentials for CMP level";
-        creds = CREDENTIALS_load(certs, pkey, OPTIONAL source, OPTIONAL desc);
-        if (!creds) {
+        creds = CREDENTIALS_load(certs, pkey, "pass:12345", "credentials for CMP level");
+        if (creds == NULL) {
             err = -2;
             goto err;
         }
@@ -71,17 +65,15 @@ static int CMPclient_demo(void)
     int total_timeout = 100;
     {
         const char *file = "certs/trusted/PPKIPlaygroundECCRootCAv10.crt";
-        const char *desc = "trusted certs for verifying new cert";
-        new_cert_truststore = STORE_load(file, OPTIONAL desc);
+        new_cert_truststore = STORE_load(file, "trusted certs for verifying new cert");
     }
 
-    bool implicit_confirm = false;
     cmp_log_cb_t log_fn = NULL;
     err = CMPclient_prepare(&ctx, OPTIONAL log_fn,
-                            OPTIONAL cmp_truststore, OPTIONAL untrusted,
-                            OPTIONAL creds, OPTIONAL digest,
+                            cmp_truststore, OPTIONAL untrusted,
+                            creds, digest,
                             OPTIONAL transfer_fn, total_timeout,
-                            OPTIONAL new_cert_truststore, implicit_confirm);
+                            new_cert_truststore, false/* implicit_confirm */);
     if (err != CMP_OK) {
         goto err;
     }
@@ -97,25 +89,21 @@ static int CMPclient_demo(void)
     {
         {
             const char *file = "certs/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt";
-            const char *desc = "trusted certs for TLS level";
-            tls_truststore = STORE_load(file, OPTIONAL desc);
+            tls_truststore = STORE_load(file, "trusted certs for TLS level");
         }
         const X509_VERIFY_PARAM *vpm = NULL;
         STACK_OF(X509_CRL) *crls = NULL;
         {
-            const char *file = "certs/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl";
-            const char *desc =  "CRLs for TLS level";
-            crls = CRLs_load(file, OPTIONAL desc);
+            const char *file = "certs/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl"; /* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
+            crls = CRLs_load(file, "CRLs for TLS level");
         }
         const char *CRLs_url = NULL;
-        bool use_CDPs = true;
         const char *OCSP_url = NULL;
-        bool use_AIAs = false;
-        if (!tls_truststore || !crls ||
+        if (tls_truststore == NULL || crls == NULL ||
             !STORE_set_parameters(tls_truststore, OPTIONAL vpm,
-                                  OPTIONAL crls,
-                                  OPTIONAL CRLs_url, use_CDPs,
-                                  OPTIONAL OCSP_url, use_AIAs)) {
+                                  crls,
+                                  OPTIONAL CRLs_url, true/* use_CDPs */,
+                                  OPTIONAL OCSP_url, false/* use_AIAs */)) {
             err = -3;
             goto err;
         }
@@ -123,26 +111,24 @@ static int CMPclient_demo(void)
     {
         const char *tls_certs = "certs/ppki_playground_tls.p12";
         const char *tls_pkey = tls_certs;
-        const char *tls_source = "pass:12345";
-        const char *tls_desc = "credentials for TLS level";
-        tls_creds = CREDENTIALS_load(tls_certs, tls_pkey, OPTIONAL tls_source, OPTIONAL tls_desc);
-        if (!tls_creds) {
+        tls_creds = CREDENTIALS_load(tls_certs, tls_pkey, "pass:12345", "credentials for TLS level");
+        if (tls_creds == NULL) {
             err = -4;
             goto err;
         }
     }
-    char *ciphers = "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH";
-    tls = TLS_new(OPTIONAL tls_truststore, OPTIONAL tls_creds, OPTIONAL ciphers);
-    if (!tls) {
+    const char *ciphers = TLS_get_ciphers(NULL); // yields "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH";
+    tls = TLS_new(tls_truststore, tls_creds, ciphers, -1);
+    if (tls == NULL) {
         err = -5;
         goto err;
     }
-    err = CMPclient_setup_HTTP(ctx, server, path, timeout, OPTIONAL tls, NULL/* proxy */);
+    err = CMPclient_setup_HTTP(ctx, server, path, timeout, tls, NULL/* proxy */);
     if (err != CMP_OK) {
         goto err;
     }
 
-    const char *subject = "/CN=test-API/OU=PPKI Playground"
+    const char *subject = "/CN=test-genCMPClient/OU=PPKI Playground"
         "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
     new_key = KEY_new("secp521r1");
     if (new_key == NULL) {
@@ -173,7 +159,7 @@ static int CMPclient_demo(void)
         }
         BIO_free(policy_sections);
     }
-    err = CMPclient_bootstrap(ctx, &new_creds, new_key, subject, OPTIONAL exts);
+    err = CMPclient_bootstrap(ctx, &new_creds, new_key, subject, exts);
     if (err != CMP_OK) {
         goto err;
     }
@@ -182,8 +168,8 @@ static int CMPclient_demo(void)
         const char *file = "certs/new.p12";
         const char *source = NULL/* plain file */;
         const char *desc = "credentials including newly enrolled certificate";
-        if (!CREDENTIALS_save(creds, file, OPTIONAL source, OPTIONAL desc) ||
-            !FILES_store_cert(creds->cert, "certs/new.crt", FORMAT_PEM, "newly enrolled cert")) {
+        if (!CREDENTIALS_save(creds, file, OPTIONAL source, desc) ||
+            !FILES_store_cert(CREDENTIALS_get_cert(creds), "certs/new.crt", FORMAT_PEM, "newly enrolled cert")) {
             goto err;
         }
     }

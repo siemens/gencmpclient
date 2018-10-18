@@ -23,10 +23,11 @@
 #define CRLs_load(files, desc) FILES_load_crls_multi(files, FORMAT_ASN1, desc)
 
 #include <SecUtils/credentials/store.h>
-#define STORE_load(files, desc) STORE_load_icv(files, desc, false)
+#define STORE_load(files, desc) STORE_load_trusted(files, desc, false)
 
 #include <SecUtils/connections/tls.h>
-#define TLS_new(truststore, creds, ciphers) TLS_CTX_new(true/* client */, truststore, creds, ciphers)
+#define TLS_new(truststore, creds, ciphers, security_level) \
+    TLS_CTX_new(true/* client */, truststore, creds, ciphers, security_level)
 #define TLS_free(tls) TLS_CTX_free(tls)
 
 /* error codes are defined in openssl/cmperr.h */

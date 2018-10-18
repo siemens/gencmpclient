@@ -106,7 +106,7 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL cmp_log_cb_t log_fn,
         goto err;
     }
 
-    if (creds) {
+    if (creds != NULL) {
         const EVP_PKEY *pkey = CREDENTIALS_get_pkey(creds);
         const X509 *cert = CREDENTIALS_get_cert(creds);
         STACK_OF(X509) *chain = CREDENTIALS_get_chain(creds);
@@ -125,7 +125,7 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL cmp_log_cb_t log_fn,
         }
     }
 
-    if (digest) {
+    if (digest != NULL) {
         int nid = OBJ_ln2nid(digest);
         if (nid == NID_undef) {
             CMP_printf(ctx, FL_ERROR, "Bad digest algorithm name: '%s'", digest);
@@ -228,10 +228,15 @@ CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx,
         goto err;
     }
 
-    if (tls != NULL &&
-        (!CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
-         !CMP_CTX_set_http_cb_arg(ctx, (void *)tls))) {
-        goto err;
+    if (tls != NULL) {
+        if (!CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
+            !CMP_CTX_set_http_cb_arg(ctx, (void *)tls)) {
+            goto err;
+        }
+        if (server != NULL &&
+            !STORE_set1_host_ip(SSL_CTX_get_cert_store(tls), server, server)) {
+            goto err;
+        }
     }
 
     return CMP_OK;
@@ -247,7 +252,7 @@ static X509_EXTENSIONS *exts_dup(X509_EXTENSIONS *extin /* may be NULL */)
     if (exts == NULL) {
         goto err;
     }
-    if (extin) {
+    if (extin != NULL) {
         int i;
         for (i = 0; i < sk_X509_EXTENSION_num(extin); i++) {
             X509_EXTENSION *ext = X509_EXTENSION_dup(sk_X509_EXTENSION_value(extin, i));

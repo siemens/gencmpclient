@@ -321,6 +321,11 @@ CMP_err CMPclient_enroll(CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
 	return CMP_R_NULL_ARGUMENT;
     }
 
+    /* check if any enrollment function has already been called before on ctx */
+    if (CMP_CTX_get0_transactionID(ctx) != NULL) {
+        return CMP_R_INVALID_CONTEXT;
+    }
+
     switch (type) {
     case CMP_IR:
 	newcert = CMP_exec_IR_ses(ctx);

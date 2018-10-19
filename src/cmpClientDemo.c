@@ -18,7 +18,7 @@ static int CMPclient_demo(void)
     X509_STORE *cmp_truststore = NULL;
     CREDENTIALS *creds = NULL;
     X509_STORE *new_cert_truststore = NULL;
-    CMP_CTX *ctx = NULL;
+    OSSL_CMP_CTX *ctx = NULL;
     X509_STORE *tls_truststore = NULL;
     CREDENTIALS *tls_creds = NULL;
     SSL_CTX *tls = NULL;
@@ -61,14 +61,14 @@ static int CMPclient_demo(void)
         }
     }
     const char *digest = "sha256";
-    cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
+    OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     int total_timeout = 100;
     {
         const char *file = "certs/trusted/PPKIPlaygroundECCRootCAv10.crt";
         new_cert_truststore = STORE_load(file, "trusted certs for verifying new cert");
     }
 
-    cmp_log_cb_t log_fn = NULL;
+    OSSL_cmp_log_cb_t log_fn = NULL;
     err = CMPclient_prepare(&ctx, OPTIONAL log_fn,
                             cmp_truststore, OPTIONAL untrusted,
                             creds, digest,
@@ -79,9 +79,9 @@ static int CMPclient_demo(void)
     }
 
     /* direct call of CMP API: accept negative responses without protection */
-    (void)CMP_CTX_set_option(ctx, CMP_CTX_OPT_UNPROTECTED_ERRORS, 1);
+    (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_UNPROTECTED_ERRORS, 1);
     /* direct call of CMP API: accept non-enabled key usage digitalSignature */
-    (void)CMP_CTX_set_option(ctx, CMP_CTX_OPT_IGNORE_KEYUSAGE, 1);
+    (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_IGNORE_KEYUSAGE, 1);
 
     const char *server = "ppki-playground.ct.siemens.com:443";
     const char *path = "/ejbca/publicweb/cmp/PlaygroundECC";

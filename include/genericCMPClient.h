@@ -10,7 +10,7 @@
 #ifndef GENERIC_CMP_CLIENT_H
 #define GENERIC_CMP_CLIENT_H
 
-/* for low-level CMP API, in particular, type CMP_CTX */
+/* for low-level CMP API, in particular, type OSSL_CMP_CTX */
 #include <openssl/cmp.h>
 
 #include <SecUtils/util/log.h>
@@ -34,11 +34,11 @@
 typedef int CMP_err; /* should better be defined and used in openssl/cmp.h */
 #define CMP_OK 0
 
-#define CMP_IR    V_CMP_PKIBODY_IR
-#define CMP_CR    V_CMP_PKIBODY_CR
-#define CMP_P10CR V_CMP_PKIBODY_P10CR
-#define CMP_KUR   V_CMP_PKIBODY_KUR
-#define CMP_RR    V_CMP_PKIBODY_RR
+#define CMP_IR    OSSL_CMP_PKIBODY_IR
+#define CMP_CR    OSSL_CMP_PKIBODY_CR
+#define CMP_P10CR OSSL_CMP_PKIBODY_P10CR
+#define CMP_KUR   OSSL_CMP_PKIBODY_KUR
+#define CMP_RR    OSSL_CMP_PKIBODY_RR
 
 #ifdef LOCAL_DEFS
 
@@ -73,17 +73,17 @@ void CREDENTIALS_free(CREDENTIALS *creds); /* is not called by CMPclient_finish(
 
 /* CMP client core functions */
 /* must be called first */
-CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL cmp_log_cb_t log_fn,
+CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
       /* both for CMP: */ OPTIONAL X509_STORE *cmp_truststore,
                           OPTIONAL const STACK_OF(X509) *untrusted,
                           OPTIONAL const CREDENTIALS *creds,
                           OPTIONAL const char *digest,
-                          OPTIONAL cmp_transfer_cb_t transfer_fn, int total_timeout,
+                          OPTIONAL OSSL_cmp_transfer_cb_t transfer_fn, int total_timeout,
                           OPTIONAL X509_STORE *new_cert_truststore, bool implicit_confirm);
 
 /* must be called next in case the transfer_fn is NULL, which implies HTTP_transfer;
    copies server address (of the form "<name>[:<port>]") and HTTP path */
-CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
+CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *path,
                              int timeout, OPTIONAL SSL_CTX *tls,
                              OPTIONAL const char *proxy);
 
@@ -101,7 +101,7 @@ CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
 * @note all const parameters are copied (and need to be freed by the caller)
 * @return CMP_OK on success, else CMP error code
 *******************************************************************************/
-CMP_err CMPclient_setup_certreq(CMP_CTX *ctx,
+CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                 OPTIONAL const EVP_PKEY *new_key,
                                 OPTIONAL const X509 *old_cert,
                                 OPTIONAL const char *subject,
@@ -120,26 +120,26 @@ or CMPclient_revoke() can be called next, only once for the given ctx */
 * @param type the request to be performed: CMP_IR, CMP_CR, CMP_P10CR, or CMP_KUR
 * @return CMP_OK on success, else CMP error code
 *******************************************************************************/
-CMP_err CMPclient_enroll(CMP_CTX *ctx, CREDENTIALS **new_creds, int type);
-CMP_err CMPclient_imprint(CMP_CTX *ctx, CREDENTIALS **new_creds,
+CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type);
+CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                           const EVP_PKEY *new_key,
                           const char *subject,
                           OPTIONAL const X509_EXTENSIONS *exts);
-CMP_err CMPclient_bootstrap(CMP_CTX *ctx, CREDENTIALS **new_creds,
+CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                             const EVP_PKEY *new_key,
                             const char *subject,
                             OPTIONAL const X509_EXTENSIONS *exts);
-CMP_err CMPclient_pkcs10(CMP_CTX *ctx, CREDENTIALS **new_creds,
+CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                          const X509_REQ *csr);
-CMP_err CMPclient_update(CMP_CTX *ctx, CREDENTIALS **new_creds,
+CMP_err CMPclient_update(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                          const EVP_PKEY *new_key);
 
 /* reason codes are defined in openssl/x509v3.h */
-CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, int reason);
+CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason);
 
 /* must be called after any of the above activities */
 /* does not free any creds, truststore, tls, new_key, or exts, so they can be reused */
-void CMPclient_finish(CMP_CTX *ctx);
+void CMPclient_finish(OSSL_CMP_CTX *ctx);
 
 #ifdef LOCAL_DEFS
 /* CREDENTIALS helpers */

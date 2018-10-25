@@ -10,17 +10,21 @@ else
 #   LIB=lib
 endif
 
-ARCHIVE=../bin # for Jenkins
-SECUTILS=../securityUtilities
+PARENT_DIR=..
+ARCHIVE=$(PARENT_DIR)/bin # for Jenkins
+SECUTILS_=securityUtilities
+SECUTILS=$(PARENT_DIR)/$(SECUTILS_)
+OPENSSL_DIR ?= openssl
+CMP_INC ?= include_cmp
 
 CC = gcc
 
-CFLAGS = -g -O0 -c -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Werror -Woverflow #-Wconversion #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
-CFLAGS += -I$(SECUTILS)/include -I../include -I../openssl/include
+override CFLAGS += -g -O0 -c -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Werror -Woverflow #-Wconversion #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
+override CFLAGS += -I$(SECUTILS)/include -I$(PARENT_DIR)/$(CMP_INC) -I$(PARENT_DIR)/$(OPENSSL_DIR)/include -I$(PARENT_DIR)/include # order of -I is critical
 
-LIBS = -lSecUtils -lssl -lcrypto # -luta -lxmlsec1 -lxml2 -lz -lm -lpthread
+LIBS = -lcmp -lSecUtils -lssl -lcrypto # -luta -lxmlsec1 -lxml2 -lz -lm -lpthread
 
-LDFLAGS = -L$(SECUTILS) -L../openssl -Wl,-rpath=securityUtilities $(LIBS) -Wl,-rpath=openssl
+LDFLAGS = -L$(SECUTILS) -L$(PARENT_DIR) -L$(PARENT_DIR)/$(OPENSSL_DIR) -Wl,-rpath=$(SECUTILS_) $(LIBS) -Wl,-rpath=$(OPENSSL_DIR)
 
 OBJS = genericCMPClient$(OBJ) cmpClientDemo$(OBJ)
 
@@ -30,7 +34,7 @@ DEPS = $(SRCS:.c=.d)
 
 DLLS = *$(DLL)*
 
-TGT = ../cmpClientDemo$(EXE)
+TGT = $(PARENT_DIR)/cmpClientDemo$(EXE)
 
 ########## targets
 
@@ -38,12 +42,12 @@ TGT = ../cmpClientDemo$(EXE)
 build:	$(TGT)
 ifeq ($(OS),Windows_NT)
 	@echo "Copying DLLs to base directory for convenient use with Windows"
-	@cp -a $(SECUTILS)/$(DLLS) ../openssl/$(DLLS) .. # --no-preserve=mode
+	@cp -a $(SECUTILS)/$(DLLS) $(PARENT_DIR)/$(OPENSSL_DIR)/$(DLLS) $(PARENT_DIR) # --no-preserve=mode
 endif
 
-cmpClientDemo$(OBJ): cmpClientDemo.c ../include/genericCMPClient.h
+cmpClientDemo$(OBJ): cmpClientDemo.c $(PARENT_DIR)/include/genericCMPClient.h
 
-genericCMPClient$(OBJ): genericCMPClient.c ../include/genericCMPClient.h
+genericCMPClient$(OBJ): genericCMPClient.c $(PARENT_DIR)/include/genericCMPClient.h
 
 $(TGT): $(OBJS)
 	$(CC) $^ $(LDFLAGS) -o $@
@@ -66,4 +70,4 @@ all: build
 
 .PHONY: clean
 clean:
-	rm -f $(TGT) $(OBJS) $(DEPS) ../$(DLLS)
+	rm -f $(TGT) $(OBJS) $(DEPS) $(PARENT_DIR)/$(DLLS)

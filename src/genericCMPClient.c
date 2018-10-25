@@ -7,9 +7,11 @@
  * @copyright (c) Siemens AG 2018 all rights reserved
  ******************************************************************************/
 
+#include <genericCMPClient.h>
+#include <openssl/cmperr.h>
+
 #include <string.h>
 #include <SecUtils/credentials/verify.h>
-#include <genericCMPClient.h>
 
 static int CMPOSSL_error()
 {
@@ -56,13 +58,31 @@ static int CMP_certConf_cb(OSSL_CMP_CTX *ctx, const X509 *cert, int failure, con
     }
 
     if (failure >= 0) {
-        char *str = X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
+        char *str = X509_NAME_oneline(X509_get_subject_name((X509 *)cert), NULL, 0);
         OSSL_CMP_printf(ctx, FL_ERR,
                    "Failed to validate newly enrolled certificate with subject: %s",
                    str);
         OPENSSL_free(str);
     }
     return failure;
+}
+
+CMP_err CMPclient_init(LOG_cb_t log_fn)
+{
+    CMP_err err = ERR_R_INIT_FAIL;
+    LOG_init(log_fn);
+    UTIL_setup_openssl();
+    if (!OSSL_CMP_log_init()) {
+        return err;
+    }
+    if (SSLeay() != OPENSSL_VERSION_NUMBER) {
+        LOG(FL_WARN, "runtime OpenSSL version %lx does not match compile-time version %lx",
+            SSLeay(), OPENSSL_VERSION_NUMBER);
+    }
+    if (!TLS_init()) {
+        return err;
+    }
+    return CMP_OK;
 }
 
 CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
@@ -87,9 +107,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 
-    LOG_init((LOG_cb_t)log_fn);
-    if (!OSSL_CMP_log_init() || /* this call needs to be done first */
-        pctx == NULL ||
+    if (pctx == NULL ||
         NULL == (ctx = OSSL_CMP_CTX_create()) ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn)) {
         goto err;
@@ -476,7 +494,9 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 {
     SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
     OSSL_CMP_CTX_delete(ctx);
+#ifdef CLOSE_LOG_ON_EACH_FINISH
     LOG_close();
+#endif
 }
 
 

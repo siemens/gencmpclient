@@ -72,6 +72,9 @@ void CREDENTIALS_free(CREDENTIALS *creds); /* is not called by CMPclient_finish(
 #endif /* LOCAL_DEFS */
 
 /* CMP client core functions */
+/* should be called once, at the beginning */
+CMP_err CMPclient_init(LOG_cb_t log_fn);
+
 /* must be called first */
 CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
       /* both for CMP: */ OPTIONAL X509_STORE *cmp_truststore,

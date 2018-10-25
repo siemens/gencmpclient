@@ -7,14 +7,12 @@
  * @copyright (c) Siemens AG 2018 all rights reserved
  ******************************************************************************/
 
+#include <genericCMPClient.h>
 #include <SecUtils/credentials/verify.h>
 #include <SecUtils/storage/files.h>
-#include <genericCMPClient.h>
 
 static int CMPclient_demo(void)
 {
-    CMP_err err = CMP_OK;
-
     X509_STORE *cmp_truststore = NULL;
     CREDENTIALS *creds = NULL;
     X509_STORE *new_cert_truststore = NULL;
@@ -25,6 +23,13 @@ static int CMPclient_demo(void)
     EVP_PKEY *new_key = NULL;
     X509_EXTENSIONS *exts = NULL;
     CREDENTIALS *new_creds = NULL;
+
+    OSSL_cmp_log_cb_t log_fn = NULL;
+    CMP_err err =CMPclient_init((LOG_cb_t)log_fn);
+    if (err != CMP_OK) {
+        printf(stderr, "failed to initialize genCMPClient\n");
+        return err;
+    }
 
     STACK_OF(X509) *untrusted = NULL;
     {
@@ -68,7 +73,6 @@ static int CMPclient_demo(void)
         new_cert_truststore = STORE_load(file, "trusted certs for verifying new cert");
     }
 
-    OSSL_cmp_log_cb_t log_fn = NULL;
     err = CMPclient_prepare(&ctx, OPTIONAL log_fn,
                             cmp_truststore, OPTIONAL untrusted,
                             creds, digest,

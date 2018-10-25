@@ -3,4 +3,4 @@
 	url = git@code.siemens.com:mo_mm_linux_distribution/securityUtilities.git
 [submodule "cmpossl"]
 	path = cmpossl
-	url = https://github.com/mpeylo/cmpossl.git
+	url = https://DDvO@github.com/mpeylo/cmpossl.git

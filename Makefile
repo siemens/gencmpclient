@@ -36,7 +36,7 @@ ifndef USE_UTA
 endif
 
 build:	# the old way to build with CMP was: buildCMPforOpenSSL
-	@#cd $(SECUTILS) && git submodule update --init --recursive
+	cd $(SECUTILS) && git submodule update --init --recursive
 	$(MAKE) -C $(SECUTILS) build OPENSSL_DIR="$(OPENSSL_DIR)"
 	$(MAKE) -C cmpossl -f Makefile_cmp cmp_lib CMP_DIR=".." OPENSSL_DIR="../$(OPENSSL_DIR)"
 	$(MAKE) -C src build OPENSSL_DIR="$(OPENSSL_DIR)" CFLAGS="$(OSSL_VERSION_QUIRKS)" CMP_INC="$(CMP_INC)"

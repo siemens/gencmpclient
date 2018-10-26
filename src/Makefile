@@ -18,11 +18,15 @@ endif
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 # $(OPENSSL_DIR) is relative path, assumed relative to ../
     OPENSSL=../$(OPENSSL_DIR)
-    OPENSSL_LIB=../$(OPENSSL_DIR)
+    OPENSSL_LIB=$(OPENSSL)
+    OPENSSL_RPATH=$(OPENSSL_DIR)
+    OPENSSL_RPATH_LIB=$(OPENSSL_DIR)
 else
 # $(OPENSSL_DIR) is absolute path
     OPENSSL=$(OPENSSL_DIR)
     OPENSSL_LIB=$(OPENSSL)/lib
+    OPENSSL_RPATH=$(OPENSSL)
+    OPENSSL_RPATH_LIB=$(OPENSSL_LIB)
 endif
 
 PARENT_DIR=..
@@ -41,7 +45,8 @@ ifdef USE_UTA
     LIBS += -luta
 endif
 
-LDFLAGS = -L$(SECUTILS) -Wl,-rpath=$(SECUTILS_) $(LIBS) -L$(PARENT_DIR) -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_DIR) -Wl,-rpath=$(OPENSSL_DIR)/lib
+LDFLAGS = -L$(SECUTILS) -Wl,-rpath=$(SECUTILS_) $(LIBS) -L$(PARENT_DIR)
+LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
 
 OBJS = genericCMPClient$(OBJ) cmpClientDemo$(OBJ)
 

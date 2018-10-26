@@ -1,3 +1,5 @@
+# optional OPENSSL_DIR defines absolute or relative (to ../) path to OpenSSL installation
+
 ifeq ($(OS),Windows_NT)
     EXE=.exe
     DLL=.dll
@@ -14,9 +16,11 @@ ifeq ($(OPENSSL_DIR),)
     OPENSSL_DIR=$(ROOTFS)/usr/
 endif
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
+# $(OPENSSL_DIR) is relative path, assumed relative to ../
     OPENSSL=../$(OPENSSL_DIR)
     OPENSSL_LIB=../$(OPENSSL_DIR)
-else # $(OPENSSL_DIR) is absolute path
+else
+# $(OPENSSL_DIR) is absolute path
     OPENSSL=$(OPENSSL_DIR)
     OPENSSL_LIB=$(OPENSSL)/lib
 endif
@@ -30,7 +34,7 @@ CMP_INC ?= include_cmp
 CC = gcc
 
 override CFLAGS += -g -O0 -c -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Werror -Woverflow #-Wconversion #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
-override CFLAGS += -I$(SECUTILS)/include -I$(PARENT_DIR)/$(CMP_INC) -I$(OPENSSL)/include -I$(PARENT_DIR)/include # order of -I is critical
+override CFLAGS += -I$(PARENT_DIR)/include -I$(SECUTILS)/include -isystem $(PARENT_DIR)/$(CMP_INC) -isystem $(OPENSSL)/include # use and order of -isystem is critical
 
 LIBS = -lcmp -lSecUtils -lssl -lcrypto
 ifdef USE_UTA
@@ -71,7 +75,7 @@ $(DEPS): %.d:%.c
 -include $(DEPS)
 
 $(OBJS): %$(OBJ):%.c
-	C_INCLUDE_PATH=$(OPENSSL)/include $(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $< -o $@
 
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"

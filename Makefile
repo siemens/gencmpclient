@@ -1,3 +1,5 @@
+# optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
+
 ifeq ($(OS),Windows_NT)
     EXE=.exe
     DLL=.dll
@@ -129,7 +131,7 @@ CMP_INC=$(CMP_OUT)/include_cmp
 CMP_LIB=$(CMP_OUT)/libcmp$(DLL)
 
 CC=gcc
-CFLAGS=-g -O0 -Werror $(OSSL_VERSION_QUIRKS) -fPIC -I$(CMP_INC) -I$(OPENSSL_DIR)/include # order of -I is critical
+CFLAGS=-g -O0 -Werror $(OSSL_VERSION_QUIRKS) -fPIC -isystem $(CMP_INC) -isystem $(OPENSSL_DIR)/include # use and order of -isystem is critical
 #CMP_HDRS_INC = $(patsubst %,-include %,$(CMP_HDRS)) # used to force inclusion order in source files $(CMP_SRCS)
 CMP_HDRS_INC = -include openssl/crmf.h # used to force inclusion order in cmp_err.c
 

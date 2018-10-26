@@ -12,10 +12,23 @@ endif
 
 SECUTILS=securityUtilities
 CMP_DIR=cmpossl
-OPENSSL_DIR ?= openssl
+
+ifeq ($(OPENSSL_DIR),)
+    OPENSSL_DIR=$(ROOTFS)/usr
+endif
+ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
+# $(OPENSSL_DIR) is relative path, assumed relative to ./
+    OPENSSL=../$(OPENSSL_DIR)
+    OPENSSL_LIB=../$(OPENSSL_DIR)
+else
+# $(OPENSSL_DIR) is absolute path
+    OPENSSL=$(OPENSSL_DIR)
+    OPENSSL_LIB=$(OPENSSL)/lib
+endif
+
 OPENSSL_VERSION=$(shell fgrep OPENSSL_VERSION_NUMBER $(OPENSSL_DIR)/include/openssl/opensslv.h | sed -r 's/.*?NUMBER\s+//; s/L.*//')
 ifeq ($(findstring 0x,$(OPENSSL_VERSION)),)
-    $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)')
+    $(error cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)')
 endif
 ifeq ($(shell test $$(printf "%d" $(OPENSSL_VERSION)) -ge $$(printf "%d" 0x10102000); echo $$?),0)
     OSSL_VERSION_QUIRKS+=-D'DEPRECATEDIN_1_2_0(f)='
@@ -38,7 +51,7 @@ endif
 build:	# the old way to build with CMP was: buildCMPforOpenSSL
 	cd $(SECUTILS) && git submodule update --init --recursive
 	$(MAKE) -C $(SECUTILS) build OPENSSL_DIR="$(OPENSSL_DIR)"
-	$(MAKE) -C cmpossl -f Makefile_cmp cmp_lib CMP_DIR=".." OPENSSL_DIR="../$(OPENSSL_DIR)"
+	$(MAKE) -C cmpossl -f Makefile_cmp cmp_lib CMP_DIR=".." OPENSSL_DIR="$(OPENSSL)"
 	$(MAKE) -C src build OPENSSL_DIR="$(OPENSSL_DIR)" CFLAGS="$(OSSL_VERSION_QUIRKS)" CMP_INC="$(CMP_INC)"
 
 clean_uta:
@@ -46,7 +59,7 @@ clean_uta:
 
 clean:
 	$(MAKE) -C $(SECUTILS) clean
-	$(MAKE) -C cmpossl -f Makefile_cmp cmp_clean CMP_DIR=".."  OPENSSL_DIR="../$(OPENSSL_DIR)"
+	$(MAKE) -C cmpossl -f Makefile_cmp cmp_clean CMP_DIR=".."  OPENSSL_DIR="$(OPENSSL)"
 	$(MAKE) -C src clean
 	rm -f certs/new.*
 

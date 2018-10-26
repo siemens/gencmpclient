@@ -12,6 +12,7 @@
 
 /* for low-level CMP API, in particular, type OSSL_CMP_CTX */
 #include <openssl/cmp.h>
+typedef OSSL_CMP_CTX CMP_CTX; /* for abbreviation and backward compatibility */
 
 #include <SecUtils/util/log.h>
 #include <SecUtils/credentials/credentials.h>

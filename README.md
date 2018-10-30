@@ -1,32 +1,45 @@
-This is the code repository for the cross-division generic CMP client library based on [CMPforOpenSSL](https://github.com/mpeylo/cmpossl).
+This is the code repository for the cross-division generic CMP client library.
 
 
 # Getting the library
 
-Clone the git repository with
+You can clone the git repository with
 ```
-git clone --recurse-submodules git@code.siemens.com:product-pki/genCMPClient.git
+git clone git@code.siemens.com:product-pki/genCMPClient.git
+cd genCMPClient
+git submodule update --init
 ```
 
-This will download also the underlying [Security Utilities (SecUtils)](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities) library,
-including the required CMPforOpenSSL extension to OpenSSL (currently version 1.1.0.f) and some further, minor dependencies (namely, interface and test submodules).
+This will download also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
+the [Security Utilities (SecUtils)](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities) library
+(which has some further, subordinate dependencies, namely, interface and test submodules).
 
 
 # Building the library
 
-Change to the newly created directory with `cd genCMPClient` and build the library with `make`.
-This also builds its dependencies and a simple demo application.
+Both the CMP library and the SecUtil library assume that OpenSSL (with any version >= 1.0.2) is already installed.
+By default its headers will be searched for in `/usr/include` and its shared objects in `/usr/lib`.
+You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation.
 
-**Imporant Note:** the Security Utilities usually make use of the [Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library for device-level secure storage of passwords and integriy protection of files.
-Since this library is not yet generally available Siemens-wide the SecUtils are so far integrated in a way that the use of the UTA lib is disabled (via `SEC_NO_UTA=1`). This means that secure storage of protection credentials for private keys and trusted certificates needs to be solved by other means.
+In the newly created directory `genCMPClient` you can build the library simply with `make`.
+This also builds all required dependencies and a simple demo application.
+
+**Imporant Note:** by default, the Security Utilities make use of the [Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library
+for secure device-level storage of key material for confidentiality and integriy protection of files.
+Since this library is not yet generally available Siemens-wide the SecUtils are so far integrated in a way that the use of the UTA lib is disabled (via `SEC_NO_UTA=1`).
+This means that secure storage of protection credentials for private keys and trusted certificates needs to be solved by other means.
 
 
 # Using the library
 
-Have a look at the demo client in [`src/cmpClientDemo.c`](src/cmpClientDemo.c), which can be executed with `make test`.
+Have a look at the demo client in [`src/cmpClientDemo.c`](src/cmpClientDemo.c).
+The simple example application can be executed directly as `./cmpClientDemo` or with `make test`.
 
-For compiling you will need to add the directories `include` and `securityUtilities/include` to your C headers path and include in your application sources the file [`genericCMPClient.h`](include/genericCMPClient.h).
-For linking you will need to add the directories `lib` and `securityUtilities` to your library path and refer the linker to the SecUtils library, e.g., `-lSecUtils`. 
+You will need to include in your application sources the file [`genericCMPClient.h`](include/genericCMPClient.h) before including any OpenSSL header files.
+For compiling you will need to add the directories `include` and `securityUtilities/include` to your C headers path and
+add `-isystem include_cmp` to your `CFLAGS` (such that the directory `./include_cmp` is searched before any OpenSSL include paths).
+For linking you will need to add the directories `.` and `securityUtilities` to your library path and
+refer the linker to the CMP and SecUtils libraries, e.g., `-lcmp -lSecUtils` (and also refer to OpenSSL via `-lssl -lcrypto`).
 All this is already done for the demo application.
 
 

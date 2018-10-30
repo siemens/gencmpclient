@@ -4,3 +4,6 @@
 [submodule "cmpossl"]
 	path = cmpossl
 	url = https://DDvO@github.com/mpeylo/cmpossl.git
+[submodule "libs/interfaces"]
+	path = libs/interfaces
+	url = git@code.siemens.com:mo_mm_linux_distribution/s2l2.interfaces.git

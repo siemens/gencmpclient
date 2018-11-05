@@ -49,14 +49,6 @@ typedef enum { false = 0, true = 1 } bool; /* Boolean value */
 
 #define OPTIONAL /* this marker will get ignored by compiler */
 
-/* log callback function */
-/* these two decls are going to be moved to openssl/cmp.h */
-/* declarations resemble those from bio/bss_log.c and syslog.h */
-typedef enum {LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERROR,
-              LOG_WARN, LOG_NOTE, LOG_INFO, LOG_DEBUG} severity;
-typedef bool (*cmp_log_cb_t_) (OPTIONAL const char *file, int lineno,
-                              severity level, const char *msg);
-
 typedef struct credentials {
     OPTIONAL EVP_PKEY *pkey;        /*!< can refer to HW key store via engine */
     OPTIONAL X509     *cert;        /*!< related certificate */
@@ -73,8 +65,8 @@ void CREDENTIALS_free(CREDENTIALS *creds); /* is not called by CMPclient_finish(
 #endif /* LOCAL_DEFS */
 
 /* CMP client core functions */
-/* should be called once, at the beginning */
-CMP_err CMPclient_init(LOG_cb_t log_fn);
+/* should be called once, as soon as the application starts */
+CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn);
 
 /* must be called first */
 CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,

@@ -25,7 +25,7 @@ static int CMPclient_demo(void)
     CREDENTIALS *new_creds = NULL;
 
     OSSL_cmp_log_cb_t log_fn = NULL;
-    CMP_err err =CMPclient_init((LOG_cb_t)log_fn);
+    CMP_err err =CMPclient_init(log_fn);
     if (err != CMP_OK) {
         printf(stderr, "failed to initialize genCMPClient\n");
         return err;
@@ -60,10 +60,6 @@ static int CMPclient_demo(void)
         const char *certs = "certs/ppki_playground_cmp_signer.p12";
         const char *pkey = certs;
         creds = CREDENTIALS_load(certs, pkey, "pass:12345", "credentials for CMP level");
-        if (creds == NULL) {
-            err = -2;
-            goto err;
-        }
     }
     const char *digest = "sha256";
     OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
@@ -71,6 +67,10 @@ static int CMPclient_demo(void)
     {
         const char *file = "certs/trusted/PPKIPlaygroundECCRootCAv10.crt";
         new_cert_truststore = STORE_load(file, "trusted certs for verifying new cert");
+    }
+    if (creds == NULL || new_cert_truststore == NULL) {
+        err = -2;
+        goto err;
     }
 
     err = CMPclient_prepare(&ctx, OPTIONAL log_fn,

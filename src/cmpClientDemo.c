@@ -187,8 +187,7 @@ static int CMPclient_demo(void)
     CREDENTIALS_free(new_creds);
     EXTENSIONS_free(exts);
     KEY_free(new_key);
-    /* TODO: crash on deallocation - double free?
-    TLS_free(tls);*/
+    TLS_free(tls);
     CREDENTIALS_free(tls_creds);
     STORE_free(tls_truststore);
     STORE_free(new_cert_truststore);

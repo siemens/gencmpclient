@@ -50,14 +50,6 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
 {
     OSSL_CMP_CTX *ctx = NULL;
 
-    /* "copy" trust stores regardless of success */
-    if (cmp_truststore != NULL) {
-        X509_STORE_up_ref(cmp_truststore);
-    }
-    if (new_cert_truststore != NULL) {
-        X509_STORE_up_ref(new_cert_truststore);
-    }
-
     if (NULL == pctx) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
@@ -67,7 +59,9 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn)) {
         goto err;
     }
-    if ((cmp_truststore != NULL && !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)) ||
+    if ((cmp_truststore != NULL && (!X509_STORE_up_ref(cmp_truststore) ||
+                                    !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)))
+        ||
         (untrusted      != NULL && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, untrusted))) {
         goto err;
     }
@@ -107,12 +101,13 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         (total_timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_TOTALTIMEOUT, total_timeout))) {
         goto err;
     }
-    if (new_cert_truststore != NULL &&
-        (!OSSL_CMP_CTX_set_certConf_cb(ctx, OSSL_CMP_certConf_cb) ||
-         !OSSL_CMP_CTX_set_certConf_cb_arg(ctx, new_cert_truststore))) {
+    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_IMPLICITCONFIRM, implicit_confirm)) {
         goto err;
     }
-    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_IMPLICITCONFIRM, implicit_confirm)) {
+    if (new_cert_truststore != NULL &&
+        (!X509_STORE_up_ref(new_cert_truststore) ||
+         !OSSL_CMP_CTX_set_certConf_cb(ctx, OSSL_CMP_certConf_cb) ||
+         !OSSL_CMP_CTX_set_certConf_cb_arg(ctx, new_cert_truststore))) {
         goto err;
     }
 
@@ -222,8 +217,11 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         goto err;
     }
 
+    SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
+    OSSL_CMP_CTX_set_http_cb_arg(ctx, NULL);
     if (tls != NULL) {
-        if (!OSSL_CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
+        if (!SSL_CTX_up_ref(tls) ||
+            !OSSL_CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
             !OSSL_CMP_CTX_set_http_cb_arg(ctx, (void *)tls)) {
             goto err;
         }
@@ -236,6 +234,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     return CMP_OK;
 
     err:
+    SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
     return CMPOSSL_error();
 }
 
@@ -448,6 +447,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
 void CMPclient_finish(OSSL_CMP_CTX *ctx)
 {
     SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
+    X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
     OSSL_CMP_CTX_delete(ctx);
 #ifdef CLOSE_LOG_ON_EACH_FINISH
     LOG_close();

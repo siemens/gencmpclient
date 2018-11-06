@@ -60,7 +60,7 @@ typedef struct credentials {
 CREDENTIALS *CREDENTIALS_new(OPTIONAL const EVP_PKEY *pkey, const OPTIONAL X509 *cert,
                              OPTIONAL const STACK_OF(X509) *chain,
                              OPTIONAL const char *pwd, OPTIONAL const char *pwdref);
-void CREDENTIALS_free(CREDENTIALS *creds); /* is not called by CMPclient_finish() */
+void CREDENTIALS_free(OPTIONAL CREDENTIALS *creds);
 
 #endif /* LOCAL_DEFS */
 
@@ -69,7 +69,7 @@ void CREDENTIALS_free(CREDENTIALS *creds); /* is not called by CMPclient_finish(
 CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn);
 
 /* must be called first */
-CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
+CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
       /* both for CMP: */ OPTIONAL X509_STORE *cmp_truststore,
                           OPTIONAL const STACK_OF(X509) *untrusted,
                           OPTIONAL const CREDENTIALS *creds,
@@ -77,9 +77,9 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
                           OPTIONAL OSSL_cmp_transfer_cb_t transfer_fn, int total_timeout,
                           OPTIONAL X509_STORE *new_cert_truststore, bool implicit_confirm);
 
-/* must be called next in case the transfer_fn is NULL, which implies HTTP_transfer;
-   copies server address (of the form "<name>[:<port>]") and HTTP path */
-CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *path,
+/* must be called next in case the transfer_fn is NULL, which implies HTTP_transfer */
+/* copies server and proxy address (of the form "<name>[:<port>]") and HTTP path */
+CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
                              int timeout, OPTIONAL SSL_CTX *tls,
                              OPTIONAL const char *proxy);
 
@@ -97,14 +97,14 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
 * @note all const parameters are copied (and need to be freed by the caller)
 * @return CMP_OK on success, else CMP error code
 *******************************************************************************/
-CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
+CMP_err CMPclient_setup_certreq(CMP_CTX *ctx,
                                 OPTIONAL const EVP_PKEY *new_key,
                                 OPTIONAL const X509 *old_cert,
                                 OPTIONAL const char *subject,
                                 OPTIONAL const X509_EXTENSIONS *exts,
-                                OPTIONAL const X509_REQ *csr);
+                                OPTIONAL const X509_REQ *p10csr);
 
-/* either CMPclient_enroll() or its special cases (CMPclient_imprint(),
+/* either the internal CMPclient_enroll() or the specific CMPclient_imprint(),
 CMPclient_bootstrap(), CMPclient_pkcs10(), or CMPclient_update())
 or CMPclient_revoke() can be called next, only once for the given ctx */
 /* the structure returned in *new_creds must be freed by the caller */
@@ -116,26 +116,23 @@ or CMPclient_revoke() can be called next, only once for the given ctx */
 * @param type the request to be performed: CMP_IR, CMP_CR, CMP_P10CR, or CMP_KUR
 * @return CMP_OK on success, else CMP error code
 *******************************************************************************/
-CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type);
-CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
-                          const EVP_PKEY *new_key,
-                          const char *subject,
+CMP_err CMPclient_enroll(CMP_CTX *ctx, CREDENTIALS **new_creds, int type);
+CMP_err CMPclient_imprint(CMP_CTX *ctx, CREDENTIALS **new_creds,
+                          const EVP_PKEY *new_key, const char *subject,
                           OPTIONAL const X509_EXTENSIONS *exts);
-CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
-                            const EVP_PKEY *new_key,
-                            const char *subject,
+CMP_err CMPclient_bootstrap(CMP_CTX *ctx, CREDENTIALS **new_creds,
+                            const EVP_PKEY *new_key, const char *subject,
                             OPTIONAL const X509_EXTENSIONS *exts);
-CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
+CMP_err CMPclient_pkcs10(CMP_CTX *ctx, CREDENTIALS **new_creds,
                          const X509_REQ *csr);
-CMP_err CMPclient_update(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
-                         const EVP_PKEY *new_key);
+CMP_err CMPclient_update(CMP_CTX *ctx, CREDENTIALS **new_creds,
+                         const EVP_PKEY *new_key, const X509 *old_cert);
 
 /* reason codes are defined in openssl/x509v3.h */
-CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason);
+CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, int reason);
 
 /* must be called after any of the above activities */
-/* does not free any creds, truststore, tls, new_key, or exts, so they can be reused */
-void CMPclient_finish(OSSL_CMP_CTX *ctx);
+void CMPclient_finish(CMP_CTX *ctx);
 
 #ifdef LOCAL_DEFS
 /* CREDENTIALS helpers */
@@ -155,38 +152,36 @@ X509_STORE *STORE_load(const char *trusted_certs,
                        OPTIONAL const char *desc/* for error msgs */);
 STACK_OF(X509_CRL) *CRLs_load(const char *file, OPTIONAL const char *desc);
 /* also sets certificate verification callback */
-/* does not consume vpm; copies any CRLs_url and OCSP_url to static buffers */
 bool STORE_set_parameters(X509_STORE *truststore,
                           OPTIONAL const X509_VERIFY_PARAM *vpm,
                           OPTIONAL const STACK_OF(X509_CRL) *crls,
-                          OPTIONAL const char *CRLs_url, bool use_CDPs,
-                          OPTIONAL const char *OCSP_url, bool use_AIAs);
-void STORE_free(X509_STORE *truststore); /* also frees copies of OCSP_url and OCSP_url */
+                          bool use_CDPs, OPTIONAL const char *CRLs_url,
+                          bool use_AIAs, OPTIONAL const char *OCSP_url);
+void STORE_free(OPTIONAL X509_STORE *truststore); /* also frees copies of OCSP_url and OCSP_url */
 
 
 /* EVP_PKEY helpers */
 /* spec may be "RSA:<length>" or "EC:<curve>" */
-EVP_PKEY *KEY_new(const char *spec); /* can be used as new_key parameter */
-void KEY_free(EVP_PKEY *pkey); /* is not called by CMPclient_finish() */
+EVP_PKEY *KEY_new(const char *spec);
+void KEY_free(OPTIONAL EVP_PKEY *pkey);
 
 
 /* SSL_CTX helpers for HTTPS */
-/* does not consume any of its arguments */
 SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
                  OPTIONAL const CREDENTIALS *creds,
-                 OPTIONAL const char *ciphers);
-void TLS_free(SSL_CTX *tls); /* is not called by CMPclient_finish() */
+                 OPTIONAL const char *ciphers, int security_level);
+void TLS_free(OPTIONAL SSL_CTX *tls);
 
 /* X509_EXTENSIONS helpers */
 X509_EXTENSIONS *EXTENSIONS_new(void);
 
 /* add optionally critical Subject Alternative Names (SAN) to exts */
 bool EXTENSIONS_add_SANs(X509_EXTENSIONS *exts, const char *spec);
-/* add other extensions such as (extended) key usage, constraints, policies */
-bool EXTENSIONS_add_key_usages(X509_EXTENSIONS *exts, const char *name,
-                               const char *spec, OPTIONAL BIO *sections);
+/* add extension such as (extended) key usages, basic constraints, policies */
+bool EXTENSIONS_add_ext(X509_EXTENSIONS *exts, const char *name,
+                        const char *spec, OPTIONAL BIO *sections);
 
-void EXTENSIONS_free(X509_EXTENSIONS *exts);
+void EXTENSIONS_free(OPTIONAL X509_EXTENSIONS *exts);
 
 #endif /* LOCAL_DEFS */
 

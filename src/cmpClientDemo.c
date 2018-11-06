@@ -25,7 +25,7 @@ static int CMPclient_demo(void)
     CREDENTIALS *new_creds = NULL;
 
     OSSL_cmp_log_cb_t log_fn = NULL;
-    CMP_err err =CMPclient_init(log_fn);
+    CMP_err err = CMPclient_init(log_fn);
     if (err != CMP_OK) {
         printf(stderr, "failed to initialize genCMPClient\n");
         return err;
@@ -50,8 +50,8 @@ static int CMPclient_demo(void)
         const char *OCSP_url = NULL;
         if (cmp_truststore == NULL || crls == NULL ||
             !STORE_set_parameters(cmp_truststore, OPTIONAL vpm, crls,
-                                  OPTIONAL CRLs_url, true/* use_CDPs */,
-                                  OPTIONAL OCSP_url, false/* use_AIAs */)) {
+                                  true /* use_CDPs */, OPTIONAL CRLs_url, 
+                                  false/* use_AIAs */, OPTIONAL OCSP_url)) {
             err = -1;
             goto err;
         }
@@ -104,10 +104,9 @@ static int CMPclient_demo(void)
         const char *CRLs_url = NULL;
         const char *OCSP_url = NULL;
         if (tls_truststore == NULL || crls == NULL ||
-            !STORE_set_parameters(tls_truststore, OPTIONAL vpm,
-                                  crls,
-                                  OPTIONAL CRLs_url, true/* use_CDPs */,
-                                  OPTIONAL OCSP_url, false/* use_AIAs */)) {
+            !STORE_set_parameters(tls_truststore, OPTIONAL vpm, crls,
+                                  true /* use_CDPs */, OPTIONAL CRLs_url,
+                                  false/* use_AIAs */, OPTIONAL OCSP_url)) {
             err = -3;
             goto err;
         }
@@ -134,7 +133,7 @@ static int CMPclient_demo(void)
 
     const char *subject = "/CN=test-genCMPClient/OU=PPKI Playground"
         "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
-    new_key = KEY_new("secp521r1");
+    new_key = KEY_new("EC:secp521r1");
     if (new_key == NULL) {
         err = -6;
         goto err;
@@ -171,7 +170,7 @@ static int CMPclient_demo(void)
         const CREDENTIALS *creds = new_creds;
         const char *file = "certs/new.p12";
         const char *source = NULL/* plain file */;
-        const char *desc = "credentials including newly enrolled certificate";
+        const char *desc = "newly enrolled certificate and related key and chain";
         if (!CREDENTIALS_save(creds, file, OPTIONAL source, desc) ||
             !FILES_store_cert(CREDENTIALS_get_cert(creds), "certs/new.crt", FORMAT_PEM, "newly enrolled cert")) {
             goto err;
@@ -191,8 +190,8 @@ static int CMPclient_demo(void)
     CREDENTIALS_free(tls_creds);
     STORE_free(tls_truststore);
     STORE_free(new_cert_truststore);
-    CREDENTIALS_free(creds);
     STORE_free(cmp_truststore);
+    CREDENTIALS_free(creds);
 
     return err;
 }

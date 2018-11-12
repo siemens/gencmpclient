@@ -38,7 +38,7 @@ CMP_INC ?= include_cmp
 CC = gcc
 
 override CFLAGS += -g -O0 -c -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Werror -Woverflow #-Wconversion #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
-override CFLAGS += -I$(PARENT_DIR)/include -I$(SECUTILS)/include -isystem $(PARENT_DIR)/$(CMP_INC) -isystem $(OPENSSL)/include # use and order of -isystem is critical
+override CFLAGS += -I$(PARENT_DIR)/include -I$(SECUTILS)/include -I$(PARENT_DIR)/$(CMP_INC) -I$(OPENSSL)/include -DCMP_STANDALONE
 
 LIBS = -lcmp -lSecUtils -lssl -lcrypto
 ifdef USE_UTA

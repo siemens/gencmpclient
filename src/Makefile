@@ -1,4 +1,7 @@
 # optional OPENSSL_DIR defines absolute or relative (to ../) path to OpenSSL installation
+# optional LIBCMP_INC defines absolute or relative (to ../) path of the libcmp header files
+# optional LIBCMP_OUT defines absolute or relative (to ../) path of libcmp binary
+
 
 ifeq ($(OS),Windows_NT)
     EXE=.exe
@@ -33,19 +36,21 @@ PARENT_DIR=..
 ARCHIVE=$(PARENT_DIR)/bin # for Jenkins
 SECUTILS_=securityUtilities
 SECUTILS=$(PARENT_DIR)/$(SECUTILS_)
-CMP_INC ?= include_cmp
+LIBCMP_INC ?= include_cmp
+LIBCMP_OUT ?= .
 
 CC = gcc
 
-override CFLAGS += -g -O0 -c -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Werror -Woverflow #-Wconversion #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
-override CFLAGS += -I$(PARENT_DIR)/include -I$(SECUTILS)/include -I$(PARENT_DIR)/$(CMP_INC) -I$(OPENSSL)/include -DCMP_STANDALONE
+override CFLAGS += -g -O0 -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Werror -Woverflow #-Wconversion #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
+override CFLAGS += -I$(PARENT_DIR)/include -I$(SECUTILS)/include -I$(PARENT_DIR)/$(LIBCMP_INC)
+override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
 
 LIBS = -lcmp -lSecUtils -lssl -lcrypto
 ifdef USE_UTA
     LIBS += -luta
 endif
 
-LDFLAGS = -L$(SECUTILS) -Wl,-rpath=$(SECUTILS_) $(LIBS) -L$(PARENT_DIR)
+LDFLAGS = -L$(PARENT_DIR)/$(LIBCMP_OUT) -L$(SECUTILS) -Wl,-rpath=$(SECUTILS_)
 LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
 
 OBJS = genericCMPClient$(OBJ) cmpClientDemo$(OBJ)
@@ -72,15 +77,13 @@ cmpClientDemo$(OBJ): cmpClientDemo.c $(PARENT_DIR)/include/genericCMPClient.h
 genericCMPClient$(OBJ): genericCMPClient.c $(PARENT_DIR)/include/genericCMPClient.h
 
 $(TGT): $(OBJS)
-	$(CC) $^ $(LDFLAGS) -o $@
-
-$(DEPS): %.d:%.c
-	$(CC) $(CFLAGS) -MM $< >$@
+	$(CC) $^ $(LIBS) $(LDFLAGS) -o $@
 
 -include $(DEPS)
 
 $(OBJS): %$(OBJ):%.c
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -MM $< -MT $@ -MF $*.d
 
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"

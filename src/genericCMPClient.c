@@ -26,13 +26,9 @@ CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn)
 {
     CMP_err err = ERR_R_INIT_FAIL;
     LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
-    UTIL_setup_openssl();
+    UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, "genericCMPClient");
     if (!OSSL_CMP_log_init()) {
         return err;
-    }
-    if (SSLeay() != OPENSSL_VERSION_NUMBER) {
-        LOG(FL_WARN, "runtime OpenSSL version %lx does not match compile-time version %lx",
-            SSLeay(), OPENSSL_VERSION_NUMBER);
     }
     if (!TLS_init()) {
         return err;

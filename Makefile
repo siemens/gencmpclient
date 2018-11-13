@@ -13,30 +13,27 @@ else
 endif
 
 SECUTILS=securityUtilities
-CMP_DIR=cmpossl
+LIBCMP_DIR=cmpossl
+LIBCMP_INC=./include_cmp
+LIBCMP_OUT=.
 
 ifeq ($(OPENSSL_DIR),)
     OPENSSL_DIR=$(ROOTFS)/usr
 endif
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 # $(OPENSSL_DIR) is relative path, assumed relative to ./
-    OPENSSL_REVERSE_CMP_DIR=../$(OPENSSL_DIR)
+    OPENSSL_REVERSE_DIR=../$(OPENSSL_DIR)
 else
 # $(OPENSSL_DIR) is absolute path
-    OPENSSL_REVERSE_CMP_DIR=$(OPENSSL_DIR)
+    OPENSSL_REVERSE_DIR=$(OPENSSL_DIR)
 endif
 
-OPENSSL_VERSION=$(shell fgrep OPENSSL_VERSION_NUMBER $(OPENSSL_DIR)/include/openssl/opensslv.h | sed -r 's/.*?NUMBER\s+//; s/L.*//')
+OPENSSL_VERSION_PAT='s/.*?NUMBER\s+//; s/L.*//'
+OPENSSL_VERSION=$(shell fgrep OPENSSL_VERSION_NUMBER $(OPENSSL_DIR)/include/openssl/opensslv.h | sed -r $(OPENSSL_VERSION_PAT))
 ifeq ($(findstring 0x,$(OPENSSL_VERSION)),)
     $(error cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)')
 endif
-ifeq ($(shell test $$(printf "%d" $(OPENSSL_VERSION)) -ge $$(printf "%d" 0x10102000); echo $$?),0)
-    OSSL_VERSION_QUIRKS+=-D'DEPRECATEDIN_1_2_0(f)='
-endif
-ifeq ($(shell test $$(printf "%d" $(OPENSSL_VERSION)) -lt $$(printf "%d" 0x10100000); echo $$?),0)
-    #$(info enabling compilation quirks for OpenSSL 1.0.2)
-    OSSL_VERSION_QUIRKS+=-Wno-discarded-qualifiers -D'DEPRECATEDIN_1_1_0(f)=f;' -D'DEPRECATEDIN_1_0_0(f)='
-endif
+$(info detected OpenSSL version $(OPENSSL_VERSION))
 
 ################################################################
 # generic CMP Client lib and demo
@@ -51,15 +48,19 @@ endif
 build:	# the old way to build with CMP was: buildCMPforOpenSSL
 	cd $(SECUTILS) && git submodule update --init --recursive
 	$(MAKE) -C $(SECUTILS) build OPENSSL_DIR="$(OPENSSL_DIR)"
-	$(MAKE) -C cmpossl -f Makefile_cmp cmp_lib CMP_DIR=".." OPENSSL_DIR="$(OPENSSL_REVERSE_CMP_DIR)"
-	$(MAKE) -C src build OPENSSL_DIR="$(OPENSSL_DIR)" CFLAGS="$(OSSL_VERSION_QUIRKS)" CMP_INC="$(CMP_INC)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp cmp_lib LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	@export LIBCMP_OPENSSL_VERSION=`strings $(LIBCMP_OUT)/libcmp$(DLL) | grep OPENSSL_VERSION_NUMBER | sed -r $(OPENSSL_VERSION_PAT)` && \
+	if [ $$LIBCMP_OPENSSL_VERSION != "$(OPENSSL_VERSION)" ]; then \
+	    (echo "OpenSSL version $$LIBCMP_OPENSSL_VERSION used for building libcmp does not match $(OPENSSL_VERSION) to be used for building client"; false); \
+	fi
+	$(MAKE) -C src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" CFLAGS="-DCMP_STANDALONE=1"
 
 clean_uta:
 	$(MAKE) -C $(SECUTILS) clean_uta
 
 clean:
 	$(MAKE) -C $(SECUTILS) clean
-	$(MAKE) -C cmpossl -f Makefile_cmp cmp_clean CMP_DIR=".."  OPENSSL_DIR="$(OPENSSL_REVERSE_CMP_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp cmp_clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 	$(MAKE) -C src clean
 	rm -f certs/new.*
 
@@ -107,44 +108,9 @@ DIRS=openssl #lib bin
 openssl:
 	mkdir $(DIRS)
 
-allclean: clean
-	$(MAKE) -C $(SECUTILS) clean #libclean
+.phony: clean_all
+clean_all: clean
 	rm -Rf $(DIRS)
 
 .phony: buildCMPforOpenSSL
 buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
-
-
-CMP_HDRS_=crmf.h cmp.h cmperr.h crmferr.h err.h safestack.h
-CMP_HDRS = $(patsubst %,$(CMP_DIR)/include/openssl/%,$(CMP_HDRS_))
-
-CMP_SRCS_ = cmp_asn.c cmp_ctx.c cmp_err.c cmp_http.c cmp_lib.c cmp_msg.c cmp_ses.c cmp_srv.c cmp_vfy.c
-CRMF_SRCS_ = crmf_asn.c crmf_err.c crmf_lib.c crmf_pbm.c
-CMP_SRCS = $(patsubst %,$(CMP_DIR)/crypto/crmf/%,$(CRMF_SRCS_)) $(patsubst %,$(CMP_DIR)/crypto/cmp/%,$(CMP_SRCS_))
-
-#CMP_OBJS = $(CMP_SRCS:.c=$(OBJ))
-
-CMP_OUT=.
-CMP_INC=$(CMP_OUT)/include_cmp
-CMP_LIB=$(CMP_OUT)/libcmp$(DLL)
-
-CC=gcc
-CFLAGS=-g -O0 -Werror $(OSSL_VERSION_QUIRKS) -fPIC -isystem $(CMP_INC) -isystem $(OPENSSL_DIR)/include # use and order of -isystem is critical
-#CMP_HDRS_INC = $(patsubst %,-include %,$(CMP_HDRS)) # used to force inclusion order in source files $(CMP_SRCS)
-CMP_HDRS_INC = -include openssl/crmf.h # used to force inclusion order in cmp_err.c
-
-.phony: cmp_lib cmp_clean
-
-cmp_lib: $(CMP_LIB)
-
-#%$(OBJ): %.c
-#	$(CC) $(CFLAGS) -c $< -o $@
-
-$(CMP_LIB): $(CMP_HDRS) $(CMP_SRCS) # $(CMP_OBJS)
-	mkdir -p $(CMP_OUT)
-	mkdir -p $(CMP_INC)/openssl
-	ln -srft $(CMP_INC)/openssl $(CMP_HDRS)
-	$(CC) $(CFLAGS) $(CMP_HDRS_INC) $(CMP_SRCS) -shared -o $@
-
-cmp_clean:
-	rm -f $(CMP_LIB) # $(CMP_OBJS)

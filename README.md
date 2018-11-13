@@ -35,16 +35,17 @@ This means that secure storage of protection credentials for private keys and tr
 Have a look at the demo client in [`src/cmpClientDemo.c`](src/cmpClientDemo.c).
 The simple example application can be executed directly as `./cmpClientDemo` or with `make test`.
 
-You will need to include in your application sources the file [`genericCMPClient.h`](include/genericCMPClient.h) before including any OpenSSL header files.
-For compiling you will need to add the directories `include` and `securityUtilities/include` to your C headers path and
-add `-isystem include_cmp` to your `CFLAGS` (such that the directory `./include_cmp` is searched before any OpenSSL include paths).
-For linking you will need to add the directories `.` and `securityUtilities` to your library path and
-refer the linker to the CMP and SecUtils libraries, e.g., `-lcmp -lSecUtils` (and also refer to OpenSSL via `-lssl -lcrypto`).
+You will need to include in your application sources the file [`genericCMPClient.h`](include/genericCMPClient.h).
+
+For compiling you will need to add the directories `include`, `include_cmp`, and `securityUtilities/include` to your C headers path and make sure that any OpenSSL header files included have the same version as the one used to build the standalone CMP library `libcmp`. Moreover, make sure that the C macro `CMP_STANDALONE` is defined, for instance by adding `-DCMP_STANDALONE` to your `CFLAGS`.
+
+For linking you will need to add the directories `.` and `securityUtilities` to your library path refer the linker to the CMP and SecUtils libraries, e.g., `-lcmp -lSecUtils`. Also make sure that the OpenSSL libraries (typically referred to via `-lssl -lcrypto`) are in your library path and (the version) of the libraries found there by the linker match the header files found by the compiler.
+
 All this is already done for the demo application.
 
 
 # Documentation of the library
 
-The API specification is available at **TBD** (so far: CrossDivision_CMP-Client\Architecture\Generic_CMP_client_API_v1.1.pdf).
+The API specification is available in the [doc](doc/) folder, currently `Generic_CMP_client_API_v1.2.pdf`.
 
-The Doxygen documentation of the underlying Security Utilities library is available at **TBD**.
+The Doxygen documentation of the underlying Security Utilities library is going to be available via a link in its [README file](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities/blob/development/README.md).

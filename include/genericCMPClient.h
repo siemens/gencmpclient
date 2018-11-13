@@ -10,10 +10,6 @@
 #ifndef GENERIC_CMP_CLIENT_H
 #define GENERIC_CMP_CLIENT_H
 
-#ifndef CMP_STANDALONE
-#error apparently you forgot to define CMP_STANDALONE
-#endif
-
 /* for low-level CMP API, in particular, type OSSL_CMP_CTX */
 #include <openssl/cmp.h>
 typedef OSSL_CMP_CTX CMP_CTX; /* for abbreviation and backward compatibility */

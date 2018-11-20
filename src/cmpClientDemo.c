@@ -27,7 +27,7 @@ static int CMPclient_demo(void)
     OSSL_cmp_log_cb_t log_fn = NULL;
     CMP_err err = CMPclient_init(log_fn);
     if (err != CMP_OK) {
-        printf(stderr, "failed to initialize genCMPClient\n");
+        fprintf(stderr, "failed to initialize genCMPClient\n");
         return err;
     }
 

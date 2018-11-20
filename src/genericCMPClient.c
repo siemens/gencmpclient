@@ -189,7 +189,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (proxy_env != NULL) {
         proxy = proxy_env;
     }
-    if (proxy[0] == '\0')
+    if (proxy != NULL && proxy[0] == '\0')
         proxy = NULL;
     if (proxy != NULL) {
         const char *http_prefix = "http://";

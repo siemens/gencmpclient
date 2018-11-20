@@ -50,8 +50,9 @@ ifdef USE_UTA
     LIBS += -luta
 endif
 
-LDFLAGS = -L$(PARENT_DIR)/$(LIBCMP_OUT) -L$(SECUTILS) -Wl,-rpath=$(SECUTILS_)
-LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
+override LDFLAGS += -L$(PARENT_DIR)/$(LIBCMP_OUT) -Wl,-rpath=$(LIBCMP_OUT)
+override LDFLAGS += -L$(SECUTILS) -Wl,-rpath=$(SECUTILS_)
+override LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
 
 OBJS = genericCMPClient$(OBJ) cmpClientDemo$(OBJ)
 

@@ -46,8 +46,9 @@ ifndef USE_UTA
 endif
 
 build:	# the old way to build with CMP was: buildCMPforOpenSSL
-	cd $(SECUTILS) && git submodule update --init --recursive
-	$(MAKE) -C $(SECUTILS) build OPENSSL_DIR="$(OPENSSL_DIR)"
+	cd $(SECUTILS) && git submodule update --init --recursive || true
+	$(MAKE) -C $(SECUTILS) build OPENSSL_DIR="$(OPENSSL_DIR)" CFLAGS=-DSEC_ENABLE_RSA
+
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp cmp_lib LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 	@export LIBCMP_OPENSSL_VERSION=`strings $(LIBCMP_OUT)/libcmp$(DLL) | grep OPENSSL_VERSION_NUMBER | sed -r $(OPENSSL_VERSION_PAT)` && \
 	if [ $$LIBCMP_OPENSSL_VERSION != "$(OPENSSL_VERSION)" ]; then \
@@ -65,6 +66,8 @@ clean:
 	rm -f certs/new.*
 
 test:	build
+	@/bin/echo -e "\n##### running cmpClientDemo #####"
+	@wget -q "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O certs/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl
 	./cmpClientDemo$(EXE)
 
 all:	build test

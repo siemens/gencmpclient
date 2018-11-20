@@ -61,29 +61,25 @@ DEPS = $(SRCS:.c=.d)
 
 DLLS = *$(DLL)*
 
-TGT = $(PARENT_DIR)/cmpClientDemo$(EXE)
+EXES = $(PARENT_DIR)/cmpClientDemo$(EXE)
 
-########## targets
+########## rules and targets
 
 .PHONY: build
-build:	$(TGT)
+build:	$(EXES)
 ifeq ($(OS),Windows_NT)
 	@echo "Copying DLLs to base directory for convenient use with Windows"
 	@cp -a $(SECUTILS)/$(DLLS) $(OPENSSL_LIB)/$(DLLS) $(PARENT_DIR) # --no-preserve=mode
 endif
 
-cmpClientDemo$(OBJ): cmpClientDemo.c $(PARENT_DIR)/include/genericCMPClient.h
-
-genericCMPClient$(OBJ): genericCMPClient.c $(PARENT_DIR)/include/genericCMPClient.h
-
-$(TGT): $(OBJS)
+$(PARENT_DIR)/cmpClientDemo$(EXE): genericCMPClient$(OBJ) cmpClientDemo$(OBJ)
 	$(CC) $^ $(LIBS) $(LDFLAGS) -o $@
 
 -include $(DEPS)
 
 $(OBJS): %$(OBJ):%.c
-	$(CC) $(CFLAGS) -c $< -o $@
-	$(CC) $(CFLAGS) -MM $< -MT $@ -MF $*.d
+	 $(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) -MM $< -MT $@ -MF $*.d
 
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"
@@ -91,8 +87,8 @@ $(OBJS): %$(OBJ):%.c
 .PHONY: all
 all: build
 	mkdir 2>/dev/null $(ARCHIVEDIR) || true
-	rsync -a $(TGT) $(ARCHIVE)
+	rsync -a $(EXES) $(ARCHIVE)
 
 .PHONY: clean
 clean:
-	rm -f $(TGT) $(OBJS) $(DEPS) $(PARENT_DIR)/$(DLLS)
+	rm -f $(EXES) $(OBJS) $(DEPS) $(PARENT_DIR)/$(DLLS)

@@ -7,7 +7,7 @@
  * @copyright (c) Siemens AG 2018 all rights reserved
  ******************************************************************************/
 
-#include <genericCMPClient.h>
+#include "genericCMPClient.h"
 #include <openssl/cmperr.h>
 
 #include <string.h>
@@ -189,7 +189,9 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (proxy_env != NULL) {
         proxy = proxy_env;
     }
-    if (proxy != NULL && proxy[0] != '\0') {
+    if (proxy[0] == '\0')
+        proxy = NULL;
+    if (proxy != NULL) {
         const char *http_prefix = "http://";
         if (strncmp(proxy, http_prefix, strlen(http_prefix)) == 0) {
             proxy += strlen(http_prefix);
@@ -205,9 +207,10 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
                 (port > 0 && !OSSL_CMP_CTX_set_proxyPort(ctx, port))) {
                 goto err;
             }
+        } else {
+            proxy = NULL;
         }
     }
-
     if (!OSSL_CMP_CTX_set1_serverPath(ctx, path) ||
         (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_MSGTIMEOUT, timeout))) {
         goto err;
@@ -227,6 +230,8 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         }
     }
 
+    LOG(FL_INFO, "contacting %s%s%s%s", server, path,
+        proxy != NULL ? " via proxy " : "", proxy != NULL ? proxy : "");
     return CMP_OK;
 
     err:
@@ -407,12 +412,12 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 }
 
 CMP_err CMPclient_update(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
-                         const EVP_PKEY *new_key, const X509 *old_cert)
+                         const EVP_PKEY *new_key)
 {
     if (NULL == new_key) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
-    CMP_err err = CMPclient_setup_certreq(ctx, new_key, old_cert,
+    CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL/* old_cert */,
                                           NULL/* subject */, NULL/* exts */,
                                           NULL/* csr */);
     if (err == CMP_OK) {
@@ -428,7 +433,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 
-    if ((reason >= CRL_REASON_NONE &&
+    if ((reason >= CRL_REASON_UNSPECIFIED &&
 	 !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_REVOCATION_REASON, reason)) ||
 	!OSSL_CMP_CTX_set1_oldClCert(ctx, cert) ||
         !OSSL_CMP_exec_RR_ses(ctx)) {
@@ -449,5 +454,3 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
     LOG_close();
 #endif
 }
-
-

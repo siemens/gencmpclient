@@ -31,9 +31,13 @@ typedef OSSL_CMP_CTX CMP_CTX; /* for abbreviation and backward compatibility */
     TLS_CTX_new(true/* client */, truststore, creds, ciphers, security_level)
 #define TLS_free(tls) TLS_CTX_free(tls)
 
-/* error codes are defined in openssl/cmperr.h */
-typedef int CMP_err; /* should better be defined and used in openssl/cmp.h */
+typedef int CMP_err;
 #define CMP_OK 0
+#define CMP_R_LOAD_CERTS   255
+#define CMP_R_LOAD_CREDS   254
+#define CMP_R_GENERATE_KEY 253
+#define CMP_R_STORE_CREDS  252
+/* further error codes are defined in openssl/cmperr.h */
 
 #define CMP_IR    OSSL_CMP_PKIBODY_IR
 #define CMP_CR    OSSL_CMP_PKIBODY_CR
@@ -126,7 +130,7 @@ CMP_err CMPclient_bootstrap(CMP_CTX *ctx, CREDENTIALS **new_creds,
 CMP_err CMPclient_pkcs10(CMP_CTX *ctx, CREDENTIALS **new_creds,
                          const X509_REQ *csr);
 CMP_err CMPclient_update(CMP_CTX *ctx, CREDENTIALS **new_creds,
-                         const EVP_PKEY *new_key, const X509 *old_cert);
+                         const EVP_PKEY *new_key);
 
 /* reason codes are defined in openssl/x509v3.h */
 CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, int reason);

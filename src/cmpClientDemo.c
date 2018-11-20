@@ -1,6 +1,6 @@
 /*!*****************************************************************************
  * @file   cmpClientDemo.c
- * @brief  generic CMP client library usage demonstration
+ * @brief  generic CMP client library detailed usage demonstration
  *
  * @author David von Oheimb, CT RDA ITS SEA, David.von.Oheimb@siemens.com
  *
@@ -34,14 +34,16 @@ static int CMPclient_demo(void)
     STACK_OF(X509) *untrusted = NULL;
     {
         {
-            const char *file = "certs/trusted/PPKIPlaygroundECCRootCAv10.crt, "
+            const char *file =
+                "certs/trusted/PPKIPlaygroundECCRootCAv10.crt, "
                 "certs/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt";
             cmp_truststore = STORE_load(file, "trusted certs for CMP level");
         }
         const X509_VERIFY_PARAM *vpm = NULL;
         STACK_OF(X509_CRL) *crls = NULL;
         {
-            const char *file = "certs/crls/PPKIPlaygroundInfrastructureRootCAv10.crl, "/* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
+            const char *file =
+                "certs/crls/PPKIPlaygroundInfrastructureRootCAv10.crl, "/* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
                 "certs/crls/PPKIPlaygroundECCRootCAv10.crl";/* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+ECC+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
 
             crls = CRLs_load(file, "CRLs for CMP level");
@@ -131,7 +133,7 @@ static int CMPclient_demo(void)
         goto err;
     }
 
-    const char *subject = "/CN=test-genCMPClient/OU=PPKI Playground"
+    const char *subject = "/CN=test-genCMPClientDemo_detailed/OU=PPKI Playground"
         "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
     new_key = KEY_new("EC:secp521r1");
     if (new_key == NULL) {
@@ -166,13 +168,14 @@ static int CMPclient_demo(void)
     if (err != CMP_OK) {
         goto err;
     }
+
     {
-        const CREDENTIALS *creds = new_creds;
         const char *file = "certs/new.p12";
         const char *source = NULL/* plain file */;
         const char *desc = "newly enrolled certificate and related key and chain";
-        if (!CREDENTIALS_save(creds, file, OPTIONAL source, desc) ||
-            !FILES_store_cert(CREDENTIALS_get_cert(creds), "certs/new.crt", FORMAT_PEM, "newly enrolled cert")) {
+        if (!CREDENTIALS_save(new_creds, file, OPTIONAL source, desc) ||
+            !FILES_store_cert(CREDENTIALS_get_cert(new_creds), "certs/new.crt", FORMAT_PEM, "newly enrolled cert")) {
+            err = -8;
             goto err;
         }
     }

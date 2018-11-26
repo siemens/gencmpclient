@@ -7,7 +7,7 @@
  * @copyright (c) Siemens AG 2018 all rights reserved
  ******************************************************************************/
 
-#include <genericCMPClient.h>
+#include "genericCMPClient.h"
 #include <openssl/cmperr.h>
 
 #include <string.h>
@@ -22,62 +22,13 @@ static int CMPOSSL_error()
     return err;
 }
 
-/*!
- * callback validating that the new certificate can be verified, using
- * ctx->certConf_cb_arg, which has been initialized using opt_out_trusted, and
- * ctx->untrusted_certs, which at this point already contains ctx->extraCertsIn.
- * Returns -1 on acceptance, else a OSSL_CMP_PKIFAILUREINFO bit number.
- * Quoting from RFC 4210 section 5.1. Overall PKI Message:
-       The extraCerts field can contain certificates that may be useful to
-       the recipient.  For example, this can be used by a CA or RA to
-       present an end entity with certificates that it needs to verify its
-       own new certificate (if, for example, the CA that issued the end
-       entity's certificate is not a root CA for the end entity).  Note that
-       this field does not necessarily contain a certification path; the
-       recipient may have to sort, select from, or otherwise process the
-       extra certificates in order to use them.
- * Note: While often handy, there is no hard requirement by CMP that an EE must
- * be able to validate the certs it gets enrolled. This callback is used by default.
-^<*/
-/* TODO replace by OSSL_CMP_certConf_cb() when available */
-static int CMP_certConf_cb(OSSL_CMP_CTX *ctx, const X509 *cert, int failure, const char **text)
-{
-    X509_STORE *out_trusted = OSSL_CMP_CTX_get_certConf_cb_arg(ctx);
-    (void)text; /* make (artificial) use of 'text' to prevent compiler warning */
-
-    if (failure >= 0) { /* accept any error flagged by CMP core library */
-        return failure;
-    }
-
-    /* TODO: load caPubs [OSSL_CMP_CTX_caPubs_get1(ctx)] as additional trusted
-       certs during IR and if MSG_SIG_ALG is used, cf. RFC 4210, 5.3.2 */
-
-    if (out_trusted != NULL &&
-        !OSSL_CMP_validate_cert_path(ctx, out_trusted, cert, true)) {
-        failure = OSSL_CMP_PKIFAILUREINFO_incorrectData;
-    }
-
-    if (failure >= 0) {
-        char *str = X509_NAME_oneline(X509_get_subject_name((X509 *)cert), NULL, 0);
-        OSSL_CMP_printf(ctx, FL_ERR,
-                   "Failed to validate newly enrolled certificate with subject: %s",
-                   str);
-        OPENSSL_free(str);
-    }
-    return failure;
-}
-
-CMP_err CMPclient_init(LOG_cb_t log_fn)
+CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn)
 {
     CMP_err err = ERR_R_INIT_FAIL;
-    LOG_init(log_fn);
-    UTIL_setup_openssl();
+    LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
+    UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, "genericCMPClient");
     if (!OSSL_CMP_log_init()) {
         return err;
-    }
-    if (SSLeay() != OPENSSL_VERSION_NUMBER) {
-        LOG(FL_WARN, "runtime OpenSSL version %lx does not match compile-time version %lx",
-            SSLeay(), OPENSSL_VERSION_NUMBER);
     }
     if (!TLS_init()) {
         return err;
@@ -95,14 +46,6 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
 {
     OSSL_CMP_CTX *ctx = NULL;
 
-    /* "copy" trust stores regardless of success */
-    if (cmp_truststore != NULL) {
-        X509_STORE_up_ref(cmp_truststore);
-    }
-    if (new_cert_truststore != NULL) {
-        X509_STORE_up_ref(new_cert_truststore);
-    }
-
     if (NULL == pctx) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
@@ -112,7 +55,9 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn)) {
         goto err;
     }
-    if ((cmp_truststore != NULL && !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)) ||
+    if ((cmp_truststore != NULL && (!X509_STORE_up_ref(cmp_truststore) ||
+                                    !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)))
+        ||
         (untrusted      != NULL && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, untrusted))) {
         goto err;
     }
@@ -152,12 +97,13 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         (total_timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_TOTALTIMEOUT, total_timeout))) {
         goto err;
     }
-    if (new_cert_truststore != NULL &&
-        (!OSSL_CMP_CTX_set_certConf_cb(ctx, CMP_certConf_cb) ||
-         !OSSL_CMP_CTX_set_certConf_cb_arg(ctx, new_cert_truststore))) {
+    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_IMPLICITCONFIRM, implicit_confirm)) {
         goto err;
     }
-    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_IMPLICITCONFIRM, implicit_confirm)) {
+    if (new_cert_truststore != NULL &&
+        (!X509_STORE_up_ref(new_cert_truststore) ||
+         !OSSL_CMP_CTX_set_certConf_cb(ctx, OSSL_CMP_certConf_cb) ||
+         !OSSL_CMP_CTX_set_certConf_cb_arg(ctx, new_cert_truststore))) {
         goto err;
     }
 
@@ -243,7 +189,9 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (proxy_env != NULL) {
         proxy = proxy_env;
     }
-    if (proxy != NULL && proxy[0] != '\0') {
+    if (proxy != NULL && proxy[0] == '\0')
+        proxy = NULL;
+    if (proxy != NULL) {
         const char *http_prefix = "http://";
         if (strncmp(proxy, http_prefix, strlen(http_prefix)) == 0) {
             proxy += strlen(http_prefix);
@@ -259,16 +207,20 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
                 (port > 0 && !OSSL_CMP_CTX_set_proxyPort(ctx, port))) {
                 goto err;
             }
+        } else {
+            proxy = NULL;
         }
     }
-
     if (!OSSL_CMP_CTX_set1_serverPath(ctx, path) ||
         (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_MSGTIMEOUT, timeout))) {
         goto err;
     }
 
+    SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
+    OSSL_CMP_CTX_set_http_cb_arg(ctx, NULL);
     if (tls != NULL) {
-        if (!OSSL_CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
+        if (!SSL_CTX_up_ref(tls) ||
+            !OSSL_CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
             !OSSL_CMP_CTX_set_http_cb_arg(ctx, (void *)tls)) {
             goto err;
         }
@@ -278,9 +230,12 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         }
     }
 
+    LOG(FL_INFO, "contacting %s%s%s%s", server, path,
+        proxy != NULL ? " via proxy " : "", proxy != NULL ? proxy : "");
     return CMP_OK;
 
     err:
+    SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
     return CMPOSSL_error();
 }
 
@@ -478,7 +433,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 
-    if ((reason >= CRL_REASON_NONE &&
+    if ((reason >= CRL_REASON_UNSPECIFIED &&
 	 !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_REVOCATION_REASON, reason)) ||
 	!OSSL_CMP_CTX_set1_oldClCert(ctx, cert) ||
         !OSSL_CMP_exec_RR_ses(ctx)) {
@@ -493,10 +448,9 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
 void CMPclient_finish(OSSL_CMP_CTX *ctx)
 {
     SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
+    X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
     OSSL_CMP_CTX_delete(ctx);
 #ifdef CLOSE_LOG_ON_EACH_FINISH
     LOG_close();
 #endif
 }
-
-

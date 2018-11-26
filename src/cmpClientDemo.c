@@ -1,6 +1,6 @@
 /*!*****************************************************************************
  * @file   cmpClientDemo.c
- * @brief  generic CMP client library usage demonstration
+ * @brief  generic CMP client library detailed usage demonstration
  *
  * @author David von Oheimb, CT RDA ITS SEA, David.von.Oheimb@siemens.com
  *
@@ -25,7 +25,7 @@ static int CMPclient_demo(void)
     CREDENTIALS *new_creds = NULL;
 
     OSSL_cmp_log_cb_t log_fn = NULL;
-    CMP_err err =CMPclient_init((LOG_cb_t)log_fn);
+    CMP_err err = CMPclient_init(log_fn);
     if (err != CMP_OK) {
         fprintf(stderr, "failed to initialize genCMPClient\n");
         return err;
@@ -34,14 +34,16 @@ static int CMPclient_demo(void)
     STACK_OF(X509) *untrusted = NULL;
     {
         {
-            const char *file = "certs/trusted/PPKIPlaygroundECCRootCAv10.crt, "
+            const char *file =
+                "certs/trusted/PPKIPlaygroundECCRootCAv10.crt, "
                 "certs/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt";
             cmp_truststore = STORE_load(file, "trusted certs for CMP level");
         }
         const X509_VERIFY_PARAM *vpm = NULL;
         STACK_OF(X509_CRL) *crls = NULL;
         {
-            const char *file = "certs/crls/PPKIPlaygroundInfrastructureRootCAv10.crl, "/* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
+            const char *file =
+                "certs/crls/PPKIPlaygroundInfrastructureRootCAv10.crl, "/* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
                 "certs/crls/PPKIPlaygroundECCRootCAv10.crl";/* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+ECC+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
 
             crls = CRLs_load(file, "CRLs for CMP level");
@@ -50,8 +52,8 @@ static int CMPclient_demo(void)
         const char *OCSP_url = NULL;
         if (cmp_truststore == NULL || crls == NULL ||
             !STORE_set_parameters(cmp_truststore, OPTIONAL vpm, crls,
-                                  OPTIONAL CRLs_url, true/* use_CDPs */,
-                                  OPTIONAL OCSP_url, false/* use_AIAs */)) {
+                                  true /* use_CDPs */, OPTIONAL CRLs_url, 
+                                  false/* use_AIAs */, OPTIONAL OCSP_url)) {
             err = -1;
             goto err;
         }
@@ -60,10 +62,6 @@ static int CMPclient_demo(void)
         const char *certs = "certs/ppki_playground_cmp_signer.p12";
         const char *pkey = certs;
         creds = CREDENTIALS_load(certs, pkey, "pass:12345", "credentials for CMP level");
-        if (creds == NULL) {
-            err = -2;
-            goto err;
-        }
     }
     const char *digest = "sha256";
     OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
@@ -71,6 +69,10 @@ static int CMPclient_demo(void)
     {
         const char *file = "certs/trusted/PPKIPlaygroundECCRootCAv10.crt";
         new_cert_truststore = STORE_load(file, "trusted certs for verifying new cert");
+    }
+    if (creds == NULL || new_cert_truststore == NULL) {
+        err = -2;
+        goto err;
     }
 
     err = CMPclient_prepare(&ctx, OPTIONAL log_fn,
@@ -104,10 +106,9 @@ static int CMPclient_demo(void)
         const char *CRLs_url = NULL;
         const char *OCSP_url = NULL;
         if (tls_truststore == NULL || crls == NULL ||
-            !STORE_set_parameters(tls_truststore, OPTIONAL vpm,
-                                  crls,
-                                  OPTIONAL CRLs_url, true/* use_CDPs */,
-                                  OPTIONAL OCSP_url, false/* use_AIAs */)) {
+            !STORE_set_parameters(tls_truststore, OPTIONAL vpm, crls,
+                                  true /* use_CDPs */, OPTIONAL CRLs_url,
+                                  false/* use_AIAs */, OPTIONAL OCSP_url)) {
             err = -3;
             goto err;
         }
@@ -132,9 +133,9 @@ static int CMPclient_demo(void)
         goto err;
     }
 
-    const char *subject = "/CN=test-genCMPClient/OU=PPKI Playground"
+    const char *subject = "/CN=test-genCMPClientDemo_detailed/OU=PPKI Playground"
         "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
-    new_key = KEY_new("secp521r1");
+    new_key = KEY_new("EC:secp521r1");
     if (new_key == NULL) {
         err = -6;
         goto err;
@@ -167,13 +168,14 @@ static int CMPclient_demo(void)
     if (err != CMP_OK) {
         goto err;
     }
+
     {
-        const CREDENTIALS *creds = new_creds;
         const char *file = "certs/new.p12";
         const char *source = NULL/* plain file */;
-        const char *desc = "credentials including newly enrolled certificate";
-        if (!CREDENTIALS_save(creds, file, OPTIONAL source, desc) ||
-            !FILES_store_cert(CREDENTIALS_get_cert(creds), "certs/new.crt", FORMAT_PEM, "newly enrolled cert")) {
+        const char *desc = "newly enrolled certificate and related key and chain";
+        if (!CREDENTIALS_save(new_creds, file, OPTIONAL source, desc) ||
+            !FILES_store_cert(CREDENTIALS_get_cert(new_creds), "certs/new.crt", FORMAT_PEM, "newly enrolled cert")) {
+            err = -8;
             goto err;
         }
     }
@@ -187,13 +189,12 @@ static int CMPclient_demo(void)
     CREDENTIALS_free(new_creds);
     EXTENSIONS_free(exts);
     KEY_free(new_key);
-    /* TODO: crash on deallocation - double free?
-    TLS_free(tls);*/
+    TLS_free(tls);
     CREDENTIALS_free(tls_creds);
     STORE_free(tls_truststore);
     STORE_free(new_cert_truststore);
-    CREDENTIALS_free(creds);
     STORE_free(cmp_truststore);
+    CREDENTIALS_free(creds);
 
     return err;
 }

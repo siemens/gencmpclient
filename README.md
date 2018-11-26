@@ -22,7 +22,7 @@ By default its headers will be searched for in `/usr/include` and its shared obj
 You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation.
 
 In the newly created directory `genCMPClient` you can build the library simply with `make`.
-This also builds all required dependencies and a simple demo application.
+This also builds all required dependencies and a demo application.
 
 **Imporant Note:** by default, the Security Utilities make use of the [Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library
 for secure device-level storage of key material for confidentiality and integriy protection of files.
@@ -33,18 +33,24 @@ This means that secure storage of protection credentials for private keys and tr
 # Using the library
 
 Have a look at the demo client in [`src/cmpClientDemo.c`](src/cmpClientDemo.c).
-The simple example application can be executed directly as `./cmpClientDemo` or with `make test`.
+It can be executed directly as `./cmpClientDemo` or with `make test`.
 
-You will need to include in your application sources the file [`genericCMPClient.h`](include/genericCMPClient.h) before including any OpenSSL header files.
-For compiling you will need to add the directories `include` and `securityUtilities/include` to your C headers path and
-add `-isystem include_cmp` to your `CFLAGS` (such that the directory `./include_cmp` is searched before any OpenSSL include paths).
+You will need to include in your application sources the file [`genericCMPClient.h`](include/genericCMPClient.h).
+
+For compiling you will need to add the directories `include`, `include_cmp`, and `securityUtilities/include` to your C headers path and
+ake sure that any OpenSSL header files included have the same version as the one used to build the standalone CMP library `libcmp`.
+
 For linking you will need to add the directories `.` and `securityUtilities` to your library path and
-refer the linker to the CMP and SecUtils libraries, e.g., `-lcmp -lSecUtils` (and also refer to OpenSSL via `-lssl -lcrypto`).
+refer the linker to the CMP and SecUtils libraries, e.g., `-lcmp -lSecUtils`.
+Also make sure that the OpenSSL libraries (typically referred to via `-lssl -lcrypto`) are in your library path and
+(the version) of the libraries found there by the linker match the header files found by the compiler.
+
 All this is already done for the demo application.
 
 
 # Documentation of the library
 
-The API specification is available at **TBD** (so far: CrossDivision_CMP-Client\Architecture\Generic_CMP_client_API_v1.1.pdf).
+The Generic CMP client API specification is available in the [doc](doc/) folder.
 
-The Doxygen documentation of the underlying Security Utilities library is available at **TBD**.
+The Doxygen documentation of the underlying Security Utilities library is going to be available
+via a link in its [README file](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities/blob/development/README.md).

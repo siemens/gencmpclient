@@ -54,6 +54,8 @@ override LDFLAGS += -L$(PARENT_DIR)/$(LIBCMP_OUT) -Wl,-rpath=$(LIBCMP_OUT)
 override LDFLAGS += -L$(SECUTILS) -Wl,-rpath=$(SECUTILS_)
 override LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
 
+LIBGENCMPCL=$(PARENT_DIR)/libgencmpcl$(DLL)
+
 OBJS = genericCMPClient$(OBJ) cmpClientDemo$(OBJ)
 
 SRCS = $(OBJS:$(OBJ)=.c)
@@ -73,17 +75,20 @@ ifeq ($(OS),Windows_NT)
 	@cp -a $(SECUTILS)/$(DLLS) $(OPENSSL_LIB)/$(DLLS) $(PARENT_DIR) # --no-preserve=mode
 endif
 
-$(PARENT_DIR)/cmpClientDemo$(EXE): genericCMPClient$(OBJ) cmpClientDemo$(OBJ)
-	$(CC) $^ $(LIBS) $(LDFLAGS) -o $@
-
 -include $(DEPS)
 
 $(OBJS): %$(OBJ):%.c
-	 $(CC) $(CFLAGS) -c $< -o $@
+	 $(CC) $(CFLAGS) -c -fPIC $< -o $@
 	@$(CC) $(CFLAGS) -MM $< -MT $@ -MF $*.d
 
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"
+
+$(LIBGENCMPCL): genericCMPClient$(OBJ)
+	$(CC) $^ $(LDFLAGS) -shared -o $@
+
+$(PARENT_DIR)/cmpClientDemo$(EXE): $(LIBGENCMPCL) cmpClientDemo$(OBJ)
+	$(CC) $^ -lgencmpcl $(LIBS) $(LDFLAGS) -o $@
 
 .PHONY: all
 all: build

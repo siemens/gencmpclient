@@ -1,0 +1,6 @@
+Maintainer: Martin Zalabak <martin.zalabak@siemens.com>
+Build-Depends: libssl-dev, libuta-dev
+Depends: libssl1.1, libuta,
+Description: Generic CMP Client
+ From the joint development project.
+

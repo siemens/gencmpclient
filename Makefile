@@ -41,6 +41,7 @@ ifeq ($(findstring 0x,$(OPENSSL_VERSION)),)
 endif
 $(info detected OpenSSL version $(OPENSSL_VERSION))
 
+
 ################################################################
 # generic CMP Client lib and demo
 ################################################################
@@ -129,3 +130,22 @@ clean_all: clean
 
 .phony: buildCMPforOpenSSL
 buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
+
+
+
+
+# Target for debian packaging
+deb: debian_control.in debian_changelog.in
+	HEADER_TARGET=headers_install MAKEFLAGS="-j1 LPATH=/usr/lib/" libs/interfaces/debian/makedeb.sh libgenericcmpclient
+
+debdir: debian_control.in debian_changelog.in
+	HEADER_TARGET=headers_install MAKEFLAGS="-j1 LPATH=/usr/lib/" libs/interfaces/debian/makedeb.sh libgenericcmpclient debdironly
+
+# installation target - append ROOTFS=<path> to install into virtual root
+# filesystem
+install: build
+	install -Dm 755 libgencmp$(DLL) $(ROOTFS)/usr/lib/libgencmp$(DLL)
+
+headers_install:
+	find include -type d -exec install -d '$(ROOTFS)/usr/{}' ';'
+	find include -type f -exec install -Dm 0644 '{}' '$(ROOTFS)/usr/{}' ';'

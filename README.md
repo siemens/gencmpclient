@@ -22,6 +22,7 @@ By default its headers will be searched for in `/usr/include` and its shared obj
 You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation.
 
 In the newly created directory `genCMPClient` you can build the library simply with `make`.
+The result is in, for instance, `./libgencmpcl.so`.
 This also builds all required dependencies and a demo application.
 
 **Imporant Note:** by default, the Security Utilities make use of the [Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library

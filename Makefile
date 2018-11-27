@@ -1,3 +1,4 @@
+# optional LPATH defines absolute path where to find pre-installed libraries, e.g., /usr/lib
 # optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
 
 ifeq ($(OS),Windows_NT)
@@ -12,10 +13,15 @@ else
 #   LIB=lib
 endif
 
-SECUTILS=securityUtilities
-LIBCMP_DIR=cmpossl
-LIBCMP_INC=./include_cmp
-LIBCMP_OUT=.
+ifeq ($(LPATH),)
+    SECUTILS=securityUtilities
+    LIBCMP_DIR=cmpossl
+    LIBCMP_OUT=.
+    LIBCMP_INC=./include_cmp
+else
+    LIBCMP_OUT=$(LPATH)
+    LIBCMP_INC=$(LPATH)/../include
+endif
 
 ifeq ($(OPENSSL_DIR),)
     OPENSSL_DIR=$(ROOTFS)/usr
@@ -45,23 +51,29 @@ ifndef USE_UTA
     export SEC_NO_UTA=1
 endif
 
-build:	# the old way to build with CMP was: buildCMPforOpenSSL
+build:
+ifeq ($(LPATH),)
 	cd $(SECUTILS) && git submodule update --init --recursive || true
 	$(MAKE) -C $(SECUTILS) build OPENSSL_DIR="$(OPENSSL_DIR)" CFLAGS=-DSEC_ENABLE_RSA
-
+	@# the old way to build with CMP was: buildCMPforOpenSSL
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp cmp_lib LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+endif
 	@export LIBCMP_OPENSSL_VERSION=`strings $(LIBCMP_OUT)/libcmp$(DLL) | grep OPENSSL_VERSION_NUMBER | sed -r $(OPENSSL_VERSION_PAT)` && \
 	if [ $$LIBCMP_OPENSSL_VERSION != "$(OPENSSL_VERSION)" ]; then \
 	    (echo "OpenSSL version $$LIBCMP_OPENSSL_VERSION used for building libcmp does not match $(OPENSSL_VERSION) to be used for building client"; false); \
 	fi
 	$(MAKE) -C src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)"
 
+ifeq ($(LPATH),)
 clean_uta:
 	$(MAKE) -C $(SECUTILS) clean_uta
+endif
 
 clean:
+ifeq ($(LPATH),)
 	$(MAKE) -C $(SECUTILS) clean
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp cmp_clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+endif
 	$(MAKE) -C src clean
 	rm -f certs/new.*
 

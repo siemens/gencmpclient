@@ -1,3 +1,4 @@
+# optional LPATH defines absolute path where to find pre-installed libraries, e.g., /usr/lib
 # optional OPENSSL_DIR defines absolute or relative (to ../) path to OpenSSL installation
 # optional LIBCMP_INC defines absolute or relative (to ../) path of the libcmp header files
 # optional LIBCMP_OUT defines absolute or relative (to ../) path of libcmp binary
@@ -42,7 +43,10 @@ LIBCMP_OUT ?= .
 CC = gcc
 
 override CFLAGS += -g -O0 -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Werror -Woverflow #-Wconversion #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
-override CFLAGS += -I$(PARENT_DIR)/include -I$(SECUTILS)/include -I$(PARENT_DIR)/$(LIBCMP_INC)
+ifeq ($(LPATH),)
+   override CFLAGS += -I$(SECUTILS)/include -I$(PARENT_DIR)/$(LIBCMP_INC)
+endif
+override CFLAGS += -I$(PARENT_DIR)/include 
 override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
 
 LIBS = -lcmp -lSecUtils -lssl -lcrypto
@@ -50,9 +54,16 @@ ifdef USE_UTA
     LIBS += -luta
 endif
 
-override LDFLAGS += -L$(PARENT_DIR)/$(LIBCMP_OUT) -Wl,-rpath=$(LIBCMP_OUT)
-override LDFLAGS += -L$(SECUTILS) -Wl,-rpath=$(SECUTILS_)
-override LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
+ifeq ($(LPATH),)
+    override LDFLAGS += -L$(PARENT_DIR)/$(LIBCMP_OUT) -Wl,-rpath=$(LIBCMP_OUT)
+    override LDFLAGS += -L$(SECUTILS) -Wl,-rpath=$(SECUTILS_)
+    override LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
+else
+    override LDFLAGS += -L$(LPATH)
+endif
+
+
+LIBGENCMPCL=$(PARENT_DIR)/libgencmpcl$(DLL)
 
 OBJS = genericCMPClient$(OBJ) cmpClientDemo$(OBJ)
 
@@ -73,17 +84,20 @@ ifeq ($(OS),Windows_NT)
 	@cp -a $(SECUTILS)/$(DLLS) $(OPENSSL_LIB)/$(DLLS) $(PARENT_DIR) # --no-preserve=mode
 endif
 
-$(PARENT_DIR)/cmpClientDemo$(EXE): genericCMPClient$(OBJ) cmpClientDemo$(OBJ)
-	$(CC) $^ $(LIBS) $(LDFLAGS) -o $@
-
 -include $(DEPS)
 
 $(OBJS): %$(OBJ):%.c
-	 $(CC) $(CFLAGS) -c $< -o $@
+	 $(CC) $(CFLAGS) -c -fPIC $< -o $@
 	@$(CC) $(CFLAGS) -MM $< -MT $@ -MF $*.d
 
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"
+
+$(LIBGENCMPCL): genericCMPClient$(OBJ)
+	$(CC) $^ -shared -o $@
+
+$(PARENT_DIR)/cmpClientDemo$(EXE): $(LIBGENCMPCL) cmpClientDemo$(OBJ)
+	$(CC) $^ -lgencmpcl $(LIBS) $(LDFLAGS) -o $@
 
 .PHONY: all
 all: build
@@ -92,4 +106,4 @@ all: build
 
 .PHONY: clean
 clean:
-	rm -f $(EXES) $(OBJS) $(DEPS) $(PARENT_DIR)/$(DLLS)
+	rm -f $(EXES) $(LIBGENCMPCL) $(OBJS) $(DEPS) $(PARENT_DIR)/$(DLLS)

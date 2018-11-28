@@ -42,12 +42,12 @@ LIBCMP_OUT ?= .
 
 CC = gcc
 
-override CFLAGS += -g -O0 -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Werror -Woverflow #-Wconversion #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
+override CFLAGS += -g -O0 -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Wextra -Wconversion -Werror -Woverflow# #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
 ifeq ($(LPATH),)
    override CFLAGS += -I$(SECUTILS)/include -I$(PARENT_DIR)/$(LIBCMP_INC)
 endif
-override CFLAGS += -I$(PARENT_DIR)/include 
-override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
+override CFLAGS += -I$(PARENT_DIR)/include
+override CFLAGS += -isystem $(OPENSSL)/include# # use of -isystem is critical for selecting wanted OpenSSL version
 
 LIBS = -lcmp -lSecUtils -lssl -lcrypto
 ifdef USE_UTA

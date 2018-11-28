@@ -199,7 +199,7 @@ static int CMPclient_demo(void)
     return err;
 }
 
-int main(int argc, char *argv[])
+int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 {
     return CMPclient_demo() == CMP_OK ? EXIT_SUCCESS : EXIT_FAILURE;
 }

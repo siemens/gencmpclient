@@ -79,9 +79,11 @@ EXES = $(PARENT_DIR)/cmpClientDemo$(EXE)
 
 .PHONY: build
 build:	$(EXES)
+ifeq ($(LPATH),)
 ifeq ($(OS),Windows_NT)
 	@echo "Copying DLLs to base directory for convenient use with Windows"
 	@cp -a $(SECUTILS)/$(DLLS) $(OPENSSL_LIB)/$(DLLS) $(PARENT_DIR) # --no-preserve=mode
+endif
 endif
 
 -include $(DEPS)
@@ -97,7 +99,7 @@ $(LIBGENCMPCL): genericCMPClient$(OBJ)
 	$(CC) $^ -shared -o $@
 
 $(PARENT_DIR)/cmpClientDemo$(EXE): $(LIBGENCMPCL) cmpClientDemo$(OBJ)
-	$(CC) $^ -lgencmpcl $(LIBS) $(LDFLAGS) -o $@
+	$(CC) cmpClientDemo$(OBJ) -lgencmpcl $(LIBS) $(LDFLAGS) -L$(PARENT_DIR) -o $@
 
 .PHONY: all
 all: build
@@ -106,4 +108,9 @@ all: build
 
 .PHONY: clean
 clean:
-	rm -f $(EXES) $(LIBGENCMPCL) $(OBJS) $(DEPS) $(PARENT_DIR)/$(DLLS)
+	rm -f $(EXES) $(LIBGENCMPCL) $(DEPS) $(OBJS)
+ifeq ($(LPATH),)
+ifeq ($(OS),Windows_NT)
+	rm -f $(PARENT_DIR)/$(DLLS)
+endif
+endif

@@ -84,6 +84,21 @@ test:	build
 
 all:	build test
 
+
+OUTBIN=libgencmpcl$(DLL)
+install: $(OUTBIN)
+	install -Dm 755 $(OUTBIN) $(ROOTFS)/usr/lib/$(OUTBIN)
+
+headers_install:
+	find include -type f -name '*.h' -exec install -Dm 0644 '{}' '$(ROOTFS)/usr/{}' ';'
+
+uninstall:
+	rm -f $(ROOTFS)/usr/lib/$(OUTBIN)
+	find include -type f -name '*.h' -exec rm '$(ROOTFS)/usr/{}' ';'
+
+
+
+
 ################################################################
 # build CMPforOpenSSL (i.e., OpenSSL with CMP patch) with debug symbols
 ## 'install' static libs to lib, headers to include, dynamic libs and bin to bin

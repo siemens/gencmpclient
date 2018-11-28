@@ -99,7 +99,7 @@ $(LIBGENCMPCL): genericCMPClient$(OBJ)
 	$(CC) $^ -shared -o $@
 
 $(PARENT_DIR)/cmpClientDemo$(EXE): $(LIBGENCMPCL) cmpClientDemo$(OBJ)
-	$(CC) cmpClientDemo$(OBJ) -lgencmpcl $(LIBS) $(LDFLAGS) -o $@
+	$(CC) cmpClientDemo$(OBJ) -lgencmpcl $(LIBS) $(LDFLAGS) -L$(PARENT_DIR) -o $@
 
 .PHONY: all
 all: build

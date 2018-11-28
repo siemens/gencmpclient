@@ -14,18 +14,17 @@ else
 endif
 
 ifeq ($(LPATH),)
+    OPENSSL_DIR ?= $(ROOTFS)/usr
     SECUTILS=securityUtilities
     LIBCMP_DIR=cmpossl
     LIBCMP_OUT=.
     LIBCMP_INC=./include_cmp
 else
+    OPENSSL_DIR ?= $(LPATH)/..
     LIBCMP_OUT=$(LPATH)
     LIBCMP_INC=$(LPATH)/../include
 endif
 
-ifeq ($(OPENSSL_DIR),)
-    OPENSSL_DIR=$(LPATH)/../
-endif
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 # $(OPENSSL_DIR) is relative path, assumed relative to ./
     OPENSSL_REVERSE_DIR=../$(OPENSSL_DIR)
@@ -37,7 +36,7 @@ endif
 OPENSSL_VERSION_PAT='s/.*?NUMBER\s+//; s/L.*//'
 OPENSSL_VERSION=$(shell fgrep OPENSSL_VERSION_NUMBER $(OPENSSL_DIR)/include/openssl/opensslv.h | sed -r $(OPENSSL_VERSION_PAT))
 ifeq ($(findstring 0x,$(OPENSSL_VERSION)),)
-    $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)')
+    $(error cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)')
 endif
 $(info detected OpenSSL version $(OPENSSL_VERSION))
 
@@ -86,11 +85,6 @@ test:	build
 all:	build test
 
 
-OUTBIN=libgencmpcl$(DLL)
-
-uninstall:
-	rm -f $(ROOTFS)/usr/lib/$(OUTBIN)
-	find include -type f -name '*.h' -exec rm '$(ROOTFS)/usr/{}' ';'
 
 
 
@@ -145,6 +139,8 @@ buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 
 
 # Target for debian packaging
+OUTBIN=libgencmpcl$(DLL)
+
 deb: debian_control.in debian_changelog.in
 	HEADER_TARGET=headers_install MAKEFLAGS="-j1 LPATH=/usr/lib/" libs/interfaces/debian/makedeb.sh libgenericcmpclient
 
@@ -158,4 +154,8 @@ install: $(OUTBIN)
 
 headers_install:
 	find include -type d -exec install -d '$(ROOTFS)/usr/{}' ';'
-	find include -type f -exec install -Dm 0644 '{}' '$(ROOTFS)/usr/{}' ';'
+	find include -type f -name '*.h' -exec install -Dm 0644 '{}' '$(ROOTFS)/usr/{}' ';'
+
+uninstall:
+	rm -f $(ROOTFS)/usr/lib/$(OUTBIN)
+	find include -type f -name '*.h' -exec rm '$(ROOTFS)/usr/{}' ';'

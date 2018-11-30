@@ -22,6 +22,11 @@ static int CMPOSSL_error()
     return err;
 }
 
+
+/*
+ * Core functionality
+ */
+
 CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn)
 {
     CMP_err err = ERR_R_INIT_FAIL;
@@ -453,4 +458,14 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 #ifdef CLOSE_LOG_ON_EACH_FINISH
     LOG_close();
 #endif
+}
+
+
+/*
+ * Support functionality
+ */
+
+STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc)
+{
+    return FILES_load_crls_multi(files, FORMAT_ASN1, desc);
 }

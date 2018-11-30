@@ -21,7 +21,7 @@ typedef OSSL_CMP_CTX CMP_CTX; /* for abbreviation and backward compatibility */
 #include <SecUtils/credentials/key.h>
 
 #include <SecUtils/storage/files.h>
-#define CRLs_load(files, desc) FILES_load_crls_multi(files, FORMAT_ASN1, desc)
+STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc);
 
 #include <SecUtils/credentials/store.h>
 #define STORE_load(files, desc) STORE_load_trusted(files, desc, false)
@@ -154,7 +154,6 @@ bool CREDENTIALS_save(const CREDENTIALS *creds, const char *file,
 /* trusted_certs is name of a file in PEM or PKCS#12 format */
 X509_STORE *STORE_load(const char *trusted_certs,
                        OPTIONAL const char *desc/* for error msgs */);
-STACK_OF(X509_CRL) *CRLs_load(const char *file, OPTIONAL const char *desc);
 /* also sets certificate verification callback */
 bool STORE_set_parameters(X509_STORE *truststore,
                           OPTIONAL const X509_VERIFY_PARAM *vpm,

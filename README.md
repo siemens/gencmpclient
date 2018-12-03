@@ -60,3 +60,17 @@ The Generic CMP client API specification is available in the [doc](doc/) folder.
 
 The Doxygen documentation of the underlying Security Utilities library is going to be available
 via a link in its [README file](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities/blob/development/README.md).
+
+# Disclaimer
+
+Please note that this software and associated documentation files is a prototypic
+implementation and serves as a proof-of-concept for automated certificate management.
+Some effort has been spent on software quality – for instance, static code analyzers
+(FindBugs and PMD), clean code concepts, and best practice recommendations in secure
+TLS configuration are used. Nevertheless it is explicitly not guaranteed that all
+related functionality and hardening measures needed for productive software have been
+implemented. The development procedures and processes for proof-of-concept
+implementation are not sufficient to assure product-grade software quality. Therefore
+the code, scripts, and configuration of the demonstrator are provided ‘as is’ and can
+only serve as an example for developers.
+Moreover, the [Siemens Inner Source License](LICENSE) applies in its current version.

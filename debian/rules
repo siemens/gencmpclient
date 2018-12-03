@@ -1,0 +1,14 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	OPENSSL_DIR=/usr dh_auto_build
+
+LIBDIR=debian/tmp/usr/lib
+override_dh_auto_install:
+	OPENSSL_DIR=/usr dh_auto_install
+	@# prevent some confusing lintian errors and warnings:
+	mv $(LIBDIR)/libgencmpcl.so $(LIBDIR)/libgencmpcl.so.0
+	ln -sr $(LIBDIR)/libgencmpcl.so.0 $(LIBDIR)/libgencmpcl.so

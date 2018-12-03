@@ -1,0 +1,21 @@
+Source: libgencmpcl
+Section: libs
+Priority: optional
+Maintainer: David von Oheimb <David.von.Oheimb@siemens.com>
+Build-Depends: autotools-dev, libssl-dev, pkg-config, debhelper (>= 9)
+Standards-Version: 4.0.0
+Homepage: https://code.siemens.com/product-pki/genCMPClient
+
+Package: libgencmpcl
+Architecture: any
+Depends: libcmp, ${misc:Depends}, ${shlibs:Depends}
+Description: Certificate Management Prototocl (CMP) library
+ CMP as standalone library based on OpenSSL
+
+Package: libgencmpcl-dev
+Section: libdevel
+Architecture: all
+Depends: libgencmpcl, ${misc:Depends}
+Description: cmp library development headers
+ only needed for development
+

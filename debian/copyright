@@ -1,0 +1,7 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: libcmp
+Upstream-Contact: David von Oheimb <David.von.Oheimb@siemens.com>
+
+Files: *
+Copyright: Copyright Siemens AG 2018
+License:  Siemens Inner Source License

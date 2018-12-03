@@ -72,7 +72,7 @@ endif
 clean:
 ifeq ($(LPATH),)
 	$(MAKE) -C $(SECUTILS) clean
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp cmp_clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 	$(MAKE) -C src clean
 	rm -f certs/new.*
@@ -141,14 +141,30 @@ buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 # Target for debian packaging
 OUTBIN=libgencmpcl$(DLL)
 
-deb: debian_control.in debian_changelog.in
+SRCS=Makefile include/genericCMPClient.h src/genericCMPClient.c src/cmpClientDemo.c
+SRCS_TAR=genCMPClient_0.1.0.orig.tar.gz
+.phony: deb deb_clean
+deb:
+	@#tar czf $(SRCS_TAR) $(SRCS)
+	rm -f  $(OUTBIN)
+	@#rm debian/tmp/usr/lib/libgencmpcl.so*
+	debuild -uc -us --lintian-opts --profile debian
+	rm -r debian/tmp
+	@#rm $(SRCS_TAR)
+
+deb_clean:
+	rm ../libgencmpcl*.deb
+
+.phony: debian debiandir
+debian: debian_control.in debian_changelog.in
 	HEADER_TARGET=headers_install MAKEFLAGS="-j1 LPATH=/usr/lib/" libs/interfaces/debian/makedeb.sh libgenericcmpclient
 
-debdir: debian_control.in debian_changelog.in
+debiandir: debian_control.in debian_changelog.in
 	HEADER_TARGET=headers_install MAKEFLAGS="-j1 LPATH=/usr/lib/" libs/interfaces/debian/makedeb.sh libgenericcmpclient debdironly
 
 # installation target - append ROOTFS=<path> to install into virtual root
 # filesystem
+.phony: install headers_install uninstall
 install: $(OUTBIN)
 	install -Dm 755 $(OUTBIN) $(ROOTFS)/usr/lib/$(OUTBIN)
 

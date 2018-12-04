@@ -10,5 +10,15 @@ LIBDIR=debian/tmp/usr/lib
 override_dh_auto_install:
 	OPENSSL_DIR=/usr dh_auto_install
 	@# prevent some confusing lintian errors and warnings:
+	pwd
 	mv $(LIBDIR)/libgencmpcl.so $(LIBDIR)/libgencmpcl.so.0
 	ln -sr $(LIBDIR)/libgencmpcl.so.0 $(LIBDIR)/libgencmpcl.so
+
+override_dh_auto_clean:
+	# do not execute the clean: rule in the Makefile
+
+override_dh_auto_test:
+	# do not execute the test: rule in the Makefile
+
+#override_dh_builddeb:
+#	dh_builddeb --destdir . --

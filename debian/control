@@ -8,14 +8,14 @@ Homepage: https://code.siemens.com/product-pki/genCMPClient
 
 Package: libgencmpcl
 Architecture: any
-Depends: libcmp, ${misc:Depends}, ${shlibs:Depends}
-Description: Certificate Management Prototocl (CMP) library
- CMP as standalone library based on OpenSSL
+Depends: libcmp, ${misc:Depends},
+Description: generic CMP client library
+ Generic CMP client library based on CMPforOpenSSL
 
 Package: libgencmpcl-dev
 Section: libdevel
 Architecture: all
 Depends: libgencmpcl, ${misc:Depends}
-Description: cmp library development headers
+Description: generic CMP client library headers
  only needed for development
 

@@ -13,6 +13,8 @@ else
 #   LIB=lib
 endif
 
+ROOTFS ?= $(DESTDIR)$(prefix)
+
 ifeq ($(LPATH),)
     OPENSSL_DIR ?= $(ROOTFS)/usr
     SECUTILS=securityUtilities
@@ -56,7 +58,7 @@ ifeq ($(LPATH),)
 	cd $(SECUTILS) && git submodule update --init --recursive || true
 	$(MAKE) -C $(SECUTILS) build OPENSSL_DIR="$(OPENSSL_DIR)" CFLAGS=-DSEC_ENABLE_RSA
 	@# the old way to build with CMP was: buildCMPforOpenSSL
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp cmp_lib LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 	@export LIBCMP_OPENSSL_VERSION=`strings $(LIBCMP_OUT)/libcmp$(DLL) | grep OPENSSL_VERSION_NUMBER | sed -r $(OPENSSL_VERSION_PAT)` && \
 	if [ $$LIBCMP_OPENSSL_VERSION != "$(OPENSSL_VERSION)" ]; then \
@@ -141,26 +143,25 @@ buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 # Target for debian packaging
 OUTBIN=libgencmpcl$(DLL)
 
-SRCS=Makefile include/genericCMPClient.h src/genericCMPClient.c src/cmpClientDemo.c
-SRCS_TAR=genCMPClient_0.1.0.orig.tar.gz
+#SRCS=Makefile include/genericCMPClient.h src/genericCMPClient.c src/cmpClientDemo.c
+#SRCS_TAR=libgencmpcl_0.1.0.orig.tar.gz
 .phony: deb deb_clean
 deb:
-	@#tar czf $(SRCS_TAR) $(SRCS)
-	rm -f  $(OUTBIN)
-	@#rm debian/tmp/usr/lib/libgencmpcl.so*
-	debuild -uc -us --lintian-opts --profile debian
+	@# #tar czf $(SRCS_TAR) $(SRCS)
+	@# #rm -f  $(OUTBIN) debian/tmp/usr/lib/libgencmpcl.so*
+	debuild -uc -us -I* --lintian-opts --profile debian
 	rm -r debian/tmp
-	@#rm $(SRCS_TAR)
+	@# # rm $(SRCS_TAR)
 
 deb_clean:
 	rm ../libgencmpcl*.deb
 
 .phony: debian debiandir
 debian: debian_control.in debian_changelog.in
-	HEADER_TARGET=headers_install MAKEFLAGS="-j1 LPATH=/usr/lib/" libs/interfaces/debian/makedeb.sh libgenericcmpclient
+	HEADER_TARGET=headers_install MAKEFLAGS="-j1 LPATH=/usr/lib/" libs/interfaces/debian/makedeb.sh libgencmpcl
 
 debiandir: debian_control.in debian_changelog.in
-	HEADER_TARGET=headers_install MAKEFLAGS="-j1 LPATH=/usr/lib/" libs/interfaces/debian/makedeb.sh libgenericcmpclient debdironly
+	HEADER_TARGET=headers_install MAKEFLAGS="-j1 LPATH=/usr/lib/" libs/interfaces/debian/makedeb.sh libgencmpcl debdironly
 
 # installation target - append ROOTFS=<path> to install into virtual root
 # filesystem

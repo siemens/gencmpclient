@@ -63,14 +63,8 @@ via a link in its [README file](https://code.siemens.com/mo_mm_linux_distributio
 
 # Disclaimer
 
-Please note that this software and associated documentation files is a prototypic
-implementation and serves as a proof-of-concept for automated certificate management.
-Some effort has been spent on software quality – for instance, static code analyzers
-(FindBugs and PMD), clean code concepts, and best practice recommendations in secure
-TLS configuration are used. Nevertheless it is explicitly not guaranteed that all
-related functionality and hardening measures needed for productive software have been
-implemented. The development procedures and processes for proof-of-concept
-implementation are not sufficient to assure product-grade software quality. Therefore
-the code, scripts, and configuration of the demonstrator are provided ‘as is’ and can
-only serve as an example for developers.
-Moreover, the [Siemens Inner Source License](LICENSE) applies in its current version.
+This software including associated documentation is provided ‘as is’ in a preliminary state.
+Our development procedures and processes are not sufficient to assure product-grade software quality.
+Although some effort has already beeen spent on quality assurance,
+it is explicitly not guaranteed that all due measures for productive software have been implemented.
+Please also note that the [Siemens Inner Source License](LICENSE) applies.

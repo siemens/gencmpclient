@@ -20,7 +20,7 @@ ifeq ($(LPATH),)
     SECUTILS=securityUtilities
     LIBCMP_DIR=cmpossl
     LIBCMP_OUT=.
-    LIBCMP_INC=./include_cmp
+    LIBCMP_INC=$(LIBCMP_DIR)/include_cmp
 else
     OPENSSL_DIR ?= $(LPATH)/..
     LIBCMP_OUT=$(LPATH)

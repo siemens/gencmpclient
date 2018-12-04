@@ -67,4 +67,5 @@ This software including associated documentation is provided ‘as is’ in a pr
 Our development procedures and processes are not sufficient to assure product-grade software quality.
 Although some effort has already beeen spent on quality assurance,
 it is explicitly not guaranteed that all due measures for productive software have been implemented.
+Therefore we cannot provide any guarantees about this software and do not take any liability for it.
 Please also note that the [Siemens Inner Source License](LICENSE) applies.

@@ -42,6 +42,9 @@ LIBCMP_OUT ?= .
 
 CC = gcc
 
+ifdef NDEBUG
+    override CFLAGS += -DNDEBUG=1
+endif
 override CFLAGS += -g -O0 -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Wextra -Wconversion -Werror -Woverflow# #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
 ifeq ($(LPATH),)
    override CFLAGS += -I$(SECUTILS)/include -I$(PARENT_DIR)/$(LIBCMP_INC)
@@ -88,7 +91,7 @@ endif
 
 -include $(DEPS)
 
-$(OBJS): %$(OBJ):%.c
+$(OBJS): %$(OBJ): %.c
 	 $(CC) $(CFLAGS) -c -fPIC $< -o $@
 	@$(CC) $(CFLAGS) -MM $< -MT $@ -MF $*.d
 
@@ -98,8 +101,8 @@ $(OBJS): %$(OBJ):%.c
 $(LIBGENCMPCL): genericCMPClient$(OBJ)
 	$(CC) $^ -shared -o $@
 
-$(PARENT_DIR)/cmpClientDemo$(EXE): $(LIBGENCMPCL) cmpClientDemo$(OBJ)
-	$(CC) cmpClientDemo$(OBJ) -lgencmpcl $(LIBS) $(LDFLAGS) -L$(PARENT_DIR) -o $@
+$(PARENT_DIR)/cmpClientDemo$(EXE): cmpClientDemo$(OBJ) | $(LIBGENCMPCL)
+	$(CC) $(LDFLAGS) -L$(PARENT_DIR) $< -lgencmpcl $(LIBS) -o $@
 
 .PHONY: all
 all: build

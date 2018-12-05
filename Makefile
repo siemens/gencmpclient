@@ -16,7 +16,11 @@ endif
 ROOTFS ?= $(DESTDIR)$(prefix)
 
 ifeq ($(LPATH),)
-    OPENSSL_DIR ?= $(ROOTFS)/usr
+#   ifneq ($(wildcard $(ROOTFS)/usr/local/include/openssl),)
+#       OPENSSL_DIR ?= $(ROOTFS)/usr/local
+#   else
+        OPENSSL_DIR ?= $(ROOTFS)/usr
+#   endif
     SECUTILS=securityUtilities
     LIBCMP_DIR=cmpossl
     LIBCMP_OUT=.

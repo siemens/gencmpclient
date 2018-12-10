@@ -45,6 +45,10 @@ ifeq ($(findstring 0x,$(OPENSSL_VERSION)),)
     $(error cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)')
 endif
 $(info detected OpenSSL version $(OPENSSL_VERSION))
+ifeq ($(shell test $$(printf "%d" $(OPENSSL_VERSION)) -lt $$(printf "%d" 0x10100000); echo $$?),0)
+    $(info enabling compilation quirks for OpenSSL 1.0.2)
+    OSSL_VERSION_QUIRKS+=-Wno-discarded-qualifiers -Wno-unused-parameter
+endif
 
 
 ################################################################
@@ -60,7 +64,7 @@ endif
 build:
 ifeq ($(LPATH),)
 	cd $(SECUTILS) && git submodule update --init --recursive || true
-	$(MAKE) -C $(SECUTILS) build OPENSSL_DIR="$(OPENSSL_DIR)" CFLAGS=-DSEC_ENABLE_RSA
+	$(MAKE) -C $(SECUTILS) build OPENSSL_DIR="$(OPENSSL_DIR)" #CFLAGS=-DSEC_ENABLE_RSA
 	@# the old way to build with CMP was: buildCMPforOpenSSL
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
@@ -68,7 +72,7 @@ endif
 	if [ $$LIBCMP_OPENSSL_VERSION != "$(OPENSSL_VERSION)" ]; then \
 	    (echo "OpenSSL version $$LIBCMP_OPENSSL_VERSION used for building libcmp does not match $(OPENSSL_VERSION) to be used for building client"; false); \
 	fi
-	$(MAKE) -C src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)"
+	$(MAKE) -C src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" CFLAGS=$(OSSL_VERSION_QUIRKS)
 
 ifeq ($(LPATH),)
 clean_uta:

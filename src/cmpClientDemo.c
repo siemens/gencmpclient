@@ -8,8 +8,31 @@
  ******************************************************************************/
 
 #include <genericCMPClient.h>
-#include <SecUtils/credentials/verify.h>
+
+#ifdef LOCAL_DEFS
+
+enum
+{
+    B_FORMAT_TEXT = 0x8000
+};
+typedef enum
+{
+    FORMAT_UNDEF = 0, /*! undefined file format */
+    FORMAT_ASN1 = 4, /*! ASN.1/DER */
+    FORMAT_PEM = 5 | B_FORMAT_TEXT, /*! PEM */
+    FORMAT_PKCS12 = 6, /*! PKCS#12 */
+    FORMAT_ENGINE = 8, /*! crypto engine, which is not really a file format */
+    FORMAT_HTTP = 13,  /*! download using HTTP */
+} sec_file_format; /*! type of format for security-related files or other input */
+bool FILES_store_cert(const X509 *cert, const char* file, sec_file_format format, const char* desc);
+
+X509* CREDENTIALS_get_cert(const CREDENTIALS* creds);
+
+#else /* LOCAL_DEFS */
+
 #include <SecUtils/storage/files.h>
+
+#endif /* LOCAL_DEFS */
 
 static int CMPclient_demo(void)
 {
@@ -39,6 +62,10 @@ static int CMPclient_demo(void)
                 "certs/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt";
             cmp_truststore = STORE_load(file, "trusted certs for CMP level");
         }
+        if (cmp_truststore == NULL) {
+            err = -1;
+            goto err;
+        }
         const X509_VERIFY_PARAM *vpm = NULL;
         STACK_OF(X509_CRL) *crls = NULL;
         {
@@ -50,7 +77,7 @@ static int CMPclient_demo(void)
         }
         const char *CRLs_url = NULL;
         const char *OCSP_url = NULL;
-        if (cmp_truststore == NULL || crls == NULL ||
+        if (crls == NULL ||
             !STORE_set_parameters(cmp_truststore, OPTIONAL vpm, crls,
                                   true /* use_CDPs */, OPTIONAL CRLs_url, 
                                   false/* use_AIAs */, OPTIONAL OCSP_url)) {
@@ -122,7 +149,7 @@ static int CMPclient_demo(void)
             goto err;
         }
     }
-    const char *ciphers = TLS_get_ciphers(NULL); // yields "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH";
+    const char *ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
     tls = TLS_new(tls_truststore, tls_creds, ciphers, -1);
     if (tls == NULL) {
         err = -5;
@@ -181,11 +208,10 @@ static int CMPclient_demo(void)
     }
 
  err:
+    CMPclient_finish(ctx);
     if (err != CMP_OK) {
         fprintf(stderr, "CMPclient error %d\n", err);
-        ERR_print_errors_fp(stderr);
     }
-    CMPclient_finish(ctx);
     CREDENTIALS_free(new_creds);
     EXTENSIONS_free(exts);
     KEY_free(new_key);
@@ -195,6 +221,9 @@ static int CMPclient_demo(void)
     STORE_free(new_cert_truststore);
     STORE_free(cmp_truststore);
     CREDENTIALS_free(creds);
+#ifndef CLOSE_LOG_ON_EACH_FINISH
+    LOG_close();
+#endif
 
     return err;
 }

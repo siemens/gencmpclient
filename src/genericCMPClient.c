@@ -8,10 +8,72 @@
  ******************************************************************************/
 
 #include "genericCMPClient.h"
-#include <openssl/cmperr.h>
 
+#include <openssl/cmperr.h>
+#include <openssl/ssl.h>
 #include <string.h>
+
+#ifdef LOCAL_DEFS
+
+EVP_PKEY* CREDENTIALS_get_pkey(const CREDENTIALS* creds);
+STACK_OF(X509)* CREDENTIALS_get_chain(const CREDENTIALS* creds);
+X509* CREDENTIALS_get_cert(const CREDENTIALS* creds);
+char* CREDENTIALS_get_pwd(const CREDENTIALS* creds);
+char* CREDENTIALS_get_pwdref(const CREDENTIALS* creds);
+
+void LOG_init(OPTIONAL LOG_cb_t log_fn);
+int LOG (const char *file, int lineno, severity level, const char *fmt, ...);
+#define FILE_LINE __FILE__, __LINE__
+#define FL_ERR   FILE_LINE, LOG_ERR
+#define FL_WARN  FILE_LINE, LOG_WARNING
+#define FL_INFO  FILE_LINE, LOG_INFO
+#define FL_DEBUG FILE_LINE, LOG_DEBUG
+
+void UTIL_setup_openssl(long version, const char *build_name);
+int UTIL_parse_server_and_port(char* s);
+X509_NAME* UTIL_parse_name(const char* dn, long chtype, bool multirdn);
+
+enum
+{
+    B_FORMAT_TEXT = 0x8000
+};
+typedef enum
+{
+    FORMAT_UNDEF = 0, /*! undefined file format */
+    FORMAT_ASN1 = 4, /*! ASN.1/DER */
+    FORMAT_PEM = 5 | B_FORMAT_TEXT, /*! PEM */
+    FORMAT_PKCS12 = 6, /*! PKCS#12 */
+    FORMAT_ENGINE = 8, /*! crypto engine, which is not really a file format */
+    FORMAT_HTTP = 13,  /*! download using HTTP */
+} sec_file_format; /*! type of format for security-related files or other input */
+STACK_OF(X509_CRL) * FILES_load_crls_multi(const char* files, sec_file_format format, const char* desc);
+
+X509_STORE* STORE_load_trusted(const char* files, const char* desc, bool check_icv);
+bool STORE_set1_host_ip(X509_STORE* truststore, const char* host, const char* ip);
+
+#define X509_STORE_EX_DATA_HOST 0
+#define X509_STORE_EX_DATA_SBIO 1
+
+bool TLS_init(void);
+SSL_CTX* TLS_CTX_new(bool client, OPTIONAL const X509_STORE* truststore, OPTIONAL const CREDENTIALS* creds,
+                     OPTIONAL const char* ciphers, int security_level);
+void TLS_CTX_free(OPTIONAL SSL_CTX* ctx);
+
+#else /* LOCAL_DEFS */
+
+#include <SecUtils/storage/files.h>
 #include <SecUtils/credentials/verify.h>
+#include <SecUtils/credentials/store.h>
+#include <SecUtils/connections/tls.h>
+
+#endif /* LOCAL_DEFS */
+
+#if OPENSSL_VERSION_NUMBER < 0x10100006L
+# define SSL_CTX_up_ref(x)((x)->references++)
+#endif
+#if OPENSSL_VERSION_NUMBER < 0x10100003L
+#define ERR_R_INIT_FAIL (6|ERR_R_FATAL)
+#endif
 
 static int CMPOSSL_error()
 {
@@ -89,7 +151,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     if (digest != NULL) {
         int nid = OBJ_ln2nid(digest);
         if (nid == NID_undef) {
-            OSSL_CMP_printf(ctx, FL_ERR, "Bad digest algorithm name: '%s'", digest);
+            LOG(FL_ERR, "Bad digest algorithm name: '%s'", digest);
             OSSL_CMP_CTX_delete(ctx);
             return CMP_R_UNKNOWN_ALGORITHM_ID;
         }
@@ -285,7 +347,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
     if (subject != NULL) {
         X509_NAME *n = UTIL_parse_name(subject, MBSTRING_ASC, false);
         if (NULL == n) {
-            OSSL_CMP_printf(ctx, FL_ERR, "Unable to parse subject DN '%s'", subject);
+            LOG(FL_ERR, "Unable to parse subject DN '%s'", subject);
             return CMP_R_INVALID_PARAMETERS;
         }
         if (!OSSL_CMP_CTX_set1_subjectName(ctx, n)) {
@@ -339,7 +401,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
 	newcert = OSSL_CMP_exec_KUR_ses(ctx);
 	break;
     default:
-        OSSL_CMP_printf(ctx, FL_ERR, "Argument must be CMP_IR, CMP_CR, CMP_P10CR, or CMP_KUR");
+        LOG(FL_ERR, "Argument must be CMP_IR, CMP_CR, CMP_P10CR, or CMP_KUR");
 	return CMP_R_INVALID_PARAMETERS;
 	break;
     }
@@ -452,6 +514,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
 
 void CMPclient_finish(OSSL_CMP_CTX *ctx)
 {
+    OSSL_CMP_print_errors(ctx);
     SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
     X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
     OSSL_CMP_CTX_delete(ctx);
@@ -465,7 +528,28 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
  * Support functionality
  */
 
+/* X509_STORE helpers */
+
+X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc)
+{
+    return STORE_load_trusted(trusted_certs, desc, false);
+}
+
 STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc)
 {
     return FILES_load_crls_multi(files, FORMAT_ASN1, desc);
+}
+
+/* SSL_CTX helpers for HTTPS */
+
+SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
+                 OPTIONAL const CREDENTIALS *creds,
+                 OPTIONAL const char *ciphers, int security_level)
+{
+    return TLS_CTX_new(true/* client */, truststore, creds, ciphers, security_level);
+}
+
+void TLS_free(OPTIONAL SSL_CTX *tls)
+{
+    TLS_CTX_free(tls);
 }

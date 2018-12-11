@@ -14,22 +14,35 @@
 #include <openssl/cmp.h>
 typedef OSSL_CMP_CTX CMP_CTX; /* for abbreviation and backward compatibility */
 
-#include <SecUtils/util/log.h>
+
+#ifdef LOCAL_DEFS
+
+#ifndef __cplusplus
+typedef enum { false = 0, true = 1 } bool; /* Boolean value */
+#endif
+
+#define OPTIONAL /*!< marker for non-required parameter, i.e., NULL allowed */
+
+typedef struct credentials {
+    OPTIONAL EVP_PKEY *pkey;        /*!< can refer to HW key store via engine */
+    OPTIONAL X509     *cert;        /*!< related certificate */
+    OPTIONAL STACK_OF(X509) *chain; /*!< intermediate/extra certs for cert */
+    OPTIONAL const char *pwd;       /*!< alternative: password (shared secret) */
+    OPTIONAL const char *pwdref;    /*!< reference identifying the password */
+} CREDENTIALS;
+
+typedef enum {LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERR,
+              LOG_WARNING, LOG_NOTICE, LOG_INFO, LOG_DEBUG} severity;
+typedef int (*LOG_cb_t) (OPTIONAL const char *file, int lineno, severity level, const char *msg);
+void LOG_close(void);
+
+#else /* LOCAL_DEFS */
+
 #include <SecUtils/credentials/credentials.h>
-#include <SecUtils/util/extensions.h>
+#include <SecUtils/util/log.h>
 
-#include <SecUtils/credentials/key.h>
+#endif /* LOCAL_DEFS */
 
-#include <SecUtils/storage/files.h>
-STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc);
-
-#include <SecUtils/credentials/store.h>
-#define STORE_load(files, desc) STORE_load_trusted(files, desc, false)
-
-#include <SecUtils/connections/tls.h>
-#define TLS_new(truststore, creds, ciphers, security_level) \
-    TLS_CTX_new(true/* client */, truststore, creds, ciphers, security_level)
-#define TLS_free(tls) TLS_CTX_free(tls)
 
 typedef int CMP_err;
 #define CMP_OK 0
@@ -44,29 +57,6 @@ typedef int CMP_err;
 #define CMP_P10CR OSSL_CMP_PKIBODY_P10CR
 #define CMP_KUR   OSSL_CMP_PKIBODY_KUR
 #define CMP_RR    OSSL_CMP_PKIBODY_RR
-
-#ifdef LOCAL_DEFS
-
-#ifndef __cplusplus
-typedef enum { false = 0, true = 1 } bool; /* Boolean value */
-#endif
-
-#define OPTIONAL /* this marker will get ignored by compiler */
-
-typedef struct credentials {
-    OPTIONAL EVP_PKEY *pkey;        /*!< can refer to HW key store via engine */
-    OPTIONAL X509     *cert;        /*!< related certificate */
-    OPTIONAL STACK_OF(X509) *chain; /*!< intermediate/extra certs for cert */
-    OPTIONAL const char *pwd;       /*!< alternative: password (shared secret) */
-    OPTIONAL const char *pwdref;    /*!< reference identifying the password */
-} CREDENTIALS;
-
-CREDENTIALS *CREDENTIALS_new(OPTIONAL const EVP_PKEY *pkey, const OPTIONAL X509 *cert,
-                             OPTIONAL const STACK_OF(X509) *chain,
-                             OPTIONAL const char *pwd, OPTIONAL const char *pwdref);
-void CREDENTIALS_free(OPTIONAL CREDENTIALS *creds);
-
-#endif /* LOCAL_DEFS */
 
 /* CMP client core functions */
 /* should be called once, as soon as the application starts */
@@ -138,36 +128,35 @@ CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, int reason);
 /* must be called after any of the above activities */
 void CMPclient_finish(CMP_CTX *ctx);
 
-#ifdef LOCAL_DEFS
 /* CREDENTIALS helpers */
-/* certs is name of a file in PKCS#12 format; primary cert is of client */
-/* source for private key may be "file:[pass:<pwd>]" or "engine:<id>" */
+CREDENTIALS *CREDENTIALS_new(OPTIONAL const EVP_PKEY *pkey, const OPTIONAL X509 *cert,
+                             OPTIONAL const STACK_OF(X509) *chain,
+                             OPTIONAL const char *pwd, OPTIONAL const char *pwdref);
+void CREDENTIALS_free(OPTIONAL CREDENTIALS *creds);
 CREDENTIALS *CREDENTIALS_load(const char *certs, const char *key,
                               const char *source,
                               OPTIONAL const char *desc/* for error msgs */);
-/* file is name of file to write in PKCS#12 format */
 bool CREDENTIALS_save(const CREDENTIALS *creds, const char *file,
                       const char *source, OPTIONAL const char *desc);
 
 
+
+
 /* X509_STORE helpers */
-/* trusted_certs is name of a file in PEM or PKCS#12 format */
-X509_STORE *STORE_load(const char *trusted_certs,
-                       OPTIONAL const char *desc/* for error msgs */);
-/* also sets certificate verification callback */
+X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
+STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc);
+bool STORE_add_crls(X509_STORE* truststore, OPTIONAL const STACK_OF(X509_CRL) * crls);
+/* also sets certificate verification callback: */
 bool STORE_set_parameters(X509_STORE *truststore,
                           OPTIONAL const X509_VERIFY_PARAM *vpm,
                           OPTIONAL const STACK_OF(X509_CRL) *crls,
                           bool use_CDPs, OPTIONAL const char *CRLs_url,
                           bool use_AIAs, OPTIONAL const char *OCSP_url);
-void STORE_free(OPTIONAL X509_STORE *truststore); /* also frees copies of OCSP_url and OCSP_url */
-
+void STORE_free(OPTIONAL X509_STORE *truststore);
 
 /* EVP_PKEY helpers */
-/* spec may be "RSA:<length>" or "EC:<curve>" */
-EVP_PKEY *KEY_new(const char *spec);
+EVP_PKEY *KEY_new(const char *spec); /* spec may be "RSA:<length>" or "EC:<curve>" */
 void KEY_free(OPTIONAL EVP_PKEY *pkey);
-
 
 /* SSL_CTX helpers for HTTPS */
 SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
@@ -177,15 +166,12 @@ void TLS_free(OPTIONAL SSL_CTX *tls);
 
 /* X509_EXTENSIONS helpers */
 X509_EXTENSIONS *EXTENSIONS_new(void);
-
 /* add optionally critical Subject Alternative Names (SAN) to exts */
 bool EXTENSIONS_add_SANs(X509_EXTENSIONS *exts, const char *spec);
 /* add extension such as (extended) key usages, basic constraints, policies */
 bool EXTENSIONS_add_ext(X509_EXTENSIONS *exts, const char *name,
-                        const char *spec, OPTIONAL BIO *sections);
-
+                        const char* spec, OPTIONAL BIO* sections);
 void EXTENSIONS_free(OPTIONAL X509_EXTENSIONS *exts);
 
-#endif /* LOCAL_DEFS */
 
 #endif /* GENERIC_CMP_CLIENT_H */

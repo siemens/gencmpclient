@@ -1,5 +1,8 @@
 This is the code repository for the cross-division generic CMP client library.
 
+This library should work with any flavor of Linux.
+On Windows so far the WSL and Cygwin is supported.
+It requires git, GNU make, and GCC.
 
 # Getting the library
 
@@ -17,8 +20,9 @@ the [Security Utilities (SecUtils)](https://code.siemens.com/mo_mm_linux_distrib
 
 # Building the library
 
-Both the CMP library and the SecUtil library assume that OpenSSL (with any version >= 1.0.2) is already installed.
-By default its headers will be searched for in `/usr/include` and its shared objects in `/usr/lib`.
+The generic CMP client library (and also its underlying CMP and SecUtils libraries) assumes that OpenSSL (with any version >= 1.0.2) is already installed,
+including the C header files needed for development (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
+By default the OpenSSL headers will be searched for in `/usr/include` and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
 You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation.
 
 In the newly created directory `genCMPClient` you can build the library simply with `make`.

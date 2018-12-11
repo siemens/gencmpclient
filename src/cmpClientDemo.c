@@ -9,31 +9,6 @@
 
 #include <genericCMPClient.h>
 
-#ifdef LOCAL_DEFS
-
-enum
-{
-    B_FORMAT_TEXT = 0x8000
-};
-typedef enum
-{
-    FORMAT_UNDEF = 0, /*! undefined file format */
-    FORMAT_ASN1 = 4, /*! ASN.1/DER */
-    FORMAT_PEM = 5 | B_FORMAT_TEXT, /*! PEM */
-    FORMAT_PKCS12 = 6, /*! PKCS#12 */
-    FORMAT_ENGINE = 8, /*! crypto engine, which is not really a file format */
-    FORMAT_HTTP = 13,  /*! download using HTTP */
-} sec_file_format; /*! type of format for security-related files or other input */
-bool FILES_store_cert(const X509 *cert, const char* file, sec_file_format format, const char* desc);
-
-X509* CREDENTIALS_get_cert(const CREDENTIALS* creds);
-
-#else /* LOCAL_DEFS */
-
-#include <SecUtils/storage/files.h>
-
-#endif /* LOCAL_DEFS */
-
 static int CMPclient_demo(void)
 {
     X509_STORE *cmp_truststore = NULL;
@@ -197,11 +172,11 @@ static int CMPclient_demo(void)
     }
 
     {
-        const char *file = "certs/new.p12";
+        const char *cert_file = "certs/new.crt";
+        const char *key_file = "certs/new.pem";
         const char *source = NULL/* plain file */;
         const char *desc = "newly enrolled certificate and related key and chain";
-        if (!CREDENTIALS_save(new_creds, file, OPTIONAL source, desc) ||
-            !FILES_store_cert(CREDENTIALS_get_cert(new_creds), "certs/new.crt", FORMAT_PEM, "newly enrolled cert")) {
+        if (!CREDENTIALS_save(new_creds, cert_file, key_file, OPTIONAL source, desc)) {
             err = -8;
             goto err;
         }

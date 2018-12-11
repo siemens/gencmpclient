@@ -136,7 +136,7 @@ void CREDENTIALS_free(OPTIONAL CREDENTIALS *creds);
 CREDENTIALS *CREDENTIALS_load(const char *certs, const char *key,
                               const char *source,
                               OPTIONAL const char *desc/* for error msgs */);
-bool CREDENTIALS_save(const CREDENTIALS *creds, const char *file,
+bool CREDENTIALS_save(const CREDENTIALS *creds, const char *file, const char *keyfile,
                       const char *source, OPTIONAL const char *desc);
 
 

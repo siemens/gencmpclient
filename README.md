@@ -4,7 +4,7 @@ This is the code repository for the cross-division generic CMP client library.
 # Prerequisites
 
 This library should work with any flavor of Linux.
-On Windows so far the WSL and Cygwin is supported.
+On Windows so far [Cygwin](https://www.cygwin.com/) and the Windows Subsystem for Linux ([WSL(https://docs.microsoft.com/windows/wsl/about)]) is supported.
 
 The following development tools are required.
 * Git
@@ -28,10 +28,12 @@ OpenSSL 1.1.0f  25 May 2017 (0x1010006f)
 
 # Getting the library
 
-You can clone the git repository with
+You can clone the git repository and its submodules with
 ```
 git clone git@code.siemens.com:product-pki/genCMPClient.git
 cd genCMPClient
+export http_proxy=http://test.coia.siemens.net  # or whatever your HTTP proxy is
+export no_proxy=$no_proxy,code.siemens.com
 git submodule update --init
 ```
 
@@ -47,9 +49,13 @@ including the C header files needed for development (as provided by, e.g., the D
 By default the OpenSSL headers will be searched for in `/usr/include` and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
 You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation.
 
-In the newly created directory `genCMPClient` you can build the library simply with `make`.
+In the newly created directory `genCMPClient` you can build the library simply with
+```
+make
+```
+
 The result is in, for instance, `./libgencmpcl.so`.
-This also builds all required dependencies and a demo application.
+This also builds all required dependencies (such as `./libcmp.so` and `./securityUtilities/libSecUtils.so`) and a demo application (typically `./cmpClientDemo`).
 
 **Imporant Note:** by default, the Security Utilities make use of the [Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library
 for secure device-level storage of key material for confidentiality and integriy protection of files.
@@ -60,7 +66,13 @@ This means that secure storage of protection credentials for private keys and tr
 # Using the library
 
 Have a look at the demo client in [`src/cmpClientDemo.c`](src/cmpClientDemo.c).
-It can be executed with `make test` or manually like this:
+It can be executed with
+```
+make test
+```
+
+or manually like this:
+
 ```
 export no_proxy=ppki-playground.ct.siemens.com
 wget "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O certs/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl

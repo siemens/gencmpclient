@@ -1,8 +1,30 @@
 This is the code repository for the cross-division generic CMP client library.
 
+
+# Prerequisites
+
 This library should work with any flavor of Linux.
 On Windows so far the WSL and Cygwin is supported.
-It requires git, GNU make, and GCC.
+
+The following development tools are required.
+* Git
+* GNU make
+* C compiler and linker
+* OpenSSL with header files
+
+As a sanity check you can execute in a shell:
+```
+git clone git@code.siemens.com:product-pki/genCMPClient.git
+cd genCMPClient
+make -f OpenSSL_version.mk
+```
+
+This should output on the console something like
+```
+gcc OpenSSL_version.c -lcrypto -o OpenSSL_version
+OpenSSL 1.1.0f  25 May 2017 (0x1010006f)
+```
+
 
 # Getting the library
 
@@ -45,6 +67,12 @@ wget "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd
 ./cmpClientDemo
 ```
 
+Among others, successful execution should produce a new certificate at `certs/new.crt`.
+You can view this certificate for instance by executing
+```
+openssl x509 -noout -text -in certs/new.crt
+```
+
 You will need to include in your application sources the file [`genericCMPClient.h`](include/genericCMPClient.h).
 
 For compiling you will need to add the directories `include`, `include_cmp`, and `securityUtilities/include` to your C headers path and
@@ -64,6 +92,7 @@ The Generic CMP client API specification is available in the [doc](doc/) folder.
 
 The Doxygen documentation of the underlying Security Utilities library is going to be available
 via a link in its [README file](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities/blob/development/README.md).
+
 
 # Disclaimer
 

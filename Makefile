@@ -39,8 +39,13 @@ else
     OPENSSL_REVERSE_DIR=$(OPENSSL_DIR)
 endif
 
-OPENSSL_VERSION_PAT='s/.*?NUMBER\s+//; s/L.*//'
-OPENSSL_VERSION=$(shell fgrep OPENSSL_VERSION_NUMBER $(OPENSSL_DIR)/include/openssl/opensslv.h | sed -r $(OPENSSL_VERSION_PAT))
+OPENSSL_VERSION_NUMBER_SUBST='s/.*?NUMBER\s+//; s/L.*//'
+ifdef OPENSSL_VERSION_FROM_INCLUDE
+OPENSSL_VERSION=$(shell fgrep OPENSSL_VERSION_NUMBER $(OPENSSL_DIR)/include/openssl/opensslv.h | sed -r $(OPENSSL_VERSION_NUMBER_SUBST))
+else
+OPENSSL_VERSION_SUBST='s/.*?\(//; s/\).*//'
+OPENSSL_VERSION=$(shell make -f OpenSSL_version.mk clean version OPENSSL_DIR=$(OPENSSL_DIR) | tail -n 1 | sed -r $(OPENSSL_VERSION_SUBST))
+endif
 ifeq ($(findstring 0x,$(OPENSSL_VERSION)),)
     $(error cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)')
 endif
@@ -68,7 +73,7 @@ ifeq ($(LPATH),)
 	@# the old way to build with CMP was: buildCMPforOpenSSL
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
-	@export LIBCMP_OPENSSL_VERSION=`strings $(LIBCMP_OUT)/libcmp$(DLL) | grep OPENSSL_VERSION_NUMBER | sed -r $(OPENSSL_VERSION_PAT)` && \
+	@export LIBCMP_OPENSSL_VERSION=`strings $(LIBCMP_OUT)/libcmp$(DLL) | grep OPENSSL_VERSION_NUMBER | sed -r $(OPENSSL_VERSION_NUMBER_SUBST)` && \
 	if [ $$LIBCMP_OPENSSL_VERSION != "$(OPENSSL_VERSION)" ]; then \
 	    (echo "OpenSSL version $$LIBCMP_OPENSSL_VERSION used for building libcmp does not match $(OPENSSL_VERSION) to be used for building client"; false); \
 	fi

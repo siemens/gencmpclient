@@ -8,12 +8,12 @@ ifeq ($(OS),Windows_NT)
     EXE=.exe
     DLL=.dll
     OBJ=.obj
-#   LIB=bin
+    LIB=bin
 else
     EXE=
     DLL=.so
     OBJ=.o
-#   LIB=lib
+    LIB=lib
 endif
 
 ifeq ($(OPENSSL_DIR),)
@@ -28,15 +28,16 @@ ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 else
 # $(OPENSSL_DIR) is absolute path
     OPENSSL=$(OPENSSL_DIR)
-    OPENSSL_LIB=$(OPENSSL)/lib
+    OPENSSL_LIB=$(OPENSSL)/$(LIB)
     OPENSSL_RPATH=$(OPENSSL)
     OPENSSL_RPATH_LIB=$(OPENSSL_LIB)
 endif
 
 PARENT_DIR=..
 ARCHIVE=$(PARENT_DIR)/bin # for Jenkins
-SECUTILS_=securityUtilities
-SECUTILS=$(PARENT_DIR)/$(SECUTILS_)
+LIBSECUTILS=libSecUtils$(DLL)
+SECUTILS_DIR_=securityUtilities
+SECUTILS_DIR=$(PARENT_DIR)/$(SECUTILS_DIR_)
 LIBCMP_INC ?= include_cmp
 LIBCMP_OUT ?= .
 
@@ -45,9 +46,9 @@ CC = gcc
 ifdef NDEBUG
     override CFLAGS += -DNDEBUG=1
 endif
-override CFLAGS += -g -O0 -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Wextra -Wconversion -Werror -Woverflow# #-MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
+override CFLAGS += -g -O0 -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Werror -Wall -Woverflow -Wconversion# #-Wextra -MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
 ifeq ($(LPATH),)
-   override CFLAGS += -I$(SECUTILS)/include -I$(PARENT_DIR)/$(LIBCMP_INC)
+   override CFLAGS += -I$(SECUTILS_DIR)/include -I$(PARENT_DIR)/$(LIBCMP_INC)
 endif
 override CFLAGS += -I$(PARENT_DIR)/include
 override CFLAGS += -isystem $(OPENSSL)/include# # use of -isystem is critical for selecting wanted OpenSSL version
@@ -59,7 +60,7 @@ endif
 
 ifeq ($(LPATH),)
     override LDFLAGS += -L$(PARENT_DIR)/$(LIBCMP_OUT) -Wl,-rpath=$(LIBCMP_OUT)
-    override LDFLAGS += -L$(SECUTILS) -Wl,-rpath=$(SECUTILS_)
+    override LDFLAGS += -L$(SECUTILS) -Wl,-rpath=$(SECUTILS_DIR_)
     override LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
 else
     override LDFLAGS += -L$(LPATH)
@@ -74,7 +75,7 @@ SRCS = $(OBJS:$(OBJ)=.c)
 
 DEPS = $(SRCS:.c=.d)
 
-DLLS = *$(DLL)*
+OPENSSL_DLLS = *{crypto,ssl}*.dll
 
 EXES = $(PARENT_DIR)/cmpClientDemo$(EXE)
 
@@ -82,11 +83,13 @@ EXES = $(PARENT_DIR)/cmpClientDemo$(EXE)
 
 .PHONY: build
 build:	$(EXES)
-ifeq ($(LPATH),)
 ifeq ($(OS),Windows_NT)
-	@echo "Copying DLLs to base directory for convenient use with Windows"
-	@cp -a $(SECUTILS)/$(DLLS) $(OPENSSL_LIB)/$(DLLS) $(PARENT_DIR) # --no-preserve=mode
+ifeq ($(LPATH),)
+	@echo "Copying OpenSSL DLLs to base directory for convenient use with Windows"
+	@cp --preserve=timestamps $(OPENSSL_LIB)/$(OPENSSL_DLLS) $(PARENT_DIR)
 endif
+	@echo "Copying SecUtils DLL to base directory for convenient use with Windows"
+	@cp --preserve=timestamps $(SECUTILS_DIR)/$(LIBSECUTILS) $(PARENT_DIR) # $(OPENSSL_LIB)/*{crypto,ssl}*.dll
 endif
 
 -include $(DEPS)
@@ -99,10 +102,10 @@ $(OBJS): %$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"
 
 $(LIBGENCMPCL): genericCMPClient$(OBJ)
-	$(CC) $^ -shared -o $@
+	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@
 
 $(PARENT_DIR)/cmpClientDemo$(EXE): cmpClientDemo$(OBJ) | $(LIBGENCMPCL)
-	$(CC) $(LDFLAGS) -L$(PARENT_DIR) $< -lgencmpcl $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $< -lgencmpcl $(LIBS) -o $@
 
 .PHONY: all
 all: build
@@ -112,8 +115,9 @@ all: build
 .PHONY: clean
 clean:
 	rm -f $(EXES) $(LIBGENCMPCL) $(DEPS) $(OBJS)
-ifeq ($(LPATH),)
 ifeq ($(OS),Windows_NT)
-	rm -f $(PARENT_DIR)/$(DLLS)
+ifeq ($(LPATH),)
+	rm -f $(PARENT_DIR)/$(OPENSSL_DLLS)
 endif
+	rm -f $(PARENT_DIR)/$(LIBSECUTILS)
 endif

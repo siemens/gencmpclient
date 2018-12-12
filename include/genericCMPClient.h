@@ -143,6 +143,7 @@ bool CREDENTIALS_save(const CREDENTIALS *creds, const char *file, const char *ke
 /* X509_STORE helpers */
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
 STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc);
+void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls);
 bool STORE_add_crls(X509_STORE* truststore, OPTIONAL const STACK_OF(X509_CRL) * crls);
 /* also sets certificate verification callback: */
 bool STORE_set_parameters(X509_STORE *truststore,

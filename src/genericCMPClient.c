@@ -537,6 +537,11 @@ X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc)
     return STORE_load_trusted(trusted_certs, desc, false);
 }
 
+void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls)
+{
+    sk_X509_CRL_pop_free(crls, X509_CRL_free);
+}
+
 STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc)
 {
     return FILES_load_crls_multi(files, FORMAT_ASN1, desc);

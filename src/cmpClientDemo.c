@@ -12,18 +12,61 @@
 enum use_case { imprint, bootstrap, update,
                 revocation /* 'revoke' already defined in unistd.h */ };
 
-static int CMPclient_demo(enum use_case use_case)
+SSL_CTX *setup_TLS(void)
 {
-    X509_STORE *cmp_truststore = NULL;
-    CREDENTIALS *creds = NULL;
-    X509_STORE *new_cert_truststore = NULL;
-    OSSL_CMP_CTX *ctx = NULL;
-    X509_STORE *tls_truststore = NULL;
+    STACK_OF(X509_CRL) *crls = NULL;
     CREDENTIALS *tls_creds = NULL;
     SSL_CTX *tls = NULL;
+
+    const char *trusted = "certs/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt";
+    X509_STORE *tls_truststore = STORE_load(trusted, "trusted certs for TLS level");
+    if (tls_truststore == NULL)
+        goto err;
+
+    const char *crls_file = "certs/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl"; /* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
+    crls = CRLs_load(crls_file, "CRLs for TLS level");
+    if (crls == NULL)
+        goto err;
+
+    const X509_VERIFY_PARAM *vpm = NULL;
+    const char *CRLs_url = NULL;
+    const char *OCSP_url = NULL;
+    if (!STORE_set_parameters(tls_truststore, OPTIONAL vpm, crls,
+                              true /* use_CDPs */, OPTIONAL CRLs_url,
+                              false/* use_AIAs */, OPTIONAL OCSP_url))
+        goto err;
+
+    const char *tls_certs = "certs/ppki_playground_tls.p12";
+    const char *tls_pkey = tls_certs;
+    tls_creds = CREDENTIALS_load(tls_certs, tls_pkey, "pass:12345", "credentials for TLS level");
+    if (tls_creds == NULL)
+        goto err;
+
+    const char *ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
+    const int security_level = -1;
+    tls = TLS_new(tls_truststore, tls_creds, ciphers, security_level);
+    if (tls == NULL)
+        STORE_free(tls_truststore);
+
+ err:
+    CRLs_free(crls);
+    CREDENTIALS_free(tls_creds);
+    return tls;
+}
+
+static int CMPclient_demo(enum use_case use_case)
+{
+    CMP_CTX *ctx = NULL;
+
+    X509_STORE *cmp_truststore = NULL;
+    CREDENTIALS *creds = NULL;
+
+    SSL_CTX *tls = NULL;
+
     EVP_PKEY *new_key = NULL;
     X509_EXTENSIONS *exts = NULL;
     CREDENTIALS *new_creds = NULL;
+    X509_STORE *new_cert_truststore = NULL;
 
     OSSL_cmp_log_cb_t log_fn = NULL;
     CMP_err err = CMPclient_init(log_fn);
@@ -59,9 +102,11 @@ static int CMPclient_demo(enum use_case use_case)
             !STORE_set_parameters(cmp_truststore, OPTIONAL vpm, crls,
                                   true /* use_CDPs */, OPTIONAL CRLs_url, 
                                   false/* use_AIAs */, OPTIONAL OCSP_url)) {
+            CRLs_free(crls);
             err = -1;
             goto err;
         }
+        CRLs_free(crls);
     }
     if (use_case == imprint || use_case == bootstrap) { /* TODO: use different creds for imprinting */
         const char *certs = "certs/ppki_playground_cmp_signer.p12";
@@ -86,11 +131,12 @@ static int CMPclient_demo(enum use_case use_case)
         goto err;
     }
 
+    const bool implicit_confirm = use_case == update;
     err = CMPclient_prepare(&ctx, OPTIONAL log_fn,
                             cmp_truststore, OPTIONAL untrusted,
                             creds, digest,
                             OPTIONAL transfer_fn, total_timeout,
-                            new_cert_truststore, false/* implicit_confirm */);
+                            new_cert_truststore, implicit_confirm);
     if (err != CMP_OK) {
         goto err;
     }
@@ -105,38 +151,9 @@ static int CMPclient_demo(enum use_case use_case)
         ?  "/ejbca/publicweb/cmp/PlaygroundECC"
         :  "/ejbca/publicweb/cmp/PlaygroundCMPSigning";
     int timeout = 10;
-    {
-        {
-            const char *file = "certs/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt";
-            tls_truststore = STORE_load(file, "trusted certs for TLS level");
-        }
-        const X509_VERIFY_PARAM *vpm = NULL;
-        STACK_OF(X509_CRL) *crls = NULL;
-        {
-            const char *file = "certs/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl"; /* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
-            crls = CRLs_load(file, "CRLs for TLS level");
-        }
-        const char *CRLs_url = NULL;
-        const char *OCSP_url = NULL;
-        if (tls_truststore == NULL || crls == NULL ||
-            !STORE_set_parameters(tls_truststore, OPTIONAL vpm, crls,
-                                  true /* use_CDPs */, OPTIONAL CRLs_url,
-                                  false/* use_AIAs */, OPTIONAL OCSP_url)) {
-            err = -3;
-            goto err;
-        }
-    }
-    {
-        const char *tls_certs = "certs/ppki_playground_tls.p12";
-        const char *tls_pkey = tls_certs;
-        tls_creds = CREDENTIALS_load(tls_certs, tls_pkey, "pass:12345", "credentials for TLS level");
-        if (tls_creds == NULL) {
-            err = -4;
-            goto err;
-        }
-    }
-    const char *ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
-    tls = TLS_new(tls_truststore, tls_creds, ciphers, -1);
+
+
+    tls = setup_TLS();
     if (tls == NULL) {
         err = -5;
         goto err;
@@ -218,9 +235,9 @@ static int CMPclient_demo(enum use_case use_case)
     CREDENTIALS_free(new_creds);
     EXTENSIONS_free(exts);
     KEY_free(new_key);
+
     TLS_free(tls);
-    CREDENTIALS_free(tls_creds);
-    STORE_free(tls_truststore);
+
     STORE_free(new_cert_truststore);
     STORE_free(cmp_truststore);
     CREDENTIALS_free(creds);

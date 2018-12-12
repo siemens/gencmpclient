@@ -12,18 +12,50 @@
 enum use_case { imprint, bootstrap, update,
                 revocation /* 'revoke' already defined in unistd.h */ };
 
+#define KEYTYPE "ECC" /* or "RSA" */
+#define ROOT_CA "PPKIPlayground"KEYTYPE"RootCAv10"
+#define INFR_ROOT_CA    "PPKIPlaygroundInfrastructureRootCAv10"
+#define INFR_ISSUING_CA "PPKIPlaygroundInfrastructureIssuingCAv10"
+#define TRUST_DIR "certs/trusted/"
+#define CRL_DIR   "certs/crls/"
+
+#define RSA_SPEC "RSA:2048"
+#define ECC_SPEC "EC:prime256v1"
+const char *subject = "/CN=test-genCMPClientDemo_detailed/OU=PPKI Playground"
+        "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
+const char *digest = "sha256";
+
+const char *const new_certs = "certs/new.crt";
+const char *const new_key   = "certs/new.pem";
+const char *const new_key_pass = NULL; /* or, e.g., "pass:12345", or "engine:id" */
+
+const char *const cmp_certs = "certs/ppki_playground_cmp_signer.p12";
+const char *const cmp_key   = "certs/ppki_playground_cmp_signer.p12";
+const char *const cmp_key_pass = "pass:12345";
+
+const char *const tls_certs = "certs/ppki_playground_tls.p12";
+const char *const tls_key   = "certs/ppki_playground_tls.p12";
+const char *const tls_key_pass = "pass:12345";
+
+#define INI_PATH "/ejbca/publicweb/cmp/Playground"KEYTYPE
+#define UPD_PATH "/ejbca/publicweb/cmp/PlaygroundCMPSigning"
+#define     SERVER "ppki-playground.ct.siemens.com:80"
+#define TLS_SERVER "ppki-playground.ct.siemens.com:443"
+const bool use_tls = true;
+const char *tls_ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
+
 SSL_CTX *setup_TLS(void)
 {
     STACK_OF(X509_CRL) *crls = NULL;
     CREDENTIALS *tls_creds = NULL;
     SSL_CTX *tls = NULL;
 
-    const char *trusted = "certs/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt";
+    const char *trusted = TRUST_DIR INFR_ROOT_CA ".crt";
     X509_STORE *truststore = STORE_load(trusted, "trusted certs for TLS level");
     if (truststore == NULL)
         goto err;
 
-    const char *crls_files = "certs/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl"; /* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
+    const char *crls_files = CRL_DIR INFR_ISSUING_CA ".crl";
     crls = CRLs_load(crls_files, "CRLs for TLS level");
     if (crls == NULL)
         goto err;
@@ -38,15 +70,13 @@ SSL_CTX *setup_TLS(void)
                               use_AIAs, OPTIONAL OCSP_url))
         goto err;
 
-    const char *certs = "certs/ppki_playground_tls.p12";
-    const char *pkey = certs;
-    tls_creds = CREDENTIALS_load(certs, pkey, "pass:12345", "credentials for TLS level");
+    tls_creds = CREDENTIALS_load(tls_certs, tls_key, tls_key_pass,
+                                 "credentials for TLS level");
     if (tls_creds == NULL)
         goto err;
 
-    const char *ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
     const int security_level = -1;
-    tls = TLS_new(truststore, tls_creds, ciphers, security_level);
+    tls = TLS_new(truststore, tls_creds, tls_ciphers, security_level);
 
  err:
     if (tls == NULL)
@@ -61,16 +91,14 @@ X509_STORE *setup_CMP_truststore(void)
     STACK_OF(X509_CRL) *crls = NULL;
 
     X509_STORE *cmp_truststore = NULL;
-    const char *trusted_cert_files =
-        "certs/trusted/PPKIPlaygroundECCRootCAv10.crt, "
-        "certs/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt";
+    const char *trusted_cert_files = TRUST_DIR ROOT_CA ".crt, "
+                                     TRUST_DIR INFR_ROOT_CA ".crt";
     cmp_truststore = STORE_load(trusted_cert_files, "trusted certs for CMP level");
     if (cmp_truststore == NULL)
         goto err;
 
-    const char *crls_files =
-        "certs/crls/PPKIPlaygroundInfrastructureRootCAv10.crl, "/* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
-        "certs/crls/PPKIPlaygroundECCRootCAv10.crl";/* TODO: should also work: "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+ECC+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" */
+    const char *crls_files = CRL_DIR ROOT_CA ".crl, "
+                             CRL_DIR INFR_ROOT_CA ".crl";
     crls = CRLs_load(crls_files, "CRLs for CMP level");
     if (crls == NULL)
         goto err;
@@ -101,7 +129,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
     if (cmp_truststore == NULL)
         return -1;
 
-    const char *new_cert_trusted = "certs/trusted/PPKIPlaygroundECCRootCAv10.crt";
+    const char *new_cert_trusted = TRUST_DIR ROOT_CA ".crt";
     X509_STORE *new_cert_truststore =
         STORE_load(new_cert_trusted, "trusted certs for verifying new cert");
     CMP_err err = -2;
@@ -109,7 +137,6 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
         goto err;
 
     STACK_OF(X509) *untrusted = NULL; /* TODO: add helper function */
-    const char *digest = "sha256";
     OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     const int total_timeout = 100;
     const bool implicit_confirm = use_case == update;
@@ -161,22 +188,15 @@ static int CMPclient_demo(enum use_case use_case)
 
     CMP_CTX *ctx = NULL;
     SSL_CTX *tls = NULL;
-    EVP_PKEY *new_key = NULL;
+    EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
     CREDENTIALS *new_creds = NULL;
 
-    CREDENTIALS *cmp_creds = NULL;
-    if (use_case == imprint || use_case == bootstrap) { /* TODO: use different creds for imprinting */
-        const char *certs = "certs/ppki_playground_cmp_signer.p12";
-        const char *pkey = certs;
-        const char *source = "pass:12345";
-        cmp_creds = CREDENTIALS_load(certs, pkey, source, "credentials for CMP level");
-    } else if (use_case == update || use_case == revocation) {
-        const char *certs = "certs/new.crt";
-        const char *pkey = "certs/new.pem";
-        const char *source = NULL /* unencrypted key input file */;
-        cmp_creds = CREDENTIALS_load(certs, pkey, source, "credentials for CMP level");
-    }
+    const char *const creds_desc = "credentials for CMP level";
+    CREDENTIALS *cmp_creds =
+        (use_case == imprint || use_case == bootstrap) /* TODO: use different creds for imprinting */
+        ? CREDENTIALS_load(cmp_certs, cmp_key, cmp_key_pass, creds_desc)
+        : CREDENTIALS_load(new_certs, new_key, new_key_pass, creds_desc);
     if (cmp_creds == NULL) {
         err = -4;
         goto err;
@@ -192,31 +212,28 @@ static int CMPclient_demo(enum use_case use_case)
     /* direct call of CMP API: accept non-enabled key usage digitalSignature */
     (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_IGNORE_KEYUSAGE, 1);
 
-    tls = setup_TLS();
-    if (tls == NULL) {
+    if (use_tls && (tls = setup_TLS()) == NULL) {
         err = -5;
         goto err;
     }
-    const char *server = "ppki-playground.ct.siemens.com:443";
-    const char *path = (use_case == imprint || use_case == bootstrap)
-        ?  "/ejbca/publicweb/cmp/PlaygroundECC"
-        :  "/ejbca/publicweb/cmp/PlaygroundCMPSigning";
+    const char *path = (use_case == imprint ||
+                        use_case == bootstrap) ? INI_PATH : UPD_PATH;
     const int timeout = 10;
+    const char *server = use_tls ? TLS_SERVER : SERVER;
     err = CMPclient_setup_HTTP(ctx, server, path, timeout, tls, NULL/* proxy */);
     if (err != CMP_OK) {
         goto err;
     }
 
-    const char *subject = "/CN=test-genCMPClientDemo_detailed/OU=PPKI Playground"
-        "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
     if (use_case != revocation) {
-        new_key = KEY_new("EC:secp521r1");
-        if (new_key == NULL) {
+        const char *key_spec = !strcmp(KEYTYPE, "RSA") ? RSA_SPEC : ECC_SPEC;
+        new_pkey = KEY_new(key_spec);
+        if (new_pkey == NULL) {
             err = -6;
             goto err;
         }
     }
-    if ((use_case == imprint || use_case == bootstrap) 
+    if ((use_case == imprint || use_case == bootstrap)
         && (exts = setup_X509_extensions()) == NULL) {
         err = -7;
         goto err;
@@ -224,13 +241,13 @@ static int CMPclient_demo(enum use_case use_case)
 
     switch (use_case) {
     case imprint:
-        err = CMPclient_imprint(ctx, &new_creds, new_key, subject, exts);
+        err = CMPclient_imprint(ctx, &new_creds, new_pkey, subject, exts);
         break;
     case bootstrap:
-        err = CMPclient_bootstrap(ctx, &new_creds, new_key, subject, exts);
+        err = CMPclient_bootstrap(ctx, &new_creds, new_pkey, subject, exts);
         break;
     case update:
-        err = CMPclient_update(ctx, &new_creds, new_key);
+        err = CMPclient_update(ctx, &new_creds, new_pkey);
         break;
     case revocation:
         err = CMPclient_revoke(ctx, CREDENTIALS_get_cert(cmp_creds), CRL_REASON_NONE);
@@ -243,11 +260,8 @@ static int CMPclient_demo(enum use_case use_case)
     }
 
     if (use_case != revocation) {
-        const char *cert_file = "certs/new.crt";
-        const char *key_file = "certs/new.pem";
-        const char *source = NULL /* unencrypted key output file */;
-        const char *desc = "newly enrolled certificate and related key and chain";
-        if (!CREDENTIALS_save(new_creds, cert_file, key_file, OPTIONAL source, desc)) {
+        const char *new_desc = "newly enrolled certificate and related key and chain";
+        if (!CREDENTIALS_save(new_creds, new_certs, new_key, new_key_pass, new_desc)) {
             err = -9;
             goto err;
         }
@@ -256,7 +270,7 @@ static int CMPclient_demo(enum use_case use_case)
  err:
     CMPclient_finish(ctx);
     TLS_free(tls);
-    KEY_free(new_key);
+    KEY_free(new_pkey);
     EXTENSIONS_free(exts);
     CREDENTIALS_free(new_creds);
     CREDENTIALS_free(cmp_creds);

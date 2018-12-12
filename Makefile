@@ -44,7 +44,7 @@ ifdef OPENSSL_VERSION_FROM_INCLUDE
 OPENSSL_VERSION=$(shell fgrep OPENSSL_VERSION_NUMBER $(OPENSSL_DIR)/include/openssl/opensslv.h | sed -r $(OPENSSL_VERSION_NUMBER_SUBST))
 else
 OPENSSL_VERSION_SUBST='s/.*?\(//; s/\).*//'
-OPENSSL_VERSION=$(shell make -f OpenSSL_version.mk clean version OPENSSL_DIR=$(OPENSSL_DIR) | tail -n 1 | sed -r $(OPENSSL_VERSION_SUBST))
+OPENSSL_VERSION=$(shell make -f OpenSSL_version.mk -B OPENSSL_DIR=$(OPENSSL_DIR) | grep -E 'OpenSSL .*?\(0x.*?\)' | sed -r $(OPENSSL_VERSION_SUBST))
 endif
 ifeq ($(findstring 0x,$(OPENSSL_VERSION)),)
     $(error cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)')

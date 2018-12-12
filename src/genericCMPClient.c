@@ -16,13 +16,13 @@
 #ifdef LOCAL_DEFS
 
 EVP_PKEY* CREDENTIALS_get_pkey(const CREDENTIALS* creds);
-STACK_OF(X509)* CREDENTIALS_get_chain(const CREDENTIALS* creds);
 X509* CREDENTIALS_get_cert(const CREDENTIALS* creds);
+STACK_OF(X509)* CREDENTIALS_get_chain(const CREDENTIALS* creds);
 char* CREDENTIALS_get_pwd(const CREDENTIALS* creds);
 char* CREDENTIALS_get_pwdref(const CREDENTIALS* creds);
 
 void LOG_init(OPTIONAL LOG_cb_t log_fn);
-int LOG (const char *file, int lineno, severity level, const char *fmt, ...);
+int LOG(const char *file, int lineno, severity level, const char *fmt, ...);
 #define FILE_LINE __FILE__, __LINE__
 #define FL_ERR   FILE_LINE, LOG_ERR
 #define FL_WARN  FILE_LINE, LOG_WARNING
@@ -422,6 +422,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
 	return ERR_R_MALLOC_FAILURE;
     }
     *new_creds = creds;
+    ERR_clear_error(); /* empty the OpenSSL error queue */
     return CMP_OK;
 
     err:
@@ -506,6 +507,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
         !OSSL_CMP_exec_RR_ses(ctx)) {
 	goto err;
     }
+    ERR_clear_error(); /* empty the OpenSSL error queue */
     return CMP_OK;
 
     err:

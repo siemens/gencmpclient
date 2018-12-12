@@ -140,8 +140,6 @@ bool CREDENTIALS_save(const CREDENTIALS *creds, const char *file, const char *ke
                       const char *source, OPTIONAL const char *desc);
 
 
-
-
 /* X509_STORE helpers */
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
 STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc);

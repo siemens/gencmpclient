@@ -174,7 +174,7 @@ static int CMPclient_demo(void)
     {
         const char *cert_file = "certs/new.crt";
         const char *key_file = "certs/new.pem";
-        const char *source = NULL/* plain file */;
+        const char *source = NULL /* unencrypted key output file */;
         const char *desc = "newly enrolled certificate and related key and chain";
         if (!CREDENTIALS_save(new_creds, cert_file, key_file, OPTIONAL source, desc)) {
             err = -8;

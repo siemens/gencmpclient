@@ -97,6 +97,10 @@ test:	build
 	@no_proxy=ppki-playground.ct.siemens.com wget -q "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O certs/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl
 	no_proxy=ppki-playground.ct.siemens.com ./cmpClientDemo$(EXE)
 
+test_all: test
+	no_proxy=ppki-playground.ct.siemens.com ./cmpClientDemo$(EXE) update
+	no_proxy=ppki-playground.ct.siemens.com ./cmpClientDemo$(EXE) revoke
+
 all:	build test
 
 

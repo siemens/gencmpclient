@@ -4,7 +4,7 @@ This is the code repository for the cross-division generic CMP client library.
 # Prerequisites
 
 This library should work with any flavor of Linux.
-On Windows so far [Cygwin](https://www.cygwin.com/) and the Windows Subsystem for Linux ([WSL(https://docs.microsoft.com/windows/wsl/about)]) is supported.
+On Windows so far [Cygwin](https://www.cygwin.com/) and the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)) is supported.
 
 The following development tools are required.
 * Git
@@ -55,7 +55,7 @@ make
 ```
 
 The result is in, for instance, `./libgencmpcl.so`.
-This also builds all required dependencies (such as `./libcmp.so` and `./securityUtilities/libSecUtils.so`) and a demo application (typically `./cmpClientDemo`).
+This also builds all required dependencies (such as `./libcmp.so` and `./securityUtilities/libSecUtils.so`) and a demo application (`./cmpClientDemo`).
 
 **Imporant Note:** by default, the Security Utilities make use of the [Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library
 for secure device-level storage of key material for confidentiality and integriy protection of files.
@@ -63,7 +63,7 @@ Since this library is not yet generally available Siemens-wide the SecUtils are 
 This means that secure storage of protection credentials for private keys and trusted certificates needs to be solved by other means.
 
 
-# Using the library
+# Using the library with the demo client
 
 Have a look at the demo client in [`src/cmpClientDemo.c`](src/cmpClientDemo.c).
 It can be executed with
@@ -84,6 +84,15 @@ You can view this certificate for instance by executing
 ```
 openssl x509 -noout -text -in certs/new.crt
 ```
+
+The demo client allows also to update and revoke the enrolled certifiate, like this:
+```
+./cmpClientDemo update
+./cmpClientDemo revoke
+```
+
+
+# Using the library in own applications
 
 You will need to include in your application sources the file [`genericCMPClient.h`](include/genericCMPClient.h).
 

@@ -9,7 +9,10 @@
 
 #include <genericCMPClient.h>
 
-static int CMPclient_demo(void)
+enum use_case { imprint, bootstrap, update,
+                revocation /* 'revoke' already defined in unistd.h */ };
+
+static int CMPclient_demo(enum use_case use_case)
 {
     X509_STORE *cmp_truststore = NULL;
     CREDENTIALS *creds = NULL;
@@ -60,10 +63,16 @@ static int CMPclient_demo(void)
             goto err;
         }
     }
-    {
+    if (use_case == imprint || use_case == bootstrap) { /* TODO: use different creds for imprinting */
         const char *certs = "certs/ppki_playground_cmp_signer.p12";
         const char *pkey = certs;
-        creds = CREDENTIALS_load(certs, pkey, "pass:12345", "credentials for CMP level");
+        const char *source = "pass:12345";
+        creds = CREDENTIALS_load(certs, pkey, source, "credentials for CMP level");
+    } else if (use_case == update || use_case == revocation) {
+        const char *certs = "certs/new.crt";
+        const char *pkey = "certs/new.pem";
+        const char *source = NULL /* unencrypted key input file */;
+        creds = CREDENTIALS_load(certs, pkey, source, "credentials for CMP level");
     }
     const char *digest = "sha256";
     OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
@@ -92,7 +101,9 @@ static int CMPclient_demo(void)
     (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_IGNORE_KEYUSAGE, 1);
 
     const char *server = "ppki-playground.ct.siemens.com:443";
-    const char *path = "/ejbca/publicweb/cmp/PlaygroundECC";
+    const char *path = (use_case == imprint || use_case == bootstrap)
+        ?  "/ejbca/publicweb/cmp/PlaygroundECC"
+        :  "/ejbca/publicweb/cmp/PlaygroundCMPSigning";
     int timeout = 10;
     {
         {
@@ -137,12 +148,14 @@ static int CMPclient_demo(void)
 
     const char *subject = "/CN=test-genCMPClientDemo_detailed/OU=PPKI Playground"
         "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
-    new_key = KEY_new("EC:secp521r1");
-    if (new_key == NULL) {
-        err = -6;
-        goto err;
+    if (use_case != revocation) {
+        new_key = KEY_new("EC:secp521r1");
+        if (new_key == NULL) {
+            err = -6;
+            goto err;
+        }
     }
-    {
+    if (use_case == imprint || use_case == bootstrap) {
         exts = EXTENSIONS_new();
         BIO *policy_sections = BIO_new(BIO_s_mem());
         if (exts == NULL || policy_sections == NULL ||
@@ -166,12 +179,27 @@ static int CMPclient_demo(void)
         }
         BIO_free(policy_sections);
     }
-    err = CMPclient_bootstrap(ctx, &new_creds, new_key, subject, exts);
+    switch (use_case) {
+    case imprint:
+        err = CMPclient_imprint(ctx, &new_creds, new_key, subject, exts);
+        break;
+    case bootstrap:
+        err = CMPclient_bootstrap(ctx, &new_creds, new_key, subject, exts);
+        break;
+    case update:
+        err = CMPclient_update(ctx, &new_creds, new_key);
+        break;
+    case revocation:
+        err = CMPclient_revoke(ctx, CREDENTIALS_get_cert(creds), CRL_REASON_NONE);
+        break;
+    default:
+        err = -9;
+    }
     if (err != CMP_OK) {
         goto err;
     }
 
-    {
+    if (use_case != revocation) {
         const char *cert_file = "certs/new.crt";
         const char *key_file = "certs/new.pem";
         const char *source = NULL /* unencrypted key output file */;
@@ -203,7 +231,22 @@ static int CMPclient_demo(void)
     return err;
 }
 
-int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
+int main(int argc, char *argv[])
 {
-    return CMPclient_demo() == CMP_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+    enum use_case use_case = bootstrap; /* default */
+    if (argc > 1) {
+        if (argc == 2 && !strcmp(argv[1], "imprint"))
+            use_case = imprint;
+        else if (argc == 2 && !strcmp(argv[1], "bootstrap"))
+            use_case = bootstrap;
+        else if (argc == 2 && !strcmp(argv[1], "update"))
+            use_case = update;
+        else if (argc == 2 && !strcmp(argv[1], "revoke"))
+            use_case = revocation;
+        else {
+            fprintf(stderr, "Usage: %s [imprint | bootstrap | update | revoke]\n", argv[0]);
+            return EXIT_FAILURE;
+        }
+    }
+    return CMPclient_demo(use_case) == CMP_OK ? EXIT_SUCCESS : EXIT_FAILURE;
 }

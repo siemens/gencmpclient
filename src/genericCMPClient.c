@@ -91,14 +91,11 @@ static int CMPOSSL_error()
 
 CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn)
 {
-    CMP_err err = ERR_R_INIT_FAIL;
     LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
     UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, "genericCMPClient");
-    if (!OSSL_CMP_log_init()) {
-        return err;
-    }
-    if (!TLS_init()) {
-        return err;
+    if (!OSSL_CMP_log_init() || !TLS_init()) {
+        LOG(FL_ERR, "failed to initialize genCMPClient\n");
+        return ERR_R_INIT_FAIL;
     }
     return CMP_OK;
 }

@@ -93,27 +93,77 @@ err:
     return cmp_truststore;
 }
 
+CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
+                           OPTIONAL CREDENTIALS *cmp_creds, enum use_case use_case)
+
+{
+    X509_STORE *cmp_truststore = setup_CMP_truststore();
+    if (cmp_truststore == NULL)
+        return -1;
+
+    const char *new_cert_trusted = "certs/trusted/PPKIPlaygroundECCRootCAv10.crt";
+    X509_STORE *new_cert_truststore =
+        STORE_load(new_cert_trusted, "trusted certs for verifying new cert");
+    CMP_err err = -2;
+    if (new_cert_truststore == NULL)
+        goto err;
+
+    STACK_OF(X509) *untrusted = NULL; /* TODO: add helper function */
+    const char *digest = "sha256";
+    OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
+    const int total_timeout = 100;
+    const bool implicit_confirm = use_case == update;
+    err = CMPclient_prepare(pctx, OPTIONAL log_fn,
+                            cmp_truststore, OPTIONAL untrusted,
+                            cmp_creds, digest,
+                            OPTIONAL transfer_fn, total_timeout,
+                            new_cert_truststore, implicit_confirm);
+    sk_X509_pop_free(untrusted, X509_free); /* TODO: add helper function */
+    STORE_free(new_cert_truststore);
+ err:
+    STORE_free(cmp_truststore);
+    return err;
+}
+
+X509_EXTENSIONS *setup_X509_extensions(void)
+{
+    X509_EXTENSIONS *exts = EXTENSIONS_new();
+    if (exts == NULL)
+        return NULL;
+    BIO *policy_sections = BIO_new(BIO_s_mem());
+    if (policy_sections == NULL ||
+        !EXTENSIONS_add_SANs(exts, "localhost, 127.0.0.1, 192.168.0.1") ||
+        !EXTENSIONS_add_ext(exts, "keyUsage", "critical, digitalSignature", NULL) ||
+        !EXTENSIONS_add_ext(exts, "extendedKeyUsage", "critical, serverAuth, "
+                                  "1.3.6.1.5.5.7.3.2"/* clientAuth */, NULL) ||
+        BIO_printf(policy_sections, "%s",
+                   "[pkiPolicy]\n"
+                   "  policyIdentifier = 1.3.6.1.4.1.4329.38.4.2.2\n"
+                   "  CPS.1 = http://www.siemens.com/pki-policy/\n"
+                   "  userNotice.1 = @notice\n"
+                   "[notice]\n"
+                   "  explicitText=Siemens policy text\n") <= 0 ||
+        !EXTENSIONS_add_ext(exts, "certificatePolicies",
+                            "critical, @pkiPolicy", policy_sections)) {
+            EXTENSIONS_free(exts);
+            exts = NULL;
+    }
+    BIO_free(policy_sections);
+    return exts;
+}
+
 static int CMPclient_demo(enum use_case use_case)
 {
-    CMP_CTX *ctx = NULL;
-
-    SSL_CTX *tls = NULL;
-
-    EVP_PKEY *new_key = NULL;
-    X509_EXTENSIONS *exts = NULL;
-    CREDENTIALS *new_creds = NULL;
-    X509_STORE *new_cert_truststore = NULL;
-
     OSSL_cmp_log_cb_t log_fn = NULL;
     CMP_err err = CMPclient_init(log_fn);
     if (err != CMP_OK)
         return err;
 
-    X509_STORE *cmp_truststore = setup_CMP_truststore();
-    if (cmp_truststore == NULL) {
-        err = -1;
-        goto err;
-    }
+    CMP_CTX *ctx = NULL;
+    SSL_CTX *tls = NULL;
+    EVP_PKEY *new_key = NULL;
+    X509_EXTENSIONS *exts = NULL;
+    CREDENTIALS *new_creds = NULL;
 
     CREDENTIALS *cmp_creds = NULL;
     if (use_case == imprint || use_case == bootstrap) { /* TODO: use different creds for imprinting */
@@ -127,27 +177,12 @@ static int CMPclient_demo(enum use_case use_case)
         const char *source = NULL /* unencrypted key input file */;
         cmp_creds = CREDENTIALS_load(certs, pkey, source, "credentials for CMP level");
     }
-    {
-        const char *file = "certs/trusted/PPKIPlaygroundECCRootCAv10.crt";
-        new_cert_truststore = STORE_load(file, "trusted certs for verifying new cert");
-    }
-    if (cmp_creds == NULL || new_cert_truststore == NULL) {
-        err = -2;
+    if (cmp_creds == NULL) {
+        err = -4;
         goto err;
     }
 
-    STACK_OF(X509) *untrusted = NULL; /* TODO: add helper function */
-    const char *digest = "sha256";
-    OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
-    const int total_timeout = 100;
-    const bool implicit_confirm = use_case == update;
-    err = CMPclient_prepare(&ctx, OPTIONAL log_fn,
-                            cmp_truststore, OPTIONAL untrusted,
-                            cmp_creds, digest,
-                            OPTIONAL transfer_fn, total_timeout,
-                            new_cert_truststore, implicit_confirm);
-    STORE_free(cmp_truststore);
-    sk_X509_pop_free(untrusted, X509_free); /* TODO: add helper function */
+    err = prepare_CMP_client(&ctx, log_fn, cmp_creds, use_case);
     if (err != CMP_OK) {
         goto err;
     }
@@ -156,8 +191,6 @@ static int CMPclient_demo(enum use_case use_case)
     (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_UNPROTECTED_ERRORS, 1);
     /* direct call of CMP API: accept non-enabled key usage digitalSignature */
     (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_IGNORE_KEYUSAGE, 1);
-
-
 
     tls = setup_TLS();
     if (tls == NULL) {
@@ -183,30 +216,12 @@ static int CMPclient_demo(enum use_case use_case)
             goto err;
         }
     }
-    if (use_case == imprint || use_case == bootstrap) {
-        exts = EXTENSIONS_new();
-        BIO *policy_sections = BIO_new(BIO_s_mem());
-        if (exts == NULL || policy_sections == NULL ||
-            !EXTENSIONS_add_SANs(exts, "localhost, 127.0.0.1, 192.168.0.1") ||
-            !EXTENSIONS_add_ext(exts, "keyUsage", "critical, digitalSignature", NULL) ||
-            !EXTENSIONS_add_ext(exts, "extendedKeyUsage", "critical, serverAuth, "
-                                "1.3.6.1.5.5.7.3.2"/* clientAuth */, NULL) ||
-            BIO_printf(policy_sections, "%s",
-                       "[pkiPolicy]\n"
-                       "  policyIdentifier = 1.3.6.1.4.1.4329.38.4.2.2\n"
-                       "  CPS.1 = http://www.siemens.com/pki-policy/\n"
-                       "  userNotice.1 = @notice\n"
-                       "[notice]\n"
-                       "  explicitText=Siemens policy text\n") <= 0 ||
-            !EXTENSIONS_add_ext(exts, "certificatePolicies",
-                                "critical, @pkiPolicy", policy_sections)) {
-            BIO_free(policy_sections);
-            EXTENSIONS_free(exts);
-            err = -7;
-            goto err;
-        }
-        BIO_free(policy_sections);
+    if ((use_case == imprint || use_case == bootstrap) 
+        && (exts = setup_X509_extensions()) == NULL) {
+        err = -7;
+        goto err;
     }
+
     switch (use_case) {
     case imprint:
         err = CMPclient_imprint(ctx, &new_creds, new_key, subject, exts);
@@ -221,7 +236,7 @@ static int CMPclient_demo(enum use_case use_case)
         err = CMPclient_revoke(ctx, CREDENTIALS_get_cert(cmp_creds), CRL_REASON_NONE);
         break;
     default:
-        err = -9;
+        err = -8;
     }
     if (err != CMP_OK) {
         goto err;
@@ -233,28 +248,26 @@ static int CMPclient_demo(enum use_case use_case)
         const char *source = NULL /* unencrypted key output file */;
         const char *desc = "newly enrolled certificate and related key and chain";
         if (!CREDENTIALS_save(new_creds, cert_file, key_file, OPTIONAL source, desc)) {
-            err = -8;
+            err = -9;
             goto err;
         }
     }
 
  err:
     CMPclient_finish(ctx);
-    if (err != CMP_OK) {
-        fprintf(stderr, "CMPclient error %d\n", err);
-    }
-    CREDENTIALS_free(new_creds);
-    EXTENSIONS_free(exts);
-    KEY_free(new_key);
-
     TLS_free(tls);
-
-    STORE_free(new_cert_truststore);
+    KEY_free(new_key);
+    EXTENSIONS_free(exts);
+    CREDENTIALS_free(new_creds);
     CREDENTIALS_free(cmp_creds);
+
 #ifndef CLOSE_LOG_ON_EACH_FINISH
     LOG_close();
 #endif
 
+    if (err != CMP_OK) {
+        fprintf(stderr, "CMPclient error %d\n", err);
+    }
     return err;
 }
 

@@ -107,10 +107,12 @@ $(LIBGENCMPCL): genericCMPClient$(OBJ)
 $(PARENT_DIR)/cmpClientDemo$(EXE): cmpClientDemo$(OBJ) | $(LIBGENCMPCL)
 	$(CC) $(LDFLAGS) $< -lgencmpcl $(LIBS) -o $@
 
-.PHONY: all
-all: build
-	mkdir 2>/dev/null $(ARCHIVEDIR) || true
-	rsync -a $(EXES) $(ARCHIVE)
+.PHONY: all archive
+all: build archive
+
+archive:
+	@mkdir 2>/dev/null $(ARCHIVEDIR) || true
+	@cp --preserve=timestamps $(EXES) $(ARCHIVE)
 
 .PHONY: clean
 clean:

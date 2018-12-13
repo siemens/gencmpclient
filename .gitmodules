@@ -3,7 +3,7 @@
 	url = ssh://git@code.siemens.com/mo_mm_linux_distribution/securityUtilities.git
 [submodule "cmpossl"]
 	path = cmpossl
-	url = https://DDvO@github.com/mpeylo/cmpossl.git
+	url = https://git@github.com/mpeylo/cmpossl.git
 [submodule "libs/interfaces"]
 	path = libs/interfaces
 	url = ssh://git@code.siemens.com/mo_mm_linux_distribution/s2l2.interfaces.git

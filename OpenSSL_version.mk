@@ -1,3 +1,9 @@
+ifeq ($(OS),Windows_NT)
+    EXE=.exe
+else
+    EXE=
+endif
+
 #CC=gcc
 ifneq ($(OPENSSL_DIR),)
     CFLAGS+=-I$(OPENSSL_DIR)/include
@@ -8,7 +14,7 @@ LDLIBS=-lcrypto
 .phony: version clean
 
 version: OpenSSL_version
-	@./OpenSSL_version
+	@./OpenSSL_version$(EXE)
 
 clean:
-	rm -f OpenSSL_version
+	rm -f OpenSSL_version$(EXE)

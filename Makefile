@@ -69,7 +69,7 @@ endif
 build:
 ifeq ($(LPATH),)
 	cd $(SECUTILS) && git submodule update --init --recursive || cp --preserve=timestamps ../include/operators.h include/
-	$(MAKE) -C $(SECUTILS) build OPENSSL_DIR="$(OPENSSL_DIR)" #CFLAGS=-DSEC_ENABLE_RSA
+	$(MAKE) -C $(SECUTILS) build OPENSSL_DIR="$(OPENSSL_DIR)"
 	@# the old way to build with CMP was: buildCMPforOpenSSL
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
@@ -77,7 +77,7 @@ endif
 	if [ $$LIBCMP_OPENSSL_VERSION != "$(OPENSSL_VERSION)" ]; then \
 	    (echo "OpenSSL version $$LIBCMP_OPENSSL_VERSION used for building libcmp does not match $(OPENSSL_VERSION) to be used for building client"; false); \
 	fi
-	$(MAKE) -C src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" CFLAGS=$(OSSL_VERSION_QUIRKS)
+	$(MAKE) -C src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
 ifeq ($(LPATH),)
 clean_uta:

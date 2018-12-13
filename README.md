@@ -3,14 +3,13 @@ This is the code repository for the cross-division generic CMP client library.
 
 # Prerequisites
 
-This library should work with any flavor of Linux.
-On Windows so far [Cygwin](https://www.cygwin.com/) and the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)) is supported.
+This library should work with any flavor of Linux, including [Cygwin](https://www.cygwin.com/), possibly on a Virtual Machine or the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
 
 The following development tools are required.
-* Git
-* GNU make
-* C compiler and linker
-* OpenSSL with header files
+* Git (tested with version 2.17.0)
+* GNU make (tested with version 4.1)
+* GNU C compiler (tested with version 5.4.0)
+* OpenSSL (version >= 1.0.2) with header files
 
 As a sanity check you can execute in a shell:
 ```
@@ -32,7 +31,7 @@ You can clone the git repository and its submodules with
 ```
 git clone git@code.siemens.com:product-pki/genCMPClient.git
 cd genCMPClient
-export http_proxy=http://test.coia.siemens.net  # or whatever your HTTP proxy is
+export https_proxy=http://test.coia.siemens.net  # or whatever your HTTP proxy is
 export no_proxy=$no_proxy,code.siemens.com
 git submodule update --init
 ```

@@ -12,8 +12,8 @@
 enum use_case { imprint, bootstrap, update,
                 revocation /* 'revoke' already defined in unistd.h */ };
 
-#define TRUST_DIR "certs/trusted/"
-#define CRL_DIR   "certs/crls/"
+#define TRUST_DIR "creds/trusted/"
+#define CRL_DIR   "creds/crls/"
 
 #define KEYTYPE "ECC" /* or "RSA" */
 #define RSA_SPEC "RSA:2048"
@@ -21,8 +21,8 @@ enum use_case { imprint, bootstrap, update,
 
 const char *const digest = "sha256";
 
-const char *const new_certs = "certs/new.crt";
-const char *const new_key   = "certs/new.pem";
+const char *const new_certs = "creds/new.crt";
+const char *const new_key   = "creds/new.pem";
 const char *const new_key_pass = NULL; /* or, e.g., "pass:12345", or "engine:id" */
 
 #ifdef INSTA /* http://pki.certificate.fi:8080/enroll-ca-list.html */
@@ -37,7 +37,7 @@ const char *const pbm_secret = "insta";
 const char *const pbm_ref = "3078";
 
 
-#define INSTA_P12 "certs/insta_client.p12"
+#define INSTA_P12 "creds/insta_client.p12"
 const char *const cmp_certs = INSTA_P12;
 const char *const cmp_key   = INSTA_P12;
 const char *const cmp_key_pass = NULL;
@@ -65,12 +65,12 @@ const char *const subject = "/CN=test-genCMPClientDemo/OU=PPKI Playground"
 const char *const pbm_secret = "SecretCmp";
 const char *const pbm_ref = NULL;
 
-#define CMP_P12 "certs/ppki_playground_cmp_signer.p12"
+#define CMP_P12 "creds/ppki_playground_cmp_signer.p12"
 const char *const cmp_certs = CMP_P12;
 const char *const cmp_key   = CMP_P12;
 const char *const cmp_key_pass = "pass:12345";
 
-#define TLS_P12 "certs/ppki_playground_tls.p12"
+#define TLS_P12 "creds/ppki_playground_tls.p12"
 const char *const tls_certs = TLS_P12;
 const char *const tls_key   = TLS_P12;
 const char *const tls_key_pass = "pass:12345";

@@ -91,21 +91,29 @@ ifeq ($(LPATH),)
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 	$(MAKE) -C src clean
-	rm -f certs/new.*
+	rm -f creds/new.*
 
 PROXY=http_proxy=http://test.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com
+OCSP_CHECK=openssl ocsp -url http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp -CAfile creds/trusted/PPKIPlaygroundECCRootCAv10.crt -issuer creds/PPKIPlaygroundECCIssuingCAv10.crt -cert creds/new.crt
 test:	build
 	@/bin/echo -e "\n##### running cmpClientDemo #####"
-	@$(PROXY) wget -q 'http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE' -O certs/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl
-	@$(PROXY) wget -q 'http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+ECC+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE' -O certs/crls/PPKIPlaygroundECCRootCAv10.crl
-	@$(PROXY) wget -q 'http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+RSA+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE' -O certs/crls/PPKIPlaygroundRSARootCAv10.crl
+	@for CA in 'Infrastructure+Issuing+CA+v1.0' 'ECC+Root+CA+v1.0' 'RSA+Root+CA+v1.0'; \
+	do \
+		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
+		$(PROXY) wget -q "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+$$CA%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O "creds/crls/PPKIPlayground$$ca.crl"; \
+	done
 	$(PROXY) ./cmpClientDemo$(EXE)
-
-test_all: test
+	@echo :
+	openssl x509 -noout -text -in creds/new.crt | sed '/^         [0-9a-f].*/d'
+	@echo
 	$(PROXY) ./cmpClientDemo$(EXE) imprint
+	@echo
 	$(PROXY) ./cmpClientDemo$(EXE) update
+	@echo :
 	$(OCSP_CHECK)
+	@echo
 	$(PROXY) ./cmpClientDemo$(EXE) revoke
+	@echo :
 	$(OCSP_CHECK)
 
 all:	build test

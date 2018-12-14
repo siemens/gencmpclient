@@ -17,7 +17,7 @@ else
 endif
 
 ifeq ($(OPENSSL_DIR),)
-    OPENSSL_DIR=$(ROOTFS)/usr/
+    OPENSSL_DIR=$(ROOTFS)/usr
 endif
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 # $(OPENSSL_DIR) is relative path, assumed relative to ../

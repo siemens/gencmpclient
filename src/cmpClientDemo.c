@@ -12,36 +12,81 @@
 enum use_case { imprint, bootstrap, update,
                 revocation /* 'revoke' already defined in unistd.h */ };
 
-#define KEYTYPE "ECC" /* or "RSA" */
-#define ROOT_CA "PPKIPlayground"KEYTYPE"RootCAv10"
-#define INFR_ROOT_CA    "PPKIPlaygroundInfrastructureRootCAv10"
-#define INFR_ISSUING_CA "PPKIPlaygroundInfrastructureIssuingCAv10"
 #define TRUST_DIR "certs/trusted/"
 #define CRL_DIR   "certs/crls/"
 
+#define KEYTYPE "ECC" /* or "RSA" */
 #define RSA_SPEC "RSA:2048"
 #define ECC_SPEC "EC:prime256v1"
-const char *subject = "/CN=test-genCMPClientDemo_detailed/OU=PPKI Playground"
-        "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
-const char *digest = "sha256";
+
+const char *const digest = "sha256";
 
 const char *const new_certs = "certs/new.crt";
 const char *const new_key   = "certs/new.pem";
 const char *const new_key_pass = NULL; /* or, e.g., "pass:12345", or "engine:id" */
 
-const char *const cmp_certs = "certs/ppki_playground_cmp_signer.p12";
-const char *const cmp_key   = "certs/ppki_playground_cmp_signer.p12";
+#ifdef INSTA /* http://pki.certificate.fi:8080/enroll-ca-list.html */
+
+#define ROOT_CA        "InstaDemoCA"
+#define INFR_ROOT_CA    ROOT_CA
+#define INFR_ISSUING_CA ROOT_CA
+
+const char *const subject = "/CN=test-genCMPClientDemo";
+
+const char *const pbm_secret = "insta";
+const char *const pbm_ref = "3078";
+
+
+#define INSTA_P12 "certs/insta_client.p12"
+const char *const cmp_certs = INSTA_P12;
+const char *const cmp_key   = INSTA_P12;
+const char *const cmp_key_pass = NULL;
+
+const char *const tls_certs = INSTA_P12;
+const char *const tls_key   = INSTA_P12;
+const char *const tls_key_pass = NULL;
+
+#define INI_PATH "pkix/"
+#define UPD_PATH INI_PATH
+#define     SERVER "pki.certificate.fi:8700"
+#define TLS_SERVER SERVER
+const char *const proxy = NULL; /* or, e.g., "test.coia.siemens.net:9400" */
+const bool use_tls = false;
+
+#else
+
+#define      ROOT_CA    "PPKIPlayground"KEYTYPE"RootCAv10"
+#define INFR_ROOT_CA    "PPKIPlaygroundInfrastructureRootCAv10"
+#define INFR_ISSUING_CA "PPKIPlaygroundInfrastructureIssuingCAv10"
+
+const char *const subject = "/CN=test-genCMPClientDemo/OU=PPKI Playground"
+        "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
+
+const char *const pbm_secret = "SecretCmp";
+const char *const pbm_ref = NULL;
+
+#define CMP_P12 "certs/ppki_playground_cmp_signer.p12"
+const char *const cmp_certs = CMP_P12;
+const char *const cmp_key   = CMP_P12;
 const char *const cmp_key_pass = "pass:12345";
 
-const char *const tls_certs = "certs/ppki_playground_tls.p12";
-const char *const tls_key   = "certs/ppki_playground_tls.p12";
+#define TLS_P12 "certs/ppki_playground_tls.p12"
+const char *const tls_certs = TLS_P12;
+const char *const tls_key   = TLS_P12;
 const char *const tls_key_pass = "pass:12345";
 
 #define INI_PATH "/ejbca/publicweb/cmp/Playground"KEYTYPE
 #define UPD_PATH "/ejbca/publicweb/cmp/PlaygroundCMPSigning"
-#define     SERVER "ppki-playground.ct.siemens.com:80"
-#define TLS_SERVER "ppki-playground.ct.siemens.com:443"
+#define SRV_NAME "ppki-playground.ct.siemens.com"
+#define     SERVER SRV_NAME":80"
+#define TLS_SERVER SRV_NAME":443"
+const char *const proxy = NULL;
 const bool use_tls = true;
+
+#endif
+
+const char *const cmp_untrusted = TRUST_DIR ROOT_CA".crt";
+
 const char *tls_ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
 
 SSL_CTX *setup_TLS(void)
@@ -50,12 +95,13 @@ SSL_CTX *setup_TLS(void)
     CREDENTIALS *tls_creds = NULL;
     SSL_CTX *tls = NULL;
 
-    const char *trusted = TRUST_DIR INFR_ROOT_CA ".crt";
+    const char *trusted = TRUST_DIR INFR_ROOT_CA".crt";
     X509_STORE *truststore = STORE_load(trusted, "trusted certs for TLS level");
     if (truststore == NULL)
         goto err;
+    /* TODO maybe also add untrusted TLS certs */
 
-    const char *crls_files = CRL_DIR INFR_ISSUING_CA ".crl";
+    const char *crls_files = CRL_DIR INFR_ISSUING_CA".crl";
     crls = CRLs_load(crls_files, "CRLs for TLS level");
     if (crls == NULL)
         goto err;
@@ -88,19 +134,18 @@ SSL_CTX *setup_TLS(void)
 
 X509_STORE *setup_CMP_truststore(void)
 {
-    STACK_OF(X509_CRL) *crls = NULL;
-
     X509_STORE *cmp_truststore = NULL;
-    const char *trusted_cert_files = TRUST_DIR ROOT_CA ".crt, "
-                                     TRUST_DIR INFR_ROOT_CA ".crt";
-    cmp_truststore = STORE_load(trusted_cert_files, "trusted certs for CMP level");
-    if (cmp_truststore == NULL)
+
+    const char *crls_files = CRL_DIR ROOT_CA".crl, "
+                             CRL_DIR INFR_ROOT_CA".crl";
+    STACK_OF(X509_CRL) *crls = CRLs_load(crls_files, "CRLs for CMP level");
+    if (crls == NULL)
         goto err;
 
-    const char *crls_files = CRL_DIR ROOT_CA ".crl, "
-                             CRL_DIR INFR_ROOT_CA ".crl";
-    crls = CRLs_load(crls_files, "CRLs for CMP level");
-    if (crls == NULL)
+    const char *trusted_cert_files = TRUST_DIR ROOT_CA".crt, "
+                                     TRUST_DIR INFR_ROOT_CA".crt";
+    cmp_truststore = STORE_load(trusted_cert_files, "trusted certs for CMP level");
+    if (cmp_truststore == NULL)
         goto err;
 
     const X509_VERIFY_PARAM *vpm = NULL;
@@ -129,14 +174,15 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
     if (cmp_truststore == NULL)
         return -1;
 
-    const char *new_cert_trusted = TRUST_DIR ROOT_CA ".crt";
+    const char *new_cert_trusted = TRUST_DIR ROOT_CA".crt";
     X509_STORE *new_cert_truststore =
         STORE_load(new_cert_trusted, "trusted certs for verifying new cert");
     CMP_err err = -2;
     if (new_cert_truststore == NULL)
         goto err;
 
-    STACK_OF(X509) *untrusted = NULL; /* TODO: add helper function */
+    STACK_OF(X509) *untrusted = cmp_untrusted == NULL ? NULL :
+        FILES_load_certs_autofmt(cmp_untrusted, FORMAT_PEM, NULL/* pass */, "untrusted certs for CMP"); /* TODO: add helper function CERTS_load(file, desc) */
     OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     const int total_timeout = 100;
     const bool implicit_confirm = use_case == update;
@@ -145,7 +191,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
                             cmp_creds, digest,
                             OPTIONAL transfer_fn, total_timeout,
                             new_cert_truststore, implicit_confirm);
-    sk_X509_pop_free(untrusted, X509_free); /* TODO: add helper function */
+    sk_X509_pop_free(untrusted, X509_free); /* TODO: add helper function CERTS_free() */
     STORE_free(new_cert_truststore);
  err:
     STORE_free(cmp_truststore);
@@ -194,9 +240,9 @@ static int CMPclient_demo(enum use_case use_case)
 
     const char *const creds_desc = "credentials for CMP level";
     CREDENTIALS *cmp_creds =
-        (use_case == imprint || use_case == bootstrap) /* TODO: use different creds for imprinting */
-        ? CREDENTIALS_load(cmp_certs, cmp_key, cmp_key_pass, creds_desc)
-        : CREDENTIALS_load(new_certs, new_key, new_key_pass, creds_desc);
+        use_case == imprint ? CREDENTIALS_new(NULL, NULL, NULL, pbm_secret, pbm_ref) :
+        use_case == bootstrap ? CREDENTIALS_load(cmp_certs, cmp_key, cmp_key_pass, creds_desc)
+                              : CREDENTIALS_load(new_certs, new_key, new_key_pass, creds_desc);
     if (cmp_creds == NULL) {
         err = -4;
         goto err;
@@ -220,7 +266,7 @@ static int CMPclient_demo(enum use_case use_case)
                         use_case == bootstrap) ? INI_PATH : UPD_PATH;
     const int timeout = 10;
     const char *server = use_tls ? TLS_SERVER : SERVER;
-    err = CMPclient_setup_HTTP(ctx, server, path, timeout, tls, NULL/* proxy */);
+    err = CMPclient_setup_HTTP(ctx, server, path, timeout, tls, proxy);
     if (err != CMP_OK) {
         goto err;
     }

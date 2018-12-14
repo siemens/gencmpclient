@@ -46,7 +46,7 @@ CC = gcc
 ifdef NDEBUG
     override CFLAGS += -DNDEBUG=1
 endif
-override CFLAGS += -g -O0 -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Werror -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter $(OSSL_VERSION_QUIRKS)# # -pedantic -MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
+override CFLAGS += -g -O0 -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter $(OSSL_VERSION_QUIRKS)# -Werror # -pedantic -MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
 ifeq ($(LPATH),)
    override CFLAGS += -I$(SECUTILS_DIR)/include -I$(PARENT_DIR)/$(LIBCMP_INC)
 endif

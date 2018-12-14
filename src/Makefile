@@ -96,7 +96,7 @@ endif
 
 -include $(DEPS)
 
-$(OBJS): %$(OBJ): %.c
+$(OBJS): %$(OBJ): %.c $(SECUTILS_DIR)/$(LIBSECUTILS) $(PARENT_DIR)/$(LIBCMP_OUT)/libcmp$(DLL)
 	 $(CC) $(CFLAGS) -c -fPIC $< -o $@
 	@$(CC) $(CFLAGS) -MM $< -MT $@ -MF $*.d
 
@@ -106,7 +106,7 @@ $(OBJS): %$(OBJ): %.c
 $(LIBGENCMPCL): genericCMPClient$(OBJ)
 	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@
 
-$(PARENT_DIR)/cmpClientDemo$(EXE): cmpClientDemo$(OBJ) | $(LIBGENCMPCL)
+$(PARENT_DIR)/cmpClientDemo$(EXE): cmpClientDemo$(OBJ) $(LIBGENCMPCL)
 	$(CC) $(LDFLAGS) $< -lgencmpcl $(LIBS) -o $@
 
 .PHONY: all archive

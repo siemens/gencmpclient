@@ -74,14 +74,14 @@ or manually like this:
 
 ```
 export no_proxy=ppki-playground.ct.siemens.com
-wget "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O certs/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl
+wget "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O creds/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl
 ./cmpClientDemo
 ```
 
-Among others, successful execution should produce a new certificate at `certs/new.crt`.
+Among others, successful execution should produce a new certificate at `creds/new.crt`.
 You can view this certificate for instance by executing
 ```
-openssl x509 -noout -text -in certs/new.crt
+openssl x509 -noout -text -in creds/new.crt
 ```
 
 The demo client allows also to update and revoke the enrolled certifiate, like this:

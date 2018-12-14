@@ -42,11 +42,13 @@ LIBCMP_INC ?= include_cmp
 LIBCMP_OUT ?= .
 
 CC = gcc
-
 ifdef NDEBUG
-    override CFLAGS += -DNDEBUG=1
+    override CFLAGS += -DNDEBUG=1 -O2
+else
+    override CFLAGS += -g# # not every compiler(version) supports -Og
 endif
-override CFLAGS += -g -O0 -std=gnu90 -fmessage-length=0 -D_FORTIFY_SOURCE=2 -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter $(OSSL_VERSION_QUIRKS)# -Werror # -pedantic -MMD -MP -MF"$(@:%$(OBJ)=%.d)" -MT"$(@)"  # -fsanitize=address
+override CFLAGS += -std=gnu90 -D_FORTIFY_SOURCE=2# # -fsanitize=address
+override CFLAGS += -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter $(OSSL_VERSION_QUIRKS)# -Werror # -pedantic"
 ifeq ($(LPATH),)
    override CFLAGS += -I$(SECUTILS_DIR)/include -I$(PARENT_DIR)/$(LIBCMP_INC)
 endif

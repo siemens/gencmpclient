@@ -117,7 +117,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     if (pctx == NULL ||
         NULL == (ctx = OSSL_CMP_CTX_create()) ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn)) {
-        goto err;
+        goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
     }
     if ((cmp_truststore != NULL && (!X509_STORE_up_ref(cmp_truststore) ||
                                     !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)))
@@ -126,9 +126,10 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         goto err;
     }
 
+    X509 *cert = NULL;
     if (creds != NULL) {
         const EVP_PKEY *pkey = CREDENTIALS_get_pkey(creds);
-        const X509 *cert = CREDENTIALS_get_cert(creds);
+        cert = CREDENTIALS_get_cert(creds);
         STACK_OF(X509) *chain = CREDENTIALS_get_chain(creds);
         const char *pwd = CREDENTIALS_get_pwd(creds);
         const char *pwdref = CREDENTIALS_get_pwdref(creds);
@@ -142,6 +143,19 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     } else {
         if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_UNPROTECTED_SEND, 1)) {
             goto err;
+        }
+    }
+    if (cert == NULL) {
+        /* needed recipient for unprotected and PBM-protected messages */
+        if (sk_X509_num(untrusted) > 0) {
+            X509_NAME *rcp = X509_get_subject_name(sk_X509_value(untrusted, 0));
+            if (!OSSL_CMP_CTX_set1_recipient(ctx, rcp)) {
+                goto err;
+            }
+        } else {
+            LOG(FL_ERR, "Cannot determine recipient, no cert and no untrusted certs given");
+            OSSL_CMP_CTX_delete(ctx);
+            return ERR_R_PASSED_INVALID_ARGUMENT;
         }
     }
 
@@ -294,7 +308,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         }
     }
 
-    LOG(FL_INFO, "contacting %s%s%s%s", server, path,
+    LOG(FL_INFO, "contacting %s%s%s%s%s", server, path[0] == '/' ? "" : "/", path,
         proxy != NULL ? " via proxy " : "", proxy != NULL ? proxy : "");
     return CMP_OK;
 
@@ -352,7 +366,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
             goto err;
         }
         X509_NAME_free(n);
-    }
+    } /* TODO maybe else take subjectName (for sender default) from oldCert or p10cr */
 
     if (exts != NULL) {
         X509_EXTENSIONS *exts_copy = exts_dup((X509_EXTENSIONS *)exts); /* TODO use instead OSSL_CMP_CTX_set1_reqExtensions() when available */

@@ -76,6 +76,7 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
 CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
                              int timeout, OPTIONAL SSL_CTX *tls,
                              OPTIONAL const char *proxy);
+static const char *const http_prefix = "http://";
 
 /*!*****************************************************************************
 * @brief fill the cert template used for certificate requests (ir/cr/p10cr/kur)

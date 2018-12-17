@@ -6,10 +6,11 @@ This is the code repository for the cross-division generic CMP client library.
 This library should work with any flavor of Linux, including [Cygwin](https://www.cygwin.com/), possibly on a Virtual Machine or the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
 
 The following development tools are required.
-* Git (tested with version 2.17.0)
-* GNU make (tested with version 4.1)
-* GNU C compiler (tested with version 5.4.0)
+* Git (tested with versions 2.11.0 and 2.19.2)
+* GNU make (tested with versions 4.1 and 4.2.1)
+* GNU C compiler (tested with versions 5.4.0 and 7.3.0)
 * OpenSSL (version >= 1.0.2) with header files
+Using the [CPP-VM](https://ccp.siemens.com/docs/meta-siemens/docs/getting-started/), everything works out of the box.
 
 As a sanity check you can execute in a shell:
 ```

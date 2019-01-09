@@ -46,6 +46,8 @@ typedef enum
     FORMAT_ENGINE = 8, /*! crypto engine, which is not really a file format */
     FORMAT_HTTP = 13,  /*! download using HTTP */
 } sec_file_format; /*! type of format for security-related files or other input */
+STACK_OF(X509) * FILES_load_certs_autofmt(const char* file, sec_file_format format,
+                                          OPTIONAL const char* pass, OPTIONAL const char* desc);
 STACK_OF(X509_CRL) * FILES_load_crls_multi(const char* files, sec_file_format format, const char* desc);
 
 X509_STORE* STORE_load_trusted(const char* files, const char* desc, bool check_icv);
@@ -543,19 +545,24 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 
 /* X509_STORE helpers */
 
+STACK_OF(X509) *CERTS_load(const char* file, OPTIONAL const char* desc)
+{
+    return FILES_load_certs_autofmt(file, FORMAT_PEM, NULL/* pass */, desc);
+}
+
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc)
 {
     return STORE_load_trusted(trusted_certs, desc, false);
 }
 
-void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls)
-{
-    sk_X509_CRL_pop_free(crls, X509_CRL_free);
-}
-
 STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc)
 {
     return FILES_load_crls_multi(files, FORMAT_ASN1, desc);
+}
+
+void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls)
+{
+    sk_X509_CRL_pop_free(crls, X509_CRL_free);
 }
 
 /* SSL_CTX helpers for HTTPS */

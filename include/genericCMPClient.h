@@ -14,8 +14,23 @@
 #include <openssl/cmp.h>
 typedef OSSL_CMP_CTX CMP_CTX; /* for abbreviation and backward compatibility */
 
+typedef int CMP_err;
+#define CMP_OK 0
+#define CMP_R_LOAD_CERTS   255
+#define CMP_R_LOAD_CREDS   254
+#define CMP_R_GENERATE_KEY 253
+#define CMP_R_STORE_CREDS  252
+/* further error codes are defined in openssl/cmperr.h */
 
+#define CMP_IR    OSSL_CMP_PKIBODY_IR
+#define CMP_CR    OSSL_CMP_PKIBODY_CR
+#define CMP_P10CR OSSL_CMP_PKIBODY_P10CR
+#define CMP_KUR   OSSL_CMP_PKIBODY_KUR
+#define CMP_RR    OSSL_CMP_PKIBODY_RR
+
+#define LOCAL_DEFS
 #ifdef LOCAL_DEFS
+#ifndef OPTIONAL
 
 #ifndef __cplusplus
 typedef enum { false = 0, true = 1 } bool; /* Boolean value */
@@ -31,11 +46,18 @@ typedef struct credentials {
     OPTIONAL const char *pwdref;    /*!< reference identifying the password */
 } CREDENTIALS;
 
-typedef enum {LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERR,
-              LOG_WARNING, LOG_NOTICE, LOG_INFO, LOG_DEBUG} severity;
-typedef int (*LOG_cb_t) (OPTIONAL const char *file, int lineno, severity level, const char *msg);
-void LOG_close(void);
+#endif /* OPTIONAL */
+#ifndef FL_EMERG
 
+typedef enum {
+    LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERR,
+    LOG_WARNING, LOG_NOTICE, LOG_INFO, LOG_DEBUG
+} severity;
+
+typedef int (*LOG_cb_t) (OPTIONAL const char *file, int lineno,
+                         severity level, const char *msg);
+
+#endif /* FL_EMERG */
 #else /* LOCAL_DEFS */
 
 #include <SecUtils/credentials/credentials.h>
@@ -44,32 +66,20 @@ void LOG_close(void);
 #endif /* LOCAL_DEFS */
 
 
-typedef int CMP_err;
-#define CMP_OK 0
-#define CMP_R_LOAD_CERTS   255
-#define CMP_R_LOAD_CREDS   254
-#define CMP_R_GENERATE_KEY 253
-#define CMP_R_STORE_CREDS  252
-/* further error codes are defined in openssl/cmperr.h */
-
-#define CMP_IR    OSSL_CMP_PKIBODY_IR
-#define CMP_CR    OSSL_CMP_PKIBODY_CR
-#define CMP_P10CR OSSL_CMP_PKIBODY_P10CR
-#define CMP_KUR   OSSL_CMP_PKIBODY_KUR
-#define CMP_RR    OSSL_CMP_PKIBODY_RR
-
 /* CMP client core functions */
 /* should be called once, as soon as the application starts */
 CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn);
 
 /* must be called first */
 CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
-      /* both for CMP: */ OPTIONAL X509_STORE *cmp_truststore,
+                          OPTIONAL X509_STORE *cmp_truststore,
                           OPTIONAL const STACK_OF(X509) *untrusted,
                           OPTIONAL const CREDENTIALS *creds,
                           OPTIONAL const char *digest,
-                          OPTIONAL OSSL_cmp_transfer_cb_t transfer_fn, int total_timeout,
-                          OPTIONAL X509_STORE *new_cert_truststore, bool implicit_confirm);
+                          OPTIONAL OSSL_cmp_transfer_cb_t transfer_fn,
+                          int total_timeout,
+                          OPTIONAL X509_STORE *new_cert_truststore,
+                          bool implicit_confirm);
 
 /* must be called next in case the transfer_fn is NULL, which implies HTTP_transfer */
 /* copies server and proxy address (of the form "<name>[:<port>]") and HTTP path */
@@ -130,21 +140,31 @@ CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, int reason);
 void CMPclient_finish(CMP_CTX *ctx);
 
 /* CREDENTIALS helpers */
-CREDENTIALS *CREDENTIALS_new(OPTIONAL const EVP_PKEY *pkey, const OPTIONAL X509 *cert,
+#ifdef LOCAL_DEFS
+CREDENTIALS *CREDENTIALS_new(OPTIONAL const EVP_PKEY *pkey,
+                             OPTIONAL const OPTIONAL X509 *cert,
                              OPTIONAL const STACK_OF(X509) *chain,
-                             OPTIONAL const char *pwd, OPTIONAL const char *pwdref);
+                             OPTIONAL const char *pwd,
+                             OPTIONAL const char *pwdref);
 void CREDENTIALS_free(OPTIONAL CREDENTIALS *creds);
-CREDENTIALS *CREDENTIALS_load(const char *certs, const char *key,
-                              const char *source,
+CREDENTIALS *CREDENTIALS_load(OPTIONAL const char *certs,
+                              OPTIONAL const char *key,
+                              OPTIONAL const char *source,
                               OPTIONAL const char *desc/* for error msgs */);
-bool CREDENTIALS_save(const CREDENTIALS *creds, const char *file, const char *keyfile,
-                      const char *source, OPTIONAL const char *desc);
+bool CREDENTIALS_save(const CREDENTIALS *creds,
+                      OPTIONAL const char *certs, OPTIONAL const char *key,
+                      OPTIONAL const char *source, OPTIONAL const char *desc);
 
+/* LOG helpers */
+void LOG_close(void);
 
 /* X509_STORE helpers */
+#endif  /* LOCAL_DEFS */
+STACK_OF(X509) *CERTS_load(const char* file, OPTIONAL const char* desc);
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
 STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc);
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls);
+#ifdef LOCAL_DEFS
 bool STORE_add_crls(X509_STORE* truststore, OPTIONAL const STACK_OF(X509_CRL) * crls);
 /* also sets certificate verification callback: */
 bool STORE_set_parameters(X509_STORE *truststore,
@@ -159,10 +179,12 @@ EVP_PKEY *KEY_new(const char *spec); /* spec may be "RSA:<length>" or "EC:<curve
 void KEY_free(OPTIONAL EVP_PKEY *pkey);
 
 /* SSL_CTX helpers for HTTPS */
+#endif  /* LOCAL_DEFS */
 SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
                  OPTIONAL const CREDENTIALS *creds,
                  OPTIONAL const char *ciphers, int security_level);
 void TLS_free(OPTIONAL SSL_CTX *tls);
+#ifdef LOCAL_DEFS
 
 /* X509_EXTENSIONS helpers */
 X509_EXTENSIONS *EXTENSIONS_new(void);
@@ -173,5 +195,12 @@ bool EXTENSIONS_add_ext(X509_EXTENSIONS *exts, const char *name,
                         const char* spec, OPTIONAL BIO* sections);
 void EXTENSIONS_free(OPTIONAL X509_EXTENSIONS *exts);
 
+#else /* LOCAL_DEFS */
+
+#include <SecUtils/credentials/store.h>
+#include <SecUtils/credentials/key.h>
+#include <SecUtils/util/extensions.h>
+
+#endif /* LOCAL_DEFS */
 
 #endif /* GENERIC_CMP_CLIENT_H */

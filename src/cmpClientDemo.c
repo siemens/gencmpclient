@@ -7,7 +7,13 @@
  * @copyright (c) Siemens AG 2018 all rights reserved
  ******************************************************************************/
 
+#include <string.h>
+
 #include <genericCMPClient.h>
+
+#ifdef LOCAL_DEFS
+X509* CREDENTIALS_get_cert(const CREDENTIALS* creds);
+#endif
 
 enum use_case { imprint, bootstrap, update,
                 revocation /* 'revoke' already defined in unistd.h */ };
@@ -182,7 +188,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
         goto err;
 
     STACK_OF(X509) *untrusted = cmp_untrusted == NULL ? NULL :
-        FILES_load_certs_autofmt(cmp_untrusted, FORMAT_PEM, NULL/* pass */, "untrusted certs for CMP"); /* TODO: add helper function CERTS_load(file, desc) */
+        CERTS_load(cmp_untrusted, "untrusted certs for CMP");
     OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     const int total_timeout = 100;
     const bool implicit_confirm = use_case == update;

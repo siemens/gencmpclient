@@ -111,6 +111,8 @@ All this is already done for the demo application.
 
 The Generic CMP client API specification is available in the [doc](doc/) folder.
 
+A recoding of the tutorial held via Circuit on 2018-Dec-13 is available [here](https://myvideo.siemens.com/media/1_f7bjtdba).
+
 The Doxygen documentation of the underlying Security Utilities library is going to be available
 via a link in its [README file](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities/blob/development/README.md).
 

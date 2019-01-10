@@ -103,7 +103,8 @@ CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn)
 }
 
 CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
-      /* both for CMP: */ OPTIONAL X509_STORE *cmp_truststore,
+                          OPTIONAL X509_STORE *cmp_truststore,
+                          OPTIONAL const char *recipient,
                           OPTIONAL const STACK_OF(X509) *untrusted,
                           OPTIONAL const CREDENTIALS *creds,
                           OPTIONAL const char *digest,
@@ -147,18 +148,27 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
             goto err;
         }
     }
-    if (cert == NULL) {
-        /* needed recipient for unprotected and PBM-protected messages */
+
+    /* need recipient for unprotected and PBM-protected messages */
+    X509_NAME *rcp = NULL;
+    if (recipient != NULL) {
+        rcp = UTIL_parse_name(recipient, MBSTRING_ASC, false);
+        if (NULL == rcp) {
+            LOG(FL_ERR, "Unable to parse recipient DN '%s'", recipient);
+            OSSL_CMP_CTX_delete(ctx);
+            return CMP_R_INVALID_PARAMETERS;
+        }
+    } else if (NULL == cert) {
         if (sk_X509_num(untrusted) > 0) {
-            X509_NAME *rcp = X509_get_subject_name(sk_X509_value(untrusted, 0));
-            if (!OSSL_CMP_CTX_set1_recipient(ctx, rcp)) {
-                goto err;
-            }
+            rcp = X509_get_subject_name(sk_X509_value(untrusted, 0));
         } else {
-            LOG(FL_ERR, "Cannot determine recipient, no cert and no untrusted certs given");
+            LOG(FL_ERR, "Cannot determine recipient: no recipient, no cert, and no untrusted certs given");
             OSSL_CMP_CTX_delete(ctx);
             return ERR_R_PASSED_INVALID_ARGUMENT;
         }
+    }
+    if (rcp != NULL && !OSSL_CMP_CTX_set1_recipient(ctx, rcp)) {
+        goto err;
     }
 
     if (digest != NULL) {
@@ -430,7 +440,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
     }
 
     CREDENTIALS *creds = CREDENTIALS_new(new_key, newcert, chain, NULL, NULL);
-    sk_X509_pop_free(chain, X509_free);
+    CERTS_free(chain);
     if (NULL == creds) {
 	return ERR_R_MALLOC_FAILURE;
     }
@@ -548,6 +558,11 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 STACK_OF(X509) *CERTS_load(const char* file, OPTIONAL const char* desc)
 {
     return FILES_load_certs_autofmt(file, FORMAT_PEM, NULL/* pass */, desc);
+}
+
+void CERTS_free(OPTIONAL STACK_OF(X509) *certs)
+{
+    sk_X509_pop_free(certs, X509_free);
 }
 
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc)

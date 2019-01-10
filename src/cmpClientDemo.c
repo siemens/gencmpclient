@@ -37,6 +37,9 @@ const char *const new_key_pass = NULL; /* or, e.g., "pass:12345", or "engine:id"
 #define INFR_ROOT_CA    ROOT_CA
 #define INFR_ISSUING_CA ROOT_CA
 
+#undef CRL_DIR // TODO implement CRL fetching for Insta
+
+const char *const recipient = NULL; // TODO repair: "/C=FI/O=Insta Demo/CN=Insta Demo CA";
 const char *const subject = "/CN=test-genCMPClientDemo";
 
 const char *const pbm_secret = "insta";
@@ -65,6 +68,8 @@ const bool use_tls = false;
 #define INFR_ROOT_CA    "PPKIPlaygroundInfrastructureRootCAv10"
 #define INFR_ISSUING_CA "PPKIPlaygroundInfrastructureIssuingCAv10"
 
+const char *const recipient = "/CN=PPKI Playground "KEYTYPE" Issuing CA v1.0"
+    "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
 const char *const subject = "/CN=test-genCMPClientDemo/OU=PPKI Playground"
         "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
 
@@ -91,7 +96,7 @@ const bool use_tls = true;
 
 #endif
 
-const char *const cmp_untrusted = TRUST_DIR ROOT_CA".crt";
+const char *const untrusted = NULL;
 
 const char *tls_ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
 
@@ -107,10 +112,12 @@ SSL_CTX *setup_TLS(void)
         goto err;
     /* TODO maybe also add untrusted TLS certs */
 
+#ifdef CRL_DIR
     const char *crls_files = CRL_DIR INFR_ISSUING_CA".crl";
     crls = CRLs_load(crls_files, "CRLs for TLS level");
     if (crls == NULL)
         goto err;
+#endif
 
     const X509_VERIFY_PARAM *vpm = NULL;
     const char *CRLs_url = NULL;
@@ -140,13 +147,16 @@ SSL_CTX *setup_TLS(void)
 
 X509_STORE *setup_CMP_truststore(void)
 {
+    STACK_OF(X509_CRL) *crls = NULL;
     X509_STORE *cmp_truststore = NULL;
 
+#ifdef CRL_DIR
     const char *crls_files = CRL_DIR ROOT_CA".crl, "
                              CRL_DIR INFR_ROOT_CA".crl";
-    STACK_OF(X509_CRL) *crls = CRLs_load(crls_files, "CRLs for CMP level");
+    crls = CRLs_load(crls_files, "CRLs for CMP level");
     if (crls == NULL)
         goto err;
+#endif
 
     const char *trusted_cert_files = TRUST_DIR ROOT_CA".crt, "
                                      TRUST_DIR INFR_ROOT_CA".crt";
@@ -187,17 +197,18 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
     if (new_cert_truststore == NULL)
         goto err;
 
-    STACK_OF(X509) *untrusted = cmp_untrusted == NULL ? NULL :
-        CERTS_load(cmp_untrusted, "untrusted certs for CMP");
+    STACK_OF(X509) *untrusted_certs = untrusted == NULL ? NULL :
+        CERTS_load(untrusted, "untrusted certs for CMP");
     OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     const int total_timeout = 100;
     const bool implicit_confirm = use_case == update;
     err = CMPclient_prepare(pctx, OPTIONAL log_fn,
-                            cmp_truststore, OPTIONAL untrusted,
+                            cmp_truststore, OPTIONAL recipient,
+                            OPTIONAL untrusted_certs,
                             cmp_creds, digest,
                             OPTIONAL transfer_fn, total_timeout,
                             new_cert_truststore, implicit_confirm);
-    sk_X509_pop_free(untrusted, X509_free); /* TODO: add helper function CERTS_free() */
+    CERTS_free(untrusted_certs);
     STORE_free(new_cert_truststore);
  err:
     STORE_free(cmp_truststore);

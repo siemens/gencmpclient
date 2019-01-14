@@ -6,11 +6,13 @@ ifeq ($(OS),Windows_NT)
     DLL=.dll
     OBJ=.obj
 #   LIB=bin
+    PINGCOUNT=-n
 else
     EXE=
     DLL=.so
     OBJ=.o
 #   LIB=lib
+    PINGCOUNT=-c
 endif
 
 ROOTFS ?= $(DESTDIR)$(prefix)
@@ -105,12 +107,14 @@ endif
 test:	build
 	@/bin/echo -e "\n##### running cmpClientDemo #####"
 	@if [ -z "$$INSTA" ]; then \
+		ping >/dev/null $(PINGCOUNT) 1 ppki-playground.ct.siemens.com; \
 		for CA in 'Infrastructure+Root+CA+v1.0' 'Infrastructure+Issuing+CA+v1.0' 'ECC+Root+CA+v1.0' 'RSA+Root+CA+v1.0'; \
 		do \
 			export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
 			$(PROXY) wget -q "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+$$CA%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O "creds/crls/PPKIPlayground$$ca.crl"; \
 		done; \
 	else \
+		curl -m 2 pki.certificate.fi -s | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1); \
 		$(PROXY) wget -q "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633" -O "creds/crls/InstaDemoCA.crl"; \
 	fi
 	$(PROXY) ./cmpClientDemo$(EXE)

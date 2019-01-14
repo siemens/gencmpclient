@@ -22,12 +22,24 @@ char *CREDENTIALS_get_pwd(const CREDENTIALS *creds);
 char *CREDENTIALS_get_pwdref(const CREDENTIALS *creds);
 
 void LOG_init(OPTIONAL LOG_cb_t log_fn);
-int LOG(const char *file, int lineno, severity level, const char *fmt, ...);
-#define FILE_LINE __FILE__, __LINE__
-#define FL_ERR   FILE_LINE, LOG_ERR
-#define FL_WARN  FILE_LINE, LOG_WARNING
-#define FL_INFO  FILE_LINE, LOG_INFO
-#define FL_DEBUG FILE_LINE, LOG_DEBUG
+bool LOG(OPTIONAL const char* func, OPTIONAL const char* file,
+         int lineno, OPTIONAL severity level, const char* fmt, ...);
+
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901)
+# define LOG_FUNC __func__ /* function name is only available starting from C99.*/
+/* Trying platform-specific and compiler-specific alternatives as fallback if possible. */
+#elif defined(WIN32) || defined(__GNUC__) || defined(__GNUG__)
+# define LOG_FUNC __FUNCTION__
+#elif defined(__FUNCSIG__)
+# define LOG_FUNC __FUNCSIG__
+#else
+# define LOG_FUNC "(unknown function)"
+#endif
+#define LOG_FUNC_FILE_LINE LOG_FUNC, OPENSSL_FILE, OPENSSL_LINE
+#define FL_ERR   LOG_FUNC_FILE_LINE, LOG_ERR
+#define FL_WARN  LOG_FUNC_FILE_LINE, LOG_WARNING
+#define FL_INFO  LOG_FUNC_FILE_LINE, LOG_INFO
+#define FL_DEBUG LOG_FUNC_FILE_LINE, LOG_DEBUG
 
 void UTIL_setup_openssl(long version, const char *build_name);
 int UTIL_parse_server_and_port(char *s);

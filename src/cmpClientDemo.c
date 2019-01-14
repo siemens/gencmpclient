@@ -12,7 +12,7 @@
 #include <genericCMPClient.h>
 
 #ifdef LOCAL_DEFS
-X509* CREDENTIALS_get_cert(const CREDENTIALS* creds);
+X509 *CREDENTIALS_get_cert(const CREDENTIALS *creds);
 #endif
 
 enum use_case { imprint, bootstrap, update,

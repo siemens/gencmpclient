@@ -20,6 +20,7 @@ typedef int CMP_err;
 #define CMP_R_LOAD_CREDS   254
 #define CMP_R_GENERATE_KEY 253
 #define CMP_R_STORE_CREDS  252
+#define CMP_R_RECIPIENT    251
 /* further error codes are defined in openssl/cmperr.h */
 
 #define CMP_IR    OSSL_CMP_PKIBODY_IR
@@ -161,13 +162,13 @@ void LOG_close(void);
 
 /* X509_STORE helpers */
 #endif  /* LOCAL_DEFS */
-STACK_OF(X509) *CERTS_load(const char* file, OPTIONAL const char* desc);
+STACK_OF(X509) *CERTS_load(const char *file, OPTIONAL const char *desc);
 void CERTS_free(OPTIONAL STACK_OF(X509) *certs);
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
 STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc);
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls);
 #ifdef LOCAL_DEFS
-bool STORE_add_crls(X509_STORE* truststore, OPTIONAL const STACK_OF(X509_CRL) * crls);
+bool STORE_add_crls(X509_STORE *truststore, OPTIONAL const STACK_OF(X509_CRL) *crls);
 /* also sets certificate verification callback: */
 bool STORE_set_parameters(X509_STORE *truststore,
                           OPTIONAL const X509_VERIFY_PARAM *vpm,
@@ -194,7 +195,7 @@ X509_EXTENSIONS *EXTENSIONS_new(void);
 bool EXTENSIONS_add_SANs(X509_EXTENSIONS *exts, const char *spec);
 /* add extension such as (extended) key usages, basic constraints, policies */
 bool EXTENSIONS_add_ext(X509_EXTENSIONS *exts, const char *name,
-                        const char* spec, OPTIONAL BIO* sections);
+                        const char *spec, OPTIONAL BIO *sections);
 void EXTENSIONS_free(OPTIONAL X509_EXTENSIONS *exts);
 
 #else /* LOCAL_DEFS */

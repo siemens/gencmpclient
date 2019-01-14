@@ -15,11 +15,11 @@
 
 #ifdef LOCAL_DEFS
 
-EVP_PKEY* CREDENTIALS_get_pkey(const CREDENTIALS* creds);
-X509* CREDENTIALS_get_cert(const CREDENTIALS* creds);
-STACK_OF(X509)* CREDENTIALS_get_chain(const CREDENTIALS* creds);
-char* CREDENTIALS_get_pwd(const CREDENTIALS* creds);
-char* CREDENTIALS_get_pwdref(const CREDENTIALS* creds);
+EVP_PKEY *CREDENTIALS_get_pkey(const CREDENTIALS *creds);
+X509 *CREDENTIALS_get_cert(const CREDENTIALS *creds);
+STACK_OF(X509) *CREDENTIALS_get_chain(const CREDENTIALS *creds);
+char *CREDENTIALS_get_pwd(const CREDENTIALS *creds);
+char *CREDENTIALS_get_pwdref(const CREDENTIALS *creds);
 
 void LOG_init(OPTIONAL LOG_cb_t log_fn);
 int LOG(const char *file, int lineno, severity level, const char *fmt, ...);
@@ -30,8 +30,8 @@ int LOG(const char *file, int lineno, severity level, const char *fmt, ...);
 #define FL_DEBUG FILE_LINE, LOG_DEBUG
 
 void UTIL_setup_openssl(long version, const char *build_name);
-int UTIL_parse_server_and_port(char* s);
-X509_NAME* UTIL_parse_name(const char* dn, long chtype, bool multirdn);
+int UTIL_parse_server_and_port(char *s);
+X509_NAME *UTIL_parse_name(const char *dn, long chtype, bool multirdn);
 
 enum
 {
@@ -46,20 +46,21 @@ typedef enum
     FORMAT_ENGINE = 8, /*! crypto engine, which is not really a file format */
     FORMAT_HTTP = 13,  /*! download using HTTP */
 } sec_file_format; /*! type of format for security-related files or other input */
-STACK_OF(X509) * FILES_load_certs_autofmt(const char* file, sec_file_format format,
-                                          OPTIONAL const char* pass, OPTIONAL const char* desc);
-STACK_OF(X509_CRL) * FILES_load_crls_multi(const char* files, sec_file_format format, const char* desc);
+STACK_OF(X509)  *FILES_load_certs_autofmt(const char *file, sec_file_format format,
+                                          OPTIONAL const char *pass, OPTIONAL const char *desc);
+STACK_OF(X509_CRL)  *FILES_load_crls_multi(const char *files, sec_file_format format, const char *desc);
 
-X509_STORE* STORE_load_trusted(const char* files, const char* desc, bool check_icv);
-bool STORE_set1_host_ip(X509_STORE* truststore, const char* host, const char* ip);
+X509_STORE *STORE_load_trusted(const char *files, OPTIONAL const char *desc,
+                               OPTIONAL void/* uta_ctx*/ *ctx);
+bool STORE_set1_host_ip(X509_STORE *truststore, const char *host, const char *ip);
 
 #define X509_STORE_EX_DATA_HOST 0
 #define X509_STORE_EX_DATA_SBIO 1
 
 bool TLS_init(void);
-SSL_CTX* TLS_CTX_new(bool client, OPTIONAL const X509_STORE* truststore, OPTIONAL const CREDENTIALS* creds,
-                     OPTIONAL const char* ciphers, int security_level);
-void TLS_CTX_free(OPTIONAL SSL_CTX* ctx);
+SSL_CTX *TLS_CTX_new(bool client, OPTIONAL const X509_STORE *truststore, OPTIONAL const CREDENTIALS *creds,
+                     OPTIONAL const char *ciphers, int security_level);
+void TLS_CTX_free(OPTIONAL SSL_CTX *ctx);
 
 #else /* LOCAL_DEFS */
 
@@ -162,12 +163,17 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         if (sk_X509_num(untrusted) > 0) {
             rcp = X509_get_subject_name(sk_X509_value(untrusted, 0));
         } else {
-            LOG(FL_ERR, "Cannot determine recipient: no recipient, no cert, and no untrusted certs given");
+            LOG(FL_WARN, "No explicit recipient, no cert, and no untrusted certs given; resorting to NULL DN");
+            rcp = X509_NAME_new();
+        }
+        if (NULL == rcp) {
+            LOG(FL_ERR, "Internal error like out of memory obtaining recipient DN", recipient);
             OSSL_CMP_CTX_delete(ctx);
-            return ERR_R_PASSED_INVALID_ARGUMENT;
+            return CMP_R_RECIPIENT;
         }
     }
-    if (rcp != NULL && !OSSL_CMP_CTX_set1_recipient(ctx, rcp)) {
+    if (rcp != NULL /* else CMPforOpenSSL uses cert issuer */ &&
+        !OSSL_CMP_CTX_set1_recipient(ctx, rcp)) {
         goto err;
     }
 
@@ -555,7 +561,7 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 
 /* X509_STORE helpers */
 
-STACK_OF(X509) *CERTS_load(const char* file, OPTIONAL const char* desc)
+STACK_OF(X509) *CERTS_load(const char *file, OPTIONAL const char *desc)
 {
     return FILES_load_certs_autofmt(file, FORMAT_PEM, NULL/* pass */, desc);
 }
@@ -567,7 +573,7 @@ void CERTS_free(OPTIONAL STACK_OF(X509) *certs)
 
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc)
 {
-    return STORE_load_trusted(trusted_certs, desc, false);
+    return STORE_load_trusted(trusted_certs, desc, NULL);
 }
 
 STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc)

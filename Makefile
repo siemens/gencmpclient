@@ -80,6 +80,9 @@ endif
 	fi
 	$(MAKE) -f Makefile_src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
+build_insta:
+	CFLAGS="-DINSTA" $(MAKE) build
+
 ifeq ($(LPATH),)
 clean_uta:
 	$(MAKE) -C $(SECUTILS) clean_uta
@@ -94,14 +97,22 @@ endif
 	rm -f creds/new.*
 
 PROXY=http_proxy=http://test.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com
-OCSP_CHECK=openssl ocsp -url http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp -CAfile creds/trusted/PPKIPlaygroundECCRootCAv10.crt -issuer creds/PPKIPlaygroundECCIssuingCAv10.crt -cert creds/new.crt
+ifeq ($(INSTA),)
+	OCSP_CHECK=openssl ocsp -url http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp -CAfile creds/trusted/PPKIPlaygroundECCRootCAv10.crt -issuer creds/PPKIPlaygroundECCIssuingCAv10.crt -cert creds/new.crt
+else
+	OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/new.crt
+endif
 test:	build
 	@/bin/echo -e "\n##### running cmpClientDemo #####"
-	@for CA in 'Infrastructure+Root+CA+v1.0' 'Infrastructure+Issuing+CA+v1.0' 'ECC+Root+CA+v1.0' 'RSA+Root+CA+v1.0'; \
-	do \
-		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
-		$(PROXY) wget -q "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+$$CA%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O "creds/crls/PPKIPlayground$$ca.crl"; \
-	done
+	@if [ -z "$$INSTA" ]; then \
+		for CA in 'Infrastructure+Root+CA+v1.0' 'Infrastructure+Issuing+CA+v1.0' 'ECC+Root+CA+v1.0' 'RSA+Root+CA+v1.0'; \
+		do \
+			export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
+			$(PROXY) wget -q "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+$$CA%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O "creds/crls/PPKIPlayground$$ca.crl"; \
+		done; \
+	else \
+		$(PROXY) wget -q "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633" -O "creds/crls/InstaDemoCA.crl"; \
+	fi
 	$(PROXY) ./cmpClientDemo$(EXE)
 	@echo :
 	openssl x509 -noout -text -in creds/new.crt | sed '/^         [0-9a-f].*/d'
@@ -115,6 +126,9 @@ test:	build
 	$(PROXY) ./cmpClientDemo$(EXE) revoke
 	@echo :
 	$(OCSP_CHECK)
+
+test_insta: build_insta
+	INSTA=1 $(MAKE) test
 
 all:	build test
 

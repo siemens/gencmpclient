@@ -47,7 +47,10 @@ the [Security Utilities (SecUtils)](https://code.siemens.com/mo_mm_linux_distrib
 The generic CMP client library (and also its underlying CMP and SecUtils libraries) assumes that OpenSSL (with any version >= 1.0.2) is already installed,
 including the C header files needed for development (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
 By default the OpenSSL headers will be searched for in `/usr/include` and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
-You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation.
+You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation, e.g.:
+```
+export OPENSSL_DIR=/usr/local
+```
 
 In the newly created directory `genCMPClient` you can build the library simply with
 ```

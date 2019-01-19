@@ -41,20 +41,17 @@ else
     OPENSSL_REVERSE_DIR=$(OPENSSL_DIR)
 endif
 
-OPENSSL_VERSION_NUMBER_SUBST='s/.*?NUMBER\s+//; s/L.*//'
-ifdef OPENSSL_VERSION_FROM_INCLUDE
-OPENSSL_VERSION=$(shell fgrep OPENSSL_VERSION_NUMBER $(OPENSSL_DIR)/include/openssl/opensslv.h | sed -r $(OPENSSL_VERSION_NUMBER_SUBST))
-else
-OPENSSL_VERSION_SUBST='s/.*?\(//; s/\).*//'
-OPENSSL_VERSION=$(shell make -f OpenSSL_version.mk -B OPENSSL_DIR=$(OPENSSL_DIR) | grep -E 'OpenSSL .*?\(0x.*?\)' | sed -r $(OPENSSL_VERSION_SUBST))
+ifeq ($(findstring clean,$(MAKECMDGOALS)),)
+OPENSSL_VERSION=$(shell $(MAKE) -s -f OpenSSL_version.mk LIB=h OPENSSL_DIR="$(OPENSSL_DIR)")
+ifeq ($(OPENSSL_VERSION),)
+    $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.0.2)
+    OPENSSL_VERSION=1.0
 endif
-ifeq ($(findstring 0x,$(OPENSSL_VERSION)),)
-    $(error cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)')
-endif
-$(info detected OpenSSL version $(OPENSSL_VERSION))
-ifeq ($(shell test $$(printf "%d" $(OPENSSL_VERSION)) -lt $$(printf "%d" 0x10100000); echo $$?),0)
+$(info detected OpenSSL version $(OPENSSL_VERSION).x)
+ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # same as comparing == 1.0
     $(info enabling compilation quirks for OpenSSL 1.0.2)
     OSSL_VERSION_QUIRKS+=-Wno-discarded-qualifiers -Wno-unused-parameter
+endif
 endif
 
 
@@ -76,9 +73,9 @@ ifeq ($(LPATH),)
 	@# the old way to build with CMP was: buildCMPforOpenSSL
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
-	@export LIBCMP_OPENSSL_VERSION=`strings $(LIBCMP_OUT)/libcmp$(DLL) | grep OPENSSL_VERSION_NUMBER | sed -r $(OPENSSL_VERSION_NUMBER_SUBST)` && \
-	if [ $$LIBCMP_OPENSSL_VERSION != "$(OPENSSL_VERSION)" ]; then \
-	    (echo "OpenSSL version $$LIBCMP_OPENSSL_VERSION used for building libcmp does not match $(OPENSSL_VERSION) to be used for building client"; false); \
+	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s -f OpenSSL_version.mk LIB="$(LIBCMP_OUT)/libcmp$(DLL)"` && \
+	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
+	    (echo "WARNING: OpenSSL version $$LIBCMP_OPENSSL_VERSION used for building libcmp does not match $(OPENSSL_VERSION) to be used for building client"; true); \
 	fi
 	$(MAKE) -f Makefile_src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 

@@ -23,6 +23,7 @@ This should output on the console something like
 ```
 gcc OpenSSL_version.c -lcrypto -o OpenSSL_version
 OpenSSL 1.1.0f  25 May 2017 (0x1010006f)
+rm -f OpenSSL_version
 ```
 
 

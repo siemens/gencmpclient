@@ -28,6 +28,8 @@ bool LOG(OPTIONAL const char* func, OPTIONAL const char* file,
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901)
 # define LOG_FUNC __func__ /* function name is only available starting from C99.*/
 /* Trying platform-specific and compiler-specific alternatives as fallback if possible. */
+#elif defined(__STDC__) && defined(PEDANTIC)
+# define LOG_FUNC "(PEDANTIC disallows function name)"
 #elif defined(WIN32) || defined(__GNUC__) || defined(__GNUG__)
 # define LOG_FUNC __FUNCTION__
 #elif defined(__FUNCSIG__)
@@ -51,13 +53,13 @@ enum
 };
 typedef enum
 {
-    FORMAT_UNDEF = 0, /*! undefined file format */
-    FORMAT_ASN1 = 4, /*! ASN.1/DER */
-    FORMAT_PEM = 5 | B_FORMAT_TEXT, /*! PEM */
+    FORMAT_UNDEF  = 0, /*! undefined file format */
+    FORMAT_ASN1   = 4, /*! ASN.1/DER */
+    FORMAT_PEM    = 5 | B_FORMAT_TEXT, /*! PEM */
     FORMAT_PKCS12 = 6, /*! PKCS#12 */
     FORMAT_ENGINE = 8, /*! crypto engine, which is not really a file format */
-    FORMAT_HTTP = 13,  /*! download using HTTP */
-} sec_file_format; /*! type of format for security-related files or other input */
+    FORMAT_HTTP  = 13  /*! download using HTTP */
+} sec_file_format;     /*! type of format for security-related files or other input */
 STACK_OF(X509)  *FILES_load_certs_autofmt(const char *file, sec_file_format format,
                                           OPTIONAL const char *pass, OPTIONAL const char *desc);
 STACK_OF(X509_CRL)  *FILES_load_crls_multi(const char *files, sec_file_format format, const char *desc);

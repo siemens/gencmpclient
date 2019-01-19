@@ -37,7 +37,7 @@ const char *const new_key_pass = NULL; /* or, e.g., "pass:12345", or "engine:id"
 #define INFR_ROOT_CA    ROOT_CA
 #define INFR_ISSUING_CA ROOT_CA
 
-// #undef CRL_DIR
+/* #undef CRL_DIR */
 
 const char *const recipient = "/C=FI/O=Insta Demo/CN=Insta Demo CA";
 const char *const subject = "/CN=test-genCMPClientDemo";

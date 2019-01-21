@@ -217,6 +217,7 @@ debiandir: debian_control.in debian_changelog.in
 .phony: install headers_install uninstall
 install: $(OUTBIN)
 	install -Dm 755 $(OUTBIN) $(ROOTFS)/usr/lib/$(OUTBIN)
+	install -Dm 755 libcmp.so $(ROOTFS)/usr/lib/libcmp.so
 
 headers_install:
 	find include -type d -exec install -d '$(ROOTFS)/usr/{}' ';'

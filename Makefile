@@ -1,6 +1,8 @@
 # optional LPATH defines absolute path where to find pre-installed libraries, e.g., /usr/lib
 # optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
 
+SHELL=bash # This is needed because of a problem in "build" rule
+
 ifeq ($(OS),Windows_NT)
     EXE=.exe
     DLL=.dll

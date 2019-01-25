@@ -71,17 +71,21 @@ bool STORE_set1_host_ip(X509_STORE *truststore, const char *host, const char *ip
 #define X509_STORE_EX_DATA_HOST 0
 #define X509_STORE_EX_DATA_SBIO 1
 
+#ifndef SEC_NO_TLS
 bool TLS_init(void);
 SSL_CTX *TLS_CTX_new(bool client, OPTIONAL const X509_STORE *truststore, OPTIONAL const CREDENTIALS *creds,
                      OPTIONAL const char *ciphers, int security_level);
 void TLS_CTX_free(OPTIONAL SSL_CTX *ctx);
+#endif
 
 #else /* LOCAL_DEFS */
 
 #include <SecUtils/storage/files.h>
 #include <SecUtils/credentials/verify.h>
 #include <SecUtils/credentials/store.h>
+#ifndef SEC_NO_TLS
 #include <SecUtils/connections/tls.h>
+#endif
 
 #endif /* LOCAL_DEFS */
 
@@ -110,7 +114,11 @@ CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn)
 {
     LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
     UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, "genericCMPClient");
-    if (!OSSL_CMP_log_init() || !TLS_init()) {
+    if (!OSSL_CMP_log_init()
+#ifndef SEC_NO_TLS
+        || !TLS_init()
+#endif
+        ) {
         LOG(FL_ERR, "failed to initialize genCMPClient\n");
         return ERR_R_INIT_FAIL;
     }
@@ -225,6 +233,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     return CMPOSSL_error();
 }
 
+#ifndef SEC_NO_TLS
 static const char *tls_error_hint(unsigned long err)
 {
     switch(ERR_GET_REASON(err)) {
@@ -272,6 +281,7 @@ static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
     }
     return hbio;
 }
+#endif
 
 CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
                              const char *server, const char *path,
@@ -284,6 +294,12 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (NULL == ctx || NULL == server || NULL == path) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
+#ifdef SEC_NO_TLS
+    if (tls != NULL) {
+        LOG(FL_ERR, "TLS is not supported in this build");
+        return CMP_R_INVALID_PARAMETERS;
+    }
+#endif
 
     snprintf(buf, sizeof(buf), "%s", server);
     port = UTIL_parse_server_and_port(buf);
@@ -326,9 +342,10 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         goto err;
     }
 
-    SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
-    OSSL_CMP_CTX_set_http_cb_arg(ctx, NULL);
     if (tls != NULL) {
+#ifndef SEC_NO_TLS
+        SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
+        OSSL_CMP_CTX_set_http_cb_arg(ctx, NULL);
         if (!SSL_CTX_up_ref(tls) ||
             !OSSL_CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
             !OSSL_CMP_CTX_set_http_cb_arg(ctx, (void *)tls)) {
@@ -338,6 +355,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
             !STORE_set1_host_ip(SSL_CTX_get_cert_store(tls), server, server)) {
             goto err;
         }
+#endif
     }
 
     LOG(FL_INFO, "contacting %s%s%s%s%s", server, path[0] == '/' ? "" : "/", path,
@@ -345,7 +363,9 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     return CMP_OK;
 
     err:
+#ifndef SEC_NO_TLS
     SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
+#endif
     return CMPOSSL_error();
 }
 
@@ -560,7 +580,9 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
 void CMPclient_finish(OSSL_CMP_CTX *ctx)
 {
     OSSL_CMP_print_errors(ctx);
+#ifndef SEC_NO_TLS
     SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
+#endif
     X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
     OSSL_CMP_CTX_delete(ctx);
 #ifdef CLOSE_LOG_ON_EACH_FINISH
@@ -600,6 +622,7 @@ void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls)
     sk_X509_CRL_pop_free(crls, X509_CRL_free);
 }
 
+#ifndef SEC_NO_TLS
 /* SSL_CTX helpers for HTTPS */
 
 SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
@@ -613,3 +636,4 @@ void TLS_free(OPTIONAL SSL_CTX *tls)
 {
     TLS_CTX_free(tls);
 }
+#endif

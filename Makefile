@@ -64,6 +64,9 @@ endif
 ifndef USE_UTA
     export SEC_NO_UTA=1
 endif
+ifdef NO_TLS
+    export SEC_NO_TLS=1
+endif
 
 build:
 ifeq ($(LPATH),)

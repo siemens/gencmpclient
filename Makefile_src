@@ -56,10 +56,15 @@ endif
 override CFLAGS += -I$(PARENT_DIR)/include
 override CFLAGS += -isystem $(OPENSSL)/include# # use of -isystem is critical for selecting wanted OpenSSL version
 
-LIBS = -lcmp -lSecUtils -lssl -lcrypto
 ifdef USE_UTA
     LIBS += -luta
 endif
+ifdef SEC_NO_TLS
+    override CFLAGS += -DSEC_NO_TLS=1
+else
+    LIBS += -lssl
+endif
+LIBS += -lcmp -lSecUtils -lcrypto
 
 ifeq ($(LPATH),)
     override LDFLAGS += -L$(PARENT_DIR)/$(LIBCMP_OUT) -Wl,-rpath=$(LIBCMP_OUT)

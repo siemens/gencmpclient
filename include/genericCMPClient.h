@@ -183,10 +183,12 @@ void KEY_free(OPTIONAL EVP_PKEY *pkey);
 
 /* SSL_CTX helpers for HTTPS */
 #endif  /* LOCAL_DEFS */
+#ifndef SEC_NO_TLS
 SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
                  OPTIONAL const CREDENTIALS *creds,
                  OPTIONAL const char *ciphers, int security_level);
 void TLS_free(OPTIONAL SSL_CTX *tls);
+#endif
 #ifdef LOCAL_DEFS
 
 /* X509_EXTENSIONS helpers */

@@ -102,6 +102,11 @@ const char *tls_ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH
 
 SSL_CTX *setup_TLS(void)
 {
+#ifdef SEC_NO_TLS
+    fprintf(stderr, "TLS is not enabled in this build\n");
+    return NULL;
+#else
+
     STACK_OF(X509_CRL) *crls = NULL;
     CREDENTIALS *tls_creds = NULL;
     SSL_CTX *tls = NULL;
@@ -143,6 +148,7 @@ SSL_CTX *setup_TLS(void)
     CRLs_free(crls);
     CREDENTIALS_free(tls_creds);
     return tls;
+#endif
 }
 
 X509_STORE *setup_CMP_truststore(void)
@@ -332,7 +338,9 @@ static int CMPclient_demo(enum use_case use_case)
 
  err:
     CMPclient_finish(ctx);
+#ifndef SEC_NO_TLS
     TLS_free(tls);
+#endif
     KEY_free(new_pkey);
     EXTENSIONS_free(exts);
     CREDENTIALS_free(new_creds);

@@ -218,10 +218,12 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     }
 
     *pctx = ctx;
+    X509_NAME_free(rcp);
     return CMP_OK;
 
  err:
     OSSL_CMP_CTX_delete(ctx);
+    X509_NAME_free(rcp);
     return CMPOSSL_error();
 }
 

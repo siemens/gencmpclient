@@ -31,13 +31,16 @@ const char *const new_certs = "creds/new.crt";
 const char *const new_key   = "creds/new.pem";
 const char *const new_key_pass = NULL; /* or, e.g., "pass:12345", or "engine:id" */
 
-#ifdef INSTA /* http://pki.certificate.fi:8080/enroll-ca-list.html */
+#ifdef INSTA /* may be set via Makefile target build_insta */
+/* http://pki.certificate.fi:8080/enroll-ca-list.html */
 
 #define ROOT_CA        "InstaDemoCA"
 #define INFR_ROOT_CA    ROOT_CA
 #define INFR_ISSUING_CA ROOT_CA
 
 /* #undef CRL_DIR */
+#define CRLS_URL NULL
+#define OCSP_URL NULL
 
 const char *const recipient = "/C=FI/O=Insta Demo/CN=Insta Demo CA";
 const char *const subject = "/CN=test-genCMPClientDemo";
@@ -67,6 +70,9 @@ const bool use_tls = false;
 #define      ROOT_CA    "PPKIPlayground"KEYTYPE"RootCAv10"
 #define INFR_ROOT_CA    "PPKIPlaygroundInfrastructureRootCAv10"
 #define INFR_ISSUING_CA "PPKIPlaygroundInfrastructureIssuingCAv10"
+
+#define CRLS_URL "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN%3dPPKI+Playground+ECC+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE"
+#define OCSP_URL "http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp"
 
 const char *const recipient = "/CN=PPKI Playground "KEYTYPE" Issuing CA v1.0"
     "/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE";
@@ -117,21 +123,23 @@ SSL_CTX *setup_TLS(void)
         goto err;
     /* TODO maybe also add untrusted TLS certs */
 
-#ifdef CRL_DIR
+#if 0 && defined CRL_DIR
     const char *crls_files = CRL_DIR INFR_ISSUING_CA".crl";
     crls = CRLs_load(crls_files, "CRLs for TLS level");
     if (crls == NULL)
         goto err;
 #endif
-
     const X509_VERIFY_PARAM *vpm = NULL;
-    const char *CRLs_url = NULL;
-    const char *OCSP_url = NULL;
+    const bool full_chain = true;
+    const bool try_stapling = true;
     const bool use_CDPs = false;
+    const char *CRLs_url = NULL; /* or: CRLS_URL */
     const bool use_AIAs = true;
-    if (!STORE_set_parameters(truststore, OPTIONAL vpm, crls,
-                              use_CDPs, OPTIONAL CRLs_url,
-                              use_AIAs, OPTIONAL OCSP_url))
+    const char *OCSP_url = OCSP_URL;
+    if (!STORE_set_parameters(truststore, vpm,
+                              full_chain, try_stapling, crls,
+                              use_CDPs, CRLs_url,
+                              use_AIAs, OCSP_url))
         goto err;
 
     tls_creds = CREDENTIALS_load(tls_certs, tls_key, tls_key_pass,
@@ -139,12 +147,12 @@ SSL_CTX *setup_TLS(void)
     if (tls_creds == NULL)
         goto err;
 
+    const STACK_OF(X509) *untrusted = NULL;
     const int security_level = -1;
-    tls = TLS_new(truststore, tls_creds, tls_ciphers, security_level);
+    tls = TLS_new(truststore, untrusted, tls_creds, tls_ciphers, security_level);
 
  err:
-    if (tls == NULL)
-        STORE_free(truststore);
+    STORE_free(truststore);
     CRLs_free(crls);
     CREDENTIALS_free(tls_creds);
     return tls;
@@ -171,13 +179,16 @@ X509_STORE *setup_CMP_truststore(void)
         goto err;
 
     const X509_VERIFY_PARAM *vpm = NULL;
-    const char *CRLs_url = NULL;
-    const char *OCSP_url = NULL;
+    const bool full_chain = true;
+    const bool try_stapling = false;
     const bool use_CDPs = true;
+    const char *CRLs_url = CRLS_URL;
     const bool use_AIAs = false;
-    if (!STORE_set_parameters(cmp_truststore, OPTIONAL vpm, crls,
-                              use_CDPs, OPTIONAL CRLs_url,
-                              use_AIAs, OPTIONAL OCSP_url)) {
+    const char *OCSP_url = NULL; /* or: OCSP_URL */
+    if (!STORE_set_parameters(cmp_truststore, vpm,
+                              full_chain, try_stapling, crls,
+                              use_CDPs, CRLs_url,
+                              use_AIAs, OCSP_url)) {
         STORE_free(cmp_truststore);
         cmp_truststore = NULL;
     }
@@ -195,6 +206,8 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
     X509_STORE *cmp_truststore = setup_CMP_truststore();
     if (cmp_truststore == NULL)
         return -1;
+    STACK_OF(X509) *untrusted_certs = untrusted == NULL ? NULL :
+        CERTS_load(untrusted, "untrusted certs for CMP");
 
     const char *new_cert_trusted = TRUST_DIR ROOT_CA".crt";
     X509_STORE *new_cert_truststore =
@@ -202,17 +215,16 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
     CMP_err err = -2;
     if (new_cert_truststore == NULL)
         goto err;
+    /* no revocation done for newly enrolled cert */
 
-    STACK_OF(X509) *untrusted_certs = untrusted == NULL ? NULL :
-        CERTS_load(untrusted, "untrusted certs for CMP");
     OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     const int total_timeout = 100;
     const bool implicit_confirm = use_case == update;
-    err = CMPclient_prepare(pctx, OPTIONAL log_fn,
-                            cmp_truststore, OPTIONAL recipient,
-                            OPTIONAL untrusted_certs,
+    err = CMPclient_prepare(pctx, log_fn,
+                            cmp_truststore, recipient,
+                            untrusted_certs,
                             cmp_creds, digest,
-                            OPTIONAL transfer_fn, total_timeout,
+                            transfer_fn, total_timeout,
                             new_cert_truststore, implicit_confirm);
     CERTS_free(untrusted_certs);
     STORE_free(new_cert_truststore);
@@ -358,6 +370,13 @@ static int CMPclient_demo(enum use_case use_case)
 
 int main(int argc, char *argv[])
 {
+#ifndef OPENSSL_NO_CRYPTO_MDEBUG
+    char *p = getenv("OPENSSL_DEBUG_MEMORY");
+    if (p != NULL && strcmp(p, "on") == 0)
+        CRYPTO_set_mem_debug(1);
+    CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_ON);
+#endif
+
     enum use_case use_case = bootstrap; /* default */
     if (argc > 1) {
         if (argc == 2 && !strcmp(argv[1], "imprint"))
@@ -373,5 +392,12 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
     }
-    return CMPclient_demo(use_case) == CMP_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+
+    int rc = CMPclient_demo(use_case) == CMP_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+
+#ifndef OPENSSL_NO_CRYPTO_MDEBUG
+    if (CRYPTO_mem_leaks_fp(stderr) <= 0)
+        rc = EXIT_FAILURE;
+#endif
+    return rc;
 }

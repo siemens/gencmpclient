@@ -8,6 +8,7 @@
  ******************************************************************************/
 
 #include "genericCMPClient.h"
+#include "../cmpossl/crypto/cmp/cmp_int.h" /* TODO remove when getters for server and proxy data are available */
 
 #include <openssl/cmperr.h>
 #include <openssl/ssl.h>
@@ -67,13 +68,13 @@ STACK_OF(X509_CRL)  *FILES_load_crls_multi(const char *files, sec_file_format fo
 X509_STORE *STORE_load_trusted(const char *files, OPTIONAL const char *desc,
                                OPTIONAL void/* uta_ctx*/ *ctx);
 bool STORE_set1_host_ip(X509_STORE *truststore, const char *host, const char *ip);
-
-#define X509_STORE_EX_DATA_HOST 0
-#define X509_STORE_EX_DATA_SBIO 1
+bool STORE_set0_tls_bio(X509_STORE* store, BIO* bio);
 
 #ifndef SEC_NO_TLS
 bool TLS_init(void);
-SSL_CTX *TLS_CTX_new(bool client, OPTIONAL const X509_STORE *truststore, OPTIONAL const CREDENTIALS *creds,
+SSL_CTX *TLS_CTX_new(bool client, OPTIONAL const X509_STORE *truststore,
+                     OPTIONAL const STACK_OF(X509) *untrusted,
+                     OPTIONAL const CREDENTIALS *creds,
                      OPTIONAL const char *ciphers, int security_level);
 void TLS_CTX_free(OPTIONAL SSL_CTX *ctx);
 #endif
@@ -194,9 +195,11 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
             return CMP_R_RECIPIENT;
         }
     }
-    if (rcp != NULL /* else CMPforOpenSSL uses cert issuer */ &&
-        !OSSL_CMP_CTX_set1_recipient(ctx, rcp)) {
-        goto err;
+    if (rcp != NULL) {/* else CMPforOpenSSL uses cert issuer */
+        bool rv = OSSL_CMP_CTX_set1_recipient(ctx, rcp);
+        X509_NAME_free(rcp);
+        if (!rv)
+            goto err;
     }
 
     if (digest != NULL) {
@@ -218,10 +221,10 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_IMPLICITCONFIRM, implicit_confirm)) {
         goto err;
     }
-    if (new_cert_truststore != NULL &&
-        (!X509_STORE_up_ref(new_cert_truststore) ||
-         !OSSL_CMP_CTX_set_certConf_cb(ctx, OSSL_CMP_certConf_cb) ||
-         !OSSL_CMP_CTX_set_certConf_cb_arg(ctx, new_cert_truststore))) {
+    if (new_cert_truststore != NULL
+        && (!OSSL_CMP_CTX_set_certConf_cb(ctx, OSSL_CMP_certConf_cb) ||
+            !OSSL_CMP_CTX_set_certConf_cb_arg(ctx, new_cert_truststore) ||
+            !X509_STORE_up_ref(new_cert_truststore))) {
         goto err;
     }
 
@@ -258,13 +261,121 @@ static const char *tls_error_hint(unsigned long err)
     }
 }
 
+/* copied from s_client with simplifications and trivial changes */
+#undef BUFSIZZ
+#define BUFSIZZ 1024*8
+static int proxy_connect(OSSL_CMP_CTX *ctx, BIO *bio)
+{
+    char *mbuf = OPENSSL_malloc(BUFSIZZ);
+    int mbuf_len = 0;
+    int ret = 0;
+    BIO *fbio = BIO_new(BIO_f_buffer());
+
+    if (mbuf == NULL || fbio == NULL) {
+        LOG(FL_ERR, "out of memory");
+        goto end;
+    }
+    BIO_push(fbio, bio);
+    /* CONNECT seems only to be specified for HTTP/1.1 in RFC 2817/7231 */
+    BIO_printf(fbio, "CONNECT %s:%d HTTP/1.1\r\n", ctx->serverName,
+                                                   ctx->serverPort);
+    /*
+     * Workaround for broken proxies which would otherwise close
+     * the connection when entering tunnel mode (eg Squid 2.6)
+     */
+    BIO_printf(fbio, "Proxy-Connection: Keep-Alive\r\n");
+
+#if 0 /* proxyuser not yet supported */
+    /* Support for basic (base64) proxy authentication */
+    char *proxyuser = NULL;
+    char *proxypass = NULL;
+    #define base64encode(str, len) OPENSSL_strdup(str)
+    if (proxyuser != NULL) {
+        size_t l;
+        char *proxyauth, *proxyauthenc;
+
+        l = strlen(proxyuser);
+        if (proxypass != NULL)
+            l += strlen(proxypass);
+        proxyauth = OPENSSL_malloc(l + 2);
+        snprintf(proxyauth, l + 2, "%s:%s", proxyuser, (proxypass != NULL) ? proxypass : "");
+        proxyauthenc = base64encode(proxyauth, strlen(proxyauth));
+        BIO_printf(fbio, "Proxy-Authorization: Basic %s\r\n", proxyauthenc);
+        OPENSSL_clear_free(proxyauth, strlen(proxyauth));
+        OPENSSL_clear_free(proxyauthenc, strlen(proxyauthenc));
+    }
+#endif
+    BIO_printf(fbio, "\r\n");
+flush_retry:
+    if(!BIO_flush(fbio))
+        /* potentially needs to be retried if BIO is non-blocking */
+        if (BIO_should_retry(fbio))
+                goto flush_retry;
+retry:
+    mbuf_len = BIO_gets(fbio, mbuf, BUFSIZZ);
+    /* as the BIO doesn't block, we need to wait that the first line comes in */
+    if (mbuf_len < (int)strlen("HTTP/1.1 200")) {
+        goto retry;
+    }
+    /* RFC 7231 4.3.6: any 2xx status code is valid */
+    if (strncmp(mbuf, "HTTP/", strlen("HTTP/1.1 2") != 0)) {
+        LOG(FL_ERR, "HTTP CONNECT failed, non-HTTP response");
+        goto end;
+    }
+    if (strncmp(&mbuf[5], "1.1 ", 4) != 0) {
+        LOG(FL_ERR, "HTTP CONNECT failed, bad HTTP version");
+        goto end;
+    }
+    if (mbuf[9] != '2') {
+        LOG(FL_ERR, "HTTP CONNECT failed: %.*s ", mbuf_len-9, &mbuf[9]);
+        goto end;
+    }
+
+    /* TODO: this does not necessarily catch the case when the full HTTP
+             response came in in more than a single TCP message */
+    /* Read past all following headers */
+    do {
+        mbuf_len = BIO_gets(fbio, mbuf, BUFSIZZ);
+    } while (mbuf_len > 2);
+
+    ret = 1;
+end:
+    if (fbio != NULL) {
+        (void)BIO_flush(fbio);
+        BIO_pop(fbio);
+        BIO_free(fbio);
+    }
+    OPENSSL_free(mbuf);
+    return ret;
+}
+
+
 static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
 {
     SSL_CTX *ssl_ctx = OSSL_CMP_CTX_get_http_cb_arg(ctx);
     BIO *sbio = NULL;
+
     if (detail == 1) { /* connecting */
-        sbio = BIO_new_ssl(OSSL_CMP_CTX_get_http_cb_arg(ctx), true/* client */);
-        hbio = sbio ? BIO_push(sbio, hbio): NULL;
+        SSL *ssl;
+
+        if ((ctx->proxyName != NULL && ctx->proxyPort != 0
+             && !proxy_connect(ctx, hbio))
+            || (sbio = BIO_new(BIO_f_ssl())) == NULL) {
+            hbio = NULL;
+            goto end;
+        }
+        if ((ssl = SSL_new(ssl_ctx)) == NULL) {
+            BIO_free(sbio);
+            hbio = sbio = NULL;
+            goto end;
+        }
+
+        SSL_set_tlsext_host_name(ssl, ctx->serverName);
+
+        SSL_set_connect_state(ssl);
+        BIO_set_ssl(sbio, ssl, BIO_CLOSE);
+
+        hbio = BIO_push(sbio, hbio);
     } else { /* disconnecting */
         const char *hint = tls_error_hint(detail);
         if (hint != NULL)
@@ -272,11 +383,12 @@ static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
         /* as a workaround for OpenSSL double free, do not pop the sbio, but
            rely on BIO_free_all() done by OSSL_CMP_PKIMESSAGE_http_perform() */
     }
+ end:
     if (ssl_ctx != NULL) {
         X509_STORE *ts = SSL_CTX_get_cert_store(ssl_ctx);
         if (ts != NULL) {
             /* indicate if OSSL_CMP_MSG_http_perform() with TLS is active */
-            (void)X509_STORE_set_ex_data(ts, X509_STORE_EX_DATA_SBIO, sbio);
+            (void)STORE_set0_tls_bio(ts, sbio);
         }
     }
     return hbio;
@@ -597,26 +709,31 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 
 /* X509_STORE helpers */
 
+inline
 STACK_OF(X509) *CERTS_load(const char *file, OPTIONAL const char *desc)
 {
     return FILES_load_certs_autofmt(file, FORMAT_PEM, NULL/* pass */, desc);
 }
 
+inline
 void CERTS_free(OPTIONAL STACK_OF(X509) *certs)
 {
     sk_X509_pop_free(certs, X509_free);
 }
 
+inline
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc)
 {
     return STORE_load_trusted(trusted_certs, desc, NULL);
 }
 
+inline
 STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc)
 {
     return FILES_load_crls_multi(files, FORMAT_ASN1, desc);
 }
 
+inline
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls)
 {
     sk_X509_CRL_pop_free(crls, X509_CRL_free);
@@ -625,13 +742,17 @@ void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls)
 #ifndef SEC_NO_TLS
 /* SSL_CTX helpers for HTTPS */
 
+inline
 SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
+                 OPTIONAL const STACK_OF(X509) *untrusted,
                  OPTIONAL const CREDENTIALS *creds,
                  OPTIONAL const char *ciphers, int security_level)
 {
-    return TLS_CTX_new(true/* client */, truststore, creds, ciphers, security_level);
+    const bool client = true;
+    return TLS_CTX_new(client, truststore, untrusted, creds, ciphers, security_level);
 }
 
+inline
 void TLS_free(OPTIONAL SSL_CTX *tls)
 {
     TLS_CTX_free(tls);

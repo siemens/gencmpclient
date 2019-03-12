@@ -172,6 +172,7 @@ bool STORE_add_crls(X509_STORE *truststore, OPTIONAL const STACK_OF(X509_CRL) *c
 /* also sets certificate verification callback: */
 bool STORE_set_parameters(X509_STORE *truststore,
                           OPTIONAL const X509_VERIFY_PARAM *vpm,
+                          bool full_chain, bool try_stapling,
                           OPTIONAL const STACK_OF(X509_CRL) *crls,
                           bool use_CDPs, OPTIONAL const char *CRLs_url,
                           bool use_AIAs, OPTIONAL const char *OCSP_url);
@@ -185,6 +186,7 @@ void KEY_free(OPTIONAL EVP_PKEY *pkey);
 #endif  /* LOCAL_DEFS */
 #ifndef SEC_NO_TLS
 SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
+                 OPTIONAL const STACK_OF(X509) *untrusted,
                  OPTIONAL const CREDENTIALS *creds,
                  OPTIONAL const char *ciphers, int security_level);
 void TLS_free(OPTIONAL SSL_CTX *tls);

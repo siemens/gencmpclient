@@ -184,7 +184,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         }
     } else if (NULL == cert) {
         if (sk_X509_num(untrusted) > 0) {
-            rcp = (X509_get_subject_name(sk_X509_value(untrusted, 0)));
+            rcp = X509_NAME_dup((X509_get_subject_name(sk_X509_value(untrusted, 0))));
         } else {
             LOG(FL_WARN, "No explicit recipient, no cert, and no untrusted certs given; resorting to NULL DN");
             rcp = X509_NAME_new();

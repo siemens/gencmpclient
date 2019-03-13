@@ -331,7 +331,8 @@ static int CMPclient_demo(enum use_case use_case)
         err = CMPclient_update(ctx, &new_creds, new_pkey);
         break;
     case revocation:
-        err = CMPclient_revoke(ctx, CREDENTIALS_get_cert(cmp_creds), CRL_REASON_NONE);
+        err = CMPclient_revoke(ctx, CREDENTIALS_get_cert(cmp_creds), CRL_REASON_UNSPECIFIED);
+        /* CmpWsRa does not accept CRL_REASON_NONE: "missing crlEntryDetails for REVOCATION_REQ" */
         break;
     default:
         err = -8;

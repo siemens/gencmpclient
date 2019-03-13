@@ -136,6 +136,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
                           OPTIONAL X509_STORE *new_cert_truststore, bool implicit_confirm)
 {
     OSSL_CMP_CTX *ctx = NULL;
+    X509_NAME *rcp = NULL;
 
     if (NULL == pctx) {
         return ERR_R_PASSED_NULL_PARAMETER;
@@ -174,7 +175,6 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     }
 
     /* need recipient for unprotected and PBM-protected messages */
-    X509_NAME *rcp = NULL;
     if (recipient != NULL) {
         rcp = UTIL_parse_name(recipient, MBSTRING_ASC, false);
         if (NULL == rcp) {
@@ -229,10 +229,12 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     }
 
     *pctx = ctx;
+    X509_NAME_free(rcp);
     return CMP_OK;
 
  err:
     OSSL_CMP_CTX_delete(ctx);
+    X509_NAME_free(rcp);
     return CMPOSSL_error();
 }
 

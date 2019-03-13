@@ -1,6 +1,8 @@
 # optional LPATH defines absolute path where to find pre-installed libraries, e.g., /usr/lib
 # optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
 
+SHELL=bash # This is needed because of a problem in "build" rule
+
 ifeq ($(OS),Windows_NT)
     EXE=.exe
     DLL=.dll
@@ -218,6 +220,7 @@ debiandir: debian_control.in debian_changelog.in
 .phony: install headers_install uninstall
 install: $(OUTBIN)
 	install -Dm 755 $(OUTBIN) $(ROOTFS)/usr/lib/$(OUTBIN)
+	install -Dm 755 libcmp.so $(ROOTFS)/usr/lib/libcmp.so.0
 
 headers_install:
 	find include -type d -exec install -d '$(ROOTFS)/usr/{}' ';'

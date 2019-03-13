@@ -12,6 +12,7 @@ override_dh_auto_install:
 	@# prevent some confusing lintian errors and warnings:
 	@# mv $(LIBDIR)/libgencmpcl.so $(LIBDIR)/libgencmpcl.so.0
 	@# ln -sr $(LIBDIR)/libgencmpcl.so.0 $(LIBDIR)/libgencmpcl.so
+	$(MAKE) headers_install ROOTFS=debian/libgencmpcl-dev
 
 override_dh_auto_clean:
 	# do not execute the clean: rule in the Makefile

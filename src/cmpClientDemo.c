@@ -131,7 +131,7 @@ SSL_CTX *setup_TLS(void)
 #endif
     const X509_VERIFY_PARAM *vpm = NULL;
     const bool full_chain = true;
-    const bool try_stapling = true;
+    const bool try_stapling = OPENSSL_VERSION_NUMBER >= 0x1010001fL;
     const bool use_CDPs = false;
     const char *CRLs_url = NULL; /* or: CRLS_URL */
     const bool use_AIAs = true;
@@ -371,11 +371,13 @@ static int CMPclient_demo(enum use_case use_case)
 
 int main(int argc, char *argv[])
 {
+#if OPENSSL_VERSION_NUMBER >= 0x10100002L
 #ifndef OPENSSL_NO_CRYPTO_MDEBUG
     char *p = getenv("OPENSSL_DEBUG_MEMORY");
     if (p != NULL && strcmp(p, "on") == 0)
         CRYPTO_set_mem_debug(1);
     CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_ON);
+#endif
 #endif
 
     enum use_case use_case = bootstrap; /* default */
@@ -396,9 +398,11 @@ int main(int argc, char *argv[])
 
     int rc = CMPclient_demo(use_case) == CMP_OK ? EXIT_SUCCESS : EXIT_FAILURE;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100002L
 #ifndef OPENSSL_NO_CRYPTO_MDEBUG
     if (CRYPTO_mem_leaks_fp(stderr) <= 0)
         rc = EXIT_FAILURE;
+#endif
 #endif
     return rc;
 }

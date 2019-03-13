@@ -184,7 +184,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         }
     } else if (NULL == cert) {
         if (sk_X509_num(untrusted) > 0) {
-            rcp = X509_get_subject_name(sk_X509_value(untrusted, 0));
+            rcp = (X509_get_subject_name(sk_X509_value(untrusted, 0)));
         } else {
             LOG(FL_WARN, "No explicit recipient, no cert, and no untrusted certs given; resorting to NULL DN");
             rcp = X509_NAME_new();
@@ -554,7 +554,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
     X509 *newcert = NULL;
 
     if (NULL == ctx || NULL == new_creds) {
-	return ERR_R_PASSED_NULL_PARAMETER;
+        return ERR_R_PASSED_NULL_PARAMETER;
     }
 
     /* check if any enrollment function has already been called before on ctx */
@@ -564,24 +564,24 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
 
     switch (type) {
     case CMP_IR:
-	newcert = OSSL_CMP_exec_IR_ses(ctx);
-	break;
+        newcert = OSSL_CMP_exec_IR_ses(ctx);
+        break;
     case CMP_CR:
-	newcert = OSSL_CMP_exec_CR_ses(ctx);
-	break;
+        newcert = OSSL_CMP_exec_CR_ses(ctx);
+        break;
     case CMP_P10CR:
-	newcert = OSSL_CMP_exec_P10CR_ses(ctx);
-	break;
+        newcert = OSSL_CMP_exec_P10CR_ses(ctx);
+        break;
     case CMP_KUR:
-	newcert = OSSL_CMP_exec_KUR_ses(ctx);
-	break;
+        newcert = OSSL_CMP_exec_KUR_ses(ctx);
+        break;
     default:
         LOG(FL_ERR, "Argument must be CMP_IR, CMP_CR, CMP_P10CR, or CMP_KUR");
-	return CMP_R_INVALID_PARAMETERS;
-	break;
+        return CMP_R_INVALID_PARAMETERS;
+        break;
     }
     if (NULL == newcert) {
-	goto err;
+        goto err;
     }
 
     EVP_PKEY *new_key = OSSL_CMP_CTX_get0_newPkey(ctx); /* NULL in case P10CR */
@@ -594,7 +594,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
     CREDENTIALS *creds = CREDENTIALS_new(new_key, newcert, chain, NULL, NULL);
     CERTS_free(chain);
     if (NULL == creds) {
-	return ERR_R_MALLOC_FAILURE;
+        return ERR_R_MALLOC_FAILURE;
     }
     *new_creds = creds;
     ERR_clear_error(); /* empty the OpenSSL error queue */
@@ -677,10 +677,10 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
     }
 
     if ((reason >= CRL_REASON_UNSPECIFIED &&
-	 !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_REVOCATION_REASON, reason)) ||
-	!OSSL_CMP_CTX_set1_oldClCert(ctx, cert) ||
+         !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_REVOCATION_REASON, reason)) ||
+        !OSSL_CMP_CTX_set1_oldClCert(ctx, cert) ||
         !OSSL_CMP_exec_RR_ses(ctx)) {
-	goto err;
+        goto err;
     }
     ERR_clear_error(); /* empty the OpenSSL error queue */
     return CMP_OK;

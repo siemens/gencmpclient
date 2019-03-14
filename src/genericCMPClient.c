@@ -704,10 +704,10 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 #endif
     X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
     OSSL_CMP_CTX_delete(ctx);
+/* better not do here:
     STORE_EX_free_index();
-#ifdef CLOSE_LOG_ON_EACH_FINISH
     LOG_close();
-#endif
+*/
 }
 
 

@@ -302,6 +302,9 @@ static int CMPclient_demo(enum use_case use_case)
     const int timeout = 10;
     const char *server = use_tls ? TLS_SERVER : SERVER;
     err = CMPclient_setup_HTTP(ctx, server, path, timeout, tls, proxy);
+#ifndef SEC_NO_TLS
+    TLS_free(tls);
+#endif
     if (err != CMP_OK) {
         goto err;
     }
@@ -351,17 +354,12 @@ static int CMPclient_demo(enum use_case use_case)
 
  err:
     CMPclient_finish(ctx);
-#ifndef SEC_NO_TLS
-    TLS_free(tls);
-#endif
     KEY_free(new_pkey);
     EXTENSIONS_free(exts);
     CREDENTIALS_free(new_creds);
     CREDENTIALS_free(cmp_creds);
-
-#ifndef CLOSE_LOG_ON_EACH_FINISH
+    STORE_EX_free_index(); /* not really necessary */
     LOG_close();
-#endif
 
     if (err != CMP_OK) {
         fprintf(stderr, "CMPclient error %d\n", err);

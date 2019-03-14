@@ -162,7 +162,7 @@ void LOG_close(void);
 
 /* X509_STORE helpers */
 #endif  /* LOCAL_DEFS */
-STACK_OF(X509) *CERTS_load(const char *file, OPTIONAL const char *desc);
+STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc);
 void CERTS_free(OPTIONAL STACK_OF(X509) *certs);
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
 STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc);

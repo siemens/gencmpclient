@@ -61,7 +61,7 @@ typedef enum
     FORMAT_ENGINE = 8, /*! crypto engine, which is not really a file format */
     FORMAT_HTTP  = 13  /*! download using HTTP */
 } sec_file_format;     /*! type of format for security-related files or other input */
-STACK_OF(X509)  *FILES_load_certs_autofmt(const char *file, sec_file_format format,
+STACK_OF(X509)  *FILES_load_certs_multi(const char *files, sec_file_format format,
                                           OPTIONAL const char *pass, OPTIONAL const char *desc);
 STACK_OF(X509_CRL)  *FILES_load_crls_multi(const char *files, sec_file_format format, const char *desc);
 
@@ -718,9 +718,9 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 /* X509_STORE helpers */
 
 inline
-STACK_OF(X509) *CERTS_load(const char *file, OPTIONAL const char *desc)
+STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc)
 {
-    return FILES_load_certs_autofmt(file, FORMAT_PEM, NULL/* pass */, desc);
+    return FILES_load_certs_multi(files, FORMAT_PEM, NULL/* pass */, desc);
 }
 
 inline

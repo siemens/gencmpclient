@@ -9,6 +9,8 @@
 
 #include <string.h>
 
+#include <securityUtilities.h>
+
 #include <genericCMPClient.h>
 
 #ifdef LOCAL_DEFS
@@ -358,9 +360,8 @@ static int CMPclient_demo(enum use_case use_case)
     EXTENSIONS_free(exts);
     CREDENTIALS_free(new_creds);
     CREDENTIALS_free(cmp_creds);
-    STORE_EX_free_index(); /* not really necessary */
-    LOG_close();
 
+    LOG_close(); /* not really needed since done also in sec_deinit() */
     if (err != CMP_OK) {
         fprintf(stderr, "CMPclient error %d\n", err);
     }
@@ -377,6 +378,12 @@ int main(int argc, char *argv[])
     CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_ON);
 #endif
 #endif
+
+    sec_ctx *sec_ctx = sec_init();
+    if (sec_ctx == NULL) {
+        fprintf(stderr, "failure getting SecUtils ctx");
+        return EXIT_FAILURE;
+    }
 
     enum use_case use_case = bootstrap; /* default */
     if (argc > 1) {
@@ -395,6 +402,10 @@ int main(int argc, char *argv[])
     }
 
     int rc = CMPclient_demo(use_case) == CMP_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+
+    if (sec_deinit(sec_ctx) < 0) {
+        rc = EXIT_FAILURE;
+    }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100002L
 #ifndef OPENSSL_NO_CRYPTO_MDEBUG

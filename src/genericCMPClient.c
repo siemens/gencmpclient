@@ -8,7 +8,7 @@
  ******************************************************************************/
 
 #include "genericCMPClient.h"
-#include "../cmpossl/crypto/cmp/cmp_int.h" /* TODO remove when getters for server and proxy data are available */
+#include "../cmpossl/crypto/cmp/cmp_int.h" /* TODO remove when OSSL_CMP_proxy_connect is available and used */
 
 #include <openssl/cmperr.h>
 #include <openssl/ssl.h>
@@ -268,15 +268,57 @@ static const char *tls_error_hint(unsigned long err)
     }
 }
 
+/* TODO remove when OSSL_CMP_proxy_connect is available and used */
+/* from apps.h */
+# ifndef openssl_fdset
+#  if defined(OPENSSL_SYSNAME_WIN32) \
+   || defined(OPENSSL_SYS_WIN32) || defined(OPENSSL_SYS_WINCE)
+#   define openssl_fdset(a,b) FD_SET((unsigned int)a, b)
+#  else
+#   define openssl_fdset(a,b) FD_SET(a, b)
+#  endif
+# endif
+/* wait if timeout > 0. returns < 0 on error, 0 on timeout, > 0 on success */
+static int socket_wait(int fd, int for_read, int timeout)
+{
+    fd_set confds;
+    struct timeval tv;
+
+    if (timeout <= 0)
+        return 0;
+
+    FD_ZERO(&confds);
+    openssl_fdset(fd, &confds);
+    tv.tv_usec = 0;
+    tv.tv_sec = timeout;
+    return select(fd + 1, for_read ? &confds : NULL,
+                  for_read ? NULL : &confds, NULL, &tv);
+}
+
+/* TODO remove when OSSL_CMP_proxy_connect is available and used */
+/* wait if timeout > 0. returns < 0 on error, 0 on timeout, > 0 on success */
+static int bio_wait(BIO *bio, int timeout) {
+    int fd;
+
+    if (BIO_get_fd(bio, &fd) <= 0)
+        return -1;
+    return socket_wait(fd, BIO_should_read(bio), timeout);
+}
 /* copied from s_client with simplifications and trivial changes */
+/* TODO replace by OSSL_CMP_proxy_connect() when available */
 #undef BUFSIZZ
 #define BUFSIZZ 1024*8
+#define HTTP_PREFIX "HTTP/"
+#define HTTP_VERSION "1." /* or, e.g., "1.1" */
+#define HTTP_VERSION_MAX_LEN 3
 static int proxy_connect(OSSL_CMP_CTX *ctx, BIO *bio)
 {
     char *mbuf = OPENSSL_malloc(BUFSIZZ);
     int mbuf_len = 0;
+    int rv;
     int ret = 0;
     BIO *fbio = BIO_new(BIO_f_buffer());
+    time_t max_time = ctx->msgtimeout > 0 ? time(NULL) + ctx->msgtimeout : 0;
 
     if (mbuf == NULL || fbio == NULL) {
         LOG(FL_ERR, "out of memory");
@@ -284,15 +326,15 @@ static int proxy_connect(OSSL_CMP_CTX *ctx, BIO *bio)
     }
     BIO_push(fbio, bio);
     /* CONNECT seems only to be specified for HTTP/1.1 in RFC 2817/7231 */
-    BIO_printf(fbio, "CONNECT %s:%d HTTP/1.1\r\n", ctx->serverName,
-                                                   ctx->serverPort);
+    BIO_printf(fbio, "CONNECT %s:%d "HTTP_PREFIX"1.1\r\n",
+               ctx->serverName, ctx->serverPort);
     /*
      * Workaround for broken proxies which would otherwise close
      * the connection when entering tunnel mode (eg Squid 2.6)
      */
     BIO_printf(fbio, "Proxy-Connection: Keep-Alive\r\n");
 
-#if 0 /* proxyuser not yet supported */
+#ifdef OSSL_CMP_SUPPORT_PROXYUSER /* TODO is not yet supported */
     /* Support for basic (base64) proxy authentication */
     char *proxyuser = NULL;
     char *proxypass = NULL;
@@ -319,22 +361,31 @@ flush_retry:
         if (BIO_should_retry(fbio))
                 goto flush_retry;
 retry:
+    rv = bio_wait(fbio, (int)(max_time - time(NULL)));
+    if (rv <= 0) {
+        LOG(FL_ERR, "HTTP CONNECT %s\n", rv == 0 ? "timed out" : "failed waiting for data");
+        goto end;
+    }
+
     mbuf_len = BIO_gets(fbio, mbuf, BUFSIZZ);
     /* as the BIO doesn't block, we need to wait that the first line comes in */
-    if (mbuf_len < (int)strlen("HTTP/1.1 200")) {
+    if (mbuf_len < (int)strlen(HTTP_PREFIX""HTTP_VERSION" 200")) {
         goto retry;
     }
     /* RFC 7231 4.3.6: any 2xx status code is valid */
-    if (strncmp(mbuf, "HTTP/", strlen("HTTP/1.1 2") != 0)) {
+    if (strncmp(mbuf, HTTP_PREFIX, strlen(HTTP_PREFIX) != 0)) {
         LOG(FL_ERR, "HTTP CONNECT failed, non-HTTP response");
         goto end;
     }
-    if (strncmp(&mbuf[5], "1.1 ", 4) != 0) {
-        LOG(FL_ERR, "HTTP CONNECT failed, bad HTTP version");
+    char *mbufp = mbuf + strlen(HTTP_PREFIX);
+    if (strncmp(mbufp, HTTP_VERSION, strlen(HTTP_VERSION)) != 0) {
+        LOG(FL_ERR, "HTTP CONNECT failed, bad HTTP version %.*s", HTTP_VERSION_MAX_LEN, mbufp);
         goto end;
     }
-    if (mbuf[9] != '2') {
-        LOG(FL_ERR, "HTTP CONNECT failed: %.*s ", mbuf_len-9, &mbuf[9]);
+    mbufp += HTTP_VERSION_MAX_LEN;
+    if (strncmp(mbufp, " 2", strlen(" 2")) != 0) {
+        mbufp += 1;
+        LOG(FL_ERR, "HTTP CONNECT failed: %.*s ", (int)(mbuf_len - (mbufp - mbuf)), mbufp);
         goto end;
     }
 

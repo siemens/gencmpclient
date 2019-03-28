@@ -21,7 +21,7 @@ typedef int CMP_err;
 #define CMP_R_GENERATE_KEY 253
 #define CMP_R_STORE_CREDS  252
 #define CMP_R_RECIPIENT    251
-/* further error codes are defined in openssl/cmperr.h */
+/* further error codes are defined in ../cmpossl/include/openssl/cmperr.h */
 
 #define CMP_IR    OSSL_CMP_PKIBODY_IR
 #define CMP_CR    OSSL_CMP_PKIBODY_CR

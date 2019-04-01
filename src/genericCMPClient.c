@@ -645,7 +645,11 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
     EVP_PKEY *new_key = OSSL_CMP_CTX_get0_newPkey(ctx); /* NULL in case P10CR */
     STACK_OF(X509) *untrusted = OSSL_CMP_CTX_get0_untrusted_certs(ctx); /* includes extraCerts */
     STACK_OF(X509) *chain = OSSL_CMP_build_cert_chain(untrusted, newcert);
-    if (NULL == chain) {
+    if (chain != NULL) {
+        X509* new_cert = sk_X509_shift(chain);
+        X509_free(new_cert);
+    } else {
+        LOG(FL_WARN, "Could not build proper chain for newly enrolled cert, resorting to all untrusted certs");
         chain = X509_chain_up_ref(untrusted);
     }
 

@@ -44,7 +44,7 @@ else
 endif
 
 ifeq ($(findstring clean,$(MAKECMDGOALS)),)
-OPENSSL_VERSION=$(shell $(MAKE) -s -f OpenSSL_version.mk LIB=h OPENSSL_DIR="$(OPENSSL_DIR)")
+OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=h OPENSSL_DIR="$(OPENSSL_DIR)")
 ifeq ($(OPENSSL_VERSION),)
     $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.0.2)
     OPENSSL_VERSION=1.0
@@ -74,11 +74,11 @@ build:
 ifeq ($(LPATH),)
 	@#git submodule update --init || true
 	cd $(SECUTILS) && git submodule update --init #--recursive || cp --preserve=timestamps ../include/operators.h include/
-	$(MAKE) -C $(SECUTILS) build_only OPENSSL_DIR="$(OPENSSL_DIR)" # -s --no-print-directory
+	$(MAKE) -C $(SECUTILS) build_only OPENSSL_DIR="$(OPENSSL_DIR)"
 	@# the old way to build with CMP was: buildCMPforOpenSSL
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
-	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) --no-print-directory -f OpenSSL_version.mk LIB="$(LIBCMP_OUT)/libcmp$(DLL)"` && \
+	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="$(LIBCMP_OUT)/libcmp$(DLL)"` && \
 	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
 	    (echo "WARNING: OpenSSL version $$LIBCMP_OPENSSL_VERSION used for building libcmp does not match $(OPENSSL_VERSION) to be used for building client"; true); \
 	fi

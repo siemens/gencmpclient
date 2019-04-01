@@ -104,7 +104,7 @@ ifeq ($(findstring clean,$(MAKECMDGOALS)),)
 -include $(DEPS)
 endif
 
-$(OBJS): %$(OBJ): %.c $(SECUTILS_DIR)/$(LIBSECUTILS) $(PARENT_DIR)/$(LIBCMP_OUT)/libcmp$(DLL)
+$(OBJS): %$(OBJ): %.c | $(SECUTILS_DIR)/$(LIBSECUTILS) $(PARENT_DIR)/$(LIBCMP_OUT)/libcmp$(DLL)
 	 $(CC) $(CFLAGS) -c -fPIC $< -o $@
 	@$(CC) $(CFLAGS) -MM $< -MT $@ -MF $*.d
 
@@ -114,7 +114,7 @@ $(OBJS): %$(OBJ): %.c $(SECUTILS_DIR)/$(LIBSECUTILS) $(PARENT_DIR)/$(LIBCMP_OUT)
 $(LIBGENCMPCL): src/genericCMPClient$(OBJ)
 	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@
 
-$(PARENT_DIR)/cmpClientDemo$(EXE): src/cmpClientDemo$(OBJ) $(LIBGENCMPCL)
+$(PARENT_DIR)/cmpClientDemo$(EXE): src/cmpClientDemo$(OBJ) | $(LIBGENCMPCL)
 	$(CC) $(LDFLAGS) $< -lgencmpcl $(LIBS) -o $@
 
 .PHONY: all archive

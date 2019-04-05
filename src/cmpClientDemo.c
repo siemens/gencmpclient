@@ -133,11 +133,11 @@ SSL_CTX *setup_TLS(void)
 #endif
     const X509_VERIFY_PARAM *vpm = NULL;
     const bool full_chain = true;
-    const bool try_stapling = OPENSSL_VERSION_NUMBER >= 0x1010001fL;
     const bool use_CDPs = false;
     const char *CRLs_url = NULL; /* or: CRLS_URL */
     const bool use_AIAs = true;
     const char *OCSP_url = OCSP_URL;
+    const bool try_stapling = (use_AIAs || OCSP_url != NULL) && OPENSSL_VERSION_NUMBER >= 0x1010001fL;
     if (!STORE_set_parameters(truststore, vpm,
                               full_chain, try_stapling, crls,
                               use_CDPs, CRLs_url,

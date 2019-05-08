@@ -18,6 +18,11 @@ git clone git@code.siemens.com:product-pki/genCMPClient.git
 cd genCMPClient
 make -f OpenSSL_version.mk
 ```
+In order for this to work, you may need to set OPENSSL_DIR as described below,
+e.g.,
+```
+export OPENSSL_DIR=/usr/local
+```
 
 This should output on the console something like
 ```

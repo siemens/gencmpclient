@@ -242,7 +242,7 @@ X509_EXTENSIONS *setup_X509_extensions(void)
         return NULL;
     BIO *policy_sections = BIO_new(BIO_s_mem());
     if (policy_sections == NULL ||
-        !EXTENSIONS_add_SANs(exts, "localhost, 127.0.0.1, 192.168.0.1") ||
+        !EXTENSIONS_add_SANs(exts, "localhost, 127.0.0.1, http://192.168.0.1") ||
         !EXTENSIONS_add_ext(exts, "keyUsage", "critical, digitalSignature", NULL) ||
         !EXTENSIONS_add_ext(exts, "extendedKeyUsage", "critical, serverAuth, "
                                   "1.3.6.1.5.5.7.3.2"/* clientAuth */, NULL) ||
@@ -355,7 +355,7 @@ static int CMPclient_demo(enum use_case use_case)
     }
 
  err:
-    CMPclient_finish(ctx);
+    CMPclient_finish(ctx); /* this also frees ctx */
     KEY_free(new_pkey);
     EXTENSIONS_free(exts);
     CREDENTIALS_free(new_creds);

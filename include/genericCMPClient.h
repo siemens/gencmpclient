@@ -100,7 +100,7 @@ static const char *const http_prefix = "http://";
          this default is is not used for IR and CR if the exts arg contains SANs
          Subject DN is of the form "/<type0>=<value0>/<type1>=<value1>..."
 * @param exts X509 extensions to use; SANs default to SANs in the reference cert
-* @param csr PKCS#10 request to use for P10CR; this ignores any other args given
+* @param p10csr PKCS#10 request to use for P10CR; this ignores any other args given
 * @note all const parameters are copied (and need to be freed by the caller)
 * @return CMP_OK on success, else CMP error code
 *******************************************************************************/

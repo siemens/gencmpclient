@@ -21,3 +21,4 @@ libSecUtils.so
 libsecurityutilities*
 example/example4
 tests/component/secUtils_Verification
+cmpClientDemo

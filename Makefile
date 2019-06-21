@@ -73,7 +73,8 @@ endif
 build:
 ifeq ($(LPATH),)
 	@#git submodule update --init || true
-	cd $(SECUTILS) && git submodule update --init #--recursive || cp --preserve=timestamps ../include/operators.h include/
+	cd $(SECUTILS) && git submodule update --init 
+	                                               #--recursive || cp --preserve=timestamps ../include/operators.h include/
 	$(MAKE) -C $(SECUTILS) build_only OPENSSL_DIR="$(OPENSSL_DIR)"
 	@# the old way to build with CMP was: buildCMPforOpenSSL
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"

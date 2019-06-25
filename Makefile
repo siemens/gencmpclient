@@ -1,5 +1,6 @@
 # optional LPATH defines absolute path where to find pre-installed libraries, e.g., /usr/lib
 # optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
+# set INSTA=1 for demo/tests with the Insta Demo CA; use 'make clean_insta' when switching from default to INSTA or vice versa
 
 SHELL=bash # This is needed because of a problem in "build" rule
 
@@ -70,6 +71,10 @@ ifdef NO_TLS
     export SEC_NO_TLS=1
 endif
 
+ifdef INSTA
+    export CFLAGS += "-DINSTA"
+endif
+
 build:
 ifeq ($(LPATH),)
 	@#git submodule update --init || true
@@ -85,13 +90,13 @@ endif
 	fi
 	$(MAKE) -f Makefile_src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
-build_insta:
-	CFLAGS="-DINSTA" $(MAKE) build
-
 ifeq ($(LPATH),)
 clean_uta:
 	$(MAKE) -C $(SECUTILS) clean_uta
 endif
+
+clean_insta:
+	rm -f  src/cmpClientDemo$(OBJ) cmpClientDemo$(EXE)
 
 clean:
 ifeq ($(LPATH),)

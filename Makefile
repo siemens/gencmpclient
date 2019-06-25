@@ -118,7 +118,7 @@ test:	build
 		done; \
 	else \
 		curl -m 2 pki.certificate.fi -s | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1); \
-		$(PROXY) wget -q "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633" -O "creds/crls/InstaDemoCA.crl"; \
+		$(PROXY) curl -s "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633" -o "creds/crls/InstaDemoCA.crl"; \
 	fi
 	$(PROXY) ./cmpClientDemo$(EXE)
 	@echo :

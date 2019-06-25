@@ -11,6 +11,8 @@
 *.o
 *.so
 *.so.*
+*.dll
+*.exe
 mk
 tmp/
 bak/
@@ -21,4 +23,5 @@ libSecUtils.so
 libsecurityutilities*
 example/example4
 tests/component/secUtils_Verification
+creds/new.*
 cmpClientDemo

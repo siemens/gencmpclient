@@ -38,10 +38,10 @@ You can clone the git repository and its submodules with
 ```
 git clone git@code.siemens.com:product-pki/genCMPClient.git
 cd genCMPClient
-export https_proxy=http://test.coia.siemens.net  # or whatever your HTTP proxy is
-export no_proxy=$no_proxy,code.siemens.com
+export https_proxy=http://test.coia.siemens.net:9400  # or whatever your HTTP proxy is
 git submodule update --init
 ```
+<!---export no_proxy=$no_proxy,code.siemens.com  # not actually needed -->
 
 This will download also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
 the [Security Utilities (SecUtils)](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities) library

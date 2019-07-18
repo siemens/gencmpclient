@@ -123,7 +123,6 @@ SSL_CTX *setup_TLS(void)
     X509_STORE *truststore = STORE_load(trusted, "trusted certs for TLS level");
     if (truststore == NULL)
         goto err;
-    /* TODO maybe also add untrusted TLS certs */
 
 #if 0 && defined CRL_DIR
     const char *crls_files = CRL_DIR INFR_ISSUING_CA".crl";
@@ -148,10 +147,10 @@ SSL_CTX *setup_TLS(void)
                                  "credentials for TLS level");
     if (tls_creds == NULL)
         goto err;
-
-    const STACK_OF(X509) *untrusted = NULL;
+    const STACK_OF(X509) *untrusted_certs = NULL;
+    /* TODO maybe also add untrusted certs to help building chain of TLS client and checking stapled OCSP responses */
     const int security_level = -1;
-    tls = TLS_new(truststore, untrusted, tls_creds, tls_ciphers, security_level);
+    tls = TLS_new(truststore, untrusted_certs, tls_creds, tls_ciphers, security_level);
 
  err:
     STORE_free(truststore);

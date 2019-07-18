@@ -74,7 +74,7 @@ void STORE_EX_free_index(void);
 
 #ifndef SEC_NO_TLS
 bool TLS_init(void);
-SSL_CTX *TLS_CTX_new(bool client, OPTIONAL const X509_STORE *truststore,
+SSL_CTX *TLS_CTX_new(int client, OPTIONAL const X509_STORE *truststore,
                      OPTIONAL const STACK_OF(X509) *untrusted,
                      OPTIONAL const CREDENTIALS *creds,
                      OPTIONAL const char *ciphers, int security_level);
@@ -811,7 +811,7 @@ SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
                  OPTIONAL const CREDENTIALS *creds,
                  OPTIONAL const char *ciphers, int security_level)
 {
-    const bool client = true;
+    const int client = 1;
     return TLS_CTX_new(client, truststore, untrusted, creds, ciphers, security_level);
 }
 

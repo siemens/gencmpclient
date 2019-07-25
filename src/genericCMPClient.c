@@ -74,10 +74,11 @@ void STORE_EX_free_index(void);
 
 #ifndef SEC_NO_TLS
 bool TLS_init(void);
-SSL_CTX *TLS_CTX_new(int client, OPTIONAL const X509_STORE *truststore,
+SSL_CTX *TLS_CTX_new(int client, OPTIONAL X509_STORE *truststore,
                      OPTIONAL const STACK_OF(X509) *untrusted,
                      OPTIONAL const CREDENTIALS *creds,
-                     OPTIONAL const char *ciphers, int security_level);
+                     OPTIONAL const char *ciphers, int security_level,
+                     OPTIONAL X509_STORE_CTX_verify_cb verify_cb);
 void TLS_CTX_free(OPTIONAL SSL_CTX *ctx);
 #endif
 
@@ -175,7 +176,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
             goto err;
         }
     } else {
-        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_UNPROTECTED_SEND, 1)) {
+        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, 1)) {
             goto err;
         }
     }
@@ -216,16 +217,17 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
             OSSL_CMP_CTX_delete(ctx);
             return CMP_R_UNKNOWN_ALGORITHM_ID;
         }
-        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_DIGEST_ALGNID, nid)) {
+        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DIGEST_ALGNID, nid)
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_OWF_ALGNID, nid)) {
             goto err;
         }
     }
 
     if ((transfer_fn != NULL && !OSSL_CMP_CTX_set_transfer_cb(ctx, transfer_fn)) ||
-        (total_timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_TOTALTIMEOUT, total_timeout))) {
+        (total_timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_TOTALTIMEOUT, total_timeout))) {
         goto err;
     }
-    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_IMPLICITCONFIRM, implicit_confirm)) {
+    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IMPLICITCONFIRM, implicit_confirm)) {
         goto err;
     }
     if (new_cert_truststore != NULL
@@ -508,7 +510,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         }
     }
     if (!OSSL_CMP_CTX_set1_serverPath(ctx, path) ||
-        (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_MSGTIMEOUT, timeout))) {
+        (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MSGTIMEOUT, timeout))) {
         goto err;
     }
 
@@ -677,7 +679,7 @@ CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL/* old_cert */,
                                           subject, exts, NULL/* csr */);
     if (err == CMP_OK) {
-        (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_SUBJECTALTNAME_NODEFAULT, 1);
+        (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 1);
         err = CMPclient_enroll(ctx, new_creds, CMP_IR);
     }
     return err;
@@ -694,7 +696,7 @@ CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL/* old_cert */,
                                           subject, exts, NULL/* csr */);
     if (err == CMP_OK) {
-        (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_SUBJECTALTNAME_NODEFAULT, 1);
+        (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 1);
         err = CMPclient_enroll(ctx, new_creds, CMP_CR);
     }
     return err;
@@ -726,7 +728,7 @@ CMP_err CMPclient_update(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                                           NULL/* subject */, NULL/* exts */,
                                           NULL/* csr */);
     if (err == CMP_OK) {
-        (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_SUBJECTALTNAME_NODEFAULT, 0);
+        (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 0);
         err = CMPclient_enroll(ctx, new_creds, CMP_KUR);
     }
     return err;
@@ -739,7 +741,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
     }
 
     if ((reason >= CRL_REASON_UNSPECIFIED &&
-         !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_REVOCATION_REASON, reason)) ||
+         !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_REVOCATION_REASON, reason)) ||
         !OSSL_CMP_CTX_set1_oldClCert(ctx, cert) ||
         !OSSL_CMP_exec_RR_ses(ctx)) {
         goto err;
@@ -812,7 +814,8 @@ SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
                  OPTIONAL const char *ciphers, int security_level)
 {
     const int client = 1;
-    return TLS_CTX_new(client, truststore, untrusted, creds, ciphers, security_level);
+    return TLS_CTX_new(NULL, client, (X509_STORE *)truststore, untrusted,
+                       creds, ciphers, security_level, NULL);
 }
 
 inline

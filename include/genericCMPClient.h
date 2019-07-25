@@ -29,7 +29,7 @@ typedef int CMP_err;
 #define CMP_KUR   OSSL_CMP_PKIBODY_KUR
 #define CMP_RR    OSSL_CMP_PKIBODY_RR
 
-#define LOCAL_DEFS
+//#define LOCAL_DEFS
 #ifdef LOCAL_DEFS
 #ifndef OPTIONAL
 

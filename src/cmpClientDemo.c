@@ -73,6 +73,8 @@ const bool use_tls = false;
 #define INFR_ROOT_CA    "PPKIPlaygroundInfrastructureRootCAv10"
 #define INFR_ISSUING_CA "PPKIPlaygroundInfrastructureIssuingCAv10"
 
+#define CDP_URLS "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist;jsessionid=OphNvbMxFNbju-ctvhnTSndA.undefined?cmd=crl&issuer=CN%3dPPKI+Playground+"KEYTYPE"+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE, " \
+                 "https://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist;jsessionid=OphNvbMxFNbju-ctvhnTSndA.undefined?cmd=crl&issuer=CN%3dPPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE";
 #define CRLS_URL "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN%3dPPKI+Playground+ECC+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE"
 #define OCSP_URL "http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp"
 
@@ -168,6 +170,9 @@ X509_STORE *setup_CMP_truststore(void)
 #ifdef CRL_DIR
     const char *crls_files = CRL_DIR ROOT_CA".crl, "
                              CRL_DIR INFR_ROOT_CA".crl";
+#ifdef CDP_URLS
+    crls_files = CDP_URLS;
+#endif
     crls = CRLs_load(crls_files, "CRLs for CMP level");
     if (crls == NULL)
         goto err;
@@ -290,9 +295,9 @@ static int CMPclient_demo(enum use_case use_case)
     }
 
     /* direct call of CMP API: accept negative responses without protection */
-    (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_UNPROTECTED_ERRORS, 1);
+    (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS, 1);
     /* direct call of CMP API: accept non-enabled key usage digitalSignature */
-    (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_CTX_OPT_IGNORE_KEYUSAGE, 1);
+    (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE, 1);
 
     if (use_tls && (tls = setup_TLS()) == NULL) {
         err = -5;

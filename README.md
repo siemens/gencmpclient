@@ -38,7 +38,7 @@ You can clone the git repository and its submodules with
 ```
 git clone git@code.siemens.com:product-pki/genCMPClient.git
 cd genCMPClient
-export https_proxy=http://test.coia.siemens.net:9400  # or whatever your HTTP proxy is
+export https_proxy=http://tsy1.coia.siemens.net:9400  # or whatever your HTTP proxy is
 git submodule update --init
 ```
 <!---export no_proxy=$no_proxy,code.siemens.com  # not actually needed -->

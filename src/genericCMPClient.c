@@ -439,7 +439,7 @@ static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
     } else { /* disconnecting */
         const char *hint = tls_error_hint(detail);
         if (hint != NULL)
-            OSSL_CMP_add_error_data(hint);
+            ERR_add_error_data(1, hint);
         /* as a workaround for OpenSSL double free, do not pop the sbio, but
            rely on BIO_free_all() done by OSSL_CMP_PKIMESSAGE_http_perform() */
     }
@@ -541,28 +541,6 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     return CMPOSSL_error();
 }
 
-/* TODO remove when OSSL_CMP_CTX_set1_reqExtensions() has become available */
-static X509_EXTENSIONS *exts_dup(X509_EXTENSIONS *extin /* may be NULL */)
-{
-    X509_EXTENSIONS *exts = sk_X509_EXTENSION_new_null();
-    if (exts == NULL) {
-        goto err;
-    }
-    if (extin != NULL) {
-        int i;
-        for (i = 0; i < sk_X509_EXTENSION_num(extin); i++) {
-            X509_EXTENSION *ext = X509_EXTENSION_dup(sk_X509_EXTENSION_value(extin, i));
-            if (!sk_X509_EXTENSION_push(exts, ext)) {
-                goto err;
-            }
-        }
-    }
-    return exts;
- err:
-    sk_X509_EXTENSION_pop_free(exts, X509_EXTENSION_free);
-    return NULL;
-}
-
 CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                 OPTIONAL const EVP_PKEY *new_key,
                                 OPTIONAL const X509 *old_cert,
@@ -593,7 +571,10 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
     } /* TODO maybe else take subjectName (for sender default) from oldCert or p10cr */
 
     if (exts != NULL) {
-        X509_EXTENSIONS *exts_copy = exts_dup((X509_EXTENSIONS *)exts); /* TODO use instead OSSL_CMP_CTX_set1_reqExtensions() when available */
+        X509_EXTENSIONS *exts_copy =
+            sk_X509_EXTENSION_deep_copy(exts,
+                                        (sk_X509_EXTENSION_copyfunc)X509_EXTENSION_dup,
+                                        X509_EXTENSION_free);
         if (exts_copy == NULL || !OSSL_CMP_CTX_set0_reqExtensions(ctx, exts_copy)) {
             goto err;
         }

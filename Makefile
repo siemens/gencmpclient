@@ -62,7 +62,7 @@ endif
 # generic CMP Client lib and demo
 ################################################################
 
-.phony: build clean clean_uta test all
+.phony: build clean clean_uta test all zip
 
 ifndef USE_UTA
     export SEC_NO_UTA=1
@@ -144,7 +144,11 @@ test_insta: build_insta
 
 all:	build test
 
-
+zip:
+	zip genCMPClient.zip \
+            LICENSE README.md .gitmodules Makefile{,_src} CMakeLists.txt \
+	    OpenSSL_version.{c,mk} include/genericCMPClient.h \
+	    src/cmpClientDemo.c src/genericCMPClient.c
 
 
 

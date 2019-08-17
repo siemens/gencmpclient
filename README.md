@@ -133,4 +133,6 @@ Our development procedures and processes are not sufficient to assure product-gr
 Although some effort has already beeen spent on quality assurance,
 it is explicitly not guaranteed that all due measures for productive software have been implemented.
 Therefore we cannot provide any guarantees about this software and do not take any liability for it.
-Please also note that the [Siemens Inner Source License](LICENSE) applies.
+
+Please also note that the [Siemens Inner Source License](LICENSE) applies to
+the overall repository and the Apache License, Version 2.0 applies to the code.

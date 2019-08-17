@@ -2,9 +2,11 @@
  * @file   genericCMPClient.h
  * @brief  generic CMP client library API
  *
- * @author David von Oheimb, CT RDA ITS SEA, David.von.Oheimb@siemens.com
+ * @author David von Oheimb, CT RDA CST SEA, David.von.Oheimb@siemens.com
  *
- * @copyright (c) Siemens AG, 2018. The Siemens Inner Source License - 1.1
+ *  Copyright (c) 2018-2019 Siemens AG
+ *  Licensed under the Apache License, Version 2.0
+ *  SPDX-License-Identifier: Apache-2.0
  ******************************************************************************/
 
 #ifndef GENERIC_CMP_CLIENT_H

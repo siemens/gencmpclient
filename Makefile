@@ -2,7 +2,7 @@
 # optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
 # set INSTA=1 for demo/tests with the Insta Demo CA; use 'make clean_insta' when switching from default to INSTA or vice versa
 
-SHELL=bash # This is needed because of a problem in "build" rule
+SHELL=bash # This is needed because of a problem in "build" rule; good for supporting extended file name globbing
 
 ifeq ($(OS),Windows_NT)
     EXE=.exe
@@ -122,8 +122,10 @@ test:	build
 			$(PROXY) wget -q "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+$$CA%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O "creds/crls/PPKIPlayground$$ca.crl"; \
 		done; \
 	else \
-		curl -m 2 pki.certificate.fi -s | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1); \
-		$(PROXY) curl -s "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633" -o "creds/crls/InstaDemoCA.crl"; \
+		#curl -m 2 -s pki.certificate.fi \
+		wget --timeout=2 pki.certificate.fi | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1); \
+		#curl -s \
+		$(PROXY) wget --quiet "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633" -o "creds/crls/InstaDemoCA.crl"; \
 	fi
 	$(PROXY) ./cmpClientDemo$(EXE)
 	@echo :

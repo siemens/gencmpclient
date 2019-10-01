@@ -35,7 +35,7 @@ export OPENSSL_DIR=/usr/local
 This should output on the console something like
 ```
 gcc OpenSSL_version.c -lcrypto -o OpenSSL_version
-OpenSSL 1.1.0f  25 May 2017 (0x1010006f)
+OpenSSL 1.1.1c  28 May 2019 (0x1010103f)
 rm -f OpenSSL_version
 ```
 

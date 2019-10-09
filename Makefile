@@ -106,7 +106,7 @@ endif
 	$(MAKE) -f Makefile_src clean
 	rm -f creds/new.*
 
-PROXY=http_proxy=http://tsy1.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com  # = 194.145.60.1
+PROXY ?= http_proxy=http://tsy1.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com  # = 194.145.60.1
 ifeq ($(INSTA),)
 	OCSP_CHECK=openssl ocsp -url http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp -CAfile creds/trusted/PPKIPlaygroundECCRootCAv10.crt -issuer creds/PPKIPlaygroundECCIssuingCAv10.crt -cert creds/new.crt
 else
@@ -122,10 +122,10 @@ test:	build
 			$(PROXY) wget -q "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+$$CA%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O "creds/crls/PPKIPlayground$$ca.crl"; \
 		done; \
 	else \
-		#curl -m 2 -s pki.certificate.fi \
-		wget --timeout=2 pki.certificate.fi | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1); \
-		#curl -s \
-		$(PROXY) wget --quiet "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633" -o "creds/crls/InstaDemoCA.crl"; \
+		#curl -m 2 -s pki.certificate.fi ... \
+		wget 2>&1 --timeout=2 pki.certificate.fi | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1); \
+		#curl -s -o creds/crls/InstaDemoCA.crl ... \
+		$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633"; \
 	fi
 	$(PROXY) ./cmpClientDemo$(EXE)
 	@echo :

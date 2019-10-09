@@ -516,30 +516,29 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         goto err;
     }
 
-    if (tls != NULL) {
 #ifndef SEC_NO_TLS
-        SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
-        OSSL_CMP_CTX_set_http_cb_arg(ctx, NULL);
-        if (!SSL_CTX_up_ref(tls) ||
-            !OSSL_CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
-            !OSSL_CMP_CTX_set_http_cb_arg(ctx, (void *)tls)) {
-            goto err;
-        }
+    if (tls != NULL) {
         if (server != NULL &&
             !STORE_set1_host_ip(SSL_CTX_get_cert_store(tls), server, server)) {
             goto err;
         }
-#endif
+        if (!OSSL_CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
+            !SSL_CTX_up_ref(tls))
+            goto err;
+        SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
+        (void)OSSL_CMP_CTX_set_http_cb_arg(ctx, NULL);
+        if (!OSSL_CMP_CTX_set_http_cb_arg(ctx, (void *)tls)) {
+            SSL_CTX_free(tls);
+            goto err;
+        }
     }
+#endif
 
     LOG(FL_INFO, "contacting %s%s%s%s%s", server, path[0] == '/' ? "" : "/", path,
         proxy != NULL ? " via proxy " : "", proxy != NULL ? proxy : "");
     return CMP_OK;
 
     err:
-#ifndef SEC_NO_TLS
-    SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
-#endif
     return CMPOSSL_error();
 }
 

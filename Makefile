@@ -27,8 +27,10 @@ ifeq ($(LPATH),)
         OPENSSL_DIR ?= $(ROOTFS)/usr
 #   endif
     SECUTILS=securityUtilities
+    SECUTILS_LIB=$(SECUTILS)/libSecUtils$(DLL)
     LIBCMP_DIR=cmpossl
     LIBCMP_OUT=.
+    LIBCMP_LIB=$(LIBCMP_OUT)/libcmp$(DLL)
     LIBCMP_INC=$(LIBCMP_DIR)/include_cmp
 else
     OPENSSL_DIR ?= $(LPATH)/..
@@ -62,7 +64,10 @@ endif
 # generic CMP Client lib and demo
 ################################################################
 
-.phony: build clean clean_uta test all zip
+.phony: default build
+default: build
+
+.phony: test all zip
 
 ifndef USE_UTA
     export SEC_NO_UTA=1
@@ -75,36 +80,66 @@ ifdef INSTA
     export CFLAGS += "-DINSTA"
 endif
 
-build:
-ifeq ($(LPATH),)
-	@#git submodule update --init || true
-	cd $(SECUTILS) && git submodule update --init
-	# cd $(SECUTILS) && git submodule update --init #--recursive || cp --preserve=timestamps ../include/operators.h include/
+.phony: submodules
+ifeq ($(SECUTILS),)
+submodules:
+else
+.phony: get_submodules build_submodules clean_submodules
+submodules: build_submodules
+
+build_submodules: get_submodules $(SECUTILS_LIB) $(LIBCMP_LIB)
+
+get_submodules: $(SECUTILS)/libs/interfaces/include/operators.h $(LIBCMP_INC)
+
+$(SECUTILS)/libs/interfaces/include/operators.h: $(SECUTILS)/include
+	cd $(SECUTILS) && git submodule update --init libs/interfaces
+
+$(SECUTILS)/include:
+	git submodule update --init $(SECUTILS)
+
+$(SECUTILS_LIB):
 	$(MAKE) -C $(SECUTILS) build_only OPENSSL_DIR="$(OPENSSL_DIR)"
-	@# the old way to build with CMP was: buildCMPforOpenSSL
+
+$(LIBCMP_INC):
+	git submodule update --init cmpossl
+
+$(LIBCMP_LIB):
+	@ # the old way to build with CMP was: buildCMPforOpenSSL
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+
+clean_submodules:
+	rm -rf $(SECUTILS) cmpossl
+
 endif
+
+build: submodules
 	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="$(LIBCMP_OUT)/libcmp$(DLL)"` && \
 	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
 	    (echo "WARNING: OpenSSL version $$LIBCMP_OPENSSL_VERSION used for building libcmp does not match $(OPENSSL_VERSION) to be used for building client"; true); \
 	fi
 	$(MAKE) -f Makefile_src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
+build_insta:
+	INSTA=1 $(MAKE) build
+
+.phony: clean_insta clean_test clean clean_uta 
+clean_insta:
+	rm -f  src/cmpClientDemo$(OBJ) cmpClientDemo$(EXE)
+
 ifeq ($(LPATH),)
 clean_uta:
 	$(MAKE) -C $(SECUTILS) clean_uta
 endif
 
-clean_insta:
-	rm -f  src/cmpClientDemo$(OBJ) cmpClientDemo$(EXE)
-
-clean:
+clean_test:
+	rm -f creds/new.*
+	rm -rf creds/crls
+clean: clean_test
 ifeq ($(LPATH),)
-	$(MAKE) -C $(SECUTILS) clean
+	$(MAKE) -C $(SECUTILS) clean || true
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 	$(MAKE) -f Makefile_src clean
-	rm -f creds/new.*
 
 PROXY ?= http_proxy=http://de.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com  # or, e.g., tsy1.coia.siemens.net = 194.145.60.1
 ifeq ($(INSTA),)
@@ -112,21 +147,25 @@ ifeq ($(INSTA),)
 else
 	OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/new.crt
 endif
-test:	build
+
+creds/crls:
+	mkdir $@
+
+test: |	build creds/crls
 	@/bin/echo -e "\n##### running cmpClientDemo #####"
-	@if [ -z "$$INSTA" ]; then \
-		ping >/dev/null $(PINGCOUNT) 1 ppki-playground.ct.siemens.com; \
-		for CA in 'Infrastructure+Root+CA+v1.0' 'Infrastructure+Issuing+CA+v1.0' 'ECC+Root+CA+v1.0' 'RSA+Root+CA+v1.0'; \
-		do \
-			export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
-			$(PROXY) wget -q "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+$$CA%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O "creds/crls/PPKIPlayground$$ca.crl"; \
-		done; \
-	else \
-		#curl -m 2 -s pki.certificate.fi ... \
-		wget 2>&1 --timeout=2 pki.certificate.fi | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1); \
-		#curl -s -o creds/crls/InstaDemoCA.crl ... \
-		$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633"; \
-	fi
+ifeq ($(INSTA),)
+	@ping >/dev/null $(PINGCOUNT) 1 ppki-playground.ct.siemens.com  || (echo "cannot reach ppki-playground.ct.siemens.com"; exit 1)
+	@for CA in 'Infrastructure+Root+CA+v1.0' 'Infrastructure+Issuing+CA+v1.0' 'ECC+Root+CA+v1.0' 'RSA+Root+CA+v1.0'; \
+	do \
+		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
+		$(PROXY) wget -q "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+$$CA%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O "creds/crls/PPKIPlayground$$ca.crl"; \
+	done
+else
+	@ #curl -m 2 -s pki.certificate.fi ...
+	@$(PROXY) wget 2>&1 --tries=1 --timeout=2 pki.certificate.fi | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1)
+	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
+	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633"
+endif
 	$(PROXY) ./cmpClientDemo$(EXE)
 	@echo :
 	openssl x509 -noout -text -in creds/new.crt | sed '/^         [0-9a-f].*/d'
@@ -181,13 +220,13 @@ ${configCMPforOpenSSL_trigger}: ${unpackCMPforOpenSSL_trigger}
 makeCMPforOpenSSL_trigger=openssl/*crypto*$(DLL)
 ${makeCMPforOpenSSL_trigger}: ${configCMPforOpenSSL_trigger}
 	cd openssl && RC=windres make build_generated depend build_libs_nodep apps/openssl$(EXE) ./tools/c_rehash
-	@# the above detailed list of targets avoids building needless tests
+	@ # the above detailed list of targets avoids building needless tests
 	@echo "##### finished building CMPforOpenSSL ######\n"
 
 #installCMPforOpenSSL_trigger=bin/openssl$(EXE)
 #${installCMPforOpenSSL_trigger}: ${makeCMPforOpenSSL_trigger}
 #	cd openssl && make install_dev >/dev/null && make install_runtime
-#	@# the above list of targets avoids building needless tests
+#	@ # the above list of targets avoids building needless tests
 #	@echo "##### finished installing CMPforOpenSSL ######\n"
 
 DIRS=openssl #lib bin
@@ -211,11 +250,11 @@ OUTBIN=libgencmpcl$(DLL)
 #SRCS_TAR=libgencmpcl_0.1.0.orig.tar.gz
 .phony: deb deb_clean
 deb:
-	@# #tar czf $(SRCS_TAR) $(SRCS)
-	@# #rm -f  $(OUTBIN) debian/tmp/usr/lib/libgencmpcl.so*
+	@ # #tar czf $(SRCS_TAR) $(SRCS)
+	@ # #rm -f  $(OUTBIN) debian/tmp/usr/lib/libgencmpcl.so*
 	debuild -uc -us -I* --lintian-opts --profile debian
 	rm -r debian/tmp
-	@# # rm $(SRCS_TAR)
+	@ # rm $(SRCS_TAR)
 
 deb_clean:
 	rm ../libgencmpcl*.deb

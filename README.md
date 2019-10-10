@@ -6,8 +6,10 @@ This is the code repository for the cross-division generic CMP client library.
 This library should work with any flavor of Linux, including [Cygwin](https://www.cygwin.com/),
 potentially running on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
 
-The following development tools are required.
-* Git (tested with versions 2.11.0 and 2.19.2)
+The following network and development tools are required.
+* SSH (tested with OpenSSH 7.4 and 7.9)
+* wget (tested with versions 1.18 and 1.20)
+* Git (tested with versions 2.11.0 and 2.20)
 * GNU make (tested with versions 4.1 and 4.2.1)
 * GNU C compiler (tested with versions 5.4.0 and 7.3.0)
 * OpenSSL (version >= 1.0.2) with header files
@@ -34,7 +36,7 @@ export OPENSSL_DIR=/usr/local
 
 This should output on the console something like
 ```
-gcc OpenSSL_version.c -lcrypto -o OpenSSL_version
+cc OpenSSL_version.c -lcrypto -o OpenSSL_version
 OpenSSL 1.1.1c  28 May 2019 (0x1010103f)
 rm -f OpenSSL_version
 ```
@@ -42,18 +44,24 @@ rm -f OpenSSL_version
 
 # Getting the library
 
+For accessing `git@code.siemens.com` you will need an SSH client with credentials allowing to read from that repository.
+
+For accessing `https://github.com/mpeylo/cmpossl` you may need to set up an HTTP proxy, for instance:
+```
+export https_proxy=http://de.coia.siemens.net:9400
+```
+<!---export no_proxy=$no_proxy,code.siemens.com  # not needed since we use SSH for the other (sub-)modules -->
+
 You can clone the git repository and its submodules with
 ```
 git clone git@code.siemens.com:product-pki/genCMPClient.git
 cd genCMPClient
-export https_proxy=http://de.coia.siemens.net:9400  # or whatever your HTTP proxy is
-git submodule update --init
+make get_submodules
 ```
-<!---export no_proxy=$no_proxy,code.siemens.com  # not actually needed -->
 
-This will download also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
+This will fetch also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
 the [Security Utilities (SecUtils)](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities) library
-(which has some further, subordinate dependencies, namely, interface and test submodules).
+(which has some recursive submodules, of which only `libs/interfaces` is fetched).
 
 
 # Building the library

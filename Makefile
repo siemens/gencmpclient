@@ -106,7 +106,7 @@ endif
 	$(MAKE) -f Makefile_src clean
 	rm -f creds/new.*
 
-PROXY ?= http_proxy=http://tsy1.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com  # = 194.145.60.1
+PROXY ?= http_proxy=http://de.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com  # or, e.g., tsy1.coia.siemens.net = 194.145.60.1
 ifeq ($(INSTA),)
 	OCSP_CHECK=openssl ocsp -url http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp -CAfile creds/trusted/PPKIPlaygroundECCRootCAv10.crt -issuer creds/PPKIPlaygroundECCIssuingCAv10.crt -cert creds/new.crt
 else

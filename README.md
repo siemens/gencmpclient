@@ -1,7 +1,20 @@
-This is the code repository for the cross-division generic CMP client library.
+# generic CMP client library
+
+This is the code repository for the cross-division generic CMP client library
+with associated demo client and documentation.
+
+## Status
+
+* All features agreed with the participating Siemens business units
+have been implemented and documented in FY 2019.
+* So far, high-level tests are available only on a rather limited scale;
+better test coverage is in preparation.
+* Open-source clearing is in preparation.
+* Maintenance (i.e., minor updates and fixes, also to the documentation)
+is ongoing, at least for FY 2020.
 
 
-# Prerequisites
+## Prerequisites
 
 This library should work with any flavor of Linux, including [Cygwin](https://www.cygwin.com/),
 potentially running on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
@@ -42,7 +55,7 @@ rm -f OpenSSL_version
 ```
 
 
-# Getting the library
+## Getting the software
 
 For accessing `git@code.siemens.com` you will need an SSH client with credentials allowing to read from that repository.
 
@@ -64,7 +77,7 @@ the [Security Utilities (SecUtils)](https://code.siemens.com/mo_mm_linux_distrib
 (which has some recursive submodules, of which only `libs/interfaces` is fetched).
 
 
-# Building the library
+## Building the software
 
 The generic CMP client library (and also its underlying CMP and SecUtils libraries) assumes that OpenSSL (with any version >= 1.0.2) is already installed,
 including the C header files needed for development (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
@@ -82,13 +95,14 @@ make
 The result is in, for instance, `./libgencmpcl.so`.
 This also builds all required dependencies (such as `./libcmp.so` and `./securityUtilities/libSecUtils.so`) and a demo application (`./cmpClientDemo`).
 
-**Imporant Note:** by default, the Security Utilities make use of the [Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library
-for secure device-level storage of key material for confidentiality and integriy protection of files.
+**Important Note:** by default, the Security Utilities make use of the
+[Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library
+for secure device-level storage of key material for confidentiality and integrity protection of files.
 Since this library is not yet generally available Siemens-wide the SecUtils are so far integrated in a way that the use of the UTA lib is disabled (via `SEC_NO_UTA=1`).
 This means that secure storage of protection credentials for private keys and trusted certificates needs to be solved by other means.
 
 
-# Using the library with the demo client
+## Using the library with the demo client
 
 Have a look at the demo client in [`src/cmpClientDemo.c`](src/cmpClientDemo.c).
 It can be executed with
@@ -110,19 +124,19 @@ You can view this certificate for instance by executing
 openssl x509 -noout -text -in creds/new.crt
 ```
 
-The demo client allows also to update and revoke the enrolled certifiate, like this:
+The demo client allows also to update and revoke the enrolled certificate, like this:
 ```
 ./cmpClientDemo update
 ./cmpClientDemo revoke
 ```
 
 
-# Using the library in own applications
+## Using the library in own applications
 
 You will need to include in your application sources the file [`genericCMPClient.h`](include/genericCMPClient.h).
 
 For compiling you will need to add the directories `include`, `include_cmp`, and `securityUtilities/include` to your C headers path and
-ake sure that any OpenSSL header files included have the same version as the one used to build the standalone CMP library `libcmp`.
+make sure that any OpenSSL header files included have the same version as the one used to build the standalone CMP library `libcmp`.
 
 For linking you will need to add the directories `.` and `securityUtilities` to your library path and
 refer the linker to the CMP and SecUtils libraries, e.g., `-lcmp -lSecUtils`.
@@ -132,21 +146,21 @@ Also make sure that the OpenSSL libraries (typically referred to via `-lssl -lcr
 All this is already done for the demo application.
 
 
-# Documentation of the library
+## Documentation
 
 The Generic CMP client API specification is available in the [doc](doc/) folder.
 
-A recoding of the tutorial held via Circuit on 2018-Dec-13 is available [here](https://myvideo.siemens.com/media/1_f7bjtdba).
+A recording of the tutorial held via Circuit on 2018-Dec-13 is available [here](https://myvideo.siemens.com/media/1_f7bjtdba).
 
 The Doxygen documentation of the underlying Security Utilities library is going to be available
 via a link in its [README file](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities/blob/development/README.md).
 
 
-# Disclaimer
+## Disclaimer
 
 This software including associated documentation is provided ‘as is’ in a preliminary state.
 Our development procedures and processes are not sufficient to assure product-grade software quality.
-Although some effort has already beeen spent on quality assurance,
+Although some effort has already been spent on quality assurance,
 it is explicitly not guaranteed that all due measures for productive software have been implemented.
 Therefore we cannot provide any guarantees about this software and do not take any liability for it.
 

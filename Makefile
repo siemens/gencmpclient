@@ -77,7 +77,7 @@ ifdef NO_TLS
 endif
 
 ifdef INSTA
-    export CFLAGS += "-DINSTA"
+    override CFLAGS += "-DINSTA"
 endif
 
 .phony: submodules
@@ -98,7 +98,7 @@ $(SECUTILS)/include:
 	git submodule update --init $(SECUTILS)
 
 $(SECUTILS_LIB):
-	$(MAKE) -C $(SECUTILS) build_only OPENSSL_DIR="$(OPENSSL_DIR)"
+	$(MAKE) -C $(SECUTILS) build_only CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)"
 
 $(LIBCMP_INC):
 	git submodule update --init cmpossl

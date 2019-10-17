@@ -16,6 +16,10 @@
 #include <openssl/ssl.h>
 #include <string.h>
 
+#if OPENSSL_VERSION_NUMBER < 0x10100006L
+typedef STACK_OF(X509_EXTENSION) * (*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTENSION) *a);
+#endif
+
 #ifdef LOCAL_DEFS
 
 EVP_PKEY *CREDENTIALS_get_pkey(const CREDENTIALS *creds);

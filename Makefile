@@ -122,7 +122,7 @@ build: submodules
 build_insta:
 	INSTA=1 $(MAKE) build
 
-.phony: clean_insta clean_test clean clean_uta 
+.phony: clean_insta clean_test clean clean_uta clean_all
 clean_insta:
 	rm -f  src/cmpClientDemo$(OBJ) cmpClientDemo$(EXE)
 
@@ -134,12 +134,15 @@ endif
 clean_test:
 	rm -f creds/new.*
 	rm -rf creds/crls
-clean: clean_test
+
+clean:
+	$(MAKE) -f Makefile_src clean
+
+clean_all: clean clean_test
 ifeq ($(LPATH),)
 	$(MAKE) -C $(SECUTILS) clean || true
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
-	$(MAKE) -f Makefile_src clean
 
 PROXY ?= http_proxy=http://de.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com  # or, e.g., tsy1.coia.siemens.net = 194.145.60.1
 ifeq ($(INSTA),)
@@ -233,8 +236,8 @@ DIRS=openssl #lib bin
 openssl:
 	mkdir $(DIRS)
 
-.phony: clean_all
-clean_all: clean
+.phony: clean_openssl
+clean_openssl:
 	rm -Rf $(DIRS)
 
 .phony: buildCMPforOpenSSL

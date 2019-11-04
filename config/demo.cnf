@@ -1,0 +1,59 @@
+[default]
+digest = sha256
+newkey = creds/new.pem
+newkeypass = pass:12345
+certout = creds/new.crt
+msgtimeout = 10
+totaltimeout = 100
+newkeytype = ECC
+
+[EJBCA]
+server = ppki-playground.ct.siemens.com:80
+secret = SecretCmp
+cert = creds/ppki_playground_cmp_signer.p12
+key = creds/ppki_playground_cmp_signer.p12
+keypass = pass:12345
+recipient = "/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
+subject = "/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
+srvcert = creds/trusted/PPKIPlaygroundECCRootCAv10.crt
+trusted = "creds/trusted/PPKIPlaygroundECCRootCAv10.crt, creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt"
+tls_trusted = creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt
+tls_host = ppki-playground.ct.siemens.com:443
+tls_cert = creds/ppki_playground_tls.p12
+tls_key = creds/ppki_playground_tls.p12
+tls_keypass = pass:12345
+tls_used = 1
+crls_url = http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN%3dPPKI+Playground+ECC+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE
+crls_file = "creds/crls/PPKIPlaygroundECCRootCAv10.crl, creds/crls/PPKIPlaygroundInfrastructureRootCAv10.crl"
+cdp_url = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist;jsessionid=OphNvbMxFNbju-ctvhnTSndA.undefined?cmd=crl&issuer=CN%3dPPKI+Playground+"KEYTYPE"+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE, https://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist;jsessionid=OphNvbMxFNbju-ctvhnTSndA.undefined?cmd=crl&issuer=CN%3dPPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE"
+ocsp_url = http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp
+
+[Insta]
+server = pki.certificate.fi:8700
+path = pkix/
+secret = insta
+ref = 3078
+cert = creds/insta_client.p12
+key = creds/insta_client.p12
+recipient = "/C=FI/O=Insta Demo/CN=Insta Demo CA"
+subject = "/CN=test-genCMPClientDemo"
+srvcert = creds/trusted/InstaDemoCA.crt
+trusted = creds/trusted/InstaDemoCA.crt
+tls_trusted = creds/trusted/InstaDemoCA.crt
+tls_host = pki.certificate.fi:8700
+tls_cert = creds/insta_client.p12
+tls_key = creds/insta_client.p12
+tls_used = 0
+
+[imprint]
+path = /ejbca/publicweb/cmp/PlaygroundECC
+
+[bootstrap]
+path = /ejbca/publicweb/cmp/PlaygroundECC
+
+[update]
+path = /ejbca/publicweb/cmp/PlaygroundCMPSigning
+implicitconfirm = 1
+
+[revoke]
+path = /ejbca/publicweb/cmp/PlaygroundCMPSigning

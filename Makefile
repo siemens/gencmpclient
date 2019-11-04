@@ -98,7 +98,7 @@ $(SECUTILS)/include:
 	git submodule update --init $(SECUTILS)
 
 $(SECUTILS_LIB):
-	$(MAKE) -C $(SECUTILS) build_only CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)"
+	$(MAKE) -C $(SECUTILS) build_only CFLAGS="$(CFLAGS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)"
 
 $(LIBCMP_INC):
 	git submodule update --init cmpossl

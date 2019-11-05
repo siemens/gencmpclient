@@ -56,7 +56,7 @@ char *prog = NULL;
     char *opt_oldcert = NULL;           /* cid determining certificate to be to be renewed in KUR or revoked in RR */
     X509 *old_cert = NULL;
     char *opt_csr = NULL;               /* File to read CSR from for P10CR (for legacy support) */
-    long  opt_revreason = CRL_REASON_NONE; /* Reason code to be included in revocation request (RR). Values: -1..6, 8..10. None set by default */
+    int  opt_revreason = CRL_REASON_NONE; /* Reason code to be included in revocation request (RR). Values: -1..6, 8..10. None set by default */
 
     bool  opt_tls_used = false;         /* Flag for forced activation of TLS */
     char *opt_tls_trusted = NULL;       /* component ID to use for getting trusted TLS certificates (trust anchor) */
@@ -100,11 +100,16 @@ char *prog = NULL;
     char *opt_subject = NULL;           /* X509 subject name to be used in the requested certificate template */
     int opt_days = 0;                   /* requested validity time of new cert */
     char *opt_reqexts = NULL;           /* Name of section in the config file defining request extensions */
+
     char *opt_sans = NULL;              /* List of (critical) Subject Alternative Names (DNS/IPADDR) to be added */
+    int opt_san_nodefault = 0;          /* Do not take default SANs from reference certificate (see -oldcert) */
+    char *opt_policies = NULL;          /* Policy OID(s) to add as certificate policies request extension */
+    int opt_policies_critical = 0;      /* Flag the policies given with -policies as critical */
     char *opt_key_usages = NULL;        /* List of (critical) Basic Key Usages to be added to request exts */
     char *opt_ekus = NULL;              /* List of (critical) Extended Key Usages to be added to request exts */
-    long  opt_popo = -1;                /* Proof-of-Possession (POPO) method */
+    int  opt_popo = 1;                  /* Proof-of-Possession (POPO) method */
     char *opt_digest = NULL;            /* Digest-Algorithem for the CMP Signature */
+    char *opt_mac = NULL;               /* MAC algorithm to use in PBM-based message protection */
 
     bool opt_implicitconfirm = false;   /* Request implicit confirmation of enrolled cert */
     bool opt_disableconfirm = false;    /* Do not confirm enrolled certificates */
@@ -151,6 +156,7 @@ opt_t cmp_opts[] = {
 
     { "cmd", OPT_TXT, { &(opt_cmd_s) } },
     { "digest", OPT_TXT, { &opt_digest } },
+    { "mac", OPT_TXT, { &opt_mac}},
     { "unprotectedrequests", OPT_BOOL, { (char **) &opt_unprotectedrequests } },
     { "unprotectederrors", OPT_BOOL, { (char **) &opt_unprotectederrors } },
     { "extracertsout", OPT_TXT, { &opt_extracertsout } },
@@ -163,7 +169,11 @@ opt_t cmp_opts[] = {
     { "issuer", OPT_TXT, { &opt_issuer } },
     { "days", OPT_NUM, { (char **) &opt_days } },
     { "reqexts", OPT_TXT, { &opt_reqexts } },
+
     { "sans", OPT_TXT, { &opt_sans } },
+    { "san_nodefault", OPT_BOOL, { (char**) &opt_san_nodefault} },
+    { "policies", OPT_TXT, { &opt_policies} },
+    { "policies_critical", OPT_BOOL, { (char**) &opt_policies_critical} },
     { "key_usages", OPT_TXT, { &opt_key_usages } },
     { "ekus", OPT_TXT, { &opt_ekus } },
     { "popo", OPT_NUM, { (char **) &opt_popo } },
@@ -211,11 +221,13 @@ typedef enum OPTION_choice {
     OPT_REF, OPT_SECRET, OPT_CREDS, OPT_CERT,
     OPT_KEY, OPT_KEYPASS, OPT_EXTRACERTS,
 
-    OPT_CMD_S, OPT_DIGEST, OPT_UNPROTECTEDREQUESTS, OPT_UNPROTECTEDERRORS,
-    OPT_EXTRACERTSOUT, OPT_CACERTSOUT,
+    OPT_CMD_S, OPT_DIGEST, OPT_MAC, OPT_UNPROTECTEDREQUESTS,
+    OPT_UNPROTECTEDERRORS, OPT_EXTRACERTSOUT, OPT_CACERTSOUT,
 
     OPT_NEWKEY, OPT_NEWKEYPASS, OPT_NEWKEYTYPE, OPT_SUBJECT,
-    OPT_ISSUER, OPT_DAYS, OPT_REQEXTS, OPT_SANS,
+    OPT_ISSUER, OPT_DAYS, OPT_REQEXTS,
+
+    OPT_SANS, OPT_SAN_NODEFAULT, OPT_POLICIES, OPT_POLICIES_CRITICAL,
     OPT_KEY_USAGES, OPT_EKUS, OPT_POPO, OPT_IMPLICITCONFIRM,
     OPT_DISABLECONFIRM, OPT_CERTOUT, OPT_OUT_TRUSTED,
 
@@ -349,7 +361,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
     err = CMPclient_prepare(pctx, log_fn,
                             cmp_truststore, opt_recipient,
                             untrusted_certs,
-                            cmp_creds, opt_digest,
+                            cmp_creds, opt_digest, opt_mac,
                             transfer_fn, opt_totaltimeout,
                             new_cert_truststore, implicit_confirm);
     CERTS_free(untrusted_certs);
@@ -507,10 +519,15 @@ static int CMPclient_demo(enum use_case use_case)
         goto err;
     }
 
-    /* direct call of CMP API: accept negative responses without protection */
-    (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS, 1);
-    /* direct call of CMP API: accept non-enabled key usage digitalSignature */
-    (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE, 1);
+    /* direct call of CMP API */
+    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS, opt_unprotectederrors)
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE, opt_ignore_keyusage)
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITYDAYS, opt_days)
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPOMETHOD, opt_popo)
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLECONFIRM, opt_disableconfirm))
+        err = CMP_R_INVALID_ARGS;
+
+
 
     if (opt_tls_used && (tls = setup_TLS()) == NULL) {
         err = -5;
@@ -551,7 +568,7 @@ static int CMPclient_demo(enum use_case use_case)
         err = CMPclient_update(ctx, &new_creds, new_pkey);
         break;
     case revocation:
-        err = CMPclient_revoke(ctx, CREDENTIALS_get_cert(cmp_creds), CRL_REASON_UNSPECIFIED);
+        err = CMPclient_revoke(ctx, CREDENTIALS_get_cert(cmp_creds), opt_revreason);
         /* CmpWsRa does not accept CRL_REASON_NONE: "missing crlEntryDetails for REVOCATION_REQ" */
         break;
     default:

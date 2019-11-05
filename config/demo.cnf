@@ -6,6 +6,8 @@ certout = creds/new.crt
 msgtimeout = 10
 totaltimeout = 100
 newkeytype = ECC
+ignore_keyusage = 1
+unprotectederrors = 1
 
 [EJBCA]
 server = ppki-playground.ct.siemens.com:80

@@ -31,7 +31,7 @@ enum use_case { imprint, bootstrap, update,
 #define ECC_SPEC "EC:prime256v1"
 
 /* Option states */
-static int opt_index = 1;
+static int opt_index = 2;   /* starting at 2 parses first option after 'use_case' option */
 static char *arg;
 
 char *prog = NULL;
@@ -371,31 +371,106 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
     return err;
 }
 
-X509_EXTENSIONS *setup_X509_extensions(void)
+X509_EXTENSIONS *setup_X509_extensions(OSSL_CMP_CTX *ctx)
 {
-    X509_EXTENSIONS *exts = EXTENSIONS_new();
+    X509_EXTENSIONS *exts = sk_X509_EXTENSION_new_null();
+    X509V3_CTX ext_ctx;
+
     if (exts == NULL)
         return NULL;
-    BIO *policy_sections = BIO_new(BIO_s_mem());
-    if (policy_sections == NULL ||
-        !EXTENSIONS_add_SANs(exts, "localhost, 127.0.0.1, http://192.168.0.1") ||
-        !EXTENSIONS_add_ext(exts, "keyUsage", "critical, digitalSignature", NULL) ||
-        !EXTENSIONS_add_ext(exts, "extendedKeyUsage", "critical, serverAuth, "
-                                  "1.3.6.1.5.5.7.3.2"/* clientAuth */, NULL) ||
-        BIO_printf(policy_sections, "%s",
-                   "[pkiPolicy]\n"
-                   "  policyIdentifier = 1.3.6.1.4.1.4329.38.4.2.2\n"
-                   "  CPS.1 = http://www.siemens.com/pki-policy/\n"
-                   "  userNotice.1 = @notice\n"
-                   "[notice]\n"
-                   "  explicitText=Siemens policy text\n") <= 0 ||
-        !EXTENSIONS_add_ext(exts, "certificatePolicies",
-                            "critical, @pkiPolicy", policy_sections)) {
-            EXTENSIONS_free(exts);
-            exts = NULL;
+    if ((opt_reqexts != NULL) || (opt_policies != NULL)) {
+        X509V3_set_ctx(&ext_ctx, NULL, NULL, NULL, NULL, 0);
+        X509V3_set_nconf(&ext_ctx, config);
     }
-    BIO_free(policy_sections);
+
+    if (opt_reqexts != NULL) {
+        if (!X509V3_EXT_add_nconf_sk(config, &ext_ctx, opt_reqexts, &exts)) {
+            OSSL_CMP_printf(ctx, OSSL_CMP_FL_ERR, "cannot load extension section '%s'",
+                            opt_reqexts);
+            sk_X509_EXTENSION_pop_free(exts, X509_EXTENSION_free);
+            return NULL;
+        }
+    }
+
+    if (opt_policies != NULL) {
+        if (!X509V3_EXT_add_nconf_sk(config, &ext_ctx, opt_policies, &exts)) {
+            OSSL_CMP_printf(ctx, OSSL_CMP_FL_ERR, "cannot load policy section '%s'",
+                            opt_policies);
+            sk_X509_EXTENSION_pop_free(exts, X509_EXTENSION_free);
+            return NULL;
+        }
+    }
+
     return exts;
+}
+
+static int reqExtensions_have_SAN(X509_EXTENSIONS *exts)
+{
+    if (exts == NULL)
+        return 0;
+    return X509v3_get_ext_by_NID(exts, NID_subject_alt_name, -1) >= 0;
+}
+
+static char *next_item(char *opt) /* in list separated by comma and/or space */
+{
+    /* advance to separator (comma or whitespace), if any */
+    while (*opt != ',' && !isspace(*opt) && *opt != '\0') {
+        if (*opt == '\\' && opt[1] != '\0') {
+            /* skip and unescape '\' escaped char */
+            memmove(opt, opt+1, strlen(opt));
+        }
+        opt++;
+    }
+    if (*opt != '\0') {
+        /* terminate current item */
+        *opt++ = '\0';
+        /* skip over any whitespace after separator */
+        while (isspace(*opt))
+            opt++;
+    }
+    return *opt == '\0' ? NULL : opt; /* NULL indicates end of input */
+}
+
+static int set_gennames(char *names, int type,
+                       int (*set_fn) (OSSL_CMP_CTX *ctx, const GENERAL_NAME *name),
+                       OSSL_CMP_CTX *ctx, const char *desc)
+{
+    char *next;
+
+    for (; names != NULL; names = next) {
+        GENERAL_NAME *n;
+        next = next_item(names);
+
+        if (type == GEN_DNS && strcmp(names, "critical") == 0) {
+            (void)OSSL_CMP_CTX_set_option(ctx,
+                      OSSL_CMP_OPT_SUBJECTALTNAME_CRITICAL, 1);
+            continue;
+        }
+
+        if (type != GEN_DNS) {
+            n = a2i_GENERAL_NAME(NULL, NULL, NULL, type, names, 0);
+        } else { /* try IP address first, then domain name */
+            (void)ERR_set_mark();
+            n = a2i_GENERAL_NAME(NULL, NULL, NULL, GEN_IPADD, names, 0);
+            (void)ERR_pop_to_mark();
+            if (n == NULL) {
+                n = a2i_GENERAL_NAME(NULL, NULL, NULL, GEN_DNS, names, 0);
+            }
+        }
+
+        if (n == NULL) {
+            OSSL_CMP_printf(ctx, OSSL_CMP_FL_ERR,
+                            "bad syntax of %s '%s'", desc, names);
+            return 0;
+        }
+        if (!(*set_fn) (ctx, n)) {
+            GENERAL_NAME_free(n);
+            OSSL_CMP_err(ctx, "out of memory\n");
+            return 0;
+        }
+        GENERAL_NAME_free(n);
+    }
+    return 1;
 }
 
 static int atoint(const char *str)
@@ -527,8 +602,6 @@ static int CMPclient_demo(enum use_case use_case)
             || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLECONFIRM, opt_disableconfirm))
         err = CMP_R_INVALID_ARGS;
 
-
-
     if (opt_tls_used && (tls = setup_TLS()) == NULL) {
         err = -5;
         goto err;
@@ -551,9 +624,23 @@ static int CMPclient_demo(enum use_case use_case)
             goto err;
         }
     }
+
     if ((use_case == imprint || use_case == bootstrap)
-        && (exts = setup_X509_extensions()) == NULL) {
+        && (exts = setup_X509_extensions(ctx)) == NULL) {
         err = -7;
+        goto err;
+    }
+
+    if (reqExtensions_have_SAN(exts) && opt_sans != NULL) {
+        fprintf(stderr, "Cannot have Subject Alternative Names both via -reqexts and via -sans\n");
+        err = CMP_R_MULTIPLE_SAN_SOURCES;
+        goto err;
+    }
+
+    if (!set_gennames(opt_sans, GEN_DNS,
+                      OSSL_CMP_CTX_subjectAltName_push1, ctx,
+                      "Subject Alternative Name")){
+        err = -8;
         goto err;
     }
 
@@ -572,7 +659,7 @@ static int CMPclient_demo(enum use_case use_case)
         /* CmpWsRa does not accept CRL_REASON_NONE: "missing crlEntryDetails for REVOCATION_REQ" */
         break;
     default:
-        err = -8;
+        err = -9;
     }
     if (err != CMP_OK) {
         goto err;
@@ -581,7 +668,7 @@ static int CMPclient_demo(enum use_case use_case)
     if (use_case != revocation) {
         const char *new_desc = "newly enrolled certificate and related key and chain";
         if (!CREDENTIALS_save(new_creds, opt_certout, opt_newkey, opt_newkeypass, new_desc)) {
-            err = -9;
+            err = -10;
             goto err;
         }
     }
@@ -620,7 +707,7 @@ int main(int argc, char *argv[])
     }
 
     enum use_case use_case = bootstrap; /* default */
-    if (argc == 2) {
+    if (argc > 1) {
         if (!strcmp(argv[1], "imprint"))
             use_case = imprint;
         else if (!strcmp(argv[1], "bootstrap"))
@@ -643,10 +730,7 @@ int main(int argc, char *argv[])
                 configfile = argv[i + 1];
         }
     }
-    if (sections == NULL) {
-        fprintf(stderr, "Usage: %s -sections [section1,section2,...]\n", argv[0]);
-        return EXIT_FAILURE;
-    }
+
     if (sections[0] == '\0')    /* empty string */
         sections = DEFAULT_SECTION;
     if (configfile[0] == '\0')  /* empty string */

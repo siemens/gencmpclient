@@ -113,7 +113,7 @@ build: submodules
 	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
 	    (echo "WARNING: OpenSSL version $$LIBCMP_OPENSSL_VERSION used for building libcmp does not match $(OPENSSL_VERSION) to be used for building client"; true); \
 	fi
-	$(MAKE) -f Makefile_src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+	$(MAKE) -f Makefile_src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" CFLAGS="$(CFLAGS)" 
 
 build_insta:
 	INSTA=1 $(MAKE) build

@@ -10,7 +10,7 @@
  ******************************************************************************/
 
 #include "genericCMPClient.h"
-#include "../cmpossl/crypto/cmp/cmp_int.h" /* TODO remove when OSSL_CMP_proxy_connect is available and used */
+#include "../cmpossl/crypto/cmp/cmp_local.h" /* TODO remove when OSSL_CMP_proxy_connect is available and used */
 
 #include <openssl/cmperr.h>
 #include <openssl/ssl.h>
@@ -157,20 +157,20 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     }
 
     if (pctx == NULL ||
-        NULL == (ctx = OSSL_CMP_CTX_create()) ||
+        NULL == (ctx = OSSL_CMP_CTX_new()) ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn)) {
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
     }
     if ((cmp_truststore != NULL && (!X509_STORE_up_ref(cmp_truststore) ||
                                     !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)))
         ||
-        (untrusted      != NULL && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, untrusted))) {
+        (untrusted      != NULL && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, (STACK_OF(X509) *)untrusted))) {
         goto err;
     }
 
     X509 *cert = NULL;
     if (creds != NULL) {
-        const EVP_PKEY *pkey = CREDENTIALS_get_pkey(creds);
+        EVP_PKEY *pkey = CREDENTIALS_get_pkey(creds);
         cert = CREDENTIALS_get_cert(creds);
         STACK_OF(X509) *chain = CREDENTIALS_get_chain(creds);
         const char *pwd = CREDENTIALS_get_pwd(creds);
@@ -178,8 +178,8 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         if ((pkey != NULL && !OSSL_CMP_CTX_set1_pkey(ctx, pkey)) ||
             (cert != NULL && !OSSL_CMP_CTX_set1_clCert(ctx, cert)) ||
             (sk_X509_num(chain) > 0 && !OSSL_CMP_CTX_set1_extraCertsOut(ctx, chain)) ||
-            (pwd != NULL && !OSSL_CMP_CTX_set1_secretValue(ctx, (unsigned char*) pwd, strlen(pwd))) ||
-            (pwdref != NULL && !OSSL_CMP_CTX_set1_referenceValue(ctx, (unsigned char *)pwdref, strlen(pwdref)))) {
+            (pwd != NULL && !OSSL_CMP_CTX_set1_secretValue(ctx, (unsigned char*) pwd, (int)strlen(pwd))) ||
+            (pwdref != NULL && !OSSL_CMP_CTX_set1_referenceValue(ctx, (unsigned char *)pwdref, (int)strlen(pwdref)))) {
             goto err;
         }
     } else {
@@ -194,7 +194,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         rcp = UTIL_parse_name(recipient, MBSTRING_ASC, false);
         if (NULL == rcp) {
             LOG(FL_ERR, "Unable to parse recipient DN '%s'", recipient);
-            OSSL_CMP_CTX_delete(ctx);
+            OSSL_CMP_CTX_free(ctx);
             return CMP_R_INVALID_PARAMETERS;
         }
     } else if (NULL == cert) {
@@ -206,7 +206,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         }
         if (NULL == rcp) {
             LOG(FL_ERR, "Internal error like out of memory obtaining recipient DN", recipient);
-            OSSL_CMP_CTX_delete(ctx);
+            OSSL_CMP_CTX_free(ctx);
             return CMP_R_RECIPIENT;
         }
     }
@@ -221,7 +221,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         int nid = OBJ_ln2nid(digest);
         if (nid == NID_undef) {
             LOG(FL_ERR, "Bad digest algorithm name: '%s'", digest);
-            OSSL_CMP_CTX_delete(ctx);
+            OSSL_CMP_CTX_free(ctx);
             return CMP_R_UNKNOWN_ALGORITHM_ID;
         }
         if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DIGEST_ALGNID, nid)
@@ -259,7 +259,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     return CMP_OK;
 
  err:
-    OSSL_CMP_CTX_delete(ctx);
+    OSSL_CMP_CTX_free(ctx);
     return CMPOSSL_error();
 }
 
@@ -569,9 +569,15 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 
-    if ((old_cert != NULL && !OSSL_CMP_CTX_set1_oldClCert(ctx, old_cert)) ||
-        (new_key  != NULL && !OSSL_CMP_CTX_set1_newPkey(ctx, new_key))) {
+    if (old_cert != NULL && !OSSL_CMP_CTX_set1_oldCert(ctx, (X509 *)old_cert))
         goto err;
+    if (new_key  != NULL) {
+        if (!EVP_PKEY_up_ref((EVP_PKEY *)new_key))
+            goto err;
+        if (!OSSL_CMP_CTX_set0_newPkey(ctx, 1 /* priv */, (EVP_PKEY *)new_key)) {
+            EVP_PKEY_free((EVP_PKEY *)new_key);
+            goto err;
+        }
     }
 
     if (subject != NULL) {
@@ -642,7 +648,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
         goto err;
     }
 
-    EVP_PKEY *new_key = OSSL_CMP_CTX_get0_newPkey(ctx); /* NULL in case P10CR */
+    EVP_PKEY *new_key = OSSL_CMP_CTX_get0_newPkey(ctx, 1 /* priv */); /* NULL in case P10CR */
     STACK_OF(X509) *untrusted = OSSL_CMP_CTX_get0_untrusted_certs(ctx); /* includes extraCerts */
     STACK_OF(X509) *chain = OSSL_CMP_build_cert_chain(untrusted, newcert);
     if (chain != NULL) {
@@ -737,7 +743,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
 
     if ((reason >= CRL_REASON_UNSPECIFIED &&
          !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_REVOCATION_REASON, reason)) ||
-        !OSSL_CMP_CTX_set1_oldClCert(ctx, cert) ||
+        !OSSL_CMP_CTX_set1_oldCert(ctx, (X509 *)cert) ||
         !OSSL_CMP_exec_RR_ses(ctx)) {
         goto err;
     }
@@ -750,12 +756,12 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
 
 void CMPclient_finish(OSSL_CMP_CTX *ctx)
 {
-    OSSL_CMP_print_errors(ctx);
+    OSSL_CMP_CTX_print_errors(ctx);
 #ifndef SEC_NO_TLS
     SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
 #endif
     X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
-    OSSL_CMP_CTX_delete(ctx);
+    OSSL_CMP_CTX_free(ctx);
 /* better not do here:
     STORE_EX_free_index();
     LOG_close();

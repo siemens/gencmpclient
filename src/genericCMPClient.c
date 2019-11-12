@@ -234,7 +234,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
             int mac = OBJ_ln2nid(mac_algnid);
             if (mac == NID_undef) {
                 LOG(FL_ERR, "MAC algorithm name not recognized: '%s'", mac_algnid);
-                OSSL_CMP_CTX_delete(ctx);
+                OSSL_CMP_CTX_free(ctx);
                 return CMP_R_UNKNOWN_ALGORITHM_ID;
             }
             if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MAC_ALGNID, mac))

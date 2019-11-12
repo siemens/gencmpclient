@@ -438,7 +438,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
             OSSL_CMP_printf(ctx, OSSL_CMP_FL_ERR, "bad syntax of %s '%s'", desc, names);
             return 0;
         }
-        if (!OSSL_CMP_CTX_subjectAltName_push1(ctx, n)) {
+        if (!OSSL_CMP_CTX_push1_subjectAltName(ctx, n)) {
             GENERAL_NAME_free(n);
             OSSL_CMP_err(ctx, "out of memory\n");
             return 0;

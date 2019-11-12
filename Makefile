@@ -1,6 +1,7 @@
 # optional LPATH defines absolute path where to find pre-installed libraries, e.g., /usr/lib
 # optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
-# set INSTA=1 for demo/tests with the Insta Demo CA; use 'make clean_insta' when switching from default to INSTA or vice versa
+# optional INSTA variable can be set (e.g., to 1) for demo/tests with the Insta Demo CA
+# optional INSTA variable can be set to override default proxy settings (for use with INSTA)
 
 SHELL=bash # This is needed because of a problem in "build" rule; good for supporting extended file name globbing
 
@@ -115,12 +116,7 @@ build: submodules
 	fi
 	$(MAKE) -f Makefile_src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" CFLAGS="$(CFLAGS)" 
 
-build_insta:
-	INSTA=1 $(MAKE) build
-
-.phony: clean_insta clean_test clean clean_uta clean_all
-clean_insta:
-	rm -f  src/cmpClientDemo$(OBJ) cmpClientDemo$(EXE)
+.phony: clean_test clean clean_uta clean_all
 
 ifeq ($(LPATH),)
 clean_uta:
@@ -141,16 +137,13 @@ ifeq ($(LPATH),)
 endif
 
 PROXY ?= http_proxy=http://de.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com  # or, e.g., tsy1.coia.siemens.net = 194.145.60.1
-ifeq ($(INSTA),)
-	OCSP_CHECK=openssl ocsp -url http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp -CAfile creds/trusted/PPKIPlaygroundECCRootCAv10.crt -issuer creds/PPKIPlaygroundECCIssuingCAv10.crt -cert creds/new.crt
-else
-	OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/new.crt
-endif
 
 ifdef INSTA
-    CA_SECTION="Insta"
+    CA_SECTION=Insta
+    OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/new.crt
 else
-    CA_SECTION="EJBCA"
+    CA_SECTION=EJBCA
+    OCSP_CHECK=openssl ocsp -url http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp -CAfile creds/trusted/PPKIPlaygroundECCRootCAv10.crt -issuer creds/PPKIPlaygroundECCIssuingCAv10.crt -cert creds/new.crt
 endif
 
 
@@ -159,7 +152,7 @@ creds/crls:
 
 test: |	build creds/crls
 	@/bin/echo -e "\n##### running cmpClientDemo #####"
-ifeq ($(INSTA),)
+ifndef INSTA
 	@ping >/dev/null $(PINGCOUNT) 1 ppki-playground.ct.siemens.com  || (echo "cannot reach ppki-playground.ct.siemens.com"; exit 1)
 	@for CA in 'Infrastructure+Root+CA+v1.0' 'Infrastructure+Issuing+CA+v1.0' 'ECC+Root+CA+v1.0' 'RSA+Root+CA+v1.0'; \
 	do \
@@ -186,7 +179,7 @@ endif
 	@echo :
 	$(OCSP_CHECK)
 
-test_insta: build_insta
+test_insta: build
 	INSTA=1 $(MAKE) test
 
 all:	build test

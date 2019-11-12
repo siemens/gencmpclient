@@ -677,7 +677,6 @@ CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL/* old_cert */,
                                           subject, exts, NULL/* csr */);
     if (err == CMP_OK) {
-        (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 1);
         err = CMPclient_enroll(ctx, new_creds, CMP_IR);
     }
     return err;
@@ -694,7 +693,6 @@ CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL/* old_cert */,
                                           subject, exts, NULL/* csr */);
     if (err == CMP_OK) {
-        (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 1);
         err = CMPclient_enroll(ctx, new_creds, CMP_CR);
     }
     return err;
@@ -726,7 +724,6 @@ CMP_err CMPclient_update(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                                           NULL/* subject */, NULL/* exts */,
                                           NULL/* csr */);
     if (err == CMP_OK) {
-        (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 0);
         err = CMPclient_enroll(ctx, new_creds, CMP_KUR);
     }
     return err;

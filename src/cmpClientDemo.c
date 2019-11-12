@@ -411,59 +411,34 @@ static int reqExtensions_have_SAN(X509_EXTENSIONS *exts)
     return X509v3_get_ext_by_NID(exts, NID_subject_alt_name, -1) >= 0;
 }
 
-static char *next_item(char *opt) /* in list separated by comma and/or space */
-{
-    /* advance to separator (comma or whitespace), if any */
-    while (*opt != ',' && !isspace(*opt) && *opt != '\0') {
-        if (*opt == '\\' && opt[1] != '\0') {
-            /* skip and unescape '\' escaped char */
-            memmove(opt, opt+1, strlen(opt));
-        }
-        opt++;
-    }
-    if (*opt != '\0') {
-        /* terminate current item */
-        *opt++ = '\0';
-        /* skip over any whitespace after separator */
-        while (isspace(*opt))
-            opt++;
-    }
-    return *opt == '\0' ? NULL : opt; /* NULL indicates end of input */
-}
-
-static int set_gennames(char *names, int type,
-                       int (*set_fn) (OSSL_CMP_CTX *ctx, const GENERAL_NAME *name),
-                       OSSL_CMP_CTX *ctx, const char *desc)
+static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
 {
     char *next;
 
     for (; names != NULL; names = next) {
         GENERAL_NAME *n;
-        next = next_item(names);
+        next = UTIL_next_item(names);
 
-        if (type == GEN_DNS && strcmp(names, "critical") == 0) {
+        if (strcmp(names, "critical") == 0) {
             (void)OSSL_CMP_CTX_set_option(ctx,
                       OSSL_CMP_OPT_SUBJECTALTNAME_CRITICAL, 1);
             continue;
         }
 
-        if (type != GEN_DNS) {
-            n = a2i_GENERAL_NAME(NULL, NULL, NULL, type, names, 0);
-        } else { /* try IP address first, then domain name */
-            (void)ERR_set_mark();
-            n = a2i_GENERAL_NAME(NULL, NULL, NULL, GEN_IPADD, names, 0);
-            (void)ERR_pop_to_mark();
-            if (n == NULL) {
-                n = a2i_GENERAL_NAME(NULL, NULL, NULL, GEN_DNS, names, 0);
-            }
-        }
+        /* try IP address first, then URI or domain name */
+        (void)ERR_set_mark();
+        n = a2i_GENERAL_NAME(NULL, NULL, NULL, GEN_IPADD, names, 0);
+        if (n == NULL)
+            n = a2i_GENERAL_NAME(NULL, NULL, NULL,
+                                 strchr(names, ':') != NULL ? GEN_URI : GEN_DNS,
+                                 names, 0);
+        (void)ERR_pop_to_mark();
 
         if (n == NULL) {
-            OSSL_CMP_printf(ctx, OSSL_CMP_FL_ERR,
-                            "bad syntax of %s '%s'", desc, names);
+            OSSL_CMP_printf(ctx, OSSL_CMP_FL_ERR, "bad syntax of %s '%s'", desc, names);
             return 0;
         }
-        if (!(*set_fn) (ctx, n)) {
+        if (!OSSL_CMP_CTX_subjectAltName_push1(ctx, n)) {
             GENERAL_NAME_free(n);
             OSSL_CMP_err(ctx, "out of memory\n");
             return 0;
@@ -471,17 +446,6 @@ static int set_gennames(char *names, int type,
         GENERAL_NAME_free(n);
     }
     return 1;
-}
-
-static int atoint(const char *str)
-{
-    char *tailptr;
-    long res = strtol(str, &tailptr, 10);
-
-    if  ((*tailptr != '\0') || (res < INT_MIN) || (res > INT_MAX))
-        return INT_MIN;
-    else
-        return (int)res;
 }
 
 /*
@@ -545,15 +509,15 @@ static int get_opts(int argc, char **argv)
             *cmp_opts[o].varref_u.txt = arg;
             break;
         case OPT_NUM:
-            if ((*cmp_opts[o].varref_u.num = atoint(arg)) == INT_MIN) {
+            if ((*cmp_opts[o].varref_u.num = UTIL_atoint(arg)) == INT_MIN) {
                 LOG(FL_INFO, "Can't parse '%s' as number", arg);
                 return 0;
             }
             break;
         case OPT_BOOL:
-            res = atoint(arg);
+            res = UTIL_atoint(arg);
             if (res == 0 || res == 1) {
-                *cmp_opts[o].varref_u.bool = atoint(arg);
+                *cmp_opts[o].varref_u.bool = UTIL_atoint(arg);
             } else {
                 LOG(FL_INFO, "Can't parse '%s' as bool", arg);
                 return 0;
@@ -599,8 +563,29 @@ static int CMPclient_demo(enum use_case use_case)
             || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE, opt_ignore_keyusage)
             || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITYDAYS, opt_days)
             || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPOMETHOD, opt_popo)
-            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLECONFIRM, opt_disableconfirm))
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLECONFIRM, opt_disableconfirm)
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, opt_unprotectedrequests)) {
         err = CMP_R_INVALID_ARGS;
+        goto err;
+    }
+
+    if (opt_san_nodefault) {
+        if (opt_sans != NULL)
+            fprintf(stderr, "-opt_san_nodefault has no effect when -sans is used\n");
+        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 1)) {
+            err = CMP_R_INVALID_ARGS;
+            goto err;
+        }
+    }
+
+    if (opt_policies_critical) {
+        if (opt_policies == NULL)
+            fprintf(stderr, "-opt_policies_critical has no effect unless -policies is given\n");
+        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POLICIES_CRITICAL, 1)) {
+            err = CMP_R_INVALID_ARGS;
+            goto err;
+        }
+    }
 
     if (opt_tls_used && (tls = setup_TLS()) == NULL) {
         err = -5;
@@ -637,9 +622,7 @@ static int CMPclient_demo(enum use_case use_case)
         goto err;
     }
 
-    if (!set_gennames(opt_sans, GEN_DNS,
-                      OSSL_CMP_CTX_subjectAltName_push1, ctx,
-                      "Subject Alternative Name")){
+    if (!set_gennames(ctx, opt_sans, "Subject Alternative Name")){
         err = -8;
         goto err;
     }

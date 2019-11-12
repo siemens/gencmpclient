@@ -51,9 +51,11 @@ tls_used = 0
 
 [imprint]
 path = /ejbca/publicweb/cmp/PlaygroundECC
+san_nodefault = 1
 
 [bootstrap]
 path = /ejbca/publicweb/cmp/PlaygroundECC
+san_nodefault = 1
 
 [update]
 path = /ejbca/publicweb/cmp/PlaygroundCMPSigning

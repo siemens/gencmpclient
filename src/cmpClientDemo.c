@@ -18,7 +18,7 @@
 #include <SecUtils/config/config.h>
 
 #define CONFIG_DEFAULT "config/demo.cnf"
-#define DEFAULT_SECTION "default,EJBCA"
+#define DEFAULT_SECTION "default"
 
 #ifdef LOCAL_DEFS
 X509 *CREDENTIALS_get_cert(const CREDENTIALS *creds);
@@ -720,30 +720,29 @@ int main(int argc, char *argv[])
         configfile = CONFIG_DEFAULT;
 
     LOG(FL_INFO, "Using CMP configuration from '%s'", configfile);
-    config = CONF_load_options(NULL /* uta_ctx */, configfile, sections, &cmp_opts[0]);
-    if (0 == config)
-        return EXIT_FAILURE;
 
     switch(use_case) {
     case bootstrap:
-        if (!CONF_read_options(config, "bootstrap", &cmp_opts[0]))
+        if ((config =CONF_load_options(NULL, configfile, "bootstrap,default", &cmp_opts[0])) == 0)
             return EXIT_FAILURE;
         break;
     case imprint:
-        if (!CONF_read_options(config, "imprint", &cmp_opts[0]))
+        if ((config = CONF_load_options(NULL, configfile, "imprint,default", &cmp_opts[0])) == 0)
             return EXIT_FAILURE;
         break;
     case update:
-        if (!CONF_read_options(config, "update", &cmp_opts[0]))
+        if ((config = CONF_load_options(NULL, configfile, "update,default", &cmp_opts[0])) == 0)
             return EXIT_FAILURE;
         break;
     case revocation:
-        if (!CONF_read_options(config, "revoke", &cmp_opts[0]))
+        if ((config = CONF_load_options(NULL, configfile, "revoke,default", &cmp_opts[0])) == 0)
             return EXIT_FAILURE;
         break;
     default:
         return EXIT_FAILURE;
     }
+    if (!CONF_read_options(config, sections, &cmp_opts[0]))
+        return EXIT_FAILURE;
 
     vpm = X509_VERIFY_PARAM_new();
     if (vpm == 0) {

@@ -76,10 +76,6 @@ ifdef NO_TLS
     export SEC_NO_TLS=1
 endif
 
-ifdef INSTA
-    override CFLAGS += "-DINSTA"
-endif
-
 .phony: submodules
 ifeq ($(SECUTILS),)
 submodules:
@@ -151,6 +147,13 @@ else
 	OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/new.crt
 endif
 
+ifdef INSTA
+    CA_SECTION="Insta"
+else
+    CA_SECTION="EJBCA"
+endif
+
+
 creds/crls:
 	mkdir $@
 
@@ -169,17 +172,17 @@ else
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633"
 endif
-	$(PROXY) ./cmpClientDemo$(EXE)
+	$(PROXY) ./cmpClientDemo$(EXE) bootstrap -sections $(CA_SECTION)
 	@echo :
 	openssl x509 -noout -text -in creds/new.crt | sed '/^         [0-9a-f].*/d'
 	@echo
-	$(PROXY) ./cmpClientDemo$(EXE) imprint
+	$(PROXY) ./cmpClientDemo$(EXE) imprint -sections $(CA_SECTION)
 	@echo
-	$(PROXY) ./cmpClientDemo$(EXE) update
+	$(PROXY) ./cmpClientDemo$(EXE) update -sections $(CA_SECTION)
 	@echo :
 	$(OCSP_CHECK)
 	@echo
-	$(PROXY) ./cmpClientDemo$(EXE) revoke
+	$(PROXY) ./cmpClientDemo$(EXE) revoke -sections $(CA_SECTION)
 	@echo :
 	$(OCSP_CHECK)
 

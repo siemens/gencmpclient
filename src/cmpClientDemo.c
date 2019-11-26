@@ -247,6 +247,43 @@ static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
     return res;
 }
 
+static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
+{
+    char *next;
+
+    for (; names != NULL; names = next) {
+        GENERAL_NAME *n;
+        next = UTIL_next_item(names);
+
+        if (strcmp(names, "critical") == 0) {
+            (void)OSSL_CMP_CTX_set_option(ctx,
+                      OSSL_CMP_OPT_SUBJECTALTNAME_CRITICAL, 1);
+            continue;
+        }
+
+        /* try IP address first, then URI or domain name */
+        (void)ERR_set_mark();
+        n = a2i_GENERAL_NAME(NULL, NULL, NULL, GEN_IPADD, names, 0);
+        if (n == NULL)
+            n = a2i_GENERAL_NAME(NULL, NULL, NULL,
+                                 strchr(names, ':') != NULL ? GEN_URI : GEN_DNS,
+                                 names, 0);
+        (void)ERR_pop_to_mark();
+
+        if (n == NULL) {
+            LOG(FL_ERR, "bad syntax of %s '%s'", desc, names);
+            return 0;
+        }
+        if (!OSSL_CMP_CTX_push1_subjectAltName(ctx, n)) {
+            GENERAL_NAME_free(n);
+            LOG(FL_ERR, "out of memory\n");
+            return 0;
+        }
+        GENERAL_NAME_free(n);
+    }
+    return 1;
+}
+
 SSL_CTX *setup_TLS(void)
 {
 #ifdef SEC_NO_TLS
@@ -375,6 +412,184 @@ X509_EXTENSIONS *setup_X509_extensions(void)
     return exts;
 }
 
+int setup_ctx(CMP_CTX *ctx, enum use_case use_case)
+{
+    OSSL_cmp_log_cb_t log_fn = NULL;
+    CMP_err err = CMPclient_init(log_fn);
+    if (err != CMP_OK)
+        return err;
+
+    if (opt_issuer != NULL) {
+        X509_NAME *n = UTIL_parse_name(opt_issuer, MBSTRING_ASC, 0);
+        if (n == NULL) {
+            LOG(FL_ERR, "cannot parse issuer DN '%s'", opt_issuer);
+            err = 4;
+            goto err;
+        }
+        if (!OSSL_CMP_CTX_set1_issuer(ctx, n)) {
+            X509_NAME_free(n);
+            LOG(FL_ERR, "out of memory");
+            err = 5;
+            goto err;
+        }
+        X509_NAME_free(n);
+    }
+
+    if (opt_expect_sender != NULL) {
+        X509_NAME *n = UTIL_parse_name(opt_expect_sender, MBSTRING_ASC, 0);
+        if (n == NULL) {
+            LOG(FL_ERR, "cannot parse expected sender DN '%s'", opt_expect_sender);
+            err = 6;
+            goto err;
+        }
+        if (!OSSL_CMP_CTX_set1_expected_sender(ctx, n)) {
+            X509_NAME_free(n);
+            LOG(FL_ERR, "out of memory");
+            err = 7;
+            goto err;
+        }
+        X509_NAME_free(n);
+    }
+
+    if (opt_extracerts != NULL) {
+        STACK_OF(X509) *certs = CERTS_load(opt_extracerts, "extra certificates for CMP");
+        if (certs == NULL) {
+            LOG(FL_ERR, "Unable to load '%s' extra certificates for CMP", opt_extracerts);
+            err = 8;
+            goto err;
+        } else {
+            if (!OSSL_CMP_CTX_set1_extraCertsOut(ctx, certs)){
+                LOG(FL_ERR, "Failed to set 'extraCerts' field of CMP context");
+                err = 9;
+                sk_X509_pop_free(certs, X509_free);
+                goto err;
+            }
+            sk_X509_pop_free(certs, X509_free);
+        }
+    }
+
+    /* direct call of CMP API */
+    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS, opt_unprotectederrors)
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE, opt_ignore_keyusage)
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITYDAYS, opt_days)
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPOMETHOD, opt_popo)
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLECONFIRM, opt_disableconfirm)
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, opt_unprotectedrequests)) {
+        LOG(FL_ERR, "Failed to set option flags of CMP context");
+        err = CMP_R_INVALID_ARGS;
+        goto err;
+    }
+
+    if (opt_san_nodefault) {
+        if (opt_sans != NULL)
+            LOG(FL_ERR, "-opt_san_nodefault has no effect when -sans is used\n");
+        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 1)) {
+            LOG(FL_ERR, "Failed to set 'SubjectAltName_nodefault' field of CMP context");
+            err = CMP_R_INVALID_ARGS;
+            goto err;
+        }
+    }
+
+    if (opt_policies_critical) {
+        if (opt_policies == NULL)
+            LOG(FL_ERR, "-opt_policies_critical has no effect unless -policies is given\n");
+        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POLICIES_CRITICAL, 1)) {
+            LOG(FL_ERR, "Failed to set 'setPoliciesCritical' field of CMP context");
+            err = CMP_R_INVALID_ARGS;
+            goto err;
+        }
+    }
+
+    if (!set_gennames(ctx, opt_sans, "Subject Alternative Name")){
+        LOG(FL_ERR, "Failed to set 'Subject Alternative Name' of CMP context");
+        err = 10;
+        goto err;
+    }
+
+    if (opt_geninfo != NULL) {
+        long value;
+        ASN1_OBJECT *type;
+        ASN1_INTEGER *aint;
+        ASN1_TYPE *val;
+        OSSL_CMP_ITAV *itav;
+        char *endstr;
+        char *valptr = strchr(opt_geninfo, ':');
+
+        if (valptr == NULL) {
+            LOG(FL_ERR, "missing ':' in -geninfo option");
+            goto err;
+        }
+        valptr[0] = '\0';
+        valptr++;
+
+        if (strncmp(valptr, "int:", 4) != 0) {
+            LOG(FL_ERR, "missing 'int:' in -geninfo option");
+            goto err;
+        }
+        valptr += 4;
+
+        value = strtol(valptr, &endstr, 10);
+        if (endstr == valptr || *endstr != '\0') {
+            LOG(FL_ERR, "cannot parse int in -geninfo option");
+            goto err;
+        }
+
+        type = OBJ_txt2obj(opt_geninfo, 1);
+        if (type == NULL) {
+            LOG(FL_ERR, "cannot parse OID in -geninfo option");
+            goto err;
+        }
+
+        aint = ASN1_INTEGER_new();
+        if (aint == NULL || !ASN1_INTEGER_set(aint, value)) {
+            LOG(FL_ERR, "cannot set ASN1 integer");
+            err = 11;
+            goto err;
+        }
+
+        val = ASN1_TYPE_new();
+        if (val == NULL) {
+            LOG(FL_ERR, "cannot create new ASN1 type");
+            err = 12;
+            ASN1_INTEGER_free(aint);
+            goto err;
+        }
+        ASN1_TYPE_set(val, V_ASN1_INTEGER, aint);
+        itav = OSSL_CMP_ITAV_gen(type, val);
+        if (itav == NULL) {
+            LOG(FL_ERR, "Unable to create 'OSSL_CMP_ITAV' structure");
+            err = 13;
+            ASN1_TYPE_free(val);
+            goto err;
+        }
+
+        if (!OSSL_CMP_CTX_push0_geninfo_ITAV(ctx, itav)) {
+            LOG(FL_ERR, "Failed to add an ITAV for geninfo of the PKI message header");
+            err = 14;
+            OSSL_CMP_ITAV_free(itav);
+            goto err;
+        }
+    }
+
+    if (opt_csr != NULL) {
+        if (use_case == imprint || use_case == bootstrap
+                || use_case == update || use_case == revocation) {
+            LOG(FL_WARN, "-csr option is ignored for command other than p10cr");
+        } else {
+            X509_REQ *csr = FILES_load_csr_autofmt(opt_csr, FORMAT_PEM, "PKCS#10 CSR for p10cr");
+            if (csr == NULL) {
+                LOG(FL_ERR, "Failed to load CSR from '%s'", opt_csr);
+                err = 15;
+                goto err;
+            }
+            X509_REQ_free(csr);     /* no PKCS10 use case yet implemented*/
+        }
+    }
+
+ err:
+    return err;
+}
+
 CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
                            OPTIONAL CREDENTIALS *cmp_creds)
 {
@@ -414,43 +629,6 @@ static int reqExtensions_have_SAN(X509_EXTENSIONS *exts)
     if (exts == NULL)
         return 0;
     return X509v3_get_ext_by_NID(exts, NID_subject_alt_name, -1) >= 0;
-}
-
-static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
-{
-    char *next;
-
-    for (; names != NULL; names = next) {
-        GENERAL_NAME *n;
-        next = UTIL_next_item(names);
-
-        if (strcmp(names, "critical") == 0) {
-            (void)OSSL_CMP_CTX_set_option(ctx,
-                      OSSL_CMP_OPT_SUBJECTALTNAME_CRITICAL, 1);
-            continue;
-        }
-
-        /* try IP address first, then URI or domain name */
-        (void)ERR_set_mark();
-        n = a2i_GENERAL_NAME(NULL, NULL, NULL, GEN_IPADD, names, 0);
-        if (n == NULL)
-            n = a2i_GENERAL_NAME(NULL, NULL, NULL,
-                                 strchr(names, ':') != NULL ? GEN_URI : GEN_DNS,
-                                 names, 0);
-        (void)ERR_pop_to_mark();
-
-        if (n == NULL) {
-            LOG(FL_ERR, "bad syntax of %s '%s'", desc, names);
-            return 0;
-        }
-        if (!OSSL_CMP_CTX_push1_subjectAltName(ctx, n)) {
-            GENERAL_NAME_free(n);
-            LOG(FL_ERR, "out of memory\n");
-            return 0;
-        }
-        GENERAL_NAME_free(n);
-    }
-    return 1;
 }
 
 /*
@@ -566,90 +744,15 @@ static int CMPclient_demo(enum use_case use_case)
         goto err;
     }
 
-    if (opt_issuer != NULL) {
-        X509_NAME *n = UTIL_parse_name(opt_issuer, MBSTRING_ASC, 0);
-        if (n == NULL) {
-            LOG(FL_ERR, "cannot parse issuer DN '%s'", opt_issuer);
-            err = 4;
-            goto err;
-        }
-        if (!OSSL_CMP_CTX_set1_issuer(ctx, n)) {
-            X509_NAME_free(n);
-            LOG(FL_ERR, "out of memory");
-            err = 5;
-            goto err;
-        }
-        X509_NAME_free(n);
-    }
-
-    if (opt_expect_sender != NULL) {
-        X509_NAME *n = UTIL_parse_name(opt_expect_sender, MBSTRING_ASC, 0);
-        if (n == NULL) {
-            LOG(FL_ERR, "cannot parse expected sender DN '%s'", opt_expect_sender);
-            err = 6;
-            goto err;
-        }
-        if (!OSSL_CMP_CTX_set1_expected_sender(ctx, n)) {
-            X509_NAME_free(n);
-            LOG(FL_ERR, "out of memory");
-            err = 7;
-            goto err;
-        }
-        X509_NAME_free(n);
-    }
-
-    if (opt_extracerts != NULL) {
-        STACK_OF(X509) *certs = CERTS_load(opt_extracerts, "extra certificates for CMP");
-        if (certs == NULL) {
-            LOG(FL_ERR, "Unable to load '%s' extra certificates for CMP", opt_extracerts);
-            err = 8;
-            goto err;
-        } else {
-            if (!OSSL_CMP_CTX_set1_extraCertsOut(ctx, certs)){
-                LOG(FL_ERR, "Failed to set 'extraCerts' field of CMP context");
-                err = 9;
-                sk_X509_pop_free(certs, X509_free);
-                goto err;
-            }
-            sk_X509_pop_free(certs, X509_free);
-        }
-    }
-
-    /* direct call of CMP API */
-    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS, opt_unprotectederrors)
-            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE, opt_ignore_keyusage)
-            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITYDAYS, opt_days)
-            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPOMETHOD, opt_popo)
-            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLECONFIRM, opt_disableconfirm)
-            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, opt_unprotectedrequests)) {
-        LOG(FL_ERR, "Failed to set option flags of CMP context");
-        err = CMP_R_INVALID_ARGS;
+    err = setup_ctx(ctx, use_case);
+    if (err != CMP_OK) {
+        LOG(FL_ERR, "Failed to prepare CMP client");
         goto err;
-    }
-
-    if (opt_san_nodefault) {
-        if (opt_sans != NULL)
-            LOG(FL_ERR, "-opt_san_nodefault has no effect when -sans is used\n");
-        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 1)) {
-            LOG(FL_ERR, "Failed to set 'SubjectAltName_nodefault' field of CMP context");
-            err = CMP_R_INVALID_ARGS;
-            goto err;
-        }
-    }
-
-    if (opt_policies_critical) {
-        if (opt_policies == NULL)
-            LOG(FL_ERR, "-opt_policies_critical has no effect unless -policies is given\n");
-        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POLICIES_CRITICAL, 1)) {
-            LOG(FL_ERR, "Failed to set 'setPoliciesCritical' field of CMP context");
-            err = CMP_R_INVALID_ARGS;
-            goto err;
-        }
     }
 
     if (opt_tls_used && (tls = setup_TLS()) == NULL) {
         LOG(FL_ERR, "Unable to setup TLS for CMP client");
-        err = 10;
+        err = 16;
         goto err;
     }
     const char *path = opt_path;
@@ -668,7 +771,7 @@ static int CMPclient_demo(enum use_case use_case)
         new_pkey = KEY_new(key_spec);
         if (new_pkey == NULL) {
             LOG(FL_ERR, "Unable to generate new private key according to specification '%s'", key_spec);
-            err = 11;
+            err = 17;
             goto err;
         }
     }
@@ -676,7 +779,7 @@ static int CMPclient_demo(enum use_case use_case)
     if ((use_case == imprint || use_case == bootstrap)
         && (exts = setup_X509_extensions()) == NULL) {
         LOG(FL_ERR, "Unable to setup X509 extensions for CMP client");
-        err = 12;
+        err = 18;
         goto err;
     }
 
@@ -684,92 +787,6 @@ static int CMPclient_demo(enum use_case use_case)
         LOG(FL_ERR, "Cannot have Subject Alternative Names both via -reqexts and via -sans\n");
         err = CMP_R_MULTIPLE_SAN_SOURCES;
         goto err;
-    }
-
-    if (!set_gennames(ctx, opt_sans, "Subject Alternative Name")){
-        LOG(FL_ERR, "Failed to set 'Subject Alternative Name' of CMP context");
-        err = 13;
-        goto err;
-    }
-
-    if (opt_geninfo != NULL) {
-        long value;
-        ASN1_OBJECT *type;
-        ASN1_INTEGER *aint;
-        ASN1_TYPE *val;
-        OSSL_CMP_ITAV *itav;
-        char *endstr;
-        char *valptr = strchr(opt_geninfo, ':');
-
-        if (valptr == NULL) {
-            LOG(FL_ERR, "missing ':' in -geninfo option");
-            goto err;
-        }
-        valptr[0] = '\0';
-        valptr++;
-
-        if (strncmp(valptr, "int:", 4) != 0) {
-            LOG(FL_ERR, "missing 'int:' in -geninfo option");
-            goto err;
-        }
-        valptr += 4;
-
-        value = strtol(valptr, &endstr, 10);
-        if (endstr == valptr || *endstr != '\0') {
-            LOG(FL_ERR, "cannot parse int in -geninfo option");
-            goto err;
-        }
-
-        type = OBJ_txt2obj(opt_geninfo, 1);
-        if (type == NULL) {
-            LOG(FL_ERR, "cannot parse OID in -geninfo option");
-            goto err;
-        }
-
-        aint = ASN1_INTEGER_new();
-        if (aint == NULL || !ASN1_INTEGER_set(aint, value)) {
-            LOG(FL_ERR, "cannot set ASN1 integer");
-            err = 14;
-            goto err;
-        }
-
-        val = ASN1_TYPE_new();
-        if (val == NULL) {
-            LOG(FL_ERR, "cannot create new ASN1 type");
-            err = 15;
-            ASN1_INTEGER_free(aint);
-            goto err;
-        }
-        ASN1_TYPE_set(val, V_ASN1_INTEGER, aint);
-        itav = OSSL_CMP_ITAV_gen(type, val);
-        if (itav == NULL) {
-            LOG(FL_ERR, "Unable to create 'OSSL_CMP_ITAV' structure");
-            err = 16;
-            ASN1_TYPE_free(val);
-            goto err;
-        }
-
-        if (!OSSL_CMP_CTX_push0_geninfo_ITAV(ctx, itav)) {
-            LOG(FL_ERR, "Failed to add an ITAV for geninfo of the PKI message header");
-            err = 17;
-            OSSL_CMP_ITAV_free(itav);
-            goto err;
-        }
-    }
-
-    if (opt_csr != NULL) {
-        if (use_case == imprint || use_case == bootstrap
-                || use_case == update || use_case == revocation) {
-            LOG(FL_WARN, "-csr option is ignored for command other than p10cr");
-        } else {
-            X509_REQ *csr = FILES_load_csr_autofmt(opt_csr, FORMAT_PEM, "PKCS#10 CSR for p10cr");
-            if (csr == NULL) {
-                LOG(FL_ERR, "Failed to load CSR from '%s'", opt_csr);
-                err = 18;
-                goto err;
-            }
-            X509_REQ_free(csr);     /* no PKCS10 use case yet implemented*/
-        }
     }
 
     switch (use_case) {

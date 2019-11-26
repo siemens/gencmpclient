@@ -46,19 +46,15 @@ char *prog = NULL;
     int  opt_totaltimeout = -1;        /* Overall time an enrollment incl. polling may take. Default: 0 = infinite */
 
     char *opt_path = NULL;              /* HTTP path (aka CMP alias) inside the CMP server */
-    char *opt_cmd_s = NULL;             /* CMP command to execute: 'ir'/'cr'/'p10cr'/'kur'/'rr' */
-    int   opt_cmd = 0;
 
     char *opt_ref = NULL;               /* Reference value to use as senderKID in case no -cert is given */
     char *opt_secret = NULL;            /* Secret value for authentication with a pre-shared key (PBM) */
 
-    char *opt_creds = NULL;             /* cid determining file to read client credentials for CMP-level authentication */
     char *opt_cert = NULL;              /* (legacy option) Client current certificate (plus any extra certs) */
     char *opt_key = NULL;               /* (legacy option) Key for the client's current certificate */
     char *opt_keypass = NULL;           /* (legacy option) Password for the client's key */
 
     char *opt_oldcert = NULL;           /* cid determining certificate to be to be renewed in KUR or revoked in RR */
-    X509 *old_cert = NULL;
     char *opt_csr = NULL;               /* File to read CSR from for P10CR (for legacy support) */
     int  opt_revreason = CRL_REASON_NONE; /* Reason code to be included in revocation request (RR). Values: -1..6, 8..10. None set by default */
 
@@ -76,7 +72,6 @@ char *prog = NULL;
     char *opt_cacertsout = NULL;        /* File where to save received CA certificates (from IR) */
     char *opt_certout = NULL;           /* cid determining file where to save the received certificate */
     char *opt_out_trusted = NULL;       /* File of trusted certificates for verifying the enrolled cert */
-    X509_STORE *out_trusted_ts = NULL;  /* Trusted certificates for verifying the enrolled cert */
 
     char *opt_srvcert = NULL;           /* Server certificate directly trusted for CMP signing */
     char *opt_trusted = NULL;           /* cid to use for getting trusted CMP certificates (trust anchor) */
@@ -102,8 +97,6 @@ char *prog = NULL;
     int opt_san_nodefault = 0;          /* Do not take default SANs from reference certificate (see -oldcert) */
     char *opt_policies = NULL;          /* Policy OID(s) to add as certificate policies request extension */
     int opt_policies_critical = 0;      /* Flag the policies given with -policies as critical */
-    char *opt_key_usages = NULL;        /* List of (critical) Basic Key Usages to be added to request exts */
-    char *opt_ekus = NULL;              /* List of (critical) Extended Key Usages to be added to request exts */
     int  opt_popo = 1;                  /* Proof-of-Possession (POPO) method */
     char *opt_digest = NULL;            /* Digest-Algorithem for the CMP Signature */
     char *opt_mac = NULL;               /* MAC algorithm to use in PBM-based message protection */
@@ -116,16 +109,12 @@ char *prog = NULL;
     char *opt_geninfo = NULL;
 
     char *opt_newkeytype = NULL;        /* specifies keytype e.g. "ECC" or "RSA" */
-    char *use_case = NULL;              /* implies section in OpenSSL config file */
     char *configfile = CONFIG_DEFAULT;/* OpenSSL-style configuration file */
     CONF *config = NULL;                /* configuration structure */
     char *sections = DEFAULT_SECTION;   /* sections of config file*/
     X509_VERIFY_PARAM *vpm = NULL;
     CREDENTIALS *creds = NULL;
-    X509_STORE *tls_ts = NULL;
-    X509_STORE *cmp_ts = NULL;
     OSSL_CMP_CTX *cmp_ctx = NULL;
-    SSL_CTX *ssl_ctx = NULL;
 
 
 /*******************************************************************
@@ -147,13 +136,11 @@ opt_t cmp_opts[] = {
 
     { "ref", OPT_TXT, { &(opt_ref) } },
     { "secret", OPT_TXT, { &(opt_secret) } },
-    { "creds", OPT_TXT, { &(opt_creds) } },
     { "cert", OPT_TXT, { &(opt_cert) } },
     { "key", OPT_TXT, { &(opt_key) } },
     { "keypass", OPT_TXT, { &(opt_keypass) } },
     { "extracerts", OPT_TXT, { &opt_extracerts } },
 
-    { "cmd", OPT_TXT, { &(opt_cmd_s) } },
     { "digest", OPT_TXT, { &opt_digest } },
     { "mac", OPT_TXT, { &opt_mac}},
     { "unprotectedrequests", OPT_BOOL, { (char **) &opt_unprotectedrequests } },
@@ -173,8 +160,6 @@ opt_t cmp_opts[] = {
     { "san_nodefault", OPT_BOOL, { (char**) &opt_san_nodefault} },
     { "policies", OPT_TXT, { &opt_policies} },
     { "policies_critical", OPT_BOOL, { (char**) &opt_policies_critical} },
-    { "key_usages", OPT_TXT, { &opt_key_usages } },
-    { "ekus", OPT_TXT, { &opt_ekus } },
     { "popo", OPT_NUM, { (char **) &opt_popo } },
     { "implicitconfirm", OPT_BOOL, { (char **) &opt_implicitconfirm } },
     { "disableconfirm", OPT_BOOL, { (char **) &opt_disableconfirm } },
@@ -215,18 +200,18 @@ typedef enum OPTION_choice {
     OPT_RECIPIENT, OPT_EXPECT_SENDER, OPT_SRVCERT, OPT_TRUSTED,
     OPT_UNTRUSTED, OPT_IGNORE_KEYUSAGE,
 
-    OPT_REF, OPT_SECRET, OPT_CREDS, OPT_CERT,
-    OPT_KEY, OPT_KEYPASS, OPT_EXTRACERTS,
+    OPT_REF, OPT_SECRET, OPT_CERT, OPT_KEY,
+    OPT_KEYPASS, OPT_EXTRACERTS,
 
-    OPT_CMD_S, OPT_DIGEST, OPT_MAC, OPT_UNPROTECTEDREQUESTS,
-    OPT_UNPROTECTEDERRORS, OPT_EXTRACERTSOUT, OPT_CACERTSOUT,
+    OPT_DIGEST, OPT_MAC, OPT_UNPROTECTEDREQUESTS, OPT_UNPROTECTEDERRORS,
+    OPT_EXTRACERTSOUT, OPT_CACERTSOUT,
 
     OPT_NEWKEY, OPT_NEWKEYPASS, OPT_NEWKEYTYPE, OPT_SUBJECT,
     OPT_ISSUER, OPT_DAYS, OPT_REQEXTS,
 
     OPT_SANS, OPT_SAN_NODEFAULT, OPT_POLICIES, OPT_POLICIES_CRITICAL,
-    OPT_KEY_USAGES, OPT_EKUS, OPT_POPO, OPT_IMPLICITCONFIRM,
-    OPT_DISABLECONFIRM, OPT_CERTOUT, OPT_OUT_TRUSTED,
+    OPT_POPO, OPT_IMPLICITCONFIRM, OPT_DISABLECONFIRM, OPT_CERTOUT,
+    OPT_OUT_TRUSTED,
 
     OPT_OLDCERT, OPT_CSR, OPT_REVREASON,
 

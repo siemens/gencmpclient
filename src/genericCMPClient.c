@@ -720,19 +720,25 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
     return err;
 }
 
-CMP_err CMPclient_update(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
-                         const EVP_PKEY *new_key)
+CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
+                                 const X509 *cert, const EVP_PKEY *new_key)
 {
     if (NULL == new_key) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
-    CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL/* old_cert */,
+    CMP_err err = CMPclient_setup_certreq(ctx, new_key, cert,
                                           NULL/* subject */, NULL/* exts */,
                                           NULL/* csr */);
     if (err == CMP_OK) {
         err = CMPclient_enroll(ctx, new_creds, CMP_KUR);
     }
     return err;
+}
+
+CMP_err CMPclient_update(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
+                         const EVP_PKEY *new_key)
+{
+    return CMPclient_update_anycert(ctx, new_creds, NULL, new_key);
 }
 
 CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)

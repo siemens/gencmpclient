@@ -757,6 +757,21 @@ static int CMPclient_demo(enum use_case use_case)
         }
     }
 
+    if (opt_csr != NULL) {
+        if (use_case == imprint || use_case == bootstrap
+                || use_case == update || use_case == revocation) {
+            LOG(FL_WARN, "-csr option is ignored for command other than p10cr");
+        } else {
+            X509_REQ *csr = FILES_load_csr_autofmt(opt_csr, FORMAT_PEM, "PKCS#10 CSR for p10cr");
+            if (csr == NULL) {
+                LOG(FL_ERR, "Failed to load CSR from '%s'", opt_csr);
+                err = 18;
+                goto err;
+            }
+            X509_REQ_free(csr);     /* no PKCS10 use case yet implemented*/
+        }
+    }
+
     switch (use_case) {
     case imprint:
         err = CMPclient_imprint(ctx, &new_creds, new_pkey, opt_subject, exts);
@@ -765,15 +780,27 @@ static int CMPclient_demo(enum use_case use_case)
         err = CMPclient_bootstrap(ctx, &new_creds, new_pkey, opt_subject, exts);
         break;
     case update:
-        err = CMPclient_update(ctx, &new_creds, new_pkey);
+        if (opt_oldcert == NULL) {
+            err = CMPclient_update(ctx, &new_creds, new_pkey);
+        } else {
+            sec_file_format format = FILES_get_format(opt_oldcert);
+            X509 *oldcert = FILES_load_cert(opt_oldcert, format, opt_keypass, "certificate to be updated");
+            err = CMPclient_update_anycert(ctx, &new_creds, oldcert, new_pkey);
+        }
         break;
     case revocation:
-        err = CMPclient_revoke(ctx, CREDENTIALS_get_cert(cmp_creds), opt_revreason);
+        if (opt_oldcert == NULL) {
+            err = CMPclient_revoke(ctx, CREDENTIALS_get_cert(cmp_creds), opt_revreason);
+        } else {
+            sec_file_format format = FILES_get_format(opt_oldcert);
+            X509 *oldcert = FILES_load_cert(opt_oldcert, format, opt_keypass, "certificate to be revoked");
+            err = CMPclient_revoke(ctx, oldcert, opt_revreason);
+        }
         /* CmpWsRa does not accept CRL_REASON_NONE: "missing crlEntryDetails for REVOCATION_REQ" */
         break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);
-        err = 18;
+        err = 19;
     }
     if (err != CMP_OK) {
         LOG(FL_ERR, "Failed to perform CMP request");
@@ -785,14 +812,14 @@ static int CMPclient_demo(enum use_case use_case)
         STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_caPubs(cmp_ctx);
         if (format == FORMAT_UNDEF) {
             LOG(FL_ERR, "Failed to determine format for file endings of '%s'", opt_cacertsout);
-            err = 19;
+            err = 20;
             goto err;
         }
         if (sk_X509_num(certs) > 0
                 && FILES_store_certs(certs, opt_cacertsout, format, "CA") < 0) {
             LOG(FL_ERR, "Failed to store '%s'", opt_cacertsout);
             sk_X509_pop_free(certs, X509_free);
-            err = 20;
+            err = 21;
             goto err;
         }
         sk_X509_pop_free(certs, X509_free);
@@ -803,14 +830,14 @@ static int CMPclient_demo(enum use_case use_case)
         STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_extraCertsIn(cmp_ctx);
         if (format == FORMAT_UNDEF) {
             LOG(FL_ERR, "Failed to determine format for file endings of '%s'", opt_extracertsout);
-            err = 21;
+            err = 22;
             goto err;
         }
         if (sk_X509_num(certs) > 0
                 && FILES_store_certs(certs, opt_extracertsout, format, "extra") < 0) {
             LOG(FL_ERR, "Failed to store '%s'", opt_extracertsout);
             sk_X509_pop_free(certs, X509_free);
-            err = 22;
+            err = 23;
             goto err;
         }
         sk_X509_pop_free(certs, X509_free);
@@ -820,7 +847,7 @@ static int CMPclient_demo(enum use_case use_case)
         const char *new_desc = "newly enrolled certificate and related key and chain";
         if (!CREDENTIALS_save(new_creds, opt_certout, opt_newkey, opt_newkeypass, new_desc)) {
             LOG(FL_ERR, "Failed to save newly enrolled credentials");
-            err = 23;
+            err = 24;
             goto err;
         }
     }

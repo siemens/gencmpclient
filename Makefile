@@ -150,7 +150,7 @@ endif
 creds/crls:
 	mkdir $@
 
-test: |	build creds/crls
+test: build | creds/crls
 	@/bin/echo -e "\n##### running cmpClientDemo #####"
 ifndef INSTA
 	@ping >/dev/null $(PINGCOUNT) 1 ppki-playground.ct.siemens.com  || (echo "cannot reach ppki-playground.ct.siemens.com"; exit 1)

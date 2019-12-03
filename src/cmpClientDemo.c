@@ -42,8 +42,9 @@ char *prog = NULL;
 
     char *opt_server = NULL;            /* 'ADDRESS[:PORT]' of the CMP server. Port defaults to 8080 */
     char *opt_proxy = NULL;             /* 'ADDRESS[:PORT]' of HTTP proxy to the CMP server. Default port 8080 */
-    int  opt_msgtimeout = -1;          /* Timeout per CMP message round trip (or 0 for none). Default 120 seconds */
-    int  opt_totaltimeout = -1;        /* Overall time an enrollment incl. polling may take. Default: 0 = infinite */
+    char *opt_no_proxy = NULL;          /* Might be overwritten by env variable no_proxy */
+    int  opt_msgtimeout = -1;           /* Timeout per CMP message round trip (or 0 for none). Default 120 seconds */
+    int  opt_totaltimeout = -1;         /* Overall time an enrollment incl. polling may take. Default: 0 = infinite */
 
     char *opt_path = NULL;              /* HTTP path (aka CMP alias) inside the CMP server */
 
@@ -123,6 +124,7 @@ char *prog = NULL;
 opt_t cmp_opts[] = {
     { "server", OPT_TXT, { &opt_server } },
     { "proxy", OPT_TXT, { &opt_proxy } },
+    { "no_proxy", OPT_TXT, { &opt_no_proxy } },
     { "path", OPT_TXT, { &opt_path } },
     { "msgtimeout", OPT_NUM, { (char **)&opt_msgtimeout } },
     { "totaltimeout", OPT_NUM, { (char **)&opt_totaltimeout} },
@@ -194,8 +196,8 @@ opt_t cmp_opts[] = {
 };
 
 typedef enum OPTION_choice {
-    OPT_ERR = -1, OPT_SERVER = 0, OPT_PROXY, OPT_PATH,
-    OPT_MSGTIMEOUT, OPT_TOTALTIMEOUT,
+    OPT_ERR = -1, OPT_SERVER = 0, OPT_PROXY, OPT_NO_PROXY,
+    OPT_PATH, OPT_MSGTIMEOUT, OPT_TOTALTIMEOUT,
 
     OPT_RECIPIENT, OPT_EXPECT_SENDER, OPT_SRVCERT, OPT_TRUSTED,
     OPT_UNTRUSTED, OPT_IGNORE_KEYUSAGE,
@@ -757,7 +759,7 @@ static int CMPclient_demo(enum use_case use_case)
     }
     const char *path = opt_path;
     const char *server = opt_tls_used ? opt_tls_host : opt_server;
-    err = CMPclient_setup_HTTP(ctx, server, path, opt_msgtimeout, tls, opt_proxy);
+    err = CMPclient_setup_HTTP(ctx, server, path, opt_msgtimeout, tls, opt_proxy, opt_no_proxy);
 #ifndef SEC_NO_TLS
     TLS_free(tls);
 #endif

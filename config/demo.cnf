@@ -10,6 +10,8 @@ ignore_keyusage = 1
 unprotectederrors = 1
 reqexts = reqexts
 policies = certificatePolicies
+proxy = http://de.coia.siemens.net:9400
+no_proxy = ppki-playground.ct.siemens.com
 
 [EJBCA]
 server = ppki-playground.ct.siemens.com:80

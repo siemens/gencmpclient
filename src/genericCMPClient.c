@@ -476,7 +476,8 @@ static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
 CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
                              const char *server, const char *path,
                              int timeout, OPTIONAL SSL_CTX *tls,
-                             OPTIONAL const char *proxy)
+                             OPTIONAL const char *proxy,
+                             OPTIONAL const char *no_proxy)
 {
     char buf[80+1];
     int port;
@@ -512,7 +513,11 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         if (strncmp(proxy, http_prefix, strlen(http_prefix)) == 0) {
             proxy += strlen(http_prefix);
         }
-        const char *no_proxy = getenv("no_proxy");
+        const char *no_proxy_env = getenv("no_proxy");
+        if (no_proxy_env != NULL)
+            no_proxy = no_proxy_env;
+        if (no_proxy != NULL && no_proxy[0] == '\0')
+            no_proxy = NULL;
         if (no_proxy == NULL || strstr(no_proxy, buf/* server*/) == NULL) {
             snprintf(buf, sizeof(buf), "%s", proxy);
             port = UTIL_parse_server_and_port(buf);

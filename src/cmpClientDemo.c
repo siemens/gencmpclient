@@ -659,7 +659,7 @@ static int opt_next(int argc, char **argv){
     opt_index++;
     for (i = 0; i < OPT_END; i++) {
         /* already handled, check next option*/
-        if (!strcmp(param, "sections") || !strcmp(param, "configfile")) {
+        if (!strcmp(param, "sections") || !strcmp(param, "config")) {
             opt_index++;
             goto retry;
         }
@@ -670,11 +670,14 @@ static int opt_next(int argc, char **argv){
         }
     }
 
+    if (i == OPT_END) {
+        /* in case of unknown option, return option with leading '-' */
+        arg = --param;
+        return OPT_ERR;
+    }
+
     if (opt_index == argc)
         return OPT_END;
-
-    /* in case of unknown option, return option with leading '-' */
-    arg = --param;
     return OPT_ERR;
 }
 

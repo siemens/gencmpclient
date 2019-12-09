@@ -4,6 +4,7 @@
 # optional INSTA variable can be set to override default proxy settings (for use with INSTA)
 
 SHELL=bash # This is needed because of a problem in "build" rule; good for supporting extended file name globbing
+PERL=/usr/bin/perl
 
 ifeq ($(OS),Windows_NT)
     EXE=.exe
@@ -165,22 +166,36 @@ else
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633"
 endif
-	$(PROXY) ./cmpClientDemo$(EXE) bootstrap -sections $(CA_SECTION)
+	./cmpClientDemo$(EXE) bootstrap -section $(CA_SECTION)
 	@echo :
 	openssl x509 -noout -text -in creds/new.crt | sed '/^         [0-9a-f].*/d'
 	@echo
-	$(PROXY) ./cmpClientDemo$(EXE) imprint -sections $(CA_SECTION)
+	./cmpClientDemo$(EXE) imprint -section $(CA_SECTION)
 	@echo
-	$(PROXY) ./cmpClientDemo$(EXE) update -sections $(CA_SECTION)
+	./cmpClientDemo$(EXE) update -section $(CA_SECTION)
 	@echo :
 	$(OCSP_CHECK)
 	@echo
-	$(PROXY) ./cmpClientDemo$(EXE) revoke -sections $(CA_SECTION)
+	./cmpClientDemo$(EXE) revoke -section $(CA_SECTION)
 	@echo :
 	$(OCSP_CHECK)
 
 test_insta: build
 	INSTA=1 $(MAKE) test
+
+test_cli: build
+	@echo -e "\n#### running CLI tests ####"
+	@ :
+	( cd test; \
+	  mkdir -p test-runs; \
+	  SRCTOP=../cmpossl \
+	  BLDTOP=. \
+	  BIN_D=../. \
+	  RESULT_D=test-runs \
+	  EXE_EXT= \
+	  LD_LIBRARY_PATH=$(BIN_D) \
+	  $(PERL) test_cmp_cli.pl $(TESTS) )
+	@ :
 
 all:	build test
 

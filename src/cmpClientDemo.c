@@ -112,6 +112,7 @@ char *prog = NULL;
     bool opt_unprotectederrors = false; /* Allow negative CMP responses to be not protected */
 
     char *opt_geninfo = NULL;           /* Set generalInfo in request PKIHeader with type and integer value given in the form <OID>:int:<n>, e.g. '1.2.3:int:987' */
+    char *opt_cmd = NULL;
 
     char *opt_newkeytype = NULL;        /* specifies keytype e.g. "ECC" or "RSA" */
     char *configfile = CONFIG_DEFAULT;/* OpenSSL-style configuration file */
@@ -203,6 +204,7 @@ opt_t cmp_opts[] = {
     { "ocsp_url", OPT_TXT, {&opt_ocsp_url} },
 #endif
 
+    { "cmd", OPT_TXT, { &opt_cmd } },
     { "geninfo", OPT_TXT, { &opt_geninfo } },
 
     { NULL, OPT_TXT, { NULL } }
@@ -332,6 +334,7 @@ OPTIONS cmp_options[] = {
 #endif
 
     {OPT_MORE_STR, 0, "\nGeneric message options:"},
+    { "cmd", OPT_TXT, "CMP request to send: ir/cr/kur/rr. Overwrites 'use_case' if given"},
     { "geninfo", OPT_TXT, "Set generalInfo in request PKIHeader with type and integer value"},
     {OPT_MORE_STR, 0, "given in the form <OID>:int:<n>, e.g. '1.2.3:int:987'"},
 
@@ -1113,7 +1116,7 @@ int main(int argc, char *argv[])
             opt_help(cmp_options);
             rc = -1;
             goto err;
-        } else {
+        } else if (strcmp(argv[1], "-cmd")) {
             LOG(FL_ERR, "Usage: %s [imprint | bootstrap | update | revoke] [options]\n", argv[0]);
             return EXIT_FAILURE;
         }
@@ -1122,9 +1125,25 @@ int main(int argc, char *argv[])
     for (i = 1; i < argc; i++) {
         if (*argv[i] == '-') {
             if (!strcmp(argv[i], "-section"))
-                sections = argv[i +1];
+                sections = argv[i + 1];
             else if (!strcmp(argv[i], "-config"))
                 configfile = argv[i + 1];
+            /* handle upfront to be able to load correct section of config file*/
+            else if (!strcmp(argv[i], "-cmd")) {
+                opt_cmd = argv[i + 1];
+                if (!strcmp(opt_cmd, "ir"))
+                    use_case = imprint;
+                else if (!strcmp(opt_cmd, "cr"))
+                    use_case = bootstrap;
+                else if (!strcmp(opt_cmd, "kur"))
+                    use_case = update;
+                else if (!strcmp(opt_cmd, "rr"))
+                    use_case = revocation;
+                else {
+                    LOG(FL_ERR, "Unknown CMP request command '%s'", opt_cmd);
+                    return EXIT_FAILURE;
+                }
+            }
         }
     }
 

@@ -462,9 +462,11 @@ X509_STORE *setup_CMP_truststore(void)
 
     const char *crls_files = opt_crls_use_cdp == true ? opt_cdp_url : opt_crls_file;
 
-    crls = CRLs_load(crls_files, "CRLs for CMP level");
-    if (crls == NULL)
-        goto err;
+    if (crls_files != NULL) {
+        crls = CRLs_load(crls_files, "CRLs for CMP level");
+        if (crls == NULL)
+            goto err;
+    }
 
     const char *trusted_cert_files = opt_trusted;
     cmp_truststore = STORE_load(trusted_cert_files, "trusted certs for CMP level");
@@ -850,6 +852,11 @@ static int opt_next(int argc, char **argv){
         if (!strcmp(param, cmp_opts[i].name)) {
             if (cmp_opts[i].type == OPT_BOOL)
                 return i;
+
+            if (argv[opt_index] == NULL) {
+                LOG(FL_ERR, "Option -%s needs a value", param);
+                return OPT_ERR;
+            }
             arg = argv[opt_index];
             opt_index++;
             return i;
@@ -1121,22 +1128,6 @@ int main(int argc, char *argv[])
                 sections = argv[i + 1];
             else if (!strcmp(argv[i], "-config"))
                 configfile = argv[i + 1];
-            /* handle upfront to be able to load correct section of config file*/
-            else if (!strcmp(argv[i], "-cmd")) {
-                opt_cmd = argv[i + 1];
-                if (!strcmp(opt_cmd, "ir"))
-                    use_case = imprint;
-                else if (!strcmp(opt_cmd, "cr"))
-                    use_case = bootstrap;
-                else if (!strcmp(opt_cmd, "kur"))
-                    use_case = update;
-                else if (!strcmp(opt_cmd, "rr"))
-                    use_case = revocation;
-                else {
-                    LOG(FL_ERR, "Unknown CMP request command '%s'", opt_cmd);
-                    return EXIT_FAILURE;
-                }
-            }
         }
     }
 
@@ -1190,6 +1181,25 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     else if (rc == 1)
         return EXIT_FAILURE;
+
+    /* handle here to start correct demo use case*/
+    if (opt_cmd != NULL) {
+        if (!strcmp(opt_cmd, "ir"))
+            use_case = imprint;
+        else if (!strcmp(opt_cmd, "cr"))
+            use_case = bootstrap;
+        else if (!strcmp(opt_cmd, "kur"))
+            use_case = update;
+        else if (!strcmp(opt_cmd, "rr"))
+            use_case = revocation;
+        else {
+            LOG(FL_ERR, "Unknown CMP request command '%s'", opt_cmd);
+            return EXIT_FAILURE;
+        }
+    } else if (use_case == default_case && opt_cmd == NULL) {
+        LOG(FL_ERR, "No 'use case' and no '-cmd' option given");
+        return EXIT_FAILURE;
+    }
 
     if ((rc = CMPclient_demo(use_case)) != CMP_OK)
         goto err;

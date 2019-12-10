@@ -146,13 +146,14 @@ indir "../cmpossl/test/recipes/81-test_cmp_cli_data" => sub {
 };
 
 sub load_tests {
-        my $name = shift;
-        my $aspect = shift;
+    my $name = shift;
+    my $aspect = shift;
     my $file = data_file("test_$aspect.csv");
     my @result;
 
     open(my $data, '<', $file) || die "Cannot load $file\n";
-    LOOP: while (my $line = <$data>) {
+  LOOP:
+    while (my $line = <$data>) {
         chomp $line;
         next LOOP if $line =~ m/TLS/i; # skip tests requiring TLS
         $line =~ s{\r\n}{\n}g; # adjust line endings
@@ -167,10 +168,10 @@ sub load_tests {
         $line =~ s{-section,,}{-section,,-proxy,$proxy,} unless $line =~ m/,-proxy,/;
         $line =~ s{-section,,}{-config,../$test_config,-section,$name $aspect,};
         my @fields = grep /\S/, split ",", $line;
-                s/^<EMPTY>$// for (@fields); # used for proxy=""
-                s/^\s+// for (@fields); # remove leading  whitepace from elements
-                s/\s+$// for (@fields); # remove trailing whitepace from elements
-                s/^\"(\".*?\")\"$/$1/ for (@fields); # remove escaping from quotation marks from elements
+        s/^<EMPTY>$// for (@fields); # used for proxy=""
+        s/^\s+// for (@fields); # remove leading  whitepace from elements
+        s/\s+$// for (@fields); # remove trailing whitepace from elements
+        s/^\"(\".*?\")\"$/$1/ for (@fields); # remove escaping from quotation marks from elements
         my $expected_exit = $fields[$column];
         my $title = $fields[2];
         next LOOP if (!defined($expected_exit) or ($expected_exit ne 0 and $expected_exit ne 1));

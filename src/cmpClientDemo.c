@@ -35,7 +35,6 @@ enum use_case { imprint, bootstrap, update,
 #define ECC_SPEC "EC:prime256v1"
 
 #define MAX_OPT_HELP_WIDTH 30
-#define OPT_NOTYPE -1
 const char OPT_MORE_STR[] = "---";
 
 /* Option states */
@@ -252,7 +251,7 @@ typedef enum OPTION_choice {
 OPTIONS cmp_options[] = {
     /* OPTION_CHOICE values must be in the same order as enumerated above!! */
     {OPT_MORE_STR, 0, "\nValid options are:"},
-    { "help", OPT_NOTYPE, "Display this summary"},
+    { "help", OPT_BOOL, "Display this summary"},
     { "config", OPT_TXT, "Configuration file to use. \"\" = default. Default 'config/demo.cnf'"},
     { "section", OPT_TXT, "Section(s) in config file defining CMP options. \"\" = 'default'."},
 
@@ -751,9 +750,9 @@ static const char *valtype2param(const OPTIONS *o)
     case OPT_NUM:
         return "int";
     case OPT_BOOL:
-        return "bool";
+        return "";
     }
-    return "";
+    return "param";
 }
 
 static void opt_help(const OPTIONS *list)
@@ -848,6 +847,8 @@ static int opt_next(int argc, char **argv){
         if (!strcmp(param, "help"))
             return OPT_HELP;
         if (!strcmp(param, cmp_opts[i].name)) {
+            if (cmp_opts[i].type == OPT_BOOL)
+                return i;
             arg = argv[opt_index];
             opt_index++;
             return i;
@@ -872,7 +873,6 @@ static int opt_next(int argc, char **argv){
 static int get_opts(int argc, char **argv)
 {
     OPTION_CHOICE o;
-    int res;
 
     while ((o = opt_next(argc, argv)) != OPT_END) {
         if (o == OPT_ERR) {
@@ -895,13 +895,7 @@ static int get_opts(int argc, char **argv)
             }
             break;
         case OPT_BOOL:
-            res = UTIL_atoint(arg);
-            if (res == 0 || res == 1) {
-                *cmp_opts[o].varref_u.bool = UTIL_atoint(arg);
-            } else {
-                LOG(FL_ERR, "Can't parse '%s' as bool", arg);
-                return 1;
-            }
+            *cmp_opts[o].varref_u.bool = true;
             break;
         default:
             return 1;

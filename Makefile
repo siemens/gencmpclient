@@ -166,17 +166,17 @@ else
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633"
 endif
-	./cmpClientDemo$(EXE) bootstrap -section $(CA_SECTION)
+	$(PROXY) ./cmpClientDemo$(EXE) bootstrap -section $(CA_SECTION)
 	@echo :
 	openssl x509 -noout -text -in creds/new.crt | sed '/^         [0-9a-f].*/d'
 	@echo
-	./cmpClientDemo$(EXE) imprint -section $(CA_SECTION)
+	$(PROXY) ./cmpClientDemo$(EXE) imprint -section $(CA_SECTION)
 	@echo
-	./cmpClientDemo$(EXE) update -section $(CA_SECTION)
+	$(PROXY) ./cmpClientDemo$(EXE) update -section $(CA_SECTION)
 	@echo :
 	$(OCSP_CHECK)
 	@echo
-	./cmpClientDemo$(EXE) revoke -section $(CA_SECTION)
+	$(PROXY) ./cmpClientDemo$(EXE) revoke -section $(CA_SECTION)
 	@echo :
 	$(OCSP_CHECK)
 

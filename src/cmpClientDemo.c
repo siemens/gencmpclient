@@ -29,7 +29,8 @@ X509 *CREDENTIALS_get_cert(const CREDENTIALS *creds);
 #endif
 
 enum use_case { imprint, bootstrap, update,
-                revocation /* 'revoke' already defined in unistd.h */ };
+                revocation, /* 'revoke' already defined in unistd.h */
+                default_case };
 
 #define RSA_SPEC "RSA:2048"
 #define ECC_SPEC "EC:prime256v1"
@@ -38,7 +39,7 @@ enum use_case { imprint, bootstrap, update,
 const char OPT_MORE_STR[] = "---";
 
 /* Option states */
-static int opt_index = 2;   /* starting at 2 parses first option after 'use_case' option */
+static int opt_index = 1;
 static char *arg;
 
 char *prog = NULL;
@@ -1096,7 +1097,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    enum use_case use_case = bootstrap; /* default */
+    enum use_case use_case = default_case; /* default */
     if (argc > 1) {
         if (!strcmp(argv[1], "imprint"))
             use_case = imprint;
@@ -1107,12 +1108,10 @@ int main(int argc, char *argv[])
         else if (!strcmp(argv[1], "revoke"))
             use_case = revocation;
         else if (!strcmp(argv[1], "-help")) {
+            LOG(FL_INFO, "\nUsage: %s [imprint | bootstrap | update | revoke] [options]\n", argv[0]);
             opt_help(cmp_options);
             rc = -1;
             goto err;
-        } else if (strcmp(argv[1], "-cmd")) {
-            LOG(FL_ERR, "Usage: %s [imprint | bootstrap | update | revoke] [options]\n", argv[0]);
-            return EXIT_FAILURE;
         }
     }
 
@@ -1165,6 +1164,10 @@ int main(int argc, char *argv[])
         if ((config = CONF_load_options(NULL, configfile, "revoke,default", &cmp_opts[0])) == 0)
             return EXIT_FAILURE;
         break;
+    case default_case:
+        if ((config = CONF_load_options(NULL, configfile, "default", &cmp_opts[0])) == 0)
+            return EXIT_FAILURE;
+        break;
     default:
         return EXIT_FAILURE;
     }
@@ -1179,6 +1182,9 @@ int main(int argc, char *argv[])
     if (!CONF_read_vpm(config, sections, vpm))
         return EXIT_FAILURE;
 
+    /* skip first option if use_case is given */
+    if (use_case != default_case)
+        opt_index++;
     rc = get_opts(argc, argv);
     if (rc == -1)
         return EXIT_SUCCESS;

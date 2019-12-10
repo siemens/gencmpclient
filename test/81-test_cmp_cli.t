@@ -8,7 +8,7 @@
 # in the file LICENSE in the source distribution or at
 # https://www.openssl.org/source/license.html
 
-use lib "../cmpossl/util/perl";
+use lib "cmpossl/util/perl";
 
 use strict;
 use warnings;
@@ -29,15 +29,15 @@ $proxy =~ s/^\"(.*?)\"$/$1/; # chop any leading/trailing '"' (for Windows)
 $proxy =~ s{http://}{};
 my $no_proxy = $ENV{no_proxy} // $ENV{NO_PROXY};
 
-my $test_config = "../../config/demo.cnf";
+my $test_config = "test_config.cnf";
 
 my @cmp_basic_tests = (
     [ "output help",                      [ "-help"], 0 ],
-    [ "unknown CLI parameter",            [ "bootstrap", "-config", $test_config, "-asdffdsa"], 1 ],
-    [ "bad int syntax: non-digit",        [ "bootstrap", "-config", $test_config, "-msgtimeout", "a/" ], 1 ],
-    [ "bad int syntax: float",            [ "bootstrap", "-config", $test_config, "-msgtimeout", "3.14" ], 1 ],
-    [ "bad int syntax: trailing garbage", [ "bootstrap", "-config", $test_config, "-msgtimeout", "314_+" ], 1 ],
-    [ "bad int: out of range",            [ "bootstrap", "-config", $test_config, "-msgtimeout", "2147483648" ], 1 ],
+    [ "unknown CLI parameter",            [ "-config", $test_config, "-asdffdsa"], 1 ],
+    [ "bad int syntax: non-digit",        [ "-config", $test_config, "-msgtimeout", "a/" ], 1 ],
+    [ "bad int syntax: float",            [ "-config", $test_config, "-msgtimeout", "3.14" ], 1 ],
+    [ "bad int syntax: trailing garbage", [ "-config", $test_config, "-msgtimeout", "314_+" ], 1 ],
+    [ "bad int: out of range",            [ "-config", $test_config, "-msgtimeout", "2147483648" ], 1 ],
 );
 
 # the CA server configuration consists of:
@@ -126,7 +126,7 @@ sub test_cmp_cli_aspect {
     };
 }
 
-indir "../test_cmp_cli_data" => sub {
+indir "../cmpossl/test/recipes/81-test_cmp_cli_data" => sub {
     plan tests => 1 + @ca_configurations * @all_aspects;
 
     test_cmp_cli_aspect("basic", "", \@cmp_basic_tests);

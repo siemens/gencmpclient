@@ -1,7 +1,7 @@
 #!/bin/sh
 #dummy implementation of shlib_wrap.sh
 
-LD_LIBRARY_PATH=../..:../../securityUtilities
+LD_LIBRARY_PATH=../../../..:../../../../securityUtilities:../../../../..:../../../../../securityUtilities
 
 cmd="$1"; [ -x "$cmd" ] || cmd="$cmd${EXE_EXT}"
 shift

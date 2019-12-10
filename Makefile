@@ -186,15 +186,12 @@ test_insta: build
 test_cli: build
 	@echo -e "\n#### running CLI tests ####"
 	@ :
-	( cd test; \
-	  mkdir -p test-runs; \
-	  SRCTOP=../cmpossl \
+	( SRCTOP=cmpossl \
 	  BLDTOP=. \
-	  BIN_D=../. \
-	  RESULT_D=test-runs \
+	  BIN_D=. \
 	  EXE_EXT= \
 	  LD_LIBRARY_PATH=$(BIN_D) \
-	  $(PERL) test_cmp_cli.pl $(TESTS) )
+	  $(PERL) test/81-test_cmp_cli.t )
 	@ :
 
 all:	build test

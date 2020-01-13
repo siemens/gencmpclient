@@ -36,7 +36,6 @@ enum use_case { imprint, bootstrap, update,
 #define ECC_SPEC "EC:prime256v1"
 
 #define MAX_OPT_HELP_WIDTH 30
-const char OPT_MORE_STR[] = "---";
 
 /* Option states */
 static int opt_index = 1;
@@ -124,15 +123,10 @@ char *prog = NULL;
     CREDENTIALS *creds = NULL;
     OSSL_CMP_CTX *cmp_ctx = NULL;
 
-typedef struct options_st {
-    const char *name;
-    /*
-     * value type: - no value (also the value zero), OPT_TXT string,
-     * OPT_NUM number, OPT_BOOL bool
-     */
-    opttype_t valtype;
-    const char *helpstr;
-} OPTIONS;
+    typedef struct help_msg_st {
+        int option_choice;
+        const char *helpstr;
+    } HELP_MSG;
 
 /*******************************************************************
  * Table of configuration options
@@ -211,7 +205,8 @@ opt_t cmp_opts[] = {
 };
 
 typedef enum OPTION_choice {
-    OPT_ERR = -2, OPT_HELP = -1,
+    OPT_ERR = -5, OPT_MORE_STRING = -4, OPT_HELP = -3, OPT_CONFIG = -2,
+    OPT_SECTION = -1,
 
     OPT_SERVER, OPT_PROXY, OPT_NO_PROXY, OPT_PATH,
     OPT_MSGTIMEOUT, OPT_TOTALTIMEOUT,
@@ -247,94 +242,94 @@ typedef enum OPTION_choice {
     OPT_END
 } OPTION_CHOICE;
 
-OPTIONS cmp_options[] = {
+HELP_MSG cmp_help[] = {
     /* OPTION_CHOICE values must be in the same order as enumerated above!! */
-    {OPT_MORE_STR, 0, "\nValid options are:"},
-    { "help", OPT_BOOL, "Display this summary"},
-    { "config", OPT_TXT, "Configuration file to use. \"\" = default. Default 'config/demo.cnf'"},
-    { "section", OPT_TXT, "Section(s) in config file defining CMP options. \"\" = 'default'."},
+    { OPT_MORE_STRING, "\nValid options are:"},
+    { OPT_HELP, "Display this summary"},
+    { OPT_CONFIG, "Configuration file to use. \"\" = default. Default 'config/demo.cnf'"},
+    { OPT_SECTION, "Section(s) in config file defining CMP options. \"\" = 'default'."},
 
-    {OPT_MORE_STR, 0, "\nMessage transfer options:"},
-    { "server", OPT_TXT, "'ADDRESS[:PORT]' of the CMP server. Port defaults to 8080"},
-    { "proxy", OPT_TXT, "'ADDRESS[:PORT]' of HTTP proxy to the CMP server. Default port 8080"},
-    { "no_proxy", OPT_TXT, "Might be overwritten by env variable no_proxy"},
-    { "path", OPT_TXT, "HTTP path (aka CMP alias) inside the CMP server"},
-    { "msgtimeout", OPT_NUM, "Timeout per CMP message round trip (or 0 for none). Default 120 seconds"},
-    { "totaltimeout", OPT_NUM, "Overall time an enrollment incl. polling may take. Default: 0 = infinite"},
+    { OPT_MORE_STRING, "\nMessage transfer options:"},
+    { OPT_SERVER, "'ADDRESS[:PORT]' of the CMP server. Port defaults to 8080"},
+    { OPT_PROXY, "'ADDRESS[:PORT]' of HTTP proxy to the CMP server. Default port 8080"},
+    { OPT_NO_PROXY, "Might be overwritten by env variable no_proxy"},
+    { OPT_PATH, "HTTP path (aka CMP alias) inside the CMP server"},
+    { OPT_MSGTIMEOUT, "Timeout per CMP message round trip (or 0 for none). Default 120 seconds"},
+    { OPT_TOTALTIMEOUT, "Overall time an enrollment incl. polling may take. Default: 0 = infinite"},
 
-    {OPT_MORE_STR, 0, "\nServer authentication options:"},
-    { "trusted", OPT_TXT, "cid to use for getting trusted CMP certificates (trust anchor)"},
-    { "untrusted", OPT_TXT, "File(s) with untrusted certificates for TLS, CMP, and CA"},
-    { "srvcert", OPT_TXT, "Server certificate directly trusted for CMP signing"},
-    { "recipient", OPT_TXT, "X509 Name of the recipient"},
-    { "expect_sender", OPT_TXT, "X509 Name of the expected sender (CMP server)"},
-    { "ignore_keyusage", OPT_NUM, "Workaround for CMP server cert without 'digitalSignature' key usage"},
-    { "unprotectederrors", OPT_BOOL, "Allow negative CMP responses to be not protected"},
-    { "extracertsout", OPT_TXT, "File to save extra certificates received"},
-    { "cacertsout", OPT_TXT, "File where to save received CA certificates (from IR)"},
+    { OPT_MORE_STRING, "\nServer authentication options:"},
+    { OPT_TRUSTED, "cid to use for getting trusted CMP certificates (trust anchor)"},
+    { OPT_UNTRUSTED, "File(s) with untrusted certificates for TLS, CMP, and CA"},
+    { OPT_SRVCERT, "Server certificate directly trusted for CMP signing"},
+    { OPT_RECIPIENT, "X509 Name of the recipient"},
+    { OPT_EXPECT_SENDER, "X509 Name of the expected sender (CMP server)"},
+    { OPT_IGNORE_KEYUSAGE, "Workaround for CMP server cert without 'digitalSignature' key usage"},
+    { OPT_UNPROTECTEDERRORS, "Allow negative CMP responses to be not protected"},
+    { OPT_EXTRACERTSOUT, "File to save extra certificates received"},
+    { OPT_CACERTSOUT, "File where to save received CA certificates (from IR)"},
 
-    {OPT_MORE_STR, 0, "\nClient authentication options:"},
-    { "ref", OPT_TXT, "Reference value to use as senderKID in case no -cert is given"},
-    { "secret", OPT_TXT, "Secret value for authentication with a pre-shared key (PBM)"},
-    { "cert", OPT_TXT, "(legacy option) Client current certificate (plus any extra certs)"},
-    { "key", OPT_TXT, "(legacy option) Key for the client's current certificate"},
-    { "keypass", OPT_TXT, "(legacy option) Password for the client's key"},
-    { "digest", OPT_TXT, "Digest-Algorithem for the CMP Signature"},
-    { "mac", OPT_TXT, "MAC algorithm to use in PBM-based message protection"},
-    { "extracerts", OPT_TXT, "File(s) with certificates to append in outgoing messages"},
-    { "unprotectedrequests", OPT_BOOL, "Send messages without CMP-level protection"},
+    { OPT_MORE_STRING, "\nClient authentication options:"},
+    { OPT_REF, "Reference value to use as senderKID in case no -cert is given"},
+    { OPT_SECRET, "Secret value for authentication with a pre-shared key (PBM)"},
+    { OPT_CERT, "(legacy option) Client current certificate (plus any extra certs)"},
+    { OPT_KEY, "(legacy option) Key for the client's current certificate"},
+    { OPT_KEYPASS, "(legacy option) Password for the client's key"},
+    { OPT_DIGEST, "Digest-Algorithem for the CMP Signature"},
+    { OPT_MAC, "MAC algorithm to use in PBM-based message protection"},
+    { OPT_EXTRACERTS, "File(s) with certificates to append in outgoing messages"},
+    { OPT_UNPROTECTEDREQUESTS, "Send messages without CMP-level protection"},
 
-    {OPT_MORE_STR, 0, "\nGeneric message options:"},
-    { "cmd", OPT_TXT, "CMP request to send: ir/cr/kur/rr. Overwrites 'use_case' if given"},
-    { "geninfo", OPT_TXT, "Set generalInfo in request PKIHeader with type and integer value"},
-    {OPT_MORE_STR, 0, "given in the form <OID>:int:<n>, e.g. '1.2.3:int:987'"},
+    { OPT_MORE_STRING, "\nGeneric message options:"},
+    { OPT_CMD, "CMP request to send: ir/cr/kur/rr. Overwrites 'use_case' if given"},
+    { OPT_GENINFO, "Set generalInfo in request PKIHeader with type and integer value"},
+    { OPT_MORE_STRING, "given in the form <OID>:int:<n>, e.g. '1.2.3:int:987'"},
 
-    {OPT_MORE_STR, 0, "\nCertificate enrollment options:"},
-    { "newkey", OPT_TXT, "File (in PEM format) of key to use for the old/new certificate"},
-    { "newkeypass", OPT_TXT, "if starts with 'engine:', engine holding new key, else password for new key file"},
-    { "subject", OPT_TXT, "X509 subject name to be used in the requested certificate template"},
-    { "issuer", OPT_TXT, "X509 Name of the issuer"},
-    { "days", OPT_NUM, "requested validity time of new cert"},
-    { "reqexts", OPT_TXT, "Name of section in the config file defining request extensions"},
-    { "sans", OPT_TXT, "List of (critical) Subject Alternative Names (DNS/IPADDR) to be added"},
-    { "san_nodefault", OPT_BOOL, "Do not take default SANs from reference certificate (see -oldcert)"},
-    { "policies", OPT_TXT, "Policy OID(s) to add as certificate policies request extension"},
-    { "policies_critical", OPT_BOOL, "Flag the policies given with -policies as critical"},
-    { "popo", OPT_NUM, "Proof-of-Possession (POPO) method"},
-    { "csr", OPT_TXT, "File to read CSR from for P10CR (for legacy support)"},
-    { "out_trusted", OPT_TXT, "File of trusted certificates for verifying the enrolled cert"},
-    { "implicitconfirm", OPT_BOOL, "Request implicit confirmation of enrolled cert"},
-    { "disableconfirm", OPT_BOOL, "Do not confirm enrolled certificates"},
-    { "certout", OPT_TXT, "cid determining file where to save the received certificate"},
+    { OPT_MORE_STRING, "\nCertificate enrollment options:"},
+    { OPT_NEWKEY, "File (in PEM format) of key to use for the old/new certificate"},
+    { OPT_NEWKEYPASS, "if starts with 'engine:', engine holding new key, else password for new key file"},
+    { OPT_SUBJECT, "X509 subject name to be used in the requested certificate template"},
+    { OPT_ISSUER, "X509 Name of the issuer"},
+    { OPT_DAYS, "requested validity time of new cert"},
+    { OPT_REQEXTS, "Name of section in the config file defining request extensions"},
+    { OPT_SANS, "List of (critical) Subject Alternative Names (DNS/IPADDR) to be added"},
+    { OPT_SAN_NODEFAULT, "Do not take default SANs from reference certificate (see -oldcert)"},
+    { OPT_POLICIES, "Policy OID(s) to add as certificate policies request extension"},
+    { OPT_POLICIES_CRITICAL, "Flag the policies given with -policies as critical"},
+    { OPT_POPO, "Proof-of-Possession (POPO) method"},
+    { OPT_CSR, "File to read CSR from for P10CR (for legacy support)"},
+    { OPT_OUT_TRUSTED, "File of trusted certificates for verifying the enrolled cert"},
+    { OPT_IMPLICITCONFIRM, "Request implicit confirmation of enrolled cert"},
+    { OPT_DISABLECONFIRM, "Do not confirm enrolled certificates"},
+    { OPT_CERTOUT, "cid determining file where to save the received certificate"},
 
-    {OPT_MORE_STR, 0, "\nCertificate enrollment and revocation options:"},
-    { "oldcert", OPT_TXT, "cid determining certificate to be to be renewed in KUR or revoked in RR"},
-    { "revreason", OPT_NUM, "Reason code to be included in revocation request (RR)."},
-    {OPT_MORE_STR, 0, "Values: -1..6, 8..10. None set by default"},
+    { OPT_MORE_STRING, "\nCertificate enrollment and revocation options:"},
+    { OPT_OLDCERT, "cid determining certificate to be to be renewed in KUR or revoked in RR"},
+    { OPT_REVREASON, "Reason code to be included in revocation request (RR)."},
+    { OPT_MORE_STRING, "Values: -1..6, 8..10. None set by default"},
 
-    {OPT_MORE_STR, 0, "Credentials format options:"},
-    { "newkeytype", OPT_TXT, "specifies keytype e.g. 'ECC' or 'RSA'"},
+    { OPT_MORE_STRING, "\nCredentials format options:"},
+    { OPT_NEWKEYTYPE, "specifies keytype e.g. 'ECC' or 'RSA'"},
 
-    {OPT_MORE_STR, 0, "\nTLS options:"},
-    { "tls_used", OPT_BOOL, "Flag for forced activation of TLS"},
-    { "tls_cert", OPT_TXT, "(legacy option) Client certificate (plus any extra certs) for TLS connection"},
-    { "tls_key", OPT_TXT, "(legacy option) Client key for TLS connection"},
-    { "tls_keypass", OPT_TXT, "(legacy option) Client key password for TLS connection"},
-    { "tls_extra", OPT_TXT, "Extra certificates to provide to TLS server during TLS handshake"},
-    { "tls_trusted", OPT_TXT, "component ID to use for getting trusted TLS certificates (trust anchor)"},
-    { "tls_host", OPT_TXT, "TLS server's address (host name or IP address) to be checked"},
+    { OPT_MORE_STRING, "\nTLS options:"},
+    { OPT_TLS_USED, "Flag for forced activation of TLS"},
+    { OPT_TLS_CERT, "(legacy option) Client certificate (plus any extra certs) for TLS connection"},
+    { OPT_TLS_KEY, "(legacy option) Client key for TLS connection"},
+    { OPT_TLS_KEYPASS, "(legacy option) Client key password for TLS connection"},
+    { OPT_TLS_EXTRA, "Extra certificates to provide to TLS server during TLS handshake"},
+    { OPT_TLS_TRUSTED, "component ID to use for getting trusted TLS certificates (trust anchor)"},
+    { OPT_TLS_HOST, "TLS server's address (host name or IP address) to be checked"},
 
-    {OPT_MORE_STR, 0, "\nSpecific certificate verification options, for both CMP and TLS:"},
+    { OPT_MORE_STRING, "\nSpecific certificate verification options, for both CMP and TLS:"},
     /* TODO add more CRLs and OCSP options for TLS and CMP when support available */
-    { "crls_url", OPT_TXT, "Use given URL as (primary) CRL source when verifying certs."},
-    { "crls_file", OPT_TXT, "Use given local file(s) as (primary) CRL source"},
+    { OPT_CRLS_URL, "Use given URL as (primary) CRL source when verifying certs."},
+    { OPT_CRLS_FILE, "Use given local file(s) as (primary) CRL source"},
 #ifndef OPENSSL_NO_OCSP
-    { "ocsp_url", OPT_TXT, "Use OCSP with given URL as primary address of OCSP responder"},
+    { OPT_OCSP_URL, "Use OCSP with given URL as primary address of OCSP responder"},
 #endif
-    { "crls_use_cdp", OPT_BOOL, "Retrieve CRLs from CDPs given in certs as secondary (fallback) source"},
-    { "cdp_url", OPT_TXT, "Use given URL(s) ad secondary CRL source"},
+    { OPT_CRLS_USE_CDP, "Retrieve CRLs from CDPs given in certs as secondary (fallback) source"},
+    { OPT_CDP_URL, "Use given URL(s) ad secondary CRL source"},
 
-    { NULL, OPT_TXT, ""}
+    { OPT_END, ""}
 };
 
 const char *tls_ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
@@ -741,9 +736,9 @@ static int reqExtensions_have_SAN(X509_EXTENSIONS *exts)
 }
 
 /* Return a string describing the parameter type. */
-static const char *valtype2param(const OPTIONS *o)
+static const char *valtype2param(const HELP_MSG *m)
 {
-    switch (o->valtype) {
+    switch (cmp_opts[m->option_choice].type) {
     case OPT_TXT:
         return "val";
     case OPT_NUM:
@@ -754,36 +749,41 @@ static const char *valtype2param(const OPTIONS *o)
     return "param";
 }
 
-static void opt_help(const OPTIONS *list)
+static void opt_help(const HELP_MSG *list)
 {
-    const OPTIONS *o;
+    const HELP_MSG *m;
     int i;
     int width = 5;
     char start[80 + 1];
     char *p;
     const char *help;
+    const char help_str[] = "help";
+    const char config_str[] = "config";
+    const char section_str[] = "section";
 
     /* Find the widest help. */
-    for (o = list; o->name; o++) {
-        if (o->name == OPT_MORE_STR)
+    for (m = list; m->option_choice < OPT_END; m++) {
+        if (m->option_choice == OPT_MORE_STRING)
             continue;
-        i = 2 + (int)strlen(o->name);
-        i += 1 + (int)strlen(valtype2param(o));
-        if (i < MAX_OPT_HELP_WIDTH && i > width)
-            width = i;
-        if (i > (int)sizeof(start))
-            LOG(FL_ERR, "help message length exceeds buffer size %d > %d", i ,(int)sizeof(start));
+        if (m->option_choice >= 0) {
+            i = 2 + (int)strlen(cmp_opts[m->option_choice].name);
+            i += 1 + (int)strlen(valtype2param(m));
+            if (i < MAX_OPT_HELP_WIDTH && i > width)
+                width = i;
+            if (i > (int)sizeof(start))
+                LOG(FL_ERR, "help message length exceeds buffer size %d > %d", i ,(int)sizeof(start));
+        }
     }
 
     /* Now let's print. */
-    for (o = list; o->name; o++) {
-        help = o->helpstr ? o->helpstr : "(No additional info)";
+    for (m = list; m->option_choice < OPT_END; m++) {
+        help = m->helpstr ? m->helpstr : "(No additional info)";
 
         /* Pad out prefix */
         memset(start, ' ', sizeof(start) - 1);
         start[sizeof(start) - 1] = '\0';
 
-        if (o->name == OPT_MORE_STR) {
+        if (m->option_choice == OPT_MORE_STRING) {
             /* Continuation of previous line; pad and print. */
             start[width] = '\0';
             printf("%s  %s\n", start, help);
@@ -794,14 +794,16 @@ static void opt_help(const OPTIONS *list)
         p = start;
         *p++ = ' ';
         *p++ = '-';
-        if (o->name[0])
-            p += strlen(strcpy(p, o->name));
+        if (m->option_choice >= 0 && m->option_choice < OPT_END)
+            p += strlen(strcpy(p, cmp_opts[m->option_choice].name));
+        else if (m->option_choice == OPT_HELP)
+            p += strlen(strcpy(p, help_str));
+        else if (m->option_choice == OPT_CONFIG)
+            p += strlen(strcpy(p, config_str));
+        else if (m->option_choice == OPT_SECTION)
+            p += strlen(strcpy(p, section_str));
         else
             *p++ = '*';
-        if (o->valtype != '-') {
-            *p++ = ' ';
-            p += strlen(strcpy(p, valtype2param(o)));
-        }
         *p = ' ';
         if ((int)(p - start) >= MAX_OPT_HELP_WIDTH) {
             *p = '\0';
@@ -884,7 +886,7 @@ static int get_opts(int argc, char **argv)
             return 1;
         }
         if (o == OPT_HELP) {
-            opt_help(cmp_options);
+            opt_help(cmp_help);
             return -1;
         }
 
@@ -1112,7 +1114,7 @@ int main(int argc, char *argv[])
             use_case = revocation;
         else if (!strcmp(argv[1], "-help")) {
             LOG(FL_INFO, "\nUsage: %s [imprint | bootstrap | update | revoke] [options]\n", argv[0]);
-            opt_help(cmp_options);
+            opt_help(cmp_help);
             rc = -1;
             goto err;
         }

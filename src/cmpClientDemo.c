@@ -35,204 +35,295 @@ enum use_case { imprint, bootstrap, update,
 #define RSA_SPEC "RSA:2048"
 #define ECC_SPEC "EC:prime256v1"
 
-#define MAX_OPT_HELP_WIDTH 30
-
 /* Option states */
 static int opt_index = 1;
 static char *arg;
 
 char *prog = NULL;
 
-    char *opt_server = NULL;            /* 'ADDRESS[:PORT]' of the CMP server. Port defaults to 8080 */
-    char *opt_proxy = NULL;             /* 'ADDRESS[:PORT]' of HTTP proxy to the CMP server. Default port 8080 */
-    char *opt_no_proxy = NULL;          /* Might be overwritten by env variable no_proxy */
+    char *opt_server;             /* 'ADDRESS[:PORT]' of the CMP server. Port defaults to 8080 */
+    char *opt_proxy;              /* 'ADDRESS[:PORT]' of HTTP proxy to the CMP server. Default port 8080 */
+    char *opt_no_proxy;           /* Might be overwritten by env variable no_proxy */
 
-    char *opt_path = NULL;              /* HTTP path (aka CMP alias) inside the CMP server */
-    long opt_msgtimeout = -1;           /* Timeout per CMP message round trip (or 0 for none). Default 120 seconds */
-    long opt_totaltimeout = -1;         /* Overall time an enrollment incl. polling may take. Default: 0 = infinite */
+    char *opt_path;               /* HTTP path (aka CMP alias) inside the CMP server */
+    long opt_msgtimeout;          /* Timeout per CMP message round trip (or 0 for none). Default 120 seconds */
+    long opt_totaltimeout;        /* Overall time an enrollment incl. polling may take. Default: 0 = infinite */
 
-    bool  opt_tls_used = false;         /* Flag for forced activation of TLS */
-    char *opt_tls_cert = NULL;          /* (legacy option) Client certificate (plus any extra certs) for TLS connection */
-    char *opt_tls_key = NULL;           /* (legacy option) Client key for TLS connection */
-    char *opt_tls_keypass = NULL;       /* (legacy option) Client key password for TLS connection */
-    char *opt_tls_extra = NULL;         /* Extra certificates to provide to TLS server during TLS handshake */
-    char *opt_tls_trusted = NULL;       /* component ID to use for getting trusted TLS certificates (trust anchor) */
-    char *opt_tls_host = NULL;          /* TLS server's address (host name or IP address) to be checked */
+    bool  opt_tls_used;           /* Flag for forced activation of TLS */
+    char *opt_tls_cert;           /* (legacy option) Client certificate (plus any extra certs) for TLS connection */
+    char *opt_tls_key;            /* (legacy option) Client key for TLS connection */
+    char *opt_tls_keypass;        /* (legacy option) Client key password for TLS connection */
+    char *opt_tls_extra;          /* Extra certificates to provide to TLS server during TLS handshake */
+    char *opt_tls_trusted;        /* component ID to use for getting trusted TLS certificates (trust anchor) */
+    char *opt_tls_host;           /* TLS server's address (host name or IP address) to be checked */
 
-    char *opt_ref = NULL;               /* Reference value to use as senderKID in case no -cert is given */
-    char *opt_secret = NULL;            /* Secret value for authentication with a pre-shared key (PBM) */
-    char *opt_cert = NULL;              /* (legacy option) Client current certificate (plus any extra certs) */
-    char *opt_key = NULL;               /* (legacy option) Key for the client's current certificate */
-    char *opt_keypass = NULL;           /* (legacy option) Password for the client's key */
-    char *opt_digest = NULL;            /* Digest-Algorithm for the CMP Signature */
-    char *opt_mac = NULL;               /* MAC algorithm to use in PBM-based message protection */
-    char *opt_extracerts = NULL;        /* File(s) with certificates to append in outgoing messages */
-    bool opt_unprotectedrequests = false; /* Send messages without CMP-level protection */
+    char *opt_ref;                /* Reference value to use as senderKID in case no -cert is given */
+    char *opt_secret;             /* Secret value for authentication with a pre-shared key (PBM) */
+    char *opt_cert;               /* (legacy option) Client current certificate (plus any extra certs) */
+    char *opt_key;                /* (legacy option) Key for the client's current certificate */
+    char *opt_keypass;            /* (legacy option) Password for the client's key */
+    char *opt_digest;             /* Digest-Algorithm for the CMP Signature */
+    char *opt_mac;                /* MAC algorithm to use in PBM-based message protection */
+    char *opt_extracerts;         /* File(s) with certificates to append in outgoing messages */
+    bool opt_unprotectedrequests; /* Send messages without CMP-level protection */
 
-    char *opt_trusted = NULL;           /* cid to use for getting trusted CMP certificates (trust anchor) */
-    char *opt_untrusted = NULL;         /* File(s) with untrusted certificates for TLS, CMP, and CA */
-    char *opt_srvcert = NULL;           /* Server certificate directly trusted for CMP signing */
-    char *opt_recipient = NULL;         /* X509 Name of the recipient */
-    char *opt_expect_sender = NULL;     /* X509 Name of the expected sender (CMP server) */
-    bool opt_ignore_keyusage = false;   /* Workaround for CMP server cert without 'digitalSignature' key usage*/
-    bool opt_unprotectederrors = false; /* Allow negative CMP responses to be not protected */
-    char *opt_extracertsout = NULL;     /* File to save extra certificates received */
-    char *opt_cacertsout = NULL;        /* File where to save received CA certificates (from IR) */
+    char *opt_trusted;            /* cid to use for getting trusted CMP certificates (trust anchor) */
+    char *opt_untrusted;          /* File(s) with untrusted certificates for TLS, CMP, and CA */
+    char *opt_srvcert;            /* Server certificate directly trusted for CMP signing */
+    char *opt_recipient;          /* X509 Name of the recipient */
+    char *opt_expect_sender;      /* X509 Name of the expected sender (CMP server) */
+    bool opt_ignore_keyusage;     /* Workaround for CMP server cert without 'digitalSignature' key usage*/
+    bool opt_unprotectederrors;   /* Allow negative CMP responses to be not protected */
+    char *opt_extracertsout;      /* File to save extra certificates received */
+    char *opt_cacertsout;         /* File where to save received CA certificates (from IR) */
 
-    char *opt_crls_url = NULL;          /* Use given URL as (primary) CRL source when verifying certs. */
-    char *opt_crls_file = NULL;         /* Use given local file(s) as (primary) CRL source */
+    char *opt_crls_url;           /* Use given URL as (primary) CRL source when verifying certs. */
+    char *opt_crls_file;          /* Use given local file(s) as (primary) CRL source */
 
-    X509_VERIFY_PARAM *vpm = NULL;
+    X509_VERIFY_PARAM *vpm;
 
 #ifndef OPENSSL_NO_OCSP
-    char *opt_ocsp_url = NULL;          /* Use OCSP with given URL as primary address of OCSP responder */
+    char *opt_ocsp_url;           /* Use OCSP with given URL as primary address of OCSP responder */
 #endif
 
-    char *opt_newkeytype = NULL;        /* specifies keytype e.g. "ECC" or "RSA" */
+    char *opt_newkeytype;         /* specifies keytype e.g. "ECC" or "RSA" */
 
-    char *opt_newkey = NULL;            /* File (in PEM format) of key to use for the old/new certificate */
-    char *opt_newkeypass = NULL;        /* if starts with "engine:", engine holding new key, else password for new key file */
-    char *opt_subject = NULL;           /* X509 subject name to be used in the requested certificate template */
-    char *opt_issuer = NULL;            /* X509 Name of the issuer */
-    long opt_days = 0;                  /* requested validity time of new cert */
-    char *opt_reqexts = NULL;           /* Name of section in the config file defining request extensions */
-    char *opt_sans = NULL;              /* List of (critical) Subject Alternative Names (DNS/IPADDR) to be added */
-    bool opt_san_nodefault = false;     /* Do not take default SANs from reference certificate (see -oldcert) */
-    char *opt_policies = NULL;          /* Policy OID(s) to add as certificate policies request extension */
-    bool opt_policies_critical = false; /* Flag the policies given with -policies as critical */
-    long  opt_popo = 1;                 /* Proof-of-Possession (POPO) method */
-    char *opt_csr = NULL;               /* File to read CSR from for P10CR (for legacy support) */
-    char *opt_out_trusted = NULL;       /* File of trusted certificates for verifying the enrolled cert */
-    bool opt_implicitconfirm = false;   /* Request implicit confirmation of enrolled cert */
-    bool opt_disableconfirm = false;    /* Do not confirm enrolled certificates */
-    char *opt_certout = NULL;           /* cid determining file where to save the received certificate */
+    char *opt_newkey;             /* File (in PEM format) of key to use for the old/new certificate */
+    char *opt_newkeypass;         /* if starts with "engine:", engine holding new key, else password for new key file */
+    char *opt_subject;            /* X509 subject name to be used in the requested certificate template */
+    char *opt_issuer;             /* X509 Name of the issuer */
+    long opt_days;                /* requested validity time of new cert */
+    char *opt_reqexts;            /* Name of section in the config file defining request extensions */
+    char *opt_sans;               /* List of (critical) Subject Alternative Names (DNS/IPADDR) to be added */
+    bool opt_san_nodefault;       /* Do not take default SANs from reference certificate (see -oldcert) */
+    char *opt_policies;           /* Policy OID(s) to add as certificate policies request extension */
+    bool opt_policies_critical;   /* Flag the policies given with -policies as critical */
+    long  opt_popo;               /* Proof-of-Possession (POPO) method */
+    char *opt_csr;                /* File to read CSR from for P10CR (for legacy support) */
+    char *opt_out_trusted;        /* File of trusted certificates for verifying the enrolled cert */
+    bool opt_implicitconfirm;     /* Request implicit confirmation of enrolled cert */
+    bool opt_disableconfirm;      /* Do not confirm enrolled certificates */
+    char *opt_certout;            /* cid determining file where to save the received certificate */
 
-    char *opt_oldcert = NULL;           /* cid determining certificate to be to be renewed in KUR or revoked in RR */
-    long opt_revreason = CRL_REASON_NONE; /* Reason code to be included in revocation request (RR). Values: -1..6, 8..10. None set by default */
+    char *opt_oldcert;            /* cid determining certificate to be to be renewed in KUR or revoked in RR */
+    long opt_revreason;           /* Reason code to be included in revocation request (RR). Values: -1..6, 8..10. None set by default */
 
-    char *opt_cmd = NULL;
-    char *opt_geninfo = NULL;           /* Set generalInfo in request PKIHeader with type and integer value given in the form <OID>:int:<n>, e.g. '1.2.3:int:987' */
+    char *opt_cmd;
+    char *opt_geninfo;            /* Set generalInfo in request PKIHeader with type and integer value given in the form <OID>:int:<n>, e.g. '1.2.3:int:987' */
 
     /* additional variables compared to 'cmpossl/apps/cmp.c'*/
-    bool opt_crls_use_cdp = false;      /* Retrieve CRLs from CDPs given in certs as secondary (fallback) source */
-    char *opt_cdp_url = NULL;           /* Use given URL(s) ad secondary CRL source */
+    bool opt_crls_use_cdp;        /* Retrieve CRLs from CDPs given in certs as secondary (fallback) source */
+    char *opt_cdp_url;            /* Use given URL(s) ad secondary CRL source */
 
-    char *configfile = CONFIG_DEFAULT;/* OpenSSL-style configuration file */
+    char *opt_config;/* OpenSSL-style configuration file */
     CONF *config = NULL;                /* configuration structure */
-    char *sections = DEFAULT_SECTION;   /* sections of config file*/
+    char *opt_section;   /* sections of config file*/
     CREDENTIALS *creds = NULL;
     OSSL_CMP_CTX *cmp_ctx = NULL;
-
-    typedef struct help_msg_st {
-        int option_choice;
-        const char *helpstr;
-    } HELP_MSG;
 
 /*******************************************************************
  * Table of configuration options
  ******************************************************************/
 opt_t cmp_opts[] = {
-    { "server", OPT_TXT, { &opt_server } },
-    { "proxy", OPT_TXT, { &opt_proxy } },
-    { "no_proxy", OPT_TXT, { &opt_no_proxy } },
-    { "path", OPT_TXT, { &opt_path } },
-    { "msgtimeout", OPT_NUM, { (char **)&opt_msgtimeout } },
-    { "totaltimeout", OPT_NUM, { (char **)&opt_totaltimeout} },
+    { OPT_section_str, OPT_TXT, {.txt = NULL}, { NULL },
+      "Valid options are:"},
+    { "help", OPT_TXT, {.txt = NULL}, { NULL },
+      "Display this summary"},
+    { "config", OPT_TXT, {.txt = CONFIG_DEFAULT}, { &opt_config },
+      "Configuration file to use. \"\" = default. Default 'config/demo.cnf'"},
+    { "section", OPT_TXT, {.txt = DEFAULT_SECTION}, { &opt_section },
+      "Section(s) in config file defining CMP options. \"\" = 'default'."},
 
-    { "trusted", OPT_TXT, { &opt_trusted } },
-    { "untrusted", OPT_TXT, { &opt_untrusted } },
-    { "srvcert", OPT_TXT, { &(opt_srvcert) } },
-    { "recipient", OPT_TXT, { &opt_recipient } },
-    { "expect_sender", OPT_TXT, { &opt_expect_sender } },
-    { "ignore_keyusage", OPT_BOOL, { (char **)&opt_ignore_keyusage } },
-    { "unprotectederrors", OPT_BOOL, { (char **) &opt_unprotectederrors } },
-    { "extracertsout", OPT_TXT, { &opt_extracertsout } },
-    { "cacertsout", OPT_TXT, { &opt_cacertsout } },
+    { OPT_section_str, OPT_TXT, {.txt = NULL}, { NULL },
+      "Message transfer options:"},
+    { "server", OPT_TXT, {.txt = NULL}, { &opt_server },
+      "'ADDRESS[:PORT]' of the CMP server. Port defaults to 8080"},
+    { "proxy", OPT_TXT, {.txt = NULL}, { &opt_proxy },
+    "'ADDRESS[:PORT]' of HTTP proxy to the CMP server. Default port 8080"},
+    { "no_proxy", OPT_TXT, {.txt = NULL}, { &opt_no_proxy },
+      "Might be overwritten by env variable no_proxy"},
+    { "path", OPT_TXT, {.txt = NULL}, { &opt_path },
+      "HTTP path (aka CMP alias) inside the CMP server"},
+    { "msgtimeout", OPT_NUM, {.num = -1}, { (char **)&opt_msgtimeout },
+      "Timeout per CMP message round trip (or 0 for none). Default 120 seconds"},
+    { "totaltimeout", OPT_NUM, {.num = -1}, { (char **)&opt_totaltimeout},
+      "Overall time an enrollment incl. polling may take. Default: 0 = infinite"},
 
-    { "ref", OPT_TXT, { &(opt_ref) } },
-    { "secret", OPT_TXT, { &(opt_secret) } },
-    { "cert", OPT_TXT, { &(opt_cert) } },
-    { "key", OPT_TXT, { &(opt_key) } },
-    { "keypass", OPT_TXT, { &(opt_keypass) } },
-    { "digest", OPT_TXT, { &opt_digest } },
-    { "mac", OPT_TXT, { &opt_mac}},
-    { "extracerts", OPT_TXT, { &opt_extracerts } },
-    { "unprotectedrequests", OPT_BOOL, { (char **) &opt_unprotectedrequests } },
+    { OPT_section_str, OPT_TXT, {.txt = NULL}, { NULL },
+      "Server authentication options:"},
+    { "trusted", OPT_TXT, {.txt = NULL}, { &opt_trusted },
+      "cid to use for getting trusted CMP certificates (trust anchor)"},
+    { "untrusted", OPT_TXT, {.txt = NULL}, { &opt_untrusted },
+      "File(s) with untrusted certificates for TLS, CMP, and CA"},
+    { "srvcert", OPT_TXT, {.txt = NULL}, { &(opt_srvcert) },
+      "Server certificate directly trusted for CMP signing"},
+    { "recipient", OPT_TXT, {.txt = NULL}, { &opt_recipient },
+      "X509 Name of the recipient"},
+    { "expect_sender", OPT_TXT, {.txt = NULL}, { &opt_expect_sender },
+      "X509 Name of the expected sender (CMP server)"},
+    { "ignore_keyusage", OPT_BOOL, {.bool = false}, { (char **)&opt_ignore_keyusage },
+      "Workaround for CMP server cert without 'digitalSignature' key usage"},
+    { "unprotectederrors", OPT_BOOL, {.bool = false}, { (char **) &opt_unprotectederrors },
+      "Allow negative CMP responses to be not protected"},
+    { "extracertsout", OPT_TXT, {.txt = NULL}, { &opt_extracertsout },
+      "File to save extra certificates received"},
+    { "cacertsout", OPT_TXT, {.txt = NULL}, { &opt_cacertsout },
+      "File where to save received CA certificates (from IR)"},
 
-    { "cmd", OPT_TXT, { &opt_cmd } },
-    { "geninfo", OPT_TXT, { &opt_geninfo } },
+    { OPT_section_str, OPT_TXT, {.txt = NULL}, { NULL },
+      "Client authentication options:"},
+    { "ref", OPT_TXT, {.txt = NULL}, { &(opt_ref) },
+      "Reference value to use as senderKID in case no -cert is given"},
+    { "secret", OPT_TXT, {.txt = NULL}, { &(opt_secret) },
+      "Secret value for authentication with a pre-shared key (PBM)"},
+    { "cert", OPT_TXT, {.txt = NULL}, { &(opt_cert) },
+      "(legacy option) Client current certificate (plus any extra certs)"},
+    { "key", OPT_TXT, {.txt = NULL}, { &(opt_key) },
+      "(legacy option) Key for the client's current certificate"},
+    { "keypass", OPT_TXT, {.txt = NULL}, { &(opt_keypass) },
+      "(legacy option) Password for the client's key"},
+    { "digest", OPT_TXT, {.txt = NULL}, { &opt_digest },
+      "Digest-Algorithem for the CMP Signature"},
+    { "mac", OPT_TXT, {.txt = NULL}, { &opt_mac},
+      "MAC algorithm to use in PBM-based message protection"},
+    { "extracerts", OPT_TXT, {.txt = NULL}, { &opt_extracerts },
+      "File to save extra certificates received"},
+    { "unprotectedrequests", OPT_BOOL, {.bool = false}, { (char **) &opt_unprotectedrequests },
+      "Send messages without CMP-level protection"},
 
-    { "newkey", OPT_TXT, { &opt_newkey } },
-    { "newkeypass", OPT_TXT, { &opt_newkeypass } },
-    { "subject", OPT_TXT, { &opt_subject } },
-    { "issuer", OPT_TXT, { &opt_issuer } },
-    { "days", OPT_NUM, { (char **) &opt_days } },
-    { "reqexts", OPT_TXT, { &opt_reqexts } },
-    { "sans", OPT_TXT, { &opt_sans } },
-    { "san_nodefault", OPT_BOOL, { (char**) &opt_san_nodefault} },
-    { "policies", OPT_TXT, { &opt_policies} },
-    { "policies_critical", OPT_BOOL, { (char**) &opt_policies_critical} },
-    { "popo", OPT_NUM, { (char **) &opt_popo } },
-    { "csr", OPT_TXT, { &opt_csr } },
-    { "out_trusted", OPT_TXT, { &opt_out_trusted } },
-    { "implicitconfirm", OPT_BOOL, { (char **) &opt_implicitconfirm } },
-    { "disableconfirm", OPT_BOOL, { (char **) &opt_disableconfirm } },
-    { "certout", OPT_TXT, { &opt_certout } },
+    { OPT_section_str, OPT_TXT, {.txt = NULL}, { NULL },
+      "Generic message options:"},
+    { "cmd", OPT_TXT, {.txt = NULL}, { &opt_cmd },
+      "CMP request to send: ir/cr/kur/rr. Overwrites 'use_case' if given"},
+    { "geninfo", OPT_TXT, {.txt = NULL}, { &opt_geninfo },
+      "Set generalInfo in request PKIHeader with type and integer value"},
+    { OPT_more_str, OPT_TXT, {.txt = NULL}, { NULL },
+      "given in the form <OID>:int:<n>, e.g. '1.2.3:int:987'"},
 
-    { "oldcert", OPT_TXT, { &opt_oldcert } },
-    { "revreason", OPT_NUM, { (char **) &opt_revreason } },
+    { OPT_section_str, OPT_TXT, {.txt = NULL}, { NULL },
+      "Certificate enrollment options:"},
+    { "newkey", OPT_TXT, {.txt = NULL}, { &opt_newkey },
+      "File (in PEM format) of key to use for the old/new certificate"},
+    { "newkeypass", OPT_TXT, {.txt = NULL}, { &opt_newkeypass },
+      "if starts with 'engine:', engine holding new key, else password for new key file"},
+    { "subject", OPT_TXT, {.txt = NULL}, { &opt_subject },
+      "X509 subject name to be used in the requested certificate template"},
+    { "issuer", OPT_TXT, {.txt = NULL}, { &opt_issuer },
+      "X509 Name of the issuer"},
+    { "days", OPT_NUM, {.num = 0}, { (char **) &opt_days },
+      "requested validity time of new cert"},
+    { "reqexts", OPT_TXT, {.txt = NULL}, { &opt_reqexts },
+      "Name of section in the config file defining request extensions"},
+    { "sans", OPT_TXT, {.txt = NULL}, { &opt_sans },
+      "List of (critical) Subject Alternative Names (DNS/IPADDR) to be added"},
+    { "san_nodefault", OPT_BOOL, {.bool = false}, { (char**) &opt_san_nodefault},
+      "Do not take default SANs from reference certificate (see -oldcert)"},
+    { "policies", OPT_TXT, {.txt = NULL}, { &opt_policies},
+      "Policy OID(s) to add as certificate policies request extension"},
+    { "policies_critical", OPT_BOOL, {.bool = false}, { (char**) &opt_policies_critical},
+      "Flag the policies given with -policies as critical"},
+    { "popo", OPT_NUM, {.num = 1}, { (char **) &opt_popo },
+      "Proof-of-Possession (POPO) method"},
+    { "csr", OPT_TXT, {.txt = NULL}, { &opt_csr },
+      "File to read CSR from for P10CR (for legacy support)"},
+    { "out_trusted", OPT_TXT, {.txt = NULL}, { &opt_out_trusted },
+      "File of trusted certificates for verifying the enrolled cert"},
+    { "implicitconfirm", OPT_BOOL, {.bool = false}, { (char **) &opt_implicitconfirm },
+      "Request implicit confirmation of enrolled cert"},
+    { "disableconfirm", OPT_BOOL, {.bool = false}, { (char **) &opt_disableconfirm },
+      "Do not confirm enrolled certificates"},
+    { "certout", OPT_TXT, {.txt = NULL}, { &opt_certout },
+      "cid determining file where to save the received certificate"},
 
-    { "newkeytype", OPT_TXT, { &opt_newkeytype } },
+    { OPT_section_str, OPT_TXT, {.txt = NULL}, { NULL },
+      "Certificate enrollment and revocation options:"},
+    { "oldcert", OPT_TXT, {.txt = NULL}, { &opt_oldcert },
+      "cid determining certificate to be to be renewed in KUR or revoked in RR"},
+    { "revreason", OPT_NUM, {.num = CRL_REASON_NONE}, { (char **) &opt_revreason },
+      "Reason code to be included in revocation request (RR)."},
+    { OPT_more_str, OPT_TXT, {.txt = NULL}, { NULL },
+      "Values: -1..6, 8..10. None set by default"},
 
-    { "tls_used", OPT_BOOL, { (char **) &opt_tls_used } },
-    { "tls_cert", OPT_TXT, { &(opt_tls_cert) } },
-    { "tls_key", OPT_TXT, { &(opt_tls_key) } },
-    { "tls_keypass", OPT_TXT, { &opt_tls_keypass } },
-    { "tls_extra", OPT_TXT, { &(opt_tls_extra) } },
-    { "tls_trusted", OPT_TXT, { &(opt_tls_trusted) } },
-    { "tls_host", OPT_TXT, { &opt_tls_host } },
+    { OPT_section_str, OPT_TXT, {.txt = NULL}, { NULL },
+      "Credentials format options:"},
+    { "newkeytype", OPT_TXT, {.txt = NULL}, { &opt_newkeytype },
+      "specifies keytype e.g. 'ECC' or 'RSA'"},
 
-    { "crls_url", OPT_TXT, {&opt_crls_url} },
-    { "crls_file", OPT_TXT, {&opt_crls_file} },
+    { OPT_section_str, OPT_TXT, {.txt = NULL}, { NULL },
+      "TLS options:"},
+    { "tls_used", OPT_BOOL, {.bool = false}, { (char **) &opt_tls_used },
+      "Flag for forced activation of TLS"},
+    { "tls_cert", OPT_TXT, {.txt = NULL}, { &(opt_tls_cert) },
+      "(legacy option) Client certificate (plus any extra certs) for TLS connection"},
+    { "tls_key", OPT_TXT, {.txt = NULL}, { &(opt_tls_key) },
+      "(legacy option) Client key for TLS connection"},
+    { "tls_keypass", OPT_TXT, {.txt = NULL}, { &opt_tls_keypass },
+      "(legacy option) Client key password for TLS connection"},
+    { "tls_extra", OPT_TXT, {.txt = NULL}, { &(opt_tls_extra) },
+      "Extra certificates to provide to TLS server during TLS handshake"},
+    { "tls_trusted", OPT_TXT, {.txt = NULL}, { &(opt_tls_trusted) },
+      "component ID to use for getting trusted TLS certificates (trust anchor)"},
+    { "tls_host", OPT_TXT, {.txt = NULL}, { &opt_tls_host },
+      "TLS server's address (host name or IP address) to be checked"},
+
+    { OPT_section_str, OPT_TXT, {.txt = NULL}, { NULL },
+      "Specific certificate verification options, for both CMP and TLS:"},
+    { "crls_url", OPT_TXT, {.txt = NULL}, {&opt_crls_url},
+      "Use given URL as (primary) CRL source when verifying certs."},
+    { "crls_file", OPT_TXT, {.txt = NULL}, {&opt_crls_file},
+      "Use given local file(s) as (primary) CRL source"},
 #ifndef OPENSSL_NO_OCSP
-    { "ocsp_url", OPT_TXT, {&opt_ocsp_url} },
+    { "ocsp_url", OPT_TXT, {.txt = NULL}, {&opt_ocsp_url},
+      "Use OCSP with given URL as primary address of OCSP responder"},
 #endif
     /* TODO add more CRLs and OCSP options for TLS and CMP when support available */
-    { "crls_use_cdp", OPT_BOOL, { (char **) &opt_crls_use_cdp } },
-    { "cdp_url", OPT_TXT, {&opt_cdp_url} },
+    { "crls_use_cdp", OPT_BOOL, {.bool = false}, { (char **) &opt_crls_use_cdp },
+      "Retrieve CRLs from CDPs given in certs as secondary (fallback) source"},
+    { "cdp_url", OPT_TXT, {.txt = NULL}, {&opt_cdp_url},
+      "Use given URL(s) ad secondary CRL source"},
 
-    { NULL, OPT_TXT, { NULL } }
+    { NULL, OPT_TXT, {.txt = NULL}, { NULL }, NULL}
 };
 
+/* OPTION_CHOICE values must be in the same order as enumerated above!! */
 typedef enum OPTION_choice {
-    OPT_ERR = -5, OPT_MORE_STRING = -4, OPT_HELP = -3, OPT_CONFIG = -2,
-    OPT_SECTION = -1,
+    OPT_ERR = -1, OPT_SECTION_1, OPT_HELP, OPT_CONFIG,
+    OPT_SECTION,
 
+    OPT_SECTION_2,
     OPT_SERVER, OPT_PROXY, OPT_NO_PROXY, OPT_PATH,
     OPT_MSGTIMEOUT, OPT_TOTALTIMEOUT,
 
+    OPT_SECTION_3,
     OPT_TRUSTED, OPT_UNTRUSTED, OPT_SRVCERT, OPT_RECIPIENT,
     OPT_EXPECT_SENDER, OPT_IGNORE_KEYUSAGE, OPT_UNPROTECTEDERRORS, OPT_EXTRACERTSOUT,
     OPT_CACERTSOUT,
 
+    OPT_SECTION_4,
     OPT_REF, OPT_SECRET, OPT_CERT, OPT_KEY,
     OPT_KEYPASS, OPT_DIGEST, OPT_MAC, OPT_EXTRACERTS,
     OPT_UNPROTECTEDREQUESTS,
 
-    OPT_CMD, OPT_GENINFO,
+    OPT_SECTION_5,
+    OPT_CMD, OPT_GENINFO, OPT_MORE_STR_1,
 
+    OPT_SECTION_6,
     OPT_NEWKEY, OPT_NEWKEYPASS, OPT_SUBJECT, OPT_ISSUER,
     OPT_DAYS, OPT_REQEXTS, OPT_SANS, OPT_SAN_NODEFAULT,
     OPT_POLICIES, OPT_POLICIES_CRITICAL, OPT_POPO, OPT_CSR,
     OPT_OUT_TRUSTED, OPT_IMPLICITCONFIRM, OPT_DISABLECONFIRM, OPT_CERTOUT,
 
-    OPT_OLDCERT,  OPT_REVREASON,
+    OPT_SECTION_7,
+    OPT_OLDCERT,  OPT_REVREASON, OPT_MORE_STR_2,
 
+    OPT_SECTION_8,
     OPT_NEWKEYTYPE,
 
+    OPT_SECTION_9,
     OPT_TLS_USED, OPT_TLS_CERT, OPT_TLS_KEY, OPT_TLS_KEYPASS,
     OPT_TLS_EXTRA, OPT_TLS_TRUSTED, OPT_TLS_HOST,
 
+    OPT_SECTION_10,
     OPT_CRLS_URL, OPT_CRLS_FILE,
 #ifndef OPENSSL_NO_OCSP
     OPT_OCSP_URL,
@@ -242,95 +333,6 @@ typedef enum OPTION_choice {
     OPT_END
 } OPTION_CHOICE;
 
-HELP_MSG cmp_help[] = {
-    /* OPTION_CHOICE values must be in the same order as enumerated above!! */
-    { OPT_MORE_STRING, "\nValid options are:"},
-    { OPT_HELP, "Display this summary"},
-    { OPT_CONFIG, "Configuration file to use. \"\" = default. Default 'config/demo.cnf'"},
-    { OPT_SECTION, "Section(s) in config file defining CMP options. \"\" = 'default'."},
-
-    { OPT_MORE_STRING, "\nMessage transfer options:"},
-    { OPT_SERVER, "'ADDRESS[:PORT]' of the CMP server. Port defaults to 8080"},
-    { OPT_PROXY, "'ADDRESS[:PORT]' of HTTP proxy to the CMP server. Default port 8080"},
-    { OPT_NO_PROXY, "Might be overwritten by env variable no_proxy"},
-    { OPT_PATH, "HTTP path (aka CMP alias) inside the CMP server"},
-    { OPT_MSGTIMEOUT, "Timeout per CMP message round trip (or 0 for none). Default 120 seconds"},
-    { OPT_TOTALTIMEOUT, "Overall time an enrollment incl. polling may take. Default: 0 = infinite"},
-
-    { OPT_MORE_STRING, "\nServer authentication options:"},
-    { OPT_TRUSTED, "cid to use for getting trusted CMP certificates (trust anchor)"},
-    { OPT_UNTRUSTED, "File(s) with untrusted certificates for TLS, CMP, and CA"},
-    { OPT_SRVCERT, "Server certificate directly trusted for CMP signing"},
-    { OPT_RECIPIENT, "X509 Name of the recipient"},
-    { OPT_EXPECT_SENDER, "X509 Name of the expected sender (CMP server)"},
-    { OPT_IGNORE_KEYUSAGE, "Workaround for CMP server cert without 'digitalSignature' key usage"},
-    { OPT_UNPROTECTEDERRORS, "Allow negative CMP responses to be not protected"},
-    { OPT_EXTRACERTSOUT, "File to save extra certificates received"},
-    { OPT_CACERTSOUT, "File where to save received CA certificates (from IR)"},
-
-    { OPT_MORE_STRING, "\nClient authentication options:"},
-    { OPT_REF, "Reference value to use as senderKID in case no -cert is given"},
-    { OPT_SECRET, "Secret value for authentication with a pre-shared key (PBM)"},
-    { OPT_CERT, "(legacy option) Client current certificate (plus any extra certs)"},
-    { OPT_KEY, "(legacy option) Key for the client's current certificate"},
-    { OPT_KEYPASS, "(legacy option) Password for the client's key"},
-    { OPT_DIGEST, "Digest-Algorithem for the CMP Signature"},
-    { OPT_MAC, "MAC algorithm to use in PBM-based message protection"},
-    { OPT_EXTRACERTS, "File(s) with certificates to append in outgoing messages"},
-    { OPT_UNPROTECTEDREQUESTS, "Send messages without CMP-level protection"},
-
-    { OPT_MORE_STRING, "\nGeneric message options:"},
-    { OPT_CMD, "CMP request to send: ir/cr/kur/rr. Overwrites 'use_case' if given"},
-    { OPT_GENINFO, "Set generalInfo in request PKIHeader with type and integer value"},
-    { OPT_MORE_STRING, "given in the form <OID>:int:<n>, e.g. '1.2.3:int:987'"},
-
-    { OPT_MORE_STRING, "\nCertificate enrollment options:"},
-    { OPT_NEWKEY, "File (in PEM format) of key to use for the old/new certificate"},
-    { OPT_NEWKEYPASS, "if starts with 'engine:', engine holding new key, else password for new key file"},
-    { OPT_SUBJECT, "X509 subject name to be used in the requested certificate template"},
-    { OPT_ISSUER, "X509 Name of the issuer"},
-    { OPT_DAYS, "requested validity time of new cert"},
-    { OPT_REQEXTS, "Name of section in the config file defining request extensions"},
-    { OPT_SANS, "List of (critical) Subject Alternative Names (DNS/IPADDR) to be added"},
-    { OPT_SAN_NODEFAULT, "Do not take default SANs from reference certificate (see -oldcert)"},
-    { OPT_POLICIES, "Policy OID(s) to add as certificate policies request extension"},
-    { OPT_POLICIES_CRITICAL, "Flag the policies given with -policies as critical"},
-    { OPT_POPO, "Proof-of-Possession (POPO) method"},
-    { OPT_CSR, "File to read CSR from for P10CR (for legacy support)"},
-    { OPT_OUT_TRUSTED, "File of trusted certificates for verifying the enrolled cert"},
-    { OPT_IMPLICITCONFIRM, "Request implicit confirmation of enrolled cert"},
-    { OPT_DISABLECONFIRM, "Do not confirm enrolled certificates"},
-    { OPT_CERTOUT, "cid determining file where to save the received certificate"},
-
-    { OPT_MORE_STRING, "\nCertificate enrollment and revocation options:"},
-    { OPT_OLDCERT, "cid determining certificate to be to be renewed in KUR or revoked in RR"},
-    { OPT_REVREASON, "Reason code to be included in revocation request (RR)."},
-    { OPT_MORE_STRING, "Values: -1..6, 8..10. None set by default"},
-
-    { OPT_MORE_STRING, "\nCredentials format options:"},
-    { OPT_NEWKEYTYPE, "specifies keytype e.g. 'ECC' or 'RSA'"},
-
-    { OPT_MORE_STRING, "\nTLS options:"},
-    { OPT_TLS_USED, "Flag for forced activation of TLS"},
-    { OPT_TLS_CERT, "(legacy option) Client certificate (plus any extra certs) for TLS connection"},
-    { OPT_TLS_KEY, "(legacy option) Client key for TLS connection"},
-    { OPT_TLS_KEYPASS, "(legacy option) Client key password for TLS connection"},
-    { OPT_TLS_EXTRA, "Extra certificates to provide to TLS server during TLS handshake"},
-    { OPT_TLS_TRUSTED, "component ID to use for getting trusted TLS certificates (trust anchor)"},
-    { OPT_TLS_HOST, "TLS server's address (host name or IP address) to be checked"},
-
-    { OPT_MORE_STRING, "\nSpecific certificate verification options, for both CMP and TLS:"},
-    /* TODO add more CRLs and OCSP options for TLS and CMP when support available */
-    { OPT_CRLS_URL, "Use given URL as (primary) CRL source when verifying certs."},
-    { OPT_CRLS_FILE, "Use given local file(s) as (primary) CRL source"},
-#ifndef OPENSSL_NO_OCSP
-    { OPT_OCSP_URL, "Use OCSP with given URL as primary address of OCSP responder"},
-#endif
-    { OPT_CRLS_USE_CDP, "Retrieve CRLs from CDPs given in certs as secondary (fallback) source"},
-    { OPT_CDP_URL, "Use given URL(s) ad secondary CRL source"},
-
-    { OPT_END, ""}
-};
 
 const char *tls_ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
 
@@ -735,84 +737,14 @@ static int reqExtensions_have_SAN(X509_EXTENSIONS *exts)
     return X509v3_get_ext_by_NID(exts, NID_subject_alt_name, -1) >= 0;
 }
 
-/* Return a string describing the parameter type. */
-static const char *valtype2param(const HELP_MSG *m)
+static bool opt_init_defs(void)
 {
-    switch (cmp_opts[m->option_choice].type) {
-    case OPT_TXT:
-        return "val";
-    case OPT_NUM:
-        return "int";
-    case OPT_BOOL:
-        return "";
+    OPTION_CHOICE o;
+    for (o = OPT_SECTION_1; o < OPT_END; o++){
+        if (!OPT_init(&cmp_opts[o]))
+            return false;
     }
-    return "param";
-}
-
-static void opt_help(const HELP_MSG *list)
-{
-    const HELP_MSG *m;
-    int i;
-    int width = 5;
-    char start[80 + 1];
-    char *p;
-    const char *help;
-    const char help_str[] = "help";
-    const char config_str[] = "config";
-    const char section_str[] = "section";
-
-    /* Find the widest help. */
-    for (m = list; m->option_choice < OPT_END; m++) {
-        if (m->option_choice == OPT_MORE_STRING)
-            continue;
-        if (m->option_choice >= 0) {
-            i = 2 + (int)strlen(cmp_opts[m->option_choice].name);
-            i += 1 + (int)strlen(valtype2param(m));
-            if (i < MAX_OPT_HELP_WIDTH && i > width)
-                width = i;
-            if (i > (int)sizeof(start))
-                LOG(FL_ERR, "help message length exceeds buffer size %d > %d", i ,(int)sizeof(start));
-        }
-    }
-
-    /* Now let's print. */
-    for (m = list; m->option_choice < OPT_END; m++) {
-        help = m->helpstr ? m->helpstr : "(No additional info)";
-
-        /* Pad out prefix */
-        memset(start, ' ', sizeof(start) - 1);
-        start[sizeof(start) - 1] = '\0';
-
-        if (m->option_choice == OPT_MORE_STRING) {
-            /* Continuation of previous line; pad and print. */
-            start[width] = '\0';
-            printf("%s  %s\n", start, help);
-            continue;
-        }
-
-        /* Build up the "-flag [param]" part. */
-        p = start;
-        *p++ = ' ';
-        *p++ = '-';
-        if (m->option_choice >= 0 && m->option_choice < OPT_END)
-            p += strlen(strcpy(p, cmp_opts[m->option_choice].name));
-        else if (m->option_choice == OPT_HELP)
-            p += strlen(strcpy(p, help_str));
-        else if (m->option_choice == OPT_CONFIG)
-            p += strlen(strcpy(p, config_str));
-        else if (m->option_choice == OPT_SECTION)
-            p += strlen(strcpy(p, section_str));
-        else
-            *p++ = '*';
-        *p = ' ';
-        if ((int)(p - start) >= MAX_OPT_HELP_WIDTH) {
-            *p = '\0';
-            printf("%s\n", start);
-            memset(start, ' ', sizeof(start));
-        }
-        start[width] = '\0';
-        printf("%s  %s\n", start, help);
-    }
+    return true;
 }
 
 /*
@@ -876,7 +808,7 @@ static int opt_next(int argc, char **argv){
  * returns -1 when printing option help, 0 on success
  * and 1 on error
  */
-static int get_opts(int argc, char **argv)
+static int get_opts(int argc, char **argv, BIO *bio)
 {
     OPTION_CHOICE o;
 
@@ -886,15 +818,23 @@ static int get_opts(int argc, char **argv)
             return 1;
         }
         if (o == OPT_HELP) {
-            opt_help(cmp_help);
+            OPT_help(cmp_opts, bio);
             return -1;
         }
 
         switch (cmp_opts[o].type) {
         case OPT_TXT:
+            if (arg[0] == '\0') {
+                *cmp_opts[o].varref_u.txt = cmp_opts[o].default_value.txt;
+                break;
+            }
             *cmp_opts[o].varref_u.txt = arg;
             break;
         case OPT_NUM:
+            if (arg[0] == '\0') {
+                *cmp_opts[o].varref_u.num = cmp_opts[o].default_value.num;
+                break;
+            }
             if ((*cmp_opts[o].varref_u.num = UTIL_atoint(arg)) == INT_MIN) {
                 LOG(FL_ERR, "Can't parse '%s' as number", arg);
                 return 1;
@@ -964,7 +904,9 @@ static int CMPclient_demo(enum use_case use_case)
     }
 
     if (use_case != revocation) {
-        const char *key_spec = !strcmp(opt_newkeytype, "RSA") ? RSA_SPEC : ECC_SPEC;
+        /* default key_spec is ECC_SPEC */
+        const char *key_spec = opt_newkeytype == NULL ? ECC_SPEC :
+                               !strcmp(opt_newkeytype, "RSA") ? RSA_SPEC : ECC_SPEC;
         new_pkey = KEY_new(key_spec);
         if (new_pkey == NULL) {
             LOG(FL_ERR, "Unable to generate new private key according to specification '%s'", key_spec);
@@ -1085,7 +1027,12 @@ int main(int argc, char *argv[])
     int i;
     int rc = 0;
 
+    BIO *bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
+
     prog = argv[0];
+
+    if (!opt_init_defs())
+        return EXIT_FAILURE;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100002L
 #ifndef OPENSSL_NO_CRYPTO_MDEBUG
@@ -1114,7 +1061,7 @@ int main(int argc, char *argv[])
             use_case = revocation;
         else if (!strcmp(argv[1], "-help")) {
             LOG(FL_INFO, "\nUsage: %s [imprint | bootstrap | update | revoke] [options]\n", argv[0]);
-            opt_help(cmp_help);
+            OPT_help(cmp_opts, bio_stdout);
             rc = -1;
             goto err;
         }
@@ -1123,44 +1070,44 @@ int main(int argc, char *argv[])
     for (i = 1; i < argc; i++) {
         if (*argv[i] == '-') {
             if (!strcmp(argv[i], "-section"))
-                sections = argv[i + 1];
+                opt_section = argv[i + 1];
             else if (!strcmp(argv[i], "-config"))
-                configfile = argv[i + 1];
+                opt_config = argv[i + 1];
         }
     }
 
-    if (sections[0] == '\0')    /* empty string */
-        sections = DEFAULT_SECTION;
-    if (configfile[0] == '\0')  /* empty string */
-        configfile = CONFIG_DEFAULT;
+    if (opt_section[0] == '\0')    /* empty string */
+        opt_section = DEFAULT_SECTION;
+    if (opt_config[0] == '\0')  /* empty string */
+        opt_config = CONFIG_DEFAULT;
 
-    LOG(FL_INFO, "Using CMP configuration from '%s'", configfile);
+    LOG(FL_INFO, "Using CMP configuration from '%s'", opt_config);
 
     switch(use_case) {
     case bootstrap:
-        if ((config =CONF_load_options(NULL, configfile, "bootstrap,default", &cmp_opts[0])) == 0)
+        if ((config =CONF_load_options(NULL, opt_config, "bootstrap,default", &cmp_opts[0])) == 0)
             return EXIT_FAILURE;
         break;
     case imprint:
-        if ((config = CONF_load_options(NULL, configfile, "imprint,default", &cmp_opts[0])) == 0)
+        if ((config = CONF_load_options(NULL, opt_config, "imprint,default", &cmp_opts[0])) == 0)
             return EXIT_FAILURE;
         break;
     case update:
-        if ((config = CONF_load_options(NULL, configfile, "update,default", &cmp_opts[0])) == 0)
+        if ((config = CONF_load_options(NULL, opt_config, "update,default", &cmp_opts[0])) == 0)
             return EXIT_FAILURE;
         break;
     case revocation:
-        if ((config = CONF_load_options(NULL, configfile, "revoke,default", &cmp_opts[0])) == 0)
+        if ((config = CONF_load_options(NULL, opt_config, "revoke,default", &cmp_opts[0])) == 0)
             return EXIT_FAILURE;
         break;
     case default_case:
-        if ((config = CONF_load_options(NULL, configfile, "default", &cmp_opts[0])) == 0)
+        if ((config = CONF_load_options(NULL, opt_config, "default", &cmp_opts[0])) == 0)
             return EXIT_FAILURE;
         break;
     default:
         return EXIT_FAILURE;
     }
-    if (!CONF_read_options(config, sections, &cmp_opts[0]))
+    if (!CONF_read_options(config, opt_section, &cmp_opts[0]))
         return EXIT_FAILURE;
 
     vpm = X509_VERIFY_PARAM_new();
@@ -1168,13 +1115,13 @@ int main(int argc, char *argv[])
         LOG(FL_ERR, "Out of memory");
         return EXIT_FAILURE;
     }
-    if (!CONF_read_vpm(config, sections, vpm))
+    if (!CONF_read_vpm(config, opt_section, vpm))
         return EXIT_FAILURE;
 
     /* skip first option if use_case is given */
     if (use_case != default_case)
         opt_index++;
-    rc = get_opts(argc, argv);
+    rc = get_opts(argc, argv, bio_stdout);
     if (rc == -1)
         return EXIT_SUCCESS;
     else if (rc == 1)

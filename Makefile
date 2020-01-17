@@ -122,8 +122,7 @@ update_secUtils:
 build_secUtils: # not: update_secUtils
 	$(MAKE) -C $(SECUTILS) build_only CFLAGS="$(CFLAGS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIBCMP_OUT_REVERSE_DIR)"
 
-
-$(LIBCMP_INC): # not: update_cmpossl
+$(LIBCMP_INC):
 	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
 
 $(LIBCMP_LIB):

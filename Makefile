@@ -100,7 +100,7 @@ else
 .phony: get_submodules build_submodules clean_submodules
 submodules: build_submodules
 
-build_submodules: get_submodules build_cmpossl build_secUtils # $(LIBCMP_LIB) $(SECUTILS_LIB)
+build_submodules: get_submodules $(SECUTILS_LIB) $(LIBCMP_INC) $(LIBCMP_LIB)
 
 get_submodules: $(SECUTILS)/libs/interfaces/include/operators.h $(LIBCMP_DIR)/include
 
@@ -122,6 +122,7 @@ build_secUtils: # not: update_secUtils
 $(LIBCMP_DIR)/include:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
 
+<<<<<<< HEAD
 $(LIBCMP_LIB):
 	build_cmpossl
 
@@ -129,6 +130,9 @@ $(LIBCMP_LIB):
 update_cmpossl:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
 build_cmpossl: # not: update_cmpossl
+=======
+$(LIBCMP_INC) $(LIBCMP_LIB):
+>>>>>>> improve dependencies of build_submodules Makefile target on cmpossl/include_cmp
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 

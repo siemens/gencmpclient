@@ -61,8 +61,8 @@ endif
 ifeq ($(findstring clean,$(MAKECMDGOALS)),)
 OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=h OPENSSL_DIR="$(OPENSSL_DIR)")
 ifeq ($(OPENSSL_VERSION),)
-    $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.0.2)
-    OPENSSL_VERSION=1.0
+    $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
+    OPENSSL_VERSION=1.1.1
 endif
 $(info detected OpenSSL version $(OPENSSL_VERSION).x)
 ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # same as comparing == 1.0

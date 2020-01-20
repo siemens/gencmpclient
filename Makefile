@@ -102,10 +102,7 @@ submodules: build_submodules
 
 build_submodules: get_submodules build_cmpossl build_secUtils # $(LIBCMP_LIB) $(SECUTILS_LIB)
 
-get_submodules: $(SECUTILS)/include $(SECUTILS)/libs/interfaces/include/operators.h $(LIBCMP_INC)
-
-update: update_secUtils update_cmpossl
-	git pull
+get_submodules: $(SECUTILS)/libs/interfaces/include/operators.h $(LIBCMP_DIR)/include
 
 $(SECUTILS)/libs/interfaces/include/operators.h:
 	cd $(SECUTILS) && git submodule update --init libs/interfaces
@@ -122,7 +119,7 @@ update_secUtils:
 build_secUtils: # not: update_secUtils
 	$(MAKE) -C $(SECUTILS) build_only CFLAGS="$(CFLAGS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIBCMP_OUT_REVERSE_DIR)"
 
-$(LIBCMP_INC):
+$(LIBCMP_DIR)/include:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
 
 $(LIBCMP_LIB):

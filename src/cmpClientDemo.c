@@ -349,7 +349,7 @@ static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
     }
     sk_X509_free(certs); /* must not free the stack elements */
     if (res == 0)
-        LOG(FL_ERR, "error: unable to use TLS extra certs\n");
+        LOG(FL_ERR, "error: unable to use TLS extra certs");
     return res;
 }
 
@@ -382,7 +382,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
         }
         if (!OSSL_CMP_CTX_push1_subjectAltName(ctx, n)) {
             GENERAL_NAME_free(n);
-            LOG(FL_ERR, "out of memory\n");
+            LOG(FL_ERR, "out of memory");
             return 0;
         }
         GENERAL_NAME_free(n);
@@ -590,7 +590,7 @@ int setup_ctx(CMP_CTX *ctx, enum use_case use_case)
 
     if (opt_san_nodefault) {
         if (opt_sans != NULL)
-            LOG(FL_ERR, "-opt_san_nodefault has no effect when -sans is used\n");
+            LOG(FL_WARN, "-opt_san_nodefault has no effect when -sans is used");
         if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 1)) {
             LOG(FL_ERR, "Failed to set 'SubjectAltName_nodefault' field of CMP context");
             goto err;
@@ -603,8 +603,8 @@ int setup_ctx(CMP_CTX *ctx, enum use_case use_case)
     }
 
     if (opt_policy_oids_critical) {
-        if (opt_policies == NULL)
-            LOG(FL_ERR, "-opt_policy_oids_critical has no effect unless -policy_oids is given");
+        if (opt_policy_oids == NULL)
+            LOG(FL_WARN, "-opt_policy_oids_critical has no effect unless -policy_oids is given");
         if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POLICIES_CRITICAL, 1)) {
             LOG(FL_ERR, "Failed to set 'setPoliciesCritical' field of CMP context");
             goto err;
@@ -954,7 +954,7 @@ static int CMPclient_demo(enum use_case use_case)
     }
 
     if (reqExtensions_have_SAN(exts) && opt_sans != NULL) {
-        LOG(FL_ERR, "Cannot have Subject Alternative Names both via -reqexts and via -sans\n");
+        LOG(FL_ERR, "Cannot have Subject Alternative Names both via -reqexts and via -sans");
         err = CMP_R_MULTIPLE_SAN_SOURCES;
         goto err;
     }
@@ -1048,7 +1048,7 @@ static int CMPclient_demo(enum use_case use_case)
 
     LOG_close(); /* not really needed since done also in sec_deinit() */
     if (err != CMP_OK) {
-        LOG(FL_ERR, "CMPclient error %d\n", err);
+        LOG(FL_ERR, "CMPclient error %d", err);
     }
     return err;
 }

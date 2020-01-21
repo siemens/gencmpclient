@@ -93,11 +93,12 @@ char *prog = NULL;
     char *opt_subject;            /* X509 subject name to be used in the requested certificate template */
     char *opt_issuer;             /* X509 Name of the issuer */
     long opt_days;                /* requested validity time of new cert */
-    char *opt_reqexts;            /* Name of section in the config file defining request extensions */
+    char *opt_reqexts;            /* Name of config file section defining certificate request extensions */
     char *opt_sans;               /* List of (critical) Subject Alternative Names (DNS/IPADDR) to be added */
     bool opt_san_nodefault;       /* Do not take default SANs from reference certificate (see -oldcert) */
-    char *opt_policies;           /* Policy OID(s) to add as certificate policies request extension */
-    bool opt_policies_critical;   /* Flag the policies given with -policies as critical */
+    char *opt_policies;           /* Name of config file section defining policies request extension */
+    char *opt_policy_oids;        /* Policy OID(s) to add as certificate policies request extension */
+    bool opt_policy_oids_critical; /* Flag the policy OID(s) given with -policy_oids as critical */
     long  opt_popo;               /* Proof-of-Possession (POPO) method */
     char *opt_csr;                /* File to read CSR from for P10CR (for legacy support) */
     char *opt_out_trusted;        /* File of trusted certificates for verifying the enrolled cert */
@@ -212,15 +213,17 @@ opt_t cmp_opts[] = {
     { "days", OPT_NUM, {.num = 0}, { (char **) &opt_days },
       "requested validity time of new cert"},
     { "reqexts", OPT_TXT, {.txt = NULL}, { &opt_reqexts },
-      "Name of section in the config file defining request extensions"},
+      "Name of config file section defining certificate request extensions"},
     { "sans", OPT_TXT, {.txt = NULL}, { &opt_sans },
       "List of (critical) Subject Alternative Names (DNS/IPADDR) to be added"},
     { "san_nodefault", OPT_BOOL, {.bool = false}, { (char**) &opt_san_nodefault},
       "Do not take default SANs from reference certificate (see -oldcert)"},
     { "policies", OPT_TXT, {.txt = NULL}, { &opt_policies},
+      "Name of config file section defining policies request extension"},
+    { "policy_oids", OPT_TXT, {.txt = NULL}, { &opt_policy_oids},
       "Policy OID(s) to add as certificate policies request extension"},
-    { "policies_critical", OPT_BOOL, {.bool = false}, { (char**) &opt_policies_critical},
-      "Flag the policies given with -policies as critical"},
+    { "policy_oids_critical", OPT_BOOL, {.bool = false}, { (char**) &opt_policy_oids_critical},
+      "Flag the policy OID(s) given with -policies_ as critical"},
     { "popo", OPT_NUM, {.num = 1}, { (char **) &opt_popo },
       "Proof-of-Possession (POPO) method"},
     { "csr", OPT_TXT, {.txt = NULL}, { &opt_csr },
@@ -309,7 +312,7 @@ typedef enum OPTION_choice {
     OPT_SECTION_6,
     OPT_NEWKEY, OPT_NEWKEYPASS, OPT_SUBJECT, OPT_ISSUER,
     OPT_DAYS, OPT_REQEXTS, OPT_SANS, OPT_SAN_NODEFAULT,
-    OPT_POLICIES, OPT_POLICIES_CRITICAL, OPT_POPO, OPT_CSR,
+    OPT_POLICIES, OPT_POLICY_OIDS, OPT_POLICY_OIDS_CRITICAL, OPT_POPO, OPT_CSR,
     OPT_OUT_TRUSTED, OPT_IMPLICITCONFIRM, OPT_DISABLECONFIRM, OPT_CERTOUT,
 
     OPT_SECTION_7,
@@ -493,7 +496,7 @@ X509_EXTENSIONS *setup_X509_extensions(void)
 
     if (exts == NULL)
         return NULL;
-    if ((opt_reqexts != NULL) || (opt_policies != NULL)) {
+    if (opt_reqexts != NULL || opt_policies != NULL) {
         X509V3_set_ctx(&ext_ctx, NULL, NULL, NULL, NULL, 0);
         X509V3_set_nconf(&ext_ctx, config);
     }
@@ -523,6 +526,7 @@ int setup_ctx(CMP_CTX *ctx, enum use_case use_case)
     CMP_err err = CMPclient_init(log_fn);
     if (err != CMP_OK)
         return err;
+    err = CMP_R_INVALID_ARGS;
 
     if (opt_issuer != NULL) {
         X509_NAME *n = UTIL_parse_name(opt_issuer, MBSTRING_ASC, 0);
@@ -565,8 +569,8 @@ int setup_ctx(CMP_CTX *ctx, enum use_case use_case)
         } else {
             if (!OSSL_CMP_CTX_set1_extraCertsOut(ctx, certs)){
                 LOG(FL_ERR, "Failed to set 'extraCerts' field of CMP context");
-                err = 9;
                 sk_X509_pop_free(certs, X509_free);
+                err = 9;
                 goto err;
             }
             sk_X509_pop_free(certs, X509_free);
@@ -581,7 +585,6 @@ int setup_ctx(CMP_CTX *ctx, enum use_case use_case)
             || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLECONFIRM, opt_disableconfirm)
             || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, opt_unprotectedrequests)) {
         LOG(FL_ERR, "Failed to set option flags of CMP context");
-        err = CMP_R_INVALID_ARGS;
         goto err;
     }
 
@@ -590,19 +593,47 @@ int setup_ctx(CMP_CTX *ctx, enum use_case use_case)
             LOG(FL_ERR, "-opt_san_nodefault has no effect when -sans is used\n");
         if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 1)) {
             LOG(FL_ERR, "Failed to set 'SubjectAltName_nodefault' field of CMP context");
-            err = CMP_R_INVALID_ARGS;
             goto err;
         }
     }
 
-    if (opt_policies_critical) {
+    if (opt_policies != NULL && opt_policy_oids != NULL) {
+        LOG(FL_ERR, "cannot have policies both via -policies and via -policy_oids");
+        goto err;
+    }
+
+    if (opt_policy_oids_critical) {
         if (opt_policies == NULL)
-            LOG(FL_ERR, "-opt_policies_critical has no effect unless -policies is given\n");
+            LOG(FL_ERR, "-opt_policy_oids_critical has no effect unless -policy_oids is given");
         if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POLICIES_CRITICAL, 1)) {
             LOG(FL_ERR, "Failed to set 'setPoliciesCritical' field of CMP context");
-            err = CMP_R_INVALID_ARGS;
             goto err;
         }
+    }
+
+    while (opt_policy_oids != NULL) {
+        ASN1_OBJECT *policy;
+        POLICYINFO *pinfo = NULL;
+        char *next = UTIL_next_item(opt_policy_oids);
+
+        if ((policy = OBJ_txt2obj(opt_policy_oids, 1)) == 0) {
+            LOG(FL_ERR, "unknown policy OID '%s'", opt_policy_oids);
+            goto err;
+        }
+
+        if ((pinfo = POLICYINFO_new()) == NULL) {
+            LOG(FL_ERR, "out of memory");
+            err = 5;
+            goto err;
+        }
+        pinfo->policyid = policy;
+
+        if (!OSSL_CMP_CTX_push0_policy(ctx, pinfo)) {
+            LOG(FL_ERR, "cannot add policy with OID '%s'", opt_policy_oids);
+            POLICYINFO_free(pinfo);
+            goto err;
+        }
+        opt_policy_oids = next;
     }
 
     if (!set_gennames(ctx, opt_sans, "Subject Alternative Name")){
@@ -687,9 +718,10 @@ int setup_ctx(CMP_CTX *ctx, enum use_case use_case)
                 err = 15;
                 goto err;
             }
-            X509_REQ_free(csr);     /* no PKCS10 use case yet implemented*/
+            X509_REQ_free(csr); /* no PKCS10 use case yet implemented*/
         }
     }
+    err = CMP_OK;
 
  err:
     return err;

@@ -21,7 +21,7 @@ key = creds/ppki_playground_cmp_signer.p12
 keypass = pass:12345
 recipient = "/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
 subject = "/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
-srvcert = creds/trusted/PPKIPlaygroundECCRootCAv10.crt
+server_cert = creds/trusted/PPKIPlaygroundECCRootCAv10.crt
 trusted = "creds/trusted/PPKIPlaygroundECCRootCAv10.crt, creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt"
 tls_trusted = creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt
 tls_host = ppki-playground.ct.siemens.com:443
@@ -43,7 +43,7 @@ cert = creds/insta_client.p12
 key = creds/insta_client.p12
 recipient = "/C=FI/O=Insta Demo/CN=Insta Demo CA"
 subject = "/CN=test-genCMPClientDemo"
-srvcert = creds/trusted/InstaDemoCA.crt
+server_cert = creds/trusted/InstaDemoCA.crt
 trusted = creds/trusted/InstaDemoCA.crt
 tls_trusted = creds/trusted/InstaDemoCA.crt
 tls_host = pki.certificate.fi:8700

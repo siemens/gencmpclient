@@ -69,7 +69,7 @@ char *prog = NULL;
 
     char *opt_trusted;            /* cid to use for getting trusted CMP certificates (trust anchor) */
     char *opt_untrusted;          /* File(s) with untrusted certificates for TLS, CMP, and CA */
-    char *opt_srvcert;            /* Server certificate directly trusted for CMP signing */
+    char *opt_server_cert;        /* Server certificate directly trusted for CMP signing */
     char *opt_recipient;          /* X509 Name of the recipient */
     char *opt_expect_sender;      /* X509 Name of the expected sender (CMP server) */
     bool opt_ignore_keyusage;     /* Workaround for CMP server cert without 'digitalSignature' key usage*/
@@ -155,7 +155,7 @@ opt_t cmp_opts[] = {
       "cid to use for getting trusted CMP certificates (trust anchor)"},
     { "untrusted", OPT_TXT, {.txt = NULL}, { &opt_untrusted },
       "File(s) with untrusted certificates for TLS, CMP, and CA"},
-    { "srvcert", OPT_TXT, {.txt = NULL}, { &(opt_srvcert) },
+    { "server_cert", OPT_TXT, {.txt = NULL}, { &(opt_server_cert) },
       "Server certificate directly trusted for CMP signing"},
     { "recipient", OPT_TXT, {.txt = NULL}, { &opt_recipient },
       "X509 Name of the recipient"},
@@ -295,7 +295,7 @@ typedef enum OPTION_choice {
     OPT_MSGTIMEOUT, OPT_TOTALTIMEOUT,
 
     OPT_SECTION_3,
-    OPT_TRUSTED, OPT_UNTRUSTED, OPT_SRVCERT, OPT_RECIPIENT,
+    OPT_TRUSTED, OPT_UNTRUSTED, OPT_SERVER_CERT, OPT_RECIPIENT,
     OPT_EXPECT_SENDER, OPT_IGNORE_KEYUSAGE, OPT_UNPROTECTEDERRORS, OPT_EXTRACERTSOUT,
     OPT_CACERTSOUT,
 
@@ -705,9 +705,9 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
     STACK_OF(X509) *untrusted_certs = opt_untrusted == NULL ? NULL :
         CERTS_load(opt_untrusted, "untrusted certs for CMP");
 
-    const char *new_cert_trusted = opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
+    const char *new_cert_trusted = opt_out_trusted == NULL ? opt_server_cert : opt_out_trusted;
     LOG(FL_INFO, "Using '%s' as cert truststore for verifying new cert",
-            opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted);
+            opt_out_trusted == NULL ? opt_server_cert : opt_out_trusted);
     X509_STORE *new_cert_truststore =
         STORE_load(new_cert_trusted, "trusted certs for verifying new cert");
     CMP_err err = 3;

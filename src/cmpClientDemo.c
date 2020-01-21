@@ -119,7 +119,6 @@ char *prog = NULL;
     CONF *config = NULL;                /* configuration structure */
     char *opt_section;   /* sections of config file*/
     CREDENTIALS *creds = NULL;
-    OSSL_CMP_CTX *cmp_ctx = NULL;
 
 /*******************************************************************
  * Table of configuration options
@@ -965,7 +964,7 @@ static int CMPclient_demo(enum use_case use_case)
 
     if (opt_cacertsout != NULL) {
         sec_file_format format = FILES_get_format(opt_cacertsout);
-        STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_caPubs(cmp_ctx);
+        STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_caPubs(ctx);
         if (format == FORMAT_UNDEF) {
             LOG(FL_ERR, "Failed to determine format for file endings of '%s'", opt_cacertsout);
             err = 20;
@@ -983,7 +982,7 @@ static int CMPclient_demo(enum use_case use_case)
 
     if (opt_extracertsout != NULL) {
         sec_file_format format = FILES_get_format(opt_extracertsout);
-        STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_extraCertsIn(cmp_ctx);
+        STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_extraCertsIn(ctx);
         if (format == FORMAT_UNDEF) {
             LOG(FL_ERR, "Failed to determine format for file endings of '%s'", opt_extracertsout);
             err = 22;

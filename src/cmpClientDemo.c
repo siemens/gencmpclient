@@ -69,7 +69,7 @@ char *prog = NULL;
 
     char *opt_trusted;            /* cid to use for getting trusted CMP certificates (trust anchor) */
     char *opt_untrusted;          /* File(s) with untrusted certificates for TLS, CMP, and CA */
-    char *opt_server_cert;        /* Server certificate directly trusted for CMP signing */
+    char *opt_srvcert;        /* Server certificate directly trusted for CMP signing */
     char *opt_recipient;          /* X509 Name of the recipient */
     char *opt_expect_sender;      /* X509 Name of the expected sender (CMP server) */
     bool opt_ignore_keyusage;     /* Workaround for CMP server cert without 'digitalSignature' key usage*/
@@ -155,7 +155,7 @@ opt_t cmp_opts[] = {
       "cid to use for getting trusted CMP certificates (trust anchor)"},
     { "untrusted", OPT_TXT, {.txt = NULL}, { &opt_untrusted },
       "File(s) with untrusted certificates for TLS, CMP, and CA"},
-    { "server_cert", OPT_TXT, {.txt = NULL}, { &(opt_server_cert) },
+    { "srvcert", OPT_TXT, {.txt = NULL}, { &(opt_srvcert) },
       "Server certificate directly trusted for CMP signing"},
     { "recipient", OPT_TXT, {.txt = NULL}, { &opt_recipient },
       "X509 Name of the recipient"},
@@ -297,7 +297,7 @@ typedef enum OPTION_choice {
     OPT_MSGTIMEOUT, OPT_TOTALTIMEOUT,
 
     OPT_SECTION_3,
-    OPT_TRUSTED, OPT_UNTRUSTED, OPT_SERVER_CERT, OPT_RECIPIENT,
+    OPT_TRUSTED, OPT_UNTRUSTED, OPT_SRVCERT, OPT_RECIPIENT,
     OPT_EXPECT_SENDER, OPT_IGNORE_KEYUSAGE, OPT_UNPROTECTEDERRORS, OPT_EXTRACERTSOUT,
     OPT_CACERTSOUT,
 
@@ -730,15 +730,21 @@ int setup_ctx(CMP_CTX *ctx, enum use_case use_case)
 CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
                            OPTIONAL CREDENTIALS *cmp_creds)
 {
-    X509_STORE *cmp_truststore = setup_CMP_truststore();
-    if (cmp_truststore == NULL)
-        return 2;
+    if (opt_srvcert != NULL && opt_trusted != NULL) {
+        LOG(FL_WARN, "-trusted option is ignored since -srvcert option is present");
+        opt_trusted = NULL;
+    }
+
+    X509_STORE *cmp_truststore = opt_trusted == NULL ? NULL : setup_CMP_truststore();
     STACK_OF(X509) *untrusted_certs = opt_untrusted == NULL ? NULL :
         CERTS_load(opt_untrusted, "untrusted certs for CMP");
+    if ((cmp_truststore == NULL && opt_trusted != NULL)
+            || (untrusted_certs == NULL && opt_untrusted != NULL))
+        return 2;
 
-    const char *new_cert_trusted = opt_out_trusted == NULL ? opt_server_cert : opt_out_trusted;
+    const char *new_cert_trusted = opt_srvcert == NULL ? opt_out_trusted : opt_srvcert;
     LOG(FL_INFO, "Using '%s' as cert truststore for verifying new cert",
-            opt_out_trusted == NULL ? opt_server_cert : opt_out_trusted);
+            opt_srvcert == NULL ? opt_out_trusted : opt_srvcert);
     X509_STORE *new_cert_truststore =
         STORE_load(new_cert_trusted, "trusted certs for verifying new cert");
     CMP_err err = 3;
@@ -748,6 +754,11 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
 
     OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     const bool implicit_confirm = opt_implicitconfirm;
+
+    if ((int)opt_totaltimeout < -1) {
+        LOG(FL_ERR, "only non-negative values allowed for opt_totaltimeout");
+        goto err;
+    }
     err = CMPclient_prepare(pctx, log_fn,
                             cmp_truststore, opt_recipient,
                             untrusted_certs,
@@ -793,9 +804,12 @@ static int opt_next(int argc, char **argv){
     if (param == NULL)
         return OPT_END;
 
-    /* If word doesn't start with a -, we're done. */
-    if (*param != '-')
-        return OPT_END;
+    /* If word doesn't start with a -, it failed to parse all options. */
+    if (*param != '-') {
+        LOG(FL_ERR, "Failed to pares all options");
+        arg = param;
+        return OPT_ERR;
+    }
 
     /* if starting with '-', snip it of */
     if (*param == '-')
@@ -811,10 +825,16 @@ static int opt_next(int argc, char **argv){
         if (!strcmp(param, "help"))
             return OPT_HELP;
         if (!strcmp(param, cmp_opts[i].name)) {
+            /* bool options need no parameter, just return index*/
             if (cmp_opts[i].type == OPT_BOOL)
                 return i;
 
             if (argv[opt_index] == NULL) {
+                LOG(FL_ERR, "Option -%s needs a value", param);
+                return OPT_ERR;
+            }
+            /* check non-bool options for parameters */
+            if (cmp_opts[i].type == OPT_TXT && *argv[opt_index] == '-') {
                 LOG(FL_ERR, "Option -%s needs a value", param);
                 return OPT_ERR;
             }
@@ -893,11 +913,30 @@ static int CMPclient_demo(enum use_case use_case)
     EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
     CREDENTIALS *new_creds = NULL;
+    CREDENTIALS *cmp_creds = NULL;
+
+    if (!opt_unprotectedrequests && !opt_secret && !(opt_cert && opt_key)) {
+        LOG(FL_ERR, "must give client credentials unless -unprotectedrequests is set");
+        err = 1;
+        goto err;
+    }
+
+    if (opt_ref == NULL && opt_cert == NULL && opt_subject == NULL) {
+        /* cert or subject should determine the sender */
+        LOG(FL_ERR, "must give -ref if no -cert and no -subject given");
+        err = 1;
+        goto err;
+    }
+    if (!opt_secret && ((opt_cert == NULL) != (opt_key == NULL))) {
+        LOG(FL_ERR, "must give both -cert and -key options or neither");
+        err = 1;
+        goto err;
+    }
 
     const char *const creds_desc = "credentials for CMP level";
-    CREDENTIALS *cmp_creds =
-        use_case == imprint ? CREDENTIALS_new(NULL, NULL, NULL, opt_secret, opt_ref) :
-        use_case == bootstrap ? CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc)
+    cmp_creds =
+        (use_case == imprint && opt_secret != NULL) ? CREDENTIALS_new(NULL, NULL, NULL, opt_secret, opt_ref) :
+        (use_case == bootstrap || use_case == imprint) ? CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc)
                               : CREDENTIALS_load(opt_certout, opt_newkey, opt_newkeypass, creds_desc);
     if (cmp_creds == NULL) {
         LOG(FL_ERR, "Unable to %s credentials for CMP level",
@@ -925,6 +964,12 @@ static int CMPclient_demo(enum use_case use_case)
     }
     const char *path = opt_path;
     const char *server = opt_tls_used ? opt_tls_host : opt_server;
+
+    if ((int)opt_msgtimeout < -1) {
+        LOG(FL_ERR, "only non-negative values allowed for opt_msgtimeout");
+        err = 17;
+        goto err;
+    }
     err = CMPclient_setup_HTTP(ctx, server, path, (int)opt_msgtimeout, tls, opt_proxy, opt_no_proxy);
 #ifndef SEC_NO_TLS
     TLS_free(tls);
@@ -941,7 +986,7 @@ static int CMPclient_demo(enum use_case use_case)
         new_pkey = KEY_new(key_spec);
         if (new_pkey == NULL) {
             LOG(FL_ERR, "Unable to generate new private key according to specification '%s'", key_spec);
-            err = 17;
+            err = 18;
             goto err;
         }
     }
@@ -949,7 +994,7 @@ static int CMPclient_demo(enum use_case use_case)
     if ((use_case == imprint || use_case == bootstrap)
         && (exts = setup_X509_extensions()) == NULL) {
         LOG(FL_ERR, "Unable to setup X509 extensions for CMP client");
-        err = 18;
+        err = 19;
         goto err;
     }
 
@@ -987,7 +1032,7 @@ static int CMPclient_demo(enum use_case use_case)
         break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);
-        err = 19;
+        err = 20;
     }
     if (err != CMP_OK) {
         LOG(FL_ERR, "Failed to perform CMP request");
@@ -999,14 +1044,14 @@ static int CMPclient_demo(enum use_case use_case)
         STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_caPubs(ctx);
         if (format == FORMAT_UNDEF) {
             LOG(FL_ERR, "Failed to determine format for file endings of '%s'", opt_cacertsout);
-            err = 20;
+            err = 21;
             goto err;
         }
         if (sk_X509_num(certs) > 0
                 && FILES_store_certs(certs, opt_cacertsout, format, "CA") < 0) {
             LOG(FL_ERR, "Failed to store '%s'", opt_cacertsout);
             sk_X509_pop_free(certs, X509_free);
-            err = 21;
+            err = 22;
             goto err;
         }
         sk_X509_pop_free(certs, X509_free);
@@ -1017,14 +1062,14 @@ static int CMPclient_demo(enum use_case use_case)
         STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_extraCertsIn(ctx);
         if (format == FORMAT_UNDEF) {
             LOG(FL_ERR, "Failed to determine format for file endings of '%s'", opt_extracertsout);
-            err = 22;
+            err = 23;
             goto err;
         }
         if (sk_X509_num(certs) > 0
                 && FILES_store_certs(certs, opt_extracertsout, format, "extra") < 0) {
             LOG(FL_ERR, "Failed to store '%s'", opt_extracertsout);
             sk_X509_pop_free(certs, X509_free);
-            err = 23;
+            err = 24;
             goto err;
         }
         sk_X509_pop_free(certs, X509_free);
@@ -1034,7 +1079,7 @@ static int CMPclient_demo(enum use_case use_case)
         const char *new_desc = "newly enrolled certificate and related key and chain";
         if (!CREDENTIALS_save(new_creds, opt_certout, opt_newkey, opt_newkeypass, new_desc)) {
             LOG(FL_ERR, "Failed to save newly enrolled credentials");
-            err = 24;
+            err = 25;
             goto err;
         }
     }

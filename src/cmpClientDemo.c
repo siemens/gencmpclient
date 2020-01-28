@@ -937,8 +937,9 @@ static int CMPclient_demo(enum use_case use_case)
     }
 
     const char *const creds_desc = "credentials for CMP level";
+    /* uses PBM for ir and cr if secret is present */
     cmp_creds =
-        (use_case == imprint && opt_secret != NULL)
+        ((use_case == imprint || use_case == bootstrap) && opt_secret != NULL)
         ? CREDENTIALS_new(NULL, NULL, NULL, opt_secret, opt_ref)
         : (use_case == bootstrap || use_case == imprint)
         ? CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc)
@@ -1028,7 +1029,15 @@ static int CMPclient_demo(enum use_case use_case)
         }
         break;
     case revocation:
+        if ((int)opt_revreason < CRL_REASON_NONE
+                || (int)opt_revreason > CRL_REASON_AA_COMPROMISE
+                || (int)opt_revreason == 7) {
+            LOG(FL_ERR, "invalid revreason. Valid values are -1..6, 8..10.");
+            err = 20;
+            goto err;
+        }
         if (opt_oldcert == NULL) {
+            //goto err;
             err = CMPclient_revoke(ctx, CREDENTIALS_get_cert(cmp_creds), (int)opt_revreason);
         } else {
             sec_file_format format = FILES_get_format(opt_oldcert);
@@ -1039,7 +1048,7 @@ static int CMPclient_demo(enum use_case use_case)
         break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);
-        err = 20;
+        err = 21;
     }
     if (err != CMP_OK) {
         LOG(FL_ERR, "Failed to perform CMP request");
@@ -1051,14 +1060,14 @@ static int CMPclient_demo(enum use_case use_case)
         STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_caPubs(ctx);
         if (format == FORMAT_UNDEF) {
             LOG(FL_ERR, "Failed to determine format for file endings of '%s'", opt_cacertsout);
-            err = 21;
+            err = 22;
             goto err;
         }
         if (sk_X509_num(certs) > 0
                 && FILES_store_certs(certs, opt_cacertsout, format, "CA") < 0) {
             LOG(FL_ERR, "Failed to store '%s'", opt_cacertsout);
             sk_X509_pop_free(certs, X509_free);
-            err = 22;
+            err = 23;
             goto err;
         }
         sk_X509_pop_free(certs, X509_free);
@@ -1069,14 +1078,14 @@ static int CMPclient_demo(enum use_case use_case)
         STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_extraCertsIn(ctx);
         if (format == FORMAT_UNDEF) {
             LOG(FL_ERR, "Failed to determine format for file endings of '%s'", opt_extracertsout);
-            err = 23;
+            err = 24;
             goto err;
         }
         if (sk_X509_num(certs) > 0
                 && FILES_store_certs(certs, opt_extracertsout, format, "extra") < 0) {
             LOG(FL_ERR, "Failed to store '%s'", opt_extracertsout);
             sk_X509_pop_free(certs, X509_free);
-            err = 24;
+            err = 25;
             goto err;
         }
         sk_X509_pop_free(certs, X509_free);
@@ -1086,7 +1095,7 @@ static int CMPclient_demo(enum use_case use_case)
         const char *new_desc = "newly enrolled certificate and related key and chain";
         if (!CREDENTIALS_save(new_creds, opt_certout, opt_newkey, opt_newkeypass, new_desc)) {
             LOG(FL_ERR, "Failed to save newly enrolled credentials");
-            err = 25;
+            err = 26;
             goto err;
         }
     }

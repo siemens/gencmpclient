@@ -164,7 +164,7 @@ else
 	@ #curl -m 2 -s pki.certificate.fi ...
 	$(PROXY) wget 2>&1 --tries=1 --max-redirect=0 --timeout=2 pki.certificate.fi | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1)
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
-	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633" || $(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-110515.crl?id=110515"
+	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl"
 endif
 	$(PROXY) ./cmpClientDemo$(EXE) bootstrap -section $(CA_SECTION)
 	@echo :

@@ -137,7 +137,7 @@ ifeq ($(LPATH),)
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 
-PROXY ?= http_proxy=http://de.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com  # or, e.g., tsy1.coia.siemens.net = 194.145.60.1
+PROXY ?= http_proxy=http://de.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com # or, e.g., tsy1.coia.siemens.net = 194.145.60.1
 
 ifdef INSTA
     CA_SECTION=Insta
@@ -154,7 +154,7 @@ creds/crls:
 test: build | creds/crls
 	@/bin/echo -e "\n##### running cmpClientDemo #####"
 ifndef INSTA
-	@ping >/dev/null $(PINGCOUNT) 1 ppki-playground.ct.siemens.com  || (echo "cannot reach ppki-playground.ct.siemens.com"; exit 1)
+	ping >/dev/null $(PINGCOUNT) 1 ppki-playground.ct.siemens.com  || (echo "cannot reach ppki-playground.ct.siemens.com"; exit 1)
 	@for CA in 'Infrastructure+Root+CA+v1.0' 'Infrastructure+Issuing+CA+v1.0' 'ECC+Root+CA+v1.0' 'RSA+Root+CA+v1.0'; \
 	do \
 		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
@@ -162,7 +162,7 @@ ifndef INSTA
 	done
 else
 	@ #curl -m 2 -s pki.certificate.fi ...
-	@$(PROXY) wget 2>&1 --tries=1 --timeout=2 pki.certificate.fi | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1)
+	$(PROXY) wget 2>&1 --tries=1 --timeout=2 pki.certificate.fi | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1)
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl?id=633"
 endif

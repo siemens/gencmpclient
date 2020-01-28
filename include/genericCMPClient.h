@@ -86,6 +86,7 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
                           OPTIONAL X509_STORE *new_cert_truststore,
                           bool implicit_confirm);
 
+#define URL_HTTP_PREFIX "http://"
 /* must be called next in case the transfer_fn is NULL, which implies HTTP_transfer */
 /* copies server and proxy address (of the form "<name>[:<port>]") and HTTP path */
 CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,

@@ -473,13 +473,31 @@ static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
 }
 #endif
 
+static bool use_proxy(const char *no_proxy, const char *server)
+{
+    size_t sl = strlen(server);
+    const char *found = NULL;
+
+    if (no_proxy == NULL)
+        no_proxy = getenv("no_proxy");
+    if (no_proxy == NULL)
+        no_proxy = getenv("NO_PROXY");
+    if (no_proxy != NULL)
+        found = strstr(no_proxy, server);
+    while (found != NULL
+           && ((found != no_proxy && found[-1] != ' ' && found[-1] != ',')
+               || (found[sl] != '\0' && found[sl] != ' ' && found[sl] != ',')))
+        found = strstr(found + 1, server);
+    return found == NULL;
+}
+
 CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
                              const char *server, const char *path,
                              int timeout, OPTIONAL SSL_CTX *tls,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy)
 {
-    char buf[80+1];
+    char addr[80+1];
     int port;
 
     if (NULL == ctx || NULL == server || NULL == path) {
@@ -492,49 +510,40 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     }
 #endif
 
-    snprintf(buf, sizeof(buf), "%s", server);
-    port = UTIL_parse_server_and_port(buf);
+    snprintf(addr, sizeof(addr), "%s", server);
+    port = UTIL_parse_server_and_port(addr);
     if (port < 0) {
         return CMP_R_INVALID_PARAMETERS;
     }
-    if (!OSSL_CMP_CTX_set1_serverName(ctx, buf) ||
+    if (!OSSL_CMP_CTX_set1_serverName(ctx, addr) ||
         (port > 0 && !OSSL_CMP_CTX_set_serverPort(ctx, port))) {
         goto err;
-    }
-
-    const char *proxy_env = getenv("http_proxy");
-    if (proxy_env != NULL) {
-        proxy = proxy_env;
-    }
-    if (proxy != NULL && proxy[0] == '\0')
-        proxy = NULL;
-    if (proxy != NULL) {
-        const char *http_prefix = "http://";
-        if (strncmp(proxy, http_prefix, strlen(http_prefix)) == 0) {
-            proxy += strlen(http_prefix);
-        }
-        const char *no_proxy_env = getenv("no_proxy");
-        if (no_proxy_env != NULL)
-            no_proxy = no_proxy_env;
-        if (no_proxy != NULL && no_proxy[0] == '\0')
-            no_proxy = NULL;
-        if (no_proxy == NULL || strstr(no_proxy, buf/* server*/) == NULL) {
-            snprintf(buf, sizeof(buf), "%s", proxy);
-            port = UTIL_parse_server_and_port(buf);
-            if (port < 0) {
-                return CMP_R_INVALID_PARAMETERS;
-            }
-            if (!OSSL_CMP_CTX_set1_proxyName(ctx, buf) ||
-                (port > 0 && !OSSL_CMP_CTX_set_proxyPort(ctx, port))) {
-                goto err;
-            }
-        } else {
-            proxy = NULL;
-        }
     }
     if (!OSSL_CMP_CTX_set1_serverPath(ctx, path) ||
         (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MSGTIMEOUT, timeout))) {
         goto err;
+    }
+
+    if (proxy == NULL)
+        proxy = getenv("http_proxy");
+    if (proxy == NULL)
+        proxy = getenv("HTTP_PROXY");
+    if (proxy != NULL && proxy[0] == '\0')
+        proxy = NULL;
+    if (proxy != NULL && !use_proxy(no_proxy, /* server */ addr))
+        proxy = NULL;
+    if (proxy != NULL) {
+        if (strncmp(proxy, URL_HTTP_PREFIX, strlen(URL_HTTP_PREFIX)) == 0)
+            proxy += strlen(URL_HTTP_PREFIX);
+        snprintf(addr, sizeof(addr), "%s", proxy);
+        port = UTIL_parse_server_and_port(addr);
+        if (port < 0) {
+            return CMP_R_INVALID_PARAMETERS;
+        }
+        if (!OSSL_CMP_CTX_set1_proxyName(ctx, addr) ||
+            (port > 0 && !OSSL_CMP_CTX_set_proxyPort(ctx, port))) {
+            goto err;
+        }
     }
 
 #ifndef SEC_NO_TLS

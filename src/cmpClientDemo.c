@@ -74,6 +74,7 @@ char *opt_extracerts;
 bool opt_unprotectedrequests;
 
 char *opt_cmd; /* TODO? add genm */
+char *opt_infotype;
 char *opt_geninfo;
 
 char *opt_newkeytype;
@@ -197,6 +198,8 @@ opt_t cmp_opts[] = {
     { "cmd", OPT_TXT, {.txt = NULL}, { &opt_cmd },
       "CMP request to send: ir/cr/kur/rr. Overwrites 'use_case' if given"}, /* TODO? add genm */
     /* TODO add -infotype when adding genm */
+    { "infotype", OPT_TXT, {.txt = NULL}, { &opt_infotype },
+      "DUMMY implementation of InfoType name, currently ignored"},
     { "geninfo", OPT_TXT, {.txt = NULL}, { &opt_geninfo },
       "generalInfo to place in request PKIHeader with type and integer value"},
     OPT_MORE("given in the form <OID>:int:<n>, e.g. \"1.2.3:int:987\""),
@@ -315,7 +318,7 @@ typedef enum OPTION_choice {
     OPT_UNPROTECTEDREQUESTS,
 
     OPT_SECTION_5,
-    OPT_CMD, OPT_GENINFO, OPT_MORE_STR_1,
+    OPT_CMD, OPT_INFOTYPE, OPT_GENINFO, OPT_MORE_STR_1,
 
     OPT_SECTION_6,
     OPT_NEWKEY, OPT_NEWKEYPASS, OPT_SUBJECT, OPT_ISSUER,
@@ -918,6 +921,9 @@ static int CMPclient_demo(enum use_case use_case)
     CREDENTIALS *new_creds = NULL;
     CREDENTIALS *cmp_creds = NULL;
 
+    if (opt_infotype != NULL)
+        LOG(FL_WARN, "option 'infotype' will be ignored in current implementation");
+
     if (!opt_unprotectedrequests && !opt_secret && !(opt_cert && opt_key)) {
         LOG(FL_ERR, "must give client credentials unless -unprotectedrequests is set");
         err = 1;
@@ -1037,8 +1043,9 @@ static int CMPclient_demo(enum use_case use_case)
             goto err;
         }
         if (opt_oldcert == NULL) {
-            //goto err;
-            err = CMPclient_revoke(ctx, CREDENTIALS_get_cert(cmp_creds), (int)opt_revreason);
+            LOG(FL_ERR, "no '-oldcert' option present for revocation");
+            err = 21;
+            goto err;
         } else {
             sec_file_format format = FILES_get_format(opt_oldcert);
             X509 *oldcert = FILES_load_cert(opt_oldcert, format, opt_keypass, "certificate to be revoked");

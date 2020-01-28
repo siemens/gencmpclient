@@ -66,6 +66,7 @@ implicitconfirm = 1
 
 [revoke]
 path = /ejbca/publicweb/cmp/PlaygroundCMPSigning
+oldcert = $certout
 
 [reqexts]
 keyUsage = "critical, digitalSignature"

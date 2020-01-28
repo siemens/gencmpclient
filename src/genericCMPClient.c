@@ -1,4 +1,4 @@
-/*!*****************************************************************************
+/*-
  * @file   genericCMPClient.c
  * @brief  generic CMP client library implementation
  *
@@ -7,7 +7,7 @@
  *  Copyright (c) 2018-2019 Siemens AG
  *  Licensed under the Apache License, Version 2.0
  *  SPDX-License-Identifier: Apache-2.0
- ******************************************************************************/
+ */
 
 #include "genericCMPClient.h"
 #include "../cmpossl/crypto/cmp/cmp_local.h" /* TODO remove when OSSL_CMP_proxy_connect is available and used */
@@ -17,7 +17,8 @@
 #include <string.h>
 
 #if OPENSSL_VERSION_NUMBER < 0x10100006L
-typedef STACK_OF(X509_EXTENSION) * (*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTENSION) *a);
+typedef
+STACK_OF(X509_EXTENSION) *(*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTENSION) *a);
 #endif
 
 #ifdef LOCAL_DEFS
@@ -29,56 +30,56 @@ char *CREDENTIALS_get_pwd(const CREDENTIALS *creds);
 char *CREDENTIALS_get_pwdref(const CREDENTIALS *creds);
 
 void LOG_init(OPTIONAL LOG_cb_t log_fn);
-bool LOG(OPTIONAL const char* func, OPTIONAL const char* file,
-         int lineno, OPTIONAL severity level, const char* fmt, ...);
+bool LOG(OPTIONAL const char *func, OPTIONAL const char *file,
+         int lineno, OPTIONAL severity level, const char *fmt, ...);
 
-#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901)
-# define LOG_FUNC __func__ /* function name is only available starting from C99.*/
+# if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901)
+#  define LOG_FUNC __func__ /* function name is only available starting from C99. */
 /* Trying platform-specific and compiler-specific alternatives as fallback if possible. */
-#elif defined(__STDC__) && defined(PEDANTIC)
-# define LOG_FUNC "(PEDANTIC disallows function name)"
-#elif defined(WIN32) || defined(__GNUC__) || defined(__GNUG__)
-# define LOG_FUNC __FUNCTION__
-#elif defined(__FUNCSIG__)
-# define LOG_FUNC __FUNCSIG__
-#else
-# define LOG_FUNC "(unknown function)"
-#endif
-#define LOG_FUNC_FILE_LINE LOG_FUNC, OPENSSL_FILE, OPENSSL_LINE
-#define FL_ERR   LOG_FUNC_FILE_LINE, LOG_ERR
-#define FL_WARN  LOG_FUNC_FILE_LINE, LOG_WARNING
-#define FL_INFO  LOG_FUNC_FILE_LINE, LOG_INFO
-#define FL_DEBUG LOG_FUNC_FILE_LINE, LOG_DEBUG
+# elif defined(__STDC__) && defined(PEDANTIC)
+#  define LOG_FUNC "(PEDANTIC disallows function name)"
+# elif defined(WIN32) || defined(__GNUC__) || defined(__GNUG__)
+#  define LOG_FUNC __FUNCTION__
+# elif defined(__FUNCSIG__)
+#  define LOG_FUNC __FUNCSIG__
+# else
+#  define LOG_FUNC "(unknown function)"
+# endif
+# define LOG_FUNC_FILE_LINE LOG_FUNC, OPENSSL_FILE, OPENSSL_LINE
+# define FL_ERR   LOG_FUNC_FILE_LINE, LOG_ERR
+# define FL_WARN  LOG_FUNC_FILE_LINE, LOG_WARNING
+# define FL_INFO  LOG_FUNC_FILE_LINE, LOG_INFO
+# define FL_DEBUG LOG_FUNC_FILE_LINE, LOG_DEBUG
 
 void UTIL_setup_openssl(long version, const char *build_name);
 int UTIL_parse_server_and_port(char *s);
 X509_NAME *UTIL_parse_name(const char *dn, long chtype, bool multirdn);
 
-enum
-{
+enum {
     B_FORMAT_TEXT = 0x8000
 };
-typedef enum
-{
-    FORMAT_UNDEF  = 0, /*! undefined file format */
-    FORMAT_ASN1   = 4, /*! ASN.1/DER */
-    FORMAT_PEM    = 5 | B_FORMAT_TEXT, /*! PEM */
-    FORMAT_PKCS12 = 6, /*! PKCS#12 */
-    FORMAT_ENGINE = 8, /*! crypto engine, which is not really a file format */
-    FORMAT_HTTP  = 13  /*! download using HTTP */
-} sec_file_format;     /*! type of format for security-related files or other input */
-STACK_OF(X509)  *FILES_load_certs_multi(const char *files, sec_file_format format,
-                                          OPTIONAL const char *pass, OPTIONAL const char *desc);
-STACK_OF(X509_CRL)  *FILES_load_crls_multi(const char *files, sec_file_format format, const char *desc);
+typedef enum {
+    FORMAT_UNDEF  = 0, /* undefined file format */
+    FORMAT_ASN1   = 4, /* ASN.1/DER */
+    FORMAT_PEM    = 5 | B_FORMAT_TEXT, /* PEM */
+    FORMAT_PKCS12 = 6, /* PKCS#12 */
+    FORMAT_ENGINE = 8, /* crypto engine, which is not really a file format */
+    FORMAT_HTTP   = 13 /* download using HTTP */
+} sec_file_format;     /* type of format for security-related files or other input */
+STACK_OF(X509) *FILES_load_certs_multi(const char *files, sec_file_format format,
+                                       OPTIONAL const char *pass,
+                                       OPTIONAL const char *desc);
+STACK_OF(X509_CRL) *FILES_load_crls_multi(const char *files, sec_file_format format,
+                                          const char *desc);
 
 X509_STORE *STORE_load_trusted(const char *files, OPTIONAL const char *desc,
-                               OPTIONAL void/* uta_ctx*/ *ctx);
+                               OPTIONAL void /* uta_ctx */ *ctx);
 bool STORE_set1_host_ip(X509_STORE *truststore, const char *host, const char *ip);
-bool STORE_set0_tls_bio(X509_STORE* store, BIO* bio);
+bool STORE_set0_tls_bio(X509_STORE *store, BIO *bio);
 bool STORE_EX_init_index(void);
 void STORE_EX_free_index(void);
 
-#ifndef SEC_NO_TLS
+# ifndef SEC_NO_TLS
 bool TLS_init(void);
 SSL_CTX *TLS_CTX_new(int client, OPTIONAL X509_STORE *truststore,
                      OPTIONAL const STACK_OF(X509) *untrusted,
@@ -86,16 +87,16 @@ SSL_CTX *TLS_CTX_new(int client, OPTIONAL X509_STORE *truststore,
                      OPTIONAL const char *ciphers, int security_level,
                      OPTIONAL X509_STORE_CTX_verify_cb verify_cb);
 void TLS_CTX_free(OPTIONAL SSL_CTX *ctx);
-#endif
+# endif
 
 #else /* LOCAL_DEFS */
 
-#include <SecUtils/storage/files.h>
-#include <SecUtils/credentials/verify.h>
-#include <SecUtils/credentials/store.h>
-#ifndef SEC_NO_TLS
-#include <SecUtils/connections/tls.h>
-#endif
+# include <SecUtils/storage/files.h>
+# include <SecUtils/credentials/verify.h>
+# include <SecUtils/credentials/store.h>
+# ifndef SEC_NO_TLS
+#  include <SecUtils/connections/tls.h>
+# endif
 
 #endif /* LOCAL_DEFS */
 
@@ -103,7 +104,7 @@ void TLS_CTX_free(OPTIONAL SSL_CTX *ctx);
 # define SSL_CTX_up_ref(x)((x)->references++)
 #endif
 #if OPENSSL_VERSION_NUMBER < 0x10100003L
-#define ERR_R_INIT_FAIL (6|ERR_R_FATAL)
+# define ERR_R_INIT_FAIL (6 | ERR_R_FATAL)
 #endif
 
 static int CMPOSSL_error()
@@ -126,7 +127,7 @@ CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn)
     UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, "genericCMPClient");
     if (!STORE_EX_init_index()) {
         LOG(FL_ERR, "failed to initialize STORE_EX index\n");
-        return ERR_R_INIT_FAIL;;
+        return ERR_R_INIT_FAIL;
     }
 
     if (!OSSL_CMP_log_init()
@@ -161,10 +162,12 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn)) {
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
     }
-    if ((cmp_truststore != NULL && (!X509_STORE_up_ref(cmp_truststore) ||
-                                    !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)))
+    if ((cmp_truststore != NULL
+         && (!X509_STORE_up_ref(cmp_truststore) ||
+             !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)))
         ||
-        (untrusted      != NULL && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, (STACK_OF(X509) *)untrusted))) {
+        (untrusted != NULL
+         && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, (STACK_OF(X509) *)untrusted))) {
         goto err;
     }
 
@@ -178,8 +181,11 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         if ((pkey != NULL && !OSSL_CMP_CTX_set1_pkey(ctx, pkey)) ||
             (cert != NULL && !OSSL_CMP_CTX_set1_clCert(ctx, cert)) ||
             (sk_X509_num(chain) > 0 && !OSSL_CMP_CTX_set1_extraCertsOut(ctx, chain)) ||
-            (pwd != NULL && !OSSL_CMP_CTX_set1_secretValue(ctx, (unsigned char*) pwd, (int)strlen(pwd))) ||
-            (pwdref != NULL && !OSSL_CMP_CTX_set1_referenceValue(ctx, (unsigned char *)pwdref, (int)strlen(pwdref)))) {
+            (pwd != NULL
+             && !OSSL_CMP_CTX_set1_secretValue(ctx, (unsigned char *) pwd, (int)strlen(pwd))) ||
+            (pwdref != NULL
+             && !OSSL_CMP_CTX_set1_referenceValue(ctx, (unsigned char *)pwdref,
+                                                  (int)strlen(pwdref)))) {
             goto err;
         }
     } else {
@@ -210,7 +216,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
             return CMP_R_RECIPIENT;
         }
     }
-    if (rcp != NULL) {/* else CMPforOpenSSL uses cert issuer */
+    if (rcp != NULL) { /* else CMPforOpenSSL uses cert issuer */
         bool rv = OSSL_CMP_CTX_set1_recipient(ctx, rcp);
         X509_NAME_free(rcp);
         if (!rv)
@@ -231,18 +237,19 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     }
 
     if (mac_algnid != NULL) {
-            int mac = OBJ_ln2nid(mac_algnid);
-            if (mac == NID_undef) {
-                LOG(FL_ERR, "MAC algorithm name not recognized: '%s'", mac_algnid);
-                OSSL_CMP_CTX_free(ctx);
-                return CMP_R_UNKNOWN_ALGORITHM_ID;
-            }
-            if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MAC_ALGNID, mac))
-                goto err;
+        int mac = OBJ_ln2nid(mac_algnid);
+        if (mac == NID_undef) {
+            LOG(FL_ERR, "MAC algorithm name not recognized: '%s'", mac_algnid);
+            OSSL_CMP_CTX_free(ctx);
+            return CMP_R_UNKNOWN_ALGORITHM_ID;
         }
+        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MAC_ALGNID, mac))
+            goto err;
+    }
 
     if ((transfer_fn != NULL && !OSSL_CMP_CTX_set_transfer_cb(ctx, transfer_fn)) ||
-        (total_timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_TOTALTIMEOUT, total_timeout))) {
+        (total_timeout >= 0
+         && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_TOTALTIMEOUT, total_timeout))) {
         goto err;
     }
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IMPLICITCONFIRM, implicit_confirm)) {
@@ -266,12 +273,12 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
 #ifndef SEC_NO_TLS
 static const char *tls_error_hint(unsigned long err)
 {
-    switch(ERR_GET_REASON(err)) {
+    switch (ERR_GET_REASON(err)) {
 /*  case 0x1408F10B: */ /* xSL_F_SSL3_GET_RECORD */
     case SSL_R_WRONG_VERSION_NUMBER:
 /*  case 0x140770FC: */ /* xSL_F_SSL23_GET_SERVER_HELLO */
     case SSL_R_UNKNOWN_PROTOCOL:
-         return "The server does not support (a recent version of) TLS";
+        return "The server does not support (a recent version of) TLS";
 /*  case 0x1407E086: */ /* xSL_F_SSL3_GET_SERVER_HELLO */
 /*  case 0x1409F086: */ /* xSL_F_SSL3_WRITE_PENDING */
 /*  case 0x14090086: */ /* xSL_F_SSL3_GET_SERVER_CERTIFICATE */
@@ -279,9 +286,9 @@ static const char *tls_error_hint(unsigned long err)
     case SSL_R_CERTIFICATE_VERIFY_FAILED:
         return "Cannot authenticate server via its TLS certificate, likely due to mismatch with our trusted TLS certs or missing revocation status";
 /*  case 0x14094418: */ /* xSL_F_SSL3_READ_BYTES */
-    case SSL_AD_REASON_OFFSET+TLS1_AD_UNKNOWN_CA:
+    case SSL_AD_REASON_OFFSET + TLS1_AD_UNKNOWN_CA:
         return "Server did not accept our TLS certificate, likely due to mismatch with server's trust anchor or missing revocation status";
-    case SSL_AD_REASON_OFFSET+SSL3_AD_HANDSHAKE_FAILURE:
+    case SSL_AD_REASON_OFFSET + SSL3_AD_HANDSHAKE_FAILURE:
         return "Server requires our TLS certificate but did not receive one";
     default: /* no error or no hint available for error */
         return NULL;
@@ -291,11 +298,10 @@ static const char *tls_error_hint(unsigned long err)
 /* TODO remove when OSSL_CMP_proxy_connect is available and used */
 /* from apps.h */
 # ifndef openssl_fdset
-#  if defined(OPENSSL_SYSNAME_WIN32) \
-   || defined(OPENSSL_SYS_WIN32) || defined(OPENSSL_SYS_WINCE)
-#   define openssl_fdset(a,b) FD_SET((unsigned int)a, b)
+#  if defined(OPENSSL_SYSNAME_WIN32) || defined(OPENSSL_SYS_WIN32) || defined(OPENSSL_SYS_WINCE)
+#   define openssl_fdset(a, b) FD_SET((unsigned int)a, b)
 #  else
-#   define openssl_fdset(a,b) FD_SET(a, b)
+#   define openssl_fdset(a, b) FD_SET(a, b)
 #  endif
 # endif
 /* wait if timeout > 0. returns < 0 on error, 0 on timeout, > 0 on success */
@@ -317,7 +323,8 @@ static int socket_wait(int fd, int for_read, int timeout)
 
 /* TODO remove when OSSL_CMP_proxy_connect is available and used */
 /* wait if timeout > 0. returns < 0 on error, 0 on timeout, > 0 on success */
-static int bio_wait(BIO *bio, int timeout) {
+static int bio_wait(BIO *bio, int timeout)
+{
     int fd;
 
     if (BIO_get_fd(bio, &fd) <= 0)
@@ -326,11 +333,11 @@ static int bio_wait(BIO *bio, int timeout) {
 }
 /* copied from s_client with simplifications and trivial changes */
 /* TODO replace by OSSL_CMP_proxy_connect() when available */
-#undef BUFSIZZ
-#define BUFSIZZ 1024*8
-#define HTTP_PREFIX "HTTP/"
-#define HTTP_VERSION "1." /* or, e.g., "1.1" */
-#define HTTP_VERSION_MAX_LEN 3
+# undef BUFSIZZ
+# define BUFSIZZ 1024 * 8
+# define HTTP_PREFIX "HTTP/"
+# define HTTP_VERSION "1." /* or, e.g., "1.1" */
+# define HTTP_VERSION_MAX_LEN 3
 static int proxy_connect(OSSL_CMP_CTX *ctx, BIO *bio)
 {
     char *mbuf = OPENSSL_malloc(BUFSIZZ);
@@ -354,11 +361,11 @@ static int proxy_connect(OSSL_CMP_CTX *ctx, BIO *bio)
      */
     BIO_printf(fbio, "Proxy-Connection: Keep-Alive\r\n");
 
-#ifdef OSSL_CMP_SUPPORT_PROXYUSER /* TODO is not yet supported */
+# ifdef OSSL_CMP_SUPPORT_PROXYUSER /* TODO is not yet supported */
     /* Support for basic (base64) proxy authentication */
     char *proxyuser = NULL;
     char *proxypass = NULL;
-    #define base64encode(str, len) OPENSSL_strdup(str)
+#  define base64encode(str, len) OPENSSL_strdup(str)
     if (proxyuser != NULL) {
         size_t l;
         char *proxyauth, *proxyauthenc;
@@ -373,14 +380,14 @@ static int proxy_connect(OSSL_CMP_CTX *ctx, BIO *bio)
         OPENSSL_clear_free(proxyauth, strlen(proxyauth));
         OPENSSL_clear_free(proxyauthenc, strlen(proxyauthenc));
     }
-#endif
+# endif
     BIO_printf(fbio, "\r\n");
-flush_retry:
-    if(!BIO_flush(fbio))
+ flush_retry:
+    if (!BIO_flush(fbio))
         /* potentially needs to be retried if BIO is non-blocking */
         if (BIO_should_retry(fbio))
-                goto flush_retry;
-retry:
+            goto flush_retry;
+ retry:
     rv = bio_wait(fbio, (int)(max_time - time(NULL)));
     if (rv <= 0) {
         LOG(FL_ERR, "HTTP CONNECT %s\n", rv == 0 ? "timed out" : "failed waiting for data");
@@ -409,15 +416,17 @@ retry:
         goto end;
     }
 
-    /* TODO: this does not necessarily catch the case when the full HTTP
-             response came in in more than a single TCP message */
+    /*
+     * TODO: this does not necessarily catch the case when the full HTTP
+     * response came in in more than a single TCP message
+     */
     /* Read past all following headers */
-    do {
+    do
         mbuf_len = BIO_gets(fbio, mbuf, BUFSIZZ);
-    } while (mbuf_len > 2);
+    while (mbuf_len > 2);
 
     ret = 1;
-end:
+ end:
     if (fbio != NULL) {
         (void)BIO_flush(fbio);
         BIO_pop(fbio);
@@ -458,8 +467,10 @@ static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
         const char *hint = tls_error_hint(detail);
         if (hint != NULL)
             ERR_add_error_data(1, hint);
-        /* as a workaround for OpenSSL double free, do not pop the sbio, but
-           rely on BIO_free_all() done by OSSL_CMP_PKIMESSAGE_http_perform() */
+        /*
+         * as a workaround for OpenSSL double free, do not pop the sbio, but
+         * rely on BIO_free_all() done by OSSL_CMP_PKIMESSAGE_http_perform()
+         */
     }
  end:
     if (ssl_ctx != NULL) {
@@ -497,7 +508,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy)
 {
-    char addr[80+1];
+    char addr[80 + 1];
     int port;
 
     if (NULL == ctx || NULL == server || NULL == path) {
@@ -568,7 +579,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         proxy != NULL ? " via proxy " : "", proxy != NULL ? proxy : "");
     return CMP_OK;
 
-    err:
+ err:
     return CMPOSSL_error();
 }
 
@@ -585,7 +596,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
 
     if (old_cert != NULL && !OSSL_CMP_CTX_set1_oldCert(ctx, (X509 *)old_cert))
         goto err;
-    if (new_key  != NULL) {
+    if (new_key != NULL) {
         if (!EVP_PKEY_up_ref((EVP_PKEY *)new_key))
             goto err;
         if (!OSSL_CMP_CTX_set0_newPkey(ctx, 1 /* priv */, (EVP_PKEY *)new_key)) {
@@ -623,7 +634,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
 
     return CMP_OK;
 
-    err:
+ err:
     return CMPOSSL_error();
 }
 
@@ -666,7 +677,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
     STACK_OF(X509) *untrusted = OSSL_CMP_CTX_get0_untrusted_certs(ctx); /* includes extraCerts */
     STACK_OF(X509) *chain = OSSL_CMP_build_cert_chain(untrusted, newcert);
     if (chain != NULL) {
-        X509* new_cert = sk_X509_shift(chain);
+        X509 *new_cert = sk_X509_shift(chain);
         X509_free(new_cert);
     } else {
         LOG(FL_WARN, "Could not build proper chain for newly enrolled cert, resorting to all untrusted certs");
@@ -682,7 +693,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
     ERR_clear_error(); /* empty the OpenSSL error queue */
     return CMP_OK;
 
-    err:
+ err:
     return CMPOSSL_error();
 }
 
@@ -694,8 +705,8 @@ CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
     if (NULL == new_key || NULL == subject) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
-    CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL/* old_cert */,
-                                          subject, exts, NULL/* csr */);
+    CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
+                                          subject, exts, NULL /* csr */);
     if (err == CMP_OK) {
         err = CMPclient_enroll(ctx, new_creds, CMP_IR);
     }
@@ -710,8 +721,8 @@ CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
     if (NULL == new_key || NULL == subject) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
-    CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL/* old_cert */,
-                                          subject, exts, NULL/* csr */);
+    CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
+                                          subject, exts, NULL /* csr */);
     if (err == CMP_OK) {
         err = CMPclient_enroll(ctx, new_creds, CMP_CR);
     }
@@ -725,9 +736,9 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 
-    CMP_err err = CMPclient_setup_certreq(ctx, NULL/* new_key */,
-                                          NULL/* old_cert */, NULL/* subject */,
-                                          NULL/* exts */, csr);
+    CMP_err err = CMPclient_setup_certreq(ctx, NULL /* new_key */,
+                                          NULL /* old_cert */, NULL /* subject */,
+                                          NULL /* exts */, csr);
     if (err == CMP_OK) {
         err = CMPclient_enroll(ctx, new_creds, CMP_P10CR);
     }
@@ -741,8 +752,8 @@ CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
         return ERR_R_PASSED_NULL_PARAMETER;
     }
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, cert,
-                                          NULL/* subject */, NULL/* exts */,
-                                          NULL/* csr */);
+                                          NULL /* subject */, NULL /* exts */,
+                                          NULL /* csr */);
     if (err == CMP_OK) {
         err = CMPclient_enroll(ctx, new_creds, CMP_KUR);
     }
@@ -770,7 +781,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
     ERR_clear_error(); /* empty the OpenSSL error queue */
     return CMP_OK;
 
-    err:
+ err:
     return CMPOSSL_error();
 }
 
@@ -782,10 +793,11 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 #endif
     X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
     OSSL_CMP_CTX_free(ctx);
-/* better not do here:
-    STORE_EX_free_index();
-    LOG_close();
-*/
+/*-
+ * better not do here:
+ *   STORE_EX_free_index();
+ *   LOG_close();
+ */
 }
 
 
@@ -798,7 +810,7 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 inline
 STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc)
 {
-    return FILES_load_certs_multi(files, FORMAT_PEM, NULL/* pass */, desc);
+    return FILES_load_certs_multi(files, FORMAT_PEM, NULL /* pass */, desc);
 }
 
 inline

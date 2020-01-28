@@ -730,10 +730,8 @@ int setup_ctx(CMP_CTX *ctx, enum use_case use_case)
 CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
                            OPTIONAL CREDENTIALS *cmp_creds)
 {
-    if (opt_srvcert != NULL && opt_trusted != NULL) {
-        LOG(FL_WARN, "-trusted option is ignored since -srvcert option is present");
-        opt_trusted = NULL;
-    }
+    if (opt_srvcert != NULL && opt_trusted != NULL)
+        LOG(FL_WARN, "both -trusted option and -srvcert option are present");
 
     X509_STORE *cmp_truststore = opt_trusted == NULL ? NULL : setup_CMP_truststore();
     STACK_OF(X509) *untrusted_certs = opt_untrusted == NULL ? NULL :

@@ -11,13 +11,13 @@ ifeq ($(OS),Windows_NT)
     DLL=.dll
     OBJ=.obj
 #   LIB=bin
-    PINGCOUNT=-n
+    PINGCOUNTOPT=-n
 else
     EXE=
     DLL=.so
     OBJ=.o
 #   LIB=lib
-    PINGCOUNT=-c
+    PINGCOUNTOPT=-c
 endif
 
 ROOTFS ?= $(DESTDIR)$(prefix)
@@ -140,9 +140,11 @@ endif
 PROXY ?= http_proxy=http://de.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com # or, e.g., tsy1.coia.siemens.net = 194.145.60.1
 
 ifdef INSTA
+    unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
     OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/new.crt
 else
+    unreachable="cannot reach ppki-playground.ct.siemens.com"
     CA_SECTION=EJBCA
     OCSP_CHECK=openssl ocsp -url http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp -CAfile creds/trusted/PPKIPlaygroundECCRootCAv10.crt -issuer creds/PPKIPlaygroundECCIssuingCAv10.crt -cert creds/new.crt
 endif
@@ -154,7 +156,8 @@ creds/crls:
 test: build | creds/crls
 	@/bin/echo -e "\n##### running cmpClientDemo #####"
 ifndef INSTA
-	ping >/dev/null $(PINGCOUNT) 1 ppki-playground.ct.siemens.com  || (echo "cannot reach ppki-playground.ct.siemens.com"; exit 1)
+	ping >/dev/null $(PINGCOUNTOPT) 1 ppki-playground.ct.siemens.com
+	@ # || echo $(unreachable); exit 1
 	@for CA in 'Infrastructure+Root+CA+v1.0' 'Infrastructure+Issuing+CA+v1.0' 'ECC+Root+CA+v1.0' 'RSA+Root+CA+v1.0'; \
 	do \
 		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
@@ -162,7 +165,9 @@ ifndef INSTA
 	done
 else
 	@ #curl -m 2 -s pki.certificate.fi ...
-	$(PROXY) wget 2>&1 --tries=1 --max-redirect=0 --timeout=2 pki.certificate.fi | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1)
+	$(PROXY) wget -O /dev/null --tries=1 --max-redirect=0 --timeout=2 https://www.insta.fi/ --no-verbose
+	@ # | fgrep "301 Moved Permanently" -q
+	@ # || (echo $(unreachable); exit 1)
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl"
 endif
@@ -176,6 +181,7 @@ endif
 	@echo :
 	$(OCSP_CHECK)
 	@echo
+	@sleep 1 # for INSTA helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
 	$(PROXY) ./cmpClientDemo$(EXE) revoke -section $(CA_SECTION)
 	@echo :
 	$(OCSP_CHECK)

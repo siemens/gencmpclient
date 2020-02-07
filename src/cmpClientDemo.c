@@ -144,7 +144,7 @@ opt_t cmp_opts[] = {
       "'["URL_HTTP_PREFIX"]address[:port]' of HTTP(S) proxy. Default port 80."},
     OPT_MORE("Default from environment variable 'http_proxy', else 'HTTP_PROXY'"),
     { "no_proxy", OPT_TXT, {.txt = NULL}, { &opt_no_proxy },
-      "List of addresss of servers not use use HTTP(S) proxy for."},
+      "List of addresses of servers not use HTTP(S) proxy for."},
     OPT_MORE("Default from environment variable 'no_proxy', else 'NO_PROXY', else none"),
     { "path", OPT_TXT, {.txt = "/"}, { &opt_path },
       "HTTP path (aka CMP alias) at the CMP server. Default \"/\""},

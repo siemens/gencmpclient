@@ -967,9 +967,9 @@ static int CMPclient_demo(enum use_case use_case)
     if (opt_infotype != NULL)  /* TODO? implement when genm is supported */
         LOG(FL_WARN, "-infotype option is ignored as long as 'genm' is not supported");
 
-    if (use_case == update || use_case == revocation) {
+    if (use_case == update) {
         if (opt_secret != NULL) {
-            LOG(FL_WARN, "-secret option is ignored for 'kur' and 'rr' commands");
+            LOG(FL_WARN, "-secret option is ignored for 'kur' commands");
             opt_secret = NULL;
         }
     }
@@ -1007,14 +1007,7 @@ static int CMPclient_demo(enum use_case use_case)
         use_case != update && use_case != revocation && opt_secret != NULL
         /* use PBM except for kur and rr if secret is present */
         ? CREDENTIALS_new(NULL, NULL, NULL, opt_secret, opt_ref)
-        : use_case != update && use_case != revocation
-          ? CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc)
-          /* for kur and rr use certificate to be updated/revoked
-             and opt_newkey if present, else default to opt_key */
-          /* library uses opt_cert as default for opt_oldcert */
-          : opt_newkey != NULL
-           ? CREDENTIALS_load(opt_oldcert, opt_newkey, opt_newkeypass, creds_desc)
-           : CREDENTIALS_load(opt_oldcert, opt_key, opt_keypass, creds_desc);
+        : CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
     if (cmp_creds == NULL) {
         LOG(FL_ERR, "Unable to set up credentials for CMP level");
         err = 1;
@@ -1059,18 +1052,20 @@ static int CMPclient_demo(enum use_case use_case)
             }
         }
         else {
-            if (opt_newkey == NULL) {
+            if (opt_newkey == NULL && opt_key == NULL) {
                 LOG(FL_ERR, "Missing -newkeytype or -newkey or -key option");
                 err = 18;
                 goto err;
             }
-            sec_file_format format = FILES_get_format(opt_cacertsout);
-            new_pkey = FILES_load_key_autofmt(opt_newkey, format, false,
-                                              opt_newkeypass, NULL /* engine */,
-                                              "private key to use for certificate request");
-            if (new_pkey == NULL) {
-                err = 18;
-                goto err;
+            if (opt_newkey != NULL) {
+                sec_file_format format = FILES_get_format(opt_cacertsout);
+                new_pkey = FILES_load_key_autofmt(opt_newkey, format, false,
+                                                  opt_newkeypass, NULL /* engine */,
+                                                  "private key to use for certificate request");
+                if (new_pkey == NULL) {
+                    err = 18;
+                    goto err;
+                }
             }
         }
     }

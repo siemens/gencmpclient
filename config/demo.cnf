@@ -15,9 +15,9 @@ key = creds/ppki_playground_cmp_signer.p12
 keypass = pass:12345
 recipient = "/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
 subject = "/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
-out_trusted = "creds/trusted/PPKIPlaygroundECCRootCAv10.crt"
 #srvcert = creds/trusted/PPKIPlaygroundECCRootCAv10.crt
-trusted = creds/trusted/PPKIPlaygroundECCRootCAv10.crt #,creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt
+trusted = creds/trusted/PPKIPlaygroundECCRootCAv10.crt,creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt
+out_trusted = $trusted
 tls_trusted = creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt
 tls_host = ppki-playground.ct.siemens.com:443
 tls_cert = creds/ppki_playground_tls.p12
@@ -70,21 +70,21 @@ certout = $imprint::certout
 [update]
 path = /ejbca/publicweb/cmp/PlaygroundCMPSigning
 secret = # is overridden by CA setting
-newkeytype = $imprint::newkeytype
-newkey = $imprint::newkey
-newkeypass = $imprint::newkeypass
+# not needed: newkeytype = $imprint::newkeytype
+# not needed: newkey = $imprint::newkey
+# not needed: newkeypass = $imprint::newkeypass
+oldcert = $imprint::certout # creds/new.crt # TODO check why needed
 subject = # is overridden by CA setting
-oldcert = $imprint::certout # creds/new.crt
 implicitconfirm = 1
 certout = $imprint::certout
 
 [revoke]
 path = /ejbca/publicweb/cmp/PlaygroundCMPSigning
 secret = # is overridden by CA setting
-subject = # is overridden by CA setting
 oldcert = $update::certout # creds/new.crt
-newkey = $update::newkey
-newkeypass = $update::newkeypass
+subject = # is overridden by CA setting
+# not needed: newkey = $imprint::newkey
+# not needed: newkeypass = $imprint::newkeypass
 
 [pkcs10]
 path = /ejbca/publicweb/cmp/PlaygroundECC

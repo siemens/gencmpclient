@@ -142,7 +142,7 @@ CMP_err CMPclient_pkcs10(CMP_CTX *ctx, CREDENTIALS **new_creds,
 CMP_err CMPclient_update(CMP_CTX *ctx, CREDENTIALS **new_creds,
                          const EVP_PKEY *new_key);
 CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
-                                 const X509 *cert, const EVP_PKEY *new_key);
+                                 const X509 *old_cert, const EVP_PKEY *new_key);
 
 /* reason codes are defined in openssl/x509v3.h */
 CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, int reason);

@@ -745,12 +745,9 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 }
 
 CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
-                                 const X509 *cert, const EVP_PKEY *new_key)
+                                 const X509 *old_cert, const EVP_PKEY *new_key)
 {
-    if (new_key == NULL) {
-        return ERR_R_PASSED_NULL_PARAMETER;
-    }
-    CMP_err err = CMPclient_setup_certreq(ctx, new_key, cert,
+    CMP_err err = CMPclient_setup_certreq(ctx, new_key, old_cert,
                                           NULL /* subject */, NULL /* exts */,
                                           NULL /* csr */);
     if (err == CMP_OK) {

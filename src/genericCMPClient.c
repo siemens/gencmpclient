@@ -153,12 +153,11 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
 {
     OSSL_CMP_CTX *ctx = NULL;
 
-    if (NULL == pctx) {
+    if (pctx == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 
-    if (pctx == NULL ||
-        NULL == (ctx = OSSL_CMP_CTX_new()) ||
+    if ((ctx = OSSL_CMP_CTX_new()) == NULL ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn)) {
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
     }
@@ -198,19 +197,19 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     X509_NAME *rcp = NULL;
     if (recipient != NULL) {
         rcp = UTIL_parse_name(recipient, MBSTRING_ASC, false);
-        if (NULL == rcp) {
+        if (rcp == NULL) {
             LOG(FL_ERR, "Unable to parse recipient DN '%s'", recipient);
             OSSL_CMP_CTX_free(ctx);
             return CMP_R_INVALID_PARAMETERS;
         }
-    } else if (NULL == cert) {
+    } else if (cert == NULL) {
         if (sk_X509_num(untrusted) > 0) {
             rcp = X509_NAME_dup((X509_get_subject_name(sk_X509_value(untrusted, 0))));
         } else {
             LOG(FL_WARN, "No explicit recipient, no cert, and no untrusted certs given; resorting to NULL DN");
             rcp = X509_NAME_new();
         }
-        if (NULL == rcp) {
+        if (rcp == NULL) {
             LOG(FL_ERR, "Internal error like out of memory obtaining recipient DN", recipient);
             OSSL_CMP_CTX_free(ctx);
             return CMP_R_RECIPIENT;
@@ -511,7 +510,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     char addr[80 + 1];
     int port;
 
-    if (NULL == ctx || NULL == server || NULL == path) {
+    if (ctx == NULL || server == NULL || path == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 #ifdef SEC_NO_TLS
@@ -590,7 +589,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                 OPTIONAL const X509_EXTENSIONS *exts,
                                 OPTIONAL const X509_REQ *p10csr)
 {
-    if (NULL == ctx) {
+    if (ctx == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 
@@ -607,7 +606,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
 
     if (subject != NULL) {
         X509_NAME *n = UTIL_parse_name(subject, MBSTRING_ASC, false);
-        if (NULL == n) {
+        if (n == NULL) {
             LOG(FL_ERR, "Unable to parse subject DN '%s'", subject);
             return CMP_R_INVALID_PARAMETERS;
         }
@@ -616,7 +615,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
             goto err;
         }
         X509_NAME_free(n);
-    } /* TODO maybe else take subjectName (for sender default) from oldCert or p10cr */
+    }
 
     if (exts != NULL) {
         X509_EXTENSIONS *exts_copy =
@@ -642,7 +641,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
 {
     X509 *newcert = NULL;
 
-    if (NULL == ctx || NULL == new_creds) {
+    if (ctx == NULL || new_creds == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 
@@ -669,7 +668,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
         return CMP_R_INVALID_PARAMETERS;
         break;
     }
-    if (NULL == newcert) {
+    if (newcert == NULL) {
         goto err;
     }
 
@@ -686,7 +685,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
 
     CREDENTIALS *creds = CREDENTIALS_new(new_key, newcert, chain, NULL, NULL);
     CERTS_free(chain);
-    if (NULL == creds) {
+    if (creds == NULL) {
         return ERR_R_MALLOC_FAILURE;
     }
     *new_creds = creds;
@@ -702,7 +701,7 @@ CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                           const char *subject,
                           OPTIONAL const X509_EXTENSIONS *exts)
 {
-    if (NULL == new_key || NULL == subject) {
+    if (new_key == NULL || subject == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
@@ -718,7 +717,7 @@ CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                             const char *subject,
                             OPTIONAL const X509_EXTENSIONS *exts)
 {
-    if (NULL == new_key || NULL == subject) {
+    if (new_key == NULL || subject == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
@@ -732,7 +731,7 @@ CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                          const X509_REQ *csr)
 {
-    if (NULL == csr) {
+    if (csr == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 
@@ -748,7 +747,7 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                                  const X509 *cert, const EVP_PKEY *new_key)
 {
-    if (NULL == new_key) {
+    if (new_key == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, cert,
@@ -768,7 +767,7 @@ CMP_err CMPclient_update(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 
 CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
 {
-    if (NULL == ctx || NULL == cert) {
+    if (ctx == NULL || cert == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 

@@ -1,15 +1,9 @@
 [default]
 digest = sha256
-newkey = creds/new.pem
-newkeypass = pass:12345
-certout = creds/new.crt
 msgtimeout = 10
 totaltimeout = 100
-newkeytype = ECC
 ignore_keyusage = 1
 unprotectederrors = 1
-reqexts = reqexts
-policies = certificatePolicies
 #proxy = http://de.coia.siemens.net:9400
 no_proxy = ppki-playground.ct.siemens.com
 
@@ -21,8 +15,9 @@ key = creds/ppki_playground_cmp_signer.p12
 keypass = pass:12345
 recipient = "/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
 subject = "/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
-srvcert = creds/trusted/PPKIPlaygroundECCRootCAv10.crt
-trusted = "creds/trusted/PPKIPlaygroundECCRootCAv10.crt, creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt"
+out_trusted = "creds/trusted/PPKIPlaygroundECCRootCAv10.crt"
+#srvcert = creds/trusted/PPKIPlaygroundECCRootCAv10.crt
+trusted = creds/trusted/PPKIPlaygroundECCRootCAv10.crt #,creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt
 tls_trusted = creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt
 tls_host = ppki-playground.ct.siemens.com:443
 tls_cert = creds/ppki_playground_tls.p12
@@ -44,7 +39,7 @@ key = creds/insta_client.p12
 recipient = "/C=FI/O=Insta Demo/CN=Insta Demo CA"
 subject = "/CN=test-genCMPClientDemo"
 srvcert = creds/trusted/InstaDemoCA.crt
-trusted = creds/trusted/InstaDemoCA.crt
+#trusted = creds/trusted/InstaDemoCA.crt
 tls_trusted = creds/trusted/InstaDemoCA.crt
 tls_host = pki.certificate.fi:8700
 tls_cert = creds/insta_client.p12
@@ -54,19 +49,51 @@ crls_file = creds/crls/InstaDemoCA.crl
 
 [imprint]
 path = /ejbca/publicweb/cmp/PlaygroundECC
+newkeytype = ECC
+newkey = creds/new.pem
+newkeypass = pass:12345
+reqexts = reqexts
+policies = certificatePolicies
 san_nodefault = 1
+certout = creds/new.crt
 
 [bootstrap]
 path = /ejbca/publicweb/cmp/PlaygroundECC
+newkeytype = $imprint::newkeytype
+newkey = $imprint::newkey
+newkeypass = $imprint::newkeypass
+reqexts = $imprint::reqexts
+policies = $imprint::policies
 san_nodefault = 1
+certout = $imprint::certout
 
 [update]
 path = /ejbca/publicweb/cmp/PlaygroundCMPSigning
+secret = # is overridden by CA setting
+newkeytype = $imprint::newkeytype
+newkey = $imprint::newkey
+newkeypass = $imprint::newkeypass
+subject = # is overridden by CA setting
+oldcert = $imprint::certout # creds/new.crt
 implicitconfirm = 1
+certout = $imprint::certout
 
 [revoke]
 path = /ejbca/publicweb/cmp/PlaygroundCMPSigning
-oldcert = $certout
+secret = # is overridden by CA setting
+subject = # is overridden by CA setting
+oldcert = $update::certout # creds/new.crt
+newkey = $update::newkey
+newkeypass = $update::newkeypass
+
+[pkcs10]
+path = /ejbca/publicweb/cmp/PlaygroundECC
+# Insta will respond with CMP body popdecc POPODecKeyChallContent, --pop Challenge
+ref = dummy # in EJBCA case there is no ref - fallback for sender as no cert and subject is given
+cmd = p10cr
+csr = creds/test.csr.pem
+subject = # is overridden by CA setting
+certout = $imprint::certout
 
 [reqexts]
 keyUsage = "critical, digitalSignature"

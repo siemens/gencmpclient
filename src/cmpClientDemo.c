@@ -1019,7 +1019,7 @@ static int CMPclient_demo(enum use_case use_case)
     }
     const char *const creds_desc = "credentials for CMP level";
     cmp_creds =
-        use_case != update && opt_secret != NULL
+        use_case != update && opt_secret != NULL && opt_ref != NULL
         /* use PBM except for kur if secret is present */
         ? CREDENTIALS_new(NULL, NULL, NULL, opt_secret, opt_ref)
         : CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
@@ -1073,7 +1073,7 @@ static int CMPclient_demo(enum use_case use_case)
                 goto err;
             }
             if (opt_newkey != NULL) {
-                sec_file_format format = FILES_get_format(opt_cacertsout);
+                sec_file_format format = FILES_get_format(opt_newkey);
                 new_pkey = FILES_load_key_autofmt(opt_newkey, format, false,
                                                   opt_newkeypass, NULL /* engine */,
                                                   "private key to use for certificate request");

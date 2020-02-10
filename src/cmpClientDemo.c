@@ -657,9 +657,15 @@ int setup_ctx(CMP_CTX *ctx)
 
     if (opt_popo < OSSL_CRMF_POPO_NONE - 1 || opt_popo > OSSL_CRMF_POPO_KEYENC) {
         LOG(FL_ERR, "Invalid value '%d' for popo method (must be between -1 and 2)", opt_popo);
+        err = 10;
         goto err;
     }
 
+    if (opt_days < 0) {
+        LOG(FL_ERR, "Invalid value '%d' for -days option (must be a positive number)", opt_days);
+        err = 10;
+        goto err;
+    }
     /* set option flags directly via CMP API */
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS, opt_unprotectederrors)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE, opt_ignore_keyusage)
@@ -1225,11 +1231,39 @@ static int CMPclient_demo(enum use_case use_case)
     }
 
     if (use_case != revocation) {
-        const char *new_desc = "newly enrolled certificate and related chain and key";
-        if (!CREDENTIALS_save(new_creds, opt_certout, opt_newkey, opt_newkeypass, new_desc)) {
-            LOG(FL_ERR, "Failed to save newly enrolled credentials");
-            err = 26;
-            goto err;
+        if (opt_newkey != NULL && opt_newkeytype != NULL) {
+            const char *new_desc = "newly enrolled certificate and related chain and key";
+            if (!CREDENTIALS_save(new_creds, opt_certout, opt_newkey, opt_newkeypass, new_desc)) {
+                LOG(FL_ERR, "Failed to save newly enrolled credentials");
+                err = 26;
+                goto err;
+            }
+        } else {
+            const char *new_desc = "newly enrolled certificate";
+            sec_file_format format = FILES_get_format(opt_certout);
+            X509* cert = CREDENTIALS_get_cert(new_creds);
+            STACK_OF(X509)* certs = CREDENTIALS_get_chain(new_creds);
+
+            if(certs == NULL) {
+                if(!FILES_store_cert(cert, opt_certout, format, new_desc)) {
+                    err = 27;
+                    goto err;
+                }
+            }
+
+            if(sk_X509_unshift(certs, cert) == 0) /* prepend cert */
+            {
+                LOG(FL_ERR, "out of memory writing certs to file '%s'", opt_certout);
+                err = 28;
+                goto err;
+            }
+
+            if (certs != NULL) {
+                if(FILES_store_certs(certs, opt_certout, format, new_desc) < 0) {
+                    err = 29;
+                    goto err;
+                }
+            }
         }
     }
 

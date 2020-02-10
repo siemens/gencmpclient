@@ -978,6 +978,15 @@ static int CMPclient_demo(enum use_case use_case)
             LOG(FL_WARN, "-secret option is ignored for 'kur' commands");
             opt_secret = NULL;
         }
+        if (opt_cert == NULL && opt_oldcert != NULL) {
+            LOG(FL_INFO, "-oldcert is defaulting to -cert");
+            opt_cert = opt_oldcert;
+        }
+        if (opt_key == NULL && opt_keypass == NULL) {
+            LOG(FL_INFO, "-newkey and -newkeypass are defaulting to -key and -keypass");
+            opt_key = opt_newkey;
+            opt_keypass = opt_newkeypass;
+        }
     }
     if (!opt_unprotectedrequests && !opt_secret && !(opt_cert && opt_key)) {
         LOG(FL_ERR, "must give client credentials unless -unprotectedrequests is set");

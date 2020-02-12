@@ -369,6 +369,17 @@ static bool use_proxy(const char *no_proxy, const char *server)
     return found == NULL;
 }
 
+static int starts_with(const char* prefix, const char* str)
+{
+    return 0 == strncmp(prefix, str, strlen(prefix));
+}
+
+static int is_localhost(const char* host)
+{
+    /* IPv6 is not supported. */
+    return starts_with("127.0.0.1", host) || starts_with("localhost", host);
+}
+
 CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
                              const char *server, const char *path,
                              int timeout, OPTIONAL SSL_CTX *tls,
@@ -429,10 +440,18 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 #ifndef SEC_NO_TLS
     if (tls != NULL) {
         X509_STORE *ts = SSL_CTX_get_cert_store(tls);
-        /* set expected host if not already done by caller */
-        if (STORE_get0_host(ts) == NULL &&
-            !STORE_set1_host_ip(ts, server, server)) {
-            goto err;
+
+        /* If server is localhost, we will will proceed without "host verification".
+        This will enable Bootstrapping of LRA (by itself) using only SMC which doesn't contain host. */
+        if (is_localhost(server)) {
+            LOG(FL_WARN, "skiping host verification on localhost");
+        }
+        else {
+              /* set expected host if not already done by caller */
+            if (STORE_get0_host(ts) == NULL &&
+                !STORE_set1_host_ip(ts, server, server)) {
+                goto err;
+            }
         }
         if (!OSSL_CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
             !SSL_CTX_up_ref(tls))

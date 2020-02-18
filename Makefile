@@ -127,6 +127,8 @@ endif
 clean_test:
 	rm -f creds/new.*
 	rm -rf creds/crls
+	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Insta/test.*cert*.pem
+	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/CmpWsRa/test.*cert*.pem
 
 clean:
 	$(MAKE) -f Makefile_src clean

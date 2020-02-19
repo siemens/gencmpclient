@@ -105,7 +105,7 @@ sub test_cmp_cli {
     my $expected_exit = shift;
     with({ exit_checker => sub {
         my $OK = shift == $expected_exit;
-        print Dumper @args; # TODO: for debugging purposes only
+        print Dumper @args if!($OK); # TODO: for debugging purposes only
         return $OK; } },
          sub { ok(run(app(["cmpClientDemo", @$params,])),
                   $title); });

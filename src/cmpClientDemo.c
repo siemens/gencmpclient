@@ -1019,7 +1019,8 @@ static int CMPclient_demo(enum use_case use_case)
     }
     const char *const creds_desc = "credentials for CMP level";
     cmp_creds =
-        use_case != update && use_case != revocation && opt_secret != NULL
+        (use_case != update && use_case != revocation && opt_secret != NULL)
+            || (opt_secret != NULL && opt_ref != NULL)
         /* use PBM except for kur and rr if secret is present */
         ? CREDENTIALS_new(NULL, NULL, NULL, opt_secret, opt_ref)
         : CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);

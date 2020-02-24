@@ -112,11 +112,11 @@ char *opt_tls_trusted;
 char *opt_tls_host;
 
 /* TODO extend verification options and align with cmpossl/apps/cmp.c */
-char *opt_crls_url;
-char *opt_crls_file;
-bool opt_crls_use_cdp;
+char *opt_crls;
+bool opt_use_cdp;
 char *opt_cdp_url;
 #ifndef OPENSSL_NO_OCSP
+bool opt_use_aia;
 char *opt_ocsp_url;
 #endif
 
@@ -275,17 +275,17 @@ opt_t cmp_opts[] = {
 
     OPT_SECTION("Specific CMP and TLS certificate verification"),
     /* TODO extend verification options and align with cmpossl/apps/cmp.c */
-    { "crls_url", OPT_TXT, {.txt = NULL}, {&opt_crls_url},
-      "Use given URL as (primary) CRL source when verifying certs"},
-    { "crls_file", OPT_TXT, {.txt = NULL}, {&opt_crls_file},
-      "Use given local file(s) as (primary) CRL source"},
-    { "crls_use_cdp", OPT_BOOL, {.bool = false}, { (char **) &opt_crls_use_cdp },
-      "Retrieve CRLs from CDPs given in certs as secondary (fallback) source"},
+    { "crls", OPT_TXT, {.txt = NULL}, {&opt_crls},
+      "Enable CRL-based status checking and use given CRLs from given file(s)/URL(s)"},
+    { "use_cdp", OPT_BOOL, {.bool = false}, { (char **) &opt_use_cdp },
+      "Enable CRL-based status checking and enable use of CDP entries in certs"},
     { "cdp_url", OPT_TXT, {.txt = NULL}, {&opt_cdp_url},
-      "Use given URL(s) as secondary CRL source"},
+      "Enable CRL-based status checking and use given URL as fallback CDP"},
 #ifndef OPENSSL_NO_OCSP
+    { "use_aia", OPT_BOOL, {.bool = false}, { (char **) &opt_use_aia },
+      "Enable OCSP-based status checking and enable use of AIA entries in certs"},
     { "ocsp_url", OPT_TXT, {.txt = NULL}, {&opt_ocsp_url},
-      "Use OCSP with given URL as primary address of OCSP responder"},
+      "Enable OCSP-based status checking and use given OCSP responder as fallback"},
 #endif
 
     /* TODO? add OPT_V_OPTIONS or the like */
@@ -340,11 +340,11 @@ typedef enum OPTION_choice {
     OPT_TLS_EXTRA, OPT_TLS_TRUSTED, OPT_TLS_HOST,
 
     OPT_SECTION_10,
-    OPT_CRLS_URL, OPT_CRLS_FILE,
+    OPT_CRLS, OPT_USE_CDP, OPT_CDP_URL,
 #ifndef OPENSSL_NO_OCSP
+    OPT_USE_AIA,
     OPT_OCSP_URL,
 #endif
-    OPT_CRLS_USE_CDP, OPT_CDP_URL,
 
     OPT_END
 } OPTION_CHOICE;
@@ -415,35 +415,50 @@ SSL_CTX *setup_TLS(void)
     CREDENTIALS *tls_creds = NULL;
     SSL_CTX *tls = NULL;
 
-    const char *trusted = opt_tls_trusted;
-    X509_STORE *truststore = STORE_load(trusted, "trusted certs for TLS level");
-    if (truststore == NULL)
-        goto err;
+    X509_STORE *truststore = NULL;
+    if (opt_tls_trusted != NULL) {
+        truststore = STORE_load(opt_tls_trusted, "trusted certs for TLS level");
+        if (truststore == NULL)
+            goto err;
 
-# if 0
-    const char *crls_files = opt_crls_file;
-    crls = CRLs_load(crls_files, "CRLs for TLS level");
-    if (crls == NULL)
-        goto err;
-# endif
-    const X509_VERIFY_PARAM *vpm = NULL;
-    const bool full_chain = true;
-    const bool use_CDPs = false;
-    const char *CRLs_url = NULL; /* or: opt_crls_url */
-    const bool use_AIAs = true;
-    const char *OCSP_url = opt_ocsp_url;
-    const bool try_stapling = (use_AIAs || OCSP_url != NULL)
-        && OPENSSL_VERSION_NUMBER >= 0x1010001fL;
-    if (!STORE_set_parameters(truststore, vpm,
-                              full_chain, try_stapling, crls,
-                              use_CDPs, CRLs_url,
-                              use_AIAs, OCSP_url))
-        goto err;
+        if (opt_tls_host != NULL
+            && !STORE_set1_host_ip(truststore, opt_tls_host, opt_tls_host)) {
+            LOG(FL_ERR, "error setting expected TLS host");
+            goto err;
+        }
 
-    tls_creds = CREDENTIALS_load(opt_tls_cert, opt_tls_key, opt_tls_keypass,
-                                 "credentials for TLS level");
-    if (tls_creds == NULL)
+        if (opt_crls != NULL) {
+            /* TODO maybe combine with CRL loading for CMP level */
+            crls = CRLs_load(opt_crls, "CRLs for TLS level");
+            if (crls == NULL)
+                goto err;
+        }
+        const X509_VERIFY_PARAM *vpm = NULL;
+        const bool use_CDPs = opt_use_cdp;
+        const char *CRLs_url = opt_cdp_url;
+        const bool use_AIAs = opt_use_aia;
+        const char *OCSP_url = opt_ocsp_url;
+        const bool full_chain = crls != NULL || use_CDPs || CRLs_url != NULL
+            || use_AIAs || OCSP_url != NULL;
+        const bool try_stapling = (use_AIAs || OCSP_url != NULL)
+            && OPENSSL_VERSION_NUMBER >= 0x1010001fL;
+        if (!STORE_set_parameters(truststore, vpm,
+                                  full_chain, try_stapling, crls,
+                                  use_CDPs, CRLs_url,
+                                  use_AIAs, OCSP_url))
+            goto err;
+    }
+
+    if ((opt_tls_cert == NULL) != (opt_tls_key == NULL)) {
+        LOG(FL_ERR, "must give both -tls_cert and -tls_key options or neither");
         goto err;
+    }
+    if (opt_tls_key != NULL) {
+        tls_creds = CREDENTIALS_load(opt_tls_cert, opt_tls_key, opt_tls_keypass,
+                                     "credentials for TLS level");
+        if (tls_creds == NULL)
+            goto err;
+    }
     const STACK_OF(X509) *untrusted_certs = NULL;
     /*
      * TODO maybe also add untrusted certs to help building chain of TLS client
@@ -451,13 +466,18 @@ SSL_CTX *setup_TLS(void)
      */
     const int security_level = -1;
     tls = TLS_new(truststore, untrusted_certs, tls_creds, tls_ciphers, security_level);
+    if (tls == NULL)
+        goto err;
 
     /* If present we append to the list also the certs from opt_tls_extra */
     if (opt_tls_extra != NULL) {
         STACK_OF(X509) *tls_extra = CERTS_load(opt_tls_extra, "extra certificates for TLS");
         if (tls_extra == NULL ||
-            !SSL_CTX_add_extra_chain_free(tls, tls_extra))
+            !SSL_CTX_add_extra_chain_free(tls, tls_extra)) {
+            SSL_CTX_free(tls);
+            tls = NULL;
             goto err;
+        }
     }
 
  err:
@@ -473,26 +493,24 @@ X509_STORE *setup_CMP_truststore(void)
     STACK_OF(X509_CRL) *crls = NULL;
     X509_STORE *cmp_truststore = NULL;
 
-    const char *crls_files = opt_crls_use_cdp == true ? opt_cdp_url : opt_crls_file;
-
-    if (crls_files != NULL) {
-        crls = CRLs_load(crls_files, "CRLs for CMP level");
-        if (crls == NULL)
-            goto err;
-    }
-
     const char *trusted_cert_files = opt_trusted;
     cmp_truststore = STORE_load(trusted_cert_files, "trusted certs for CMP level");
     if (cmp_truststore == NULL)
         goto err;
 
+    if (opt_crls != NULL) {
+        crls = CRLs_load(opt_crls, "CRLs for CMP level");
+        if (crls == NULL)
+            goto err;
+    }
     const X509_VERIFY_PARAM *vpm = NULL;
-    const bool full_chain = true;
     const bool try_stapling = false;
-    const bool use_CDPs = true;
-    const char *CRLs_url = opt_crls_url;
-    const bool use_AIAs = false;
-    const char *OCSP_url = NULL; /* or: opt_ocsp_url */
+    const bool use_CDPs = opt_use_cdp;
+    const char *CRLs_url = opt_cdp_url;
+    const bool use_AIAs = opt_use_aia;
+    const char *OCSP_url = opt_ocsp_url;
+    const bool full_chain = crls != NULL || use_CDPs || CRLs_url != NULL
+        || use_AIAs || OCSP_url != NULL;
     if (!STORE_set_parameters(cmp_truststore, vpm,
                               full_chain, try_stapling, crls,
                               use_CDPs, CRLs_url,
@@ -927,7 +945,7 @@ int setup_transfer(CMP_CTX *ctx)
     CMP_err err;
 
     const char *path = opt_path;
-    const char *server = opt_tls_used ? opt_tls_host : opt_server;
+    const char *server = opt_server;
 
     if ((int)opt_msgtimeout < -1) {
         LOG(FL_ERR, "only non-negative values allowed for opt_msgtimeout");
@@ -1140,6 +1158,10 @@ static int CMPclient_demo(enum use_case use_case)
             LOG(FL_WARN, "-revreason option is ignored for commands other than 'rr'");
     }
 
+    if (opt_tls_cert != NULL || opt_tls_key != NULL || opt_tls_keypass != NULL
+        || opt_tls_extra != NULL || opt_tls_trusted != NULL
+        || opt_tls_host != NULL)
+        opt_tls_used = true;
     if ((err = setup_transfer(ctx)) != CMP_OK)
         goto err;
 

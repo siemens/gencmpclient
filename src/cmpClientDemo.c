@@ -300,8 +300,10 @@ opt_t cmp_opts[] = {
 
 /* OPTION_CHOICE values must be in the same order as enumerated above!! */
 typedef enum OPTION_choice {
-    OPT_ERR = -1, OPT_SECTION_1, OPT_HELP, OPT_CONFIG,
-    OPT_SECTION,
+    OPT_ERR = -1,
+
+    OPT_SECTION_1,
+    OPT_HELP, OPT_CONFIG, OPT_SECTION,
 
     OPT_SECTION_2,
     OPT_SERVER, OPT_PROXY, OPT_NO_PROXY, OPT_PATH,
@@ -852,12 +854,8 @@ static int opt_next(int argc, char **argv)
             /* Boolean options have no parameter, just return index */
             if (cmp_opts[i].type == OPT_BOOL)
                 return i;
-            if (argv[opt_index] == NULL) {
-                LOG(FL_ERR, "Option -%s needs a value", param);
-                return OPT_ERR;
-            }
             /* check non-bool options for parameters */
-            if (cmp_opts[i].type == OPT_TXT && *argv[opt_index] == '-') {
+            if (argv[opt_index] == NULL) {
                 LOG(FL_ERR, "Option -%s needs a value", param);
                 return OPT_ERR;
             }
@@ -870,6 +868,7 @@ static int opt_next(int argc, char **argv)
     if (i == OPT_END) {
         /* in case of unknown option, return option with leading '-' */
         arg = --param;
+        LOG(FL_ERR, "Unknown option '%s'", arg);
         return OPT_ERR;
     }
 
@@ -889,7 +888,6 @@ static int get_opts(int argc, char **argv)
 
     while ((o = opt_next(argc, argv)) != OPT_END) {
         if (o == OPT_ERR) {
-            LOG(FL_ERR, "Unknown option '%s' used", arg);
             return 1;
         }
         if (o == OPT_HELP) {

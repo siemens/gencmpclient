@@ -130,6 +130,10 @@ The demo client allows also to update and revoke the enrolled certificate, like 
 ./cmpClientDemo revoke
 ```
 
+## Using the library with CLI
+
+There is a Comand Line Interface (CLI) realized, which make use of the genCMPClient library. Have a look at the [`cmpClient-cli.md`](doc/cmpClient-cli.md) file to check for already implemented CLI options.
+
 
 ## Using the library in own applications
 

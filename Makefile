@@ -128,7 +128,7 @@ clean_test:
 	rm -f creds/new.*
 	rm -rf creds/crls
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Insta/test.*cert*.pem
-	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/CmpWsRa/test.*cert*.pem
+	rm -rf cmpossl/test/recipes/81-test_cmp_cli_data/CmpWsRa/
 
 clean:
 	$(MAKE) -f Makefile_src clean
@@ -157,6 +157,9 @@ endif
 
 creds/crls:
 	mkdir $@
+
+cmpossl/test/recipes/81-test_cmp_cli_data/CmpWsRa/:
+	cp -r test/CmpWsRa/ cmpossl/test/recipes/81-test_cmp_cli_data/
 
 test: build | creds/crls
 	@/bin/echo -e "\n##### running cmpClientDemo #####"
@@ -194,7 +197,7 @@ endif
 test_insta: build
 	INSTA=1 $(MAKE) test
 
-test_cli: build
+test_cli: build cmpossl/test/recipes/81-test_cmp_cli_data/CmpWsRa/
 	@echo -e "\n#### running CLI tests ####"
 	@ :
 	( SRCTOP=cmpossl \

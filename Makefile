@@ -154,6 +154,11 @@ else
                -cert creds/new.crt
 endif
 
+ifeq ($(V),1)
+	verbose=1
+else
+	verbose=0
+endif
 
 creds/crls:
 	mkdir $@
@@ -200,7 +205,9 @@ test_insta: build
 test_cli: build cmpossl/test/recipes/81-test_cmp_cli_data/CmpWsRa/
 	@echo -e "\n#### running CLI tests ####"
 	@ :
-	( SRCTOP=cmpossl \
+	( HARNESS_ACTIVE=1 \
+	  HARNESS_VERBOSE=$(verbose) \
+	  SRCTOP=cmpossl \
 	  BLDTOP=. \
 	  BIN_D=. \
 	  EXE_EXT= \

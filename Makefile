@@ -154,12 +154,6 @@ else
                -cert creds/new.crt
 endif
 
-ifeq ($(V),1)
-	verbose=1
-else
-	verbose=0
-endif
-
 creds/crls:
 	mkdir $@
 
@@ -202,11 +196,11 @@ endif
 test_insta: build
 	INSTA=1 $(MAKE) test
 
-test_cli: build cmpossl/test/recipes/81-test_cmp_cli_data/CmpWsRa/
-	@echo -e "\n#### running CLI tests ####"
+test_cli: build
+	@echo -e "\n#### running CLI-based tests #### with CMP_TESTS=$$CMP_TESTS"
 	@ :
 	( HARNESS_ACTIVE=1 \
-	  HARNESS_VERBOSE=$(verbose) \
+	  HARNESS_VERBOSE=$(V) \
 	  SRCTOP=cmpossl \
 	  BLDTOP=. \
 	  BIN_D=. \
@@ -214,6 +208,13 @@ test_cli: build cmpossl/test/recipes/81-test_cmp_cli_data/CmpWsRa/
 	  LD_LIBRARY_PATH=$(BIN_D) \
 	  $(PERL) test/81-test_cmp_cli.t )
 	@ :
+
+test_CmpWsRa: cmpossl/test/recipes/81-test_cmp_cli_data/CmpWsRa/
+	make test_cli CMP_TESTS=CmpWsRa
+
+test_Insta:
+	make test_cli CMP_TESTS=Insta
+	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Insta/test.{cert,extracerts}.pem
 
 all:	build test
 

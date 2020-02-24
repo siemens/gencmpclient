@@ -70,8 +70,7 @@ X509_STORE *STORE_load_trusted(const char *files, OPTIONAL const char *desc,
 bool STORE_set1_host_ip(X509_STORE *truststore, const char *host, const char *ip);
 const char* STORE_get0_host(X509_STORE* store);
 bool STORE_set0_tls_bio(X509_STORE *store, BIO *bio);
-bool STORE_EX_init_index(void);
-void STORE_EX_free_index(void);
+bool STORE_EX_check_index(void);
 
 # ifndef SEC_NO_TLS
 bool TLS_init(void);
@@ -120,7 +119,7 @@ CMP_err CMPclient_init(OPTIONAL LOG_cb_t log_fn)
 {
     LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
     UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, "genericCMPClient");
-    if (!STORE_EX_init_index()) {
+    if (!STORE_EX_check_index()) {
         LOG(FL_ERR, "failed to initialize STORE_EX index\n");
         return ERR_R_INIT_FAIL;
     }
@@ -666,11 +665,6 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 #endif
     X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
     OSSL_CMP_CTX_free(ctx);
-/*-
- * better not do here:
- *   STORE_EX_free_index();
- *   LOG_close();
- */
 }
 
 

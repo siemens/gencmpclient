@@ -1,7 +1,7 @@
-# generic CMP client library
+# generic CMP client
 
 This is the code repository for the cross-division generic CMP client library
-with associated demo client and documentation.
+with associated CLI-based demo/test client and documentation.
 
 ## Status
 
@@ -16,7 +16,7 @@ is ongoing, at least for FY 2020.
 
 ## Prerequisites
 
-This library should work with any flavor of Linux, including [Cygwin](https://www.cygwin.com/),
+This software should work with any flavor of Linux, including [Cygwin](https://www.cygwin.com/),
 potentially running on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
 
 The following network and development tools are required.
@@ -79,7 +79,7 @@ the [Security Utilities (SecUtils)](https://code.siemens.com/mo_mm_linux_distrib
 
 ## Building the software
 
-The generic CMP client library (and also its underlying CMP and SecUtils libraries) assumes that OpenSSL (with any version >= 1.0.2) is already installed,
+The generic CMP client (and also its underlying CMP and SecUtils libraries) assumes that OpenSSL (with any version >= 1.0.2) is already installed,
 including the C header files needed for development (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
 By default the OpenSSL headers will be searched for in `/usr/include` and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
 You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation, e.g.:
@@ -87,7 +87,7 @@ You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL i
 export OPENSSL_DIR=/usr/local
 ```
 
-In the newly created directory `genCMPClient` you can build the library simply with
+In the newly created directory `genCMPClient` you can build the software simply with
 ```
 make
 ```
@@ -98,11 +98,11 @@ This also builds all required dependencies (such as `./libcmp.so` and `./securit
 **Important Note:** by default, the Security Utilities make use of the
 [Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library
 for secure device-level storage of key material for confidentiality and integrity protection of files.
-Since this library is not yet generally available Siemens-wide the SecUtils are so far integrated in a way that the use of the UTA lib is disabled (via `SEC_NO_UTA=1`).
+Since the URA library is not yet generally available Siemens-wide the SecUtils are so far integrated in a way that the use of the UTA lib is disabled (via `SEC_NO_UTA=1`).
 This means that secure storage of protection credentials for private keys and trusted certificates needs to be solved by other means.
 
 
-## Using the library with the demo client
+## Using the demo client
 
 Have a look at the demo client in [`src/cmpClientDemo.c`](src/cmpClientDemo.c).
 It can be executed with
@@ -130,9 +130,29 @@ The demo client allows also to update and revoke the enrolled certificate, like 
 ./cmpClientDemo revoke
 ```
 
-## Using the library with CLI
 
-There is a Comand Line Interface (CLI) realized, which make use of the genCMPClient library. Have a look at the [`cmpClient-cli.md`](doc/cmpClient-cli.md) file to check for already implemented CLI options.
+The demo client may also interact with the external Insta Certifier Demo CA via
+```
+export http_proxy=de.coia.siemens.net:9400  # adapt to your needs
+make test_insta
+```
+
+
+## Using the CLI-based test client
+
+The Comand Line Interface (CLI) supports most of the features of the genCMPClient library.
+The CLI use with the available options are documented in [`cmpClient-cli.md`](doc/cmpClient-cli.md).
+
+Several hundreds of CLI-based tests may be invoked using
+```
+http_proxy=de.coia.siemens.net:9400 make test_Insta
+```
+assuming the proxy is sufficient to reach the external Insta Certifier Demo CA
+or
+```
+make test_CmpWsRa
+```
+assuming a local CmpWsRa instance is running and forwards requests to the Siemens Product PKI (PPKI) Playground server.
 
 
 ## Using the library in own applications
@@ -152,7 +172,7 @@ All this is already done for the demo application.
 
 ## Documentation
 
-The Generic CMP client API specification is available in the [doc](doc/) folder.
+The Generic CMP client API specification and CLI documentation are available in the [doc](doc/) folder.
 
 A recording of the tutorial held via Circuit on 2018-Dec-13 is available [here](https://myvideo.siemens.com/media/1_f7bjtdba).
 

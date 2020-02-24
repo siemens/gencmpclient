@@ -148,9 +148,9 @@ opt_t cmp_opts[] = {
     OPT_MORE("Default from environment variable 'no_proxy', else 'NO_PROXY', else none"),
     { "path", OPT_TXT, {.txt = "/"}, { &opt_path },
       "HTTP path (aka CMP alias) at the CMP server. Default \"/\""},
-    { "msgtimeout", OPT_NUM, {.num = -1}, { (char **)&opt_msgtimeout },
+    { "msgtimeout", OPT_NUM, {.num = 120}, { (char **)&opt_msgtimeout },
       "Timeout per CMP message round trip (or 0 for none). Default 120 seconds"},
-    { "totaltimeout", OPT_NUM, {.num = -1}, { (char **)&opt_totaltimeout},
+    { "totaltimeout", OPT_NUM, {.num = 0}, { (char **)&opt_totaltimeout},
       "Overall time an enrollment incl. polling may take. Default: 0 = infinite"},
 
     OPT_SECTION("Server authentication"),

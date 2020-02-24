@@ -91,6 +91,8 @@ request certificates to be revoked, and perform other CMP requests.
 
 =head1 USAGE
 
+=over 4
+
 =item B<imprint|bootstrap|update|revoke|pkcs10>
 
 Define C<use_case> of the cmpClient application. The corresponding CMP request
@@ -99,9 +101,9 @@ file 'config/demo.cnf'.
 
 =item B<options>
 
-=back
-
 List of options implemented in the C<cmpClient> application.
+
+=back
 
 =head1 OPTIONS
 

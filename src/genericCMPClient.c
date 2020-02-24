@@ -456,7 +456,13 @@ static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
             goto end;
         }
 
-        SSL_set_tlsext_host_name(ssl, ctx->serverName);
+        /* set the server name indication ClientHello extension */
+        char *host = ctx->serverName;
+        if (host != NULL && *host < '0' && *host > '9' /* not IPv4 address */
+            && SSL_set_tlsext_host_name(ssl, host)) {
+            hbio = NULL;
+            goto end;
+        }
 
         SSL_set_connect_state(ssl);
         BIO_set_ssl(sbio, ssl, BIO_CLOSE);

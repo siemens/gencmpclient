@@ -6,8 +6,9 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 
 =head1 SYNOPSIS
 
-B<cmpClient>
-[B<imprint|bootstrap|update|revoke|pkcs10>]
+B<cmpClient> (B<imprint|bootstrap|update|revoke|pkcs10>) [B<-section> I<CA>]
+
+B<cmpClient> I<options>
 
 [B<-help>]
 [B<-config> I<filename>]

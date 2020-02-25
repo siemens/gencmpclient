@@ -158,7 +158,7 @@ creds/crls:
 	mkdir $@
 
 cmpossl/test/recipes/81-test_cmp_cli_data/CmpWsRa/:
-	cp -r test/CmpWsRa/ cmpossl/test/recipes/81-test_cmp_cli_data/
+	cp -a test/CmpWsRa/ cmpossl/test/recipes/81-test_cmp_cli_data/
 
 test: build | creds/crls
 	@/bin/echo -e "\n##### running cmpClient Demo #####"

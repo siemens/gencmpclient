@@ -1,10 +1,10 @@
 /*-
- * @file   cmpClientDemo.c
- * @brief  generic CMP client library detailed usage demonstration
+ * @file   cmpClient.c
+ * @brief  generic CMP client library demo/test client
  *
  * @author David von Oheimb, CT RDA CST SEA, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2018-2019 Siemens AG
+ *  Copyright (c) 2018-2020 Siemens AG
  *  Licensed under the Apache License, Version 2.0
  *  SPDX-License-Identifier: Apache-2.0
  */
@@ -17,7 +17,7 @@
 
 #include <openssl/ssl.h>
 
-/* needed for OSSL_CMP_ITAV_gen() in function CMPclient_demo() */
+/* needed for OSSL_CMP_ITAV_gen() in function CMPclient() */
 #include "../cmpossl/crypto/cmp/cmp_local.h"
 
 #define CONFIG_DEFAULT "config/demo.cnf"
@@ -363,7 +363,7 @@ static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
     }
     sk_X509_free(certs); /* must not free the stack elements */
     if (res == 0)
-        LOG(FL_ERR, "error: unable to use TLS extra certs");
+        LOG_err("error: unable to use TLS extra certs");
     return res;
 }
 
@@ -396,7 +396,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
         }
         if (!OSSL_CMP_CTX_push1_subjectAltName(ctx, n)) {
             GENERAL_NAME_free(n);
-            LOG(FL_ERR, "out of memory");
+            LOG_err("Out of memory");
             return 0;
         }
         GENERAL_NAME_free(n);
@@ -423,7 +423,7 @@ SSL_CTX *setup_TLS(void)
 
         if (opt_tls_host != NULL
             && !STORE_set1_host_ip(truststore, opt_tls_host, opt_tls_host)) {
-            LOG(FL_ERR, "error setting expected TLS host");
+            LOG_err("error setting expected TLS host");
             goto err;
         }
 
@@ -450,7 +450,7 @@ SSL_CTX *setup_TLS(void)
     }
 
     if ((opt_tls_cert == NULL) != (opt_tls_key == NULL)) {
-        LOG(FL_ERR, "must give both -tls_cert and -tls_key options or neither");
+        LOG_err("must give both -tls_cert and -tls_key options or neither");
         goto err;
     }
     if (opt_tls_key != NULL) {
@@ -552,15 +552,15 @@ X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
     }
 
     if (opt_policies != NULL && opt_policy_oids != NULL) {
-        LOG(FL_ERR, "cannot have policies both via -policies and via -policy_oids");
+        LOG_err("cannot have policies both via -policies and via -policy_oids");
         goto err;
     }
 
     if (opt_policy_oids_critical) {
         if (opt_policy_oids == NULL)
-            LOG(FL_WARN, "-opt_policy_oids_critical has no effect unless -policy_oids is given");
+            LOG_warn("-opt_policy_oids_critical has no effect unless -policy_oids is given");
         if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POLICIES_CRITICAL, 1)) {
-            LOG(FL_ERR, "Failed to set 'setPoliciesCritical' field of CMP context");
+            LOG_err("Failed to set 'setPoliciesCritical' field of CMP context");
             goto err;
         }
     }
@@ -576,7 +576,7 @@ X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
         }
 
         if ((pinfo = POLICYINFO_new()) == NULL) {
-            LOG(FL_ERR, "out of memory");
+            LOG_err("Out of memory");
             ASN1_OBJECT_free(policy);
             goto err;
         }
@@ -609,7 +609,7 @@ static int set_name(const char *str,
         }
         if (!(*set_fn) (ctx, n)) {
             X509_NAME_free(n);
-            LOG(FL_ERR, "Out of memory");
+            LOG_err("Out of memory");
             return 5;
         }
         X509_NAME_free(n);
@@ -627,15 +627,15 @@ int setup_cert_template(CMP_CTX *ctx)
 
     if (opt_san_nodefault) {
         if (opt_sans != NULL)
-            LOG(FL_WARN, "-opt_san_nodefault has no effect when -sans is used");
+            LOG_warn("-opt_san_nodefault has no effect when -sans is used");
         if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 1)) {
-            LOG(FL_ERR, "Failed to set 'SubjectAltName_nodefault' field of CMP context");
+            LOG_err("Failed to set 'SubjectAltName_nodefault' field of CMP context");
             goto err;
         }
     }
 
     if (!set_gennames(ctx, opt_sans, "Subject Alternative Name")) {
-        LOG(FL_ERR, "Failed to set 'Subject Alternative Name' of CMP context");
+        LOG_err("Failed to set 'Subject Alternative Name' of CMP context");
         err = 10;
         goto err;
     }
@@ -647,13 +647,8 @@ int setup_cert_template(CMP_CTX *ctx)
 
 int setup_ctx(CMP_CTX *ctx)
 {
-    OSSL_cmp_log_cb_t log_fn = NULL;
-    CMP_err err = CMPclient_init(log_fn);
-    if (err != CMP_OK)
-        return err;
-
-    err = set_name(opt_expect_sender, OSSL_CMP_CTX_set1_expected_sender,
-                   ctx, "expected sender");
+    CMP_err err = set_name(opt_expect_sender, OSSL_CMP_CTX_set1_expected_sender,
+                           ctx, "expected sender");
     if (err != CMP_OK)
         return err;
 
@@ -666,7 +661,7 @@ int setup_ctx(CMP_CTX *ctx)
             goto err;
         } else {
             if (!OSSL_CMP_CTX_set1_extraCertsOut(ctx, certs)) {
-                LOG(FL_ERR, "Failed to set 'extraCerts' field of CMP context");
+                LOG_err("Failed to set 'extraCerts' field of CMP context");
                 sk_X509_pop_free(certs, X509_free);
                 err = 9;
                 goto err;
@@ -694,7 +689,7 @@ int setup_ctx(CMP_CTX *ctx)
             && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPOMETHOD, (int)opt_popo))
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLECONFIRM, opt_disableconfirm)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, opt_unprotectedrequests)) {
-        LOG(FL_ERR, "Failed to set option flags of CMP context");
+        LOG_err("Failed to set option flags of CMP context");
         goto err;
     }
 
@@ -708,40 +703,40 @@ int setup_ctx(CMP_CTX *ctx)
         char *valptr = strchr(opt_geninfo, ':');
 
         if (valptr == NULL) {
-            LOG(FL_ERR, "missing ':' in -geninfo option");
+            LOG_err("missing ':' in -geninfo option");
             goto err;
         }
         valptr[0] = '\0';
         valptr++;
 
         if (strncmp(valptr, "int:", 4) != 0) {
-            LOG(FL_ERR, "missing 'int:' in -geninfo option");
+            LOG_err("missing 'int:' in -geninfo option");
             goto err;
         }
         valptr += 4;
 
         value = strtol(valptr, &endstr, 10);
         if (endstr == valptr || *endstr != '\0') {
-            LOG(FL_ERR, "cannot parse int in -geninfo option");
+            LOG_err("cannot parse int in -geninfo option");
             goto err;
         }
 
         type = OBJ_txt2obj(opt_geninfo, 1);
         if (type == NULL) {
-            LOG(FL_ERR, "cannot parse OID in -geninfo option");
+            LOG_err("cannot parse OID in -geninfo option");
             goto err;
         }
 
         aint = ASN1_INTEGER_new();
         if (aint == NULL || !ASN1_INTEGER_set(aint, value)) {
-            LOG(FL_ERR, "cannot set ASN1 integer");
+            LOG_err("cannot set ASN1 integer");
             err = 11;
             goto err;
         }
 
         val = ASN1_TYPE_new();
         if (val == NULL) {
-            LOG(FL_ERR, "cannot create new ASN1 type");
+            LOG_err("cannot create new ASN1 type");
             err = 12;
             ASN1_INTEGER_free(aint);
             goto err;
@@ -749,14 +744,14 @@ int setup_ctx(CMP_CTX *ctx)
         ASN1_TYPE_set(val, V_ASN1_INTEGER, aint);
         itav = OSSL_CMP_ITAV_gen(type, val);
         if (itav == NULL) {
-            LOG(FL_ERR, "Unable to create 'OSSL_CMP_ITAV' structure");
+            LOG_err("Unable to create 'OSSL_CMP_ITAV' structure");
             err = 13;
             ASN1_TYPE_free(val);
             goto err;
         }
 
         if (!OSSL_CMP_CTX_push0_geninfo_ITAV(ctx, itav)) {
-            LOG(FL_ERR, "Failed to add an ITAV for geninfo of the PKI message header");
+            LOG_err("Failed to add an ITAV for geninfo of the PKI message header");
             err = 14;
             OSSL_CMP_ITAV_free(itav);
             goto err;
@@ -773,7 +768,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
                            OPTIONAL CREDENTIALS *cmp_creds)
 {
     if (opt_srvcert != NULL && opt_trusted != NULL)
-        LOG(FL_WARN, "-trusted option is ignored since -srvcert option is present");
+        LOG_warn("-trusted option is ignored since -srvcert option is present");
 
     X509_STORE *cmp_truststore = opt_trusted == NULL ? NULL : setup_CMP_truststore();
     STACK_OF(X509) *untrusted_certs = opt_untrusted == NULL ? NULL :
@@ -797,7 +792,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
     const bool implicit_confirm = opt_implicitconfirm;
 
     if ((int)opt_totaltimeout < -1) {
-        LOG(FL_ERR, "only non-negative values allowed for opt_totaltimeout");
+        LOG_err("only non-negative values allowed for opt_totaltimeout");
         goto err;
     }
     err = CMPclient_prepare(pctx, log_fn,
@@ -849,7 +844,7 @@ static int opt_next(int argc, char **argv)
 
     /* If word doesn't start with a -, it failed to parse all options. */
     if (*param != '-') {
-        LOG(FL_ERR, "Failed to parse all options");
+        LOG_err("Failed to parse all options");
         arg = param;
         return OPT_ERR;
     }
@@ -948,14 +943,14 @@ int setup_transfer(CMP_CTX *ctx)
     const char *server = opt_server;
 
     if ((int)opt_msgtimeout < -1) {
-        LOG(FL_ERR, "only non-negative values allowed for opt_msgtimeout");
+        LOG_err("only non-negative values allowed for opt_msgtimeout");
         err = 16;
         goto err;
     }
 
     SSL_CTX *tls = NULL;
     if (opt_tls_used && (tls = setup_TLS()) == NULL) {
-        LOG(FL_ERR, "Unable to setup TLS for CMP client");
+        LOG_err("Unable to setup TLS for CMP client");
         err = 17;
         goto err;
     }
@@ -966,20 +961,16 @@ int setup_transfer(CMP_CTX *ctx)
     TLS_free(tls);
 #endif
     if (err != CMP_OK) {
-        LOG(FL_ERR, "Unable to setup HTTP for CMP client");
+        LOG_err("Unable to setup HTTP for CMP client");
         goto err;
     }
  err:
     return err;
 }
 
-static int CMPclient_demo(enum use_case use_case)
+static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
 {
-    OSSL_cmp_log_cb_t log_fn = NULL;
-    CMP_err err = CMPclient_init(log_fn);
-    if (err != CMP_OK)
-        return err;
-
+    CMP_err err = CMP_OK;
     CMP_CTX *ctx = NULL;
     EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
@@ -987,11 +978,11 @@ static int CMPclient_demo(enum use_case use_case)
     CREDENTIALS *cmp_creds;
 
     if (opt_infotype != NULL)  /* TODO? implement when genm is supported */
-        LOG(FL_WARN, "-infotype option is ignored as long as 'genm' is not supported");
+        LOG_warn("-infotype option is ignored as long as 'genm' is not supported");
 
     if (use_case == update) {
         if (opt_secret != NULL) {
-            LOG(FL_WARN, "-secret option is ignored for 'kur' commands");
+            LOG_warn("-secret option is ignored for 'kur' commands");
             opt_secret = NULL;
         }
         if (opt_cert == NULL && opt_oldcert != NULL) {
@@ -1005,7 +996,7 @@ static int CMPclient_demo(enum use_case use_case)
         }
     }
     if (!opt_unprotectedrequests && !opt_secret && !(opt_cert && opt_key)) {
-        LOG(FL_ERR, "must give client credentials unless -unprotectedrequests is set");
+        LOG_err("must give client credentials unless -unprotectedrequests is set");
         err = 1;
         goto err;
     }
@@ -1013,23 +1004,23 @@ static int CMPclient_demo(enum use_case use_case)
     if (opt_ref == NULL && opt_cert == NULL && opt_subject == NULL) {
         /* cert or subject should determine the sender */
         /* TODO maybe else take as sender default the subjectName of oldCert or p10cr */
-        LOG(FL_ERR, "must give -ref if no -cert and no -subject given");
+        LOG_err("must give -ref if no -cert and no -subject given");
         err = 1;
         goto err;
     }
     if (!opt_secret && ((opt_cert == NULL) != (opt_key == NULL))) {
-        LOG(FL_ERR, "must give both -cert and -key options or neither");
+        LOG_err("must give both -cert and -key options or neither");
         err = 1;
         goto err;
     }
 
     if (use_case == pkcs10 && opt_csr == NULL) {
-        LOG(FL_ERR, "-csr option is missing for command 'p10cr'");
+        LOG_err("-csr option is missing for command 'p10cr'");
         err = 21;
         goto err;
     }
     if (use_case == revocation && opt_oldcert == NULL) {
-        LOG(FL_ERR, "-oldcert option is missing for command 'rr' (revocation)");
+        LOG_err("-oldcert option is missing for command 'rr' (revocation)");
         err = 21;
         goto err;
     }
@@ -1041,7 +1032,7 @@ static int CMPclient_demo(enum use_case use_case)
         ? CREDENTIALS_new(NULL, NULL, NULL, opt_secret, opt_ref)
         : CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
     if (cmp_creds == NULL) {
-        LOG(FL_ERR, "Unable to set up credentials for CMP level");
+        LOG_err("Unable to set up credentials for CMP level");
         err = 1;
         goto err;
     }
@@ -1049,28 +1040,28 @@ static int CMPclient_demo(enum use_case use_case)
     err = prepare_CMP_client(&ctx, log_fn, cmp_creds);
     CREDENTIALS_free(cmp_creds);
     if (err != CMP_OK) {
-        LOG(FL_ERR, "Failed to prepare CMP client");
+        LOG_err("Failed to prepare CMP client");
         goto err;
     }
 
     if ((err = setup_ctx(ctx)) != CMP_OK) {
-        LOG(FL_ERR, "Failed to prepare CMP client");
+        LOG_err("Failed to prepare CMP client");
         goto err;
     }
 
     if (use_case == pkcs10 || use_case == revocation) {
         if (opt_newkeytype != 0)
-            LOG(FL_WARN, "-newkeytype option is ignored for 'p10cr' and 'rr' commands");
+            LOG_warn("-newkeytype option is ignored for 'p10cr' and 'rr' commands");
         if (opt_newkey != 0)
-            LOG(FL_WARN, "-newkey option is ignored for 'p10cr' and 'rr' commands");
+            LOG_warn("-newkey option is ignored for 'p10cr' and 'rr' commands");
         if (opt_days != 0)
-            LOG(FL_WARN, "-days option is ignored for 'p10cr' and 'rr' commands");
+            LOG_warn("-days option is ignored for 'p10cr' and 'rr' commands");
         if (opt_popo != OSSL_CRMF_POPO_NONE - 1)
-            LOG(FL_WARN, "-popo option is ignored for commands other than 'ir', 'cr', and 'p10cr'");
+            LOG_warn("-popo option is ignored for commands other than 'ir', 'cr', and 'p10cr'");
     } else {
         if (opt_newkeytype != NULL) {
             if (opt_newkey == NULL) {
-                LOG(FL_ERR, "Missing -newkey option for saving the new key");
+                LOG_err("Missing -newkey option for saving the new key");
                 err = 18;
                 goto err;
             }
@@ -1085,7 +1076,7 @@ static int CMPclient_demo(enum use_case use_case)
         }
         else {
             if (opt_newkey == NULL && opt_key == NULL) {
-                LOG(FL_ERR, "Missing -newkeytype or -newkey or -key option");
+                LOG_err("Missing -newkeytype or -newkey or -key option");
                 err = 18;
                 goto err;
             }
@@ -1104,7 +1095,7 @@ static int CMPclient_demo(enum use_case use_case)
 
     if (use_case == imprint || use_case == bootstrap) {
         if (reqExtensions_have_SAN(exts) && opt_sans != NULL) {
-            LOG(FL_ERR, "Cannot have Subject Alternative Names both via -reqexts and via -sans");
+            LOG_err("Cannot have Subject Alternative Names both via -reqexts and via -sans");
             err = CMP_R_MULTIPLE_SAN_SOURCES;
             goto err;
         }
@@ -1113,7 +1104,7 @@ static int CMPclient_demo(enum use_case use_case)
         if (err != CMP_OK)
             goto err;
         if ((exts = setup_X509_extensions(ctx)) == NULL) {
-            LOG(FL_ERR, "Unable to set up X509 extensions for CMP client");
+            LOG_err("Unable to set up X509 extensions for CMP client");
             err = 19;
             goto err;
         }
@@ -1125,43 +1116,44 @@ static int CMPclient_demo(enum use_case use_case)
                 if (err != CMP_OK)
                     goto err;
             } else {
-                LOG(FL_WARN, "-subject option is ignored for commands other than 'ir' and 'cr'");
+                LOG_warn("-subject option is ignored for commands other than 'ir' and 'cr'");
             }
         }
         if (opt_issuer != NULL)
-            LOG(FL_WARN, "-issuer option is ignored for commands other than 'ir' and 'cr'");
+            LOG_warn("-issuer option is ignored for commands other than 'ir' and 'cr'");
         if (opt_reqexts != NULL)
-            LOG(FL_WARN, "-reqexts option is ignored for commands other than 'ir' and 'cr'");
+            LOG_warn("-reqexts option is ignored for commands other than 'ir' and 'cr'");
         if (opt_san_nodefault)
-            LOG(FL_WARN, "-san_nodefault option is ignored for commands other than 'ir' and 'cr'");
+            LOG_warn("-san_nodefault option is ignored for commands other than 'ir' and 'cr'");
         if (opt_sans != NULL)
-            LOG(FL_WARN, "-sans option is ignored for commands other than 'ir' and 'cr'");
+            LOG_warn("-sans option is ignored for commands other than 'ir' and 'cr'");
         if (opt_policies != NULL)
-            LOG(FL_WARN, "-policies option is ignored for commands other than 'ir' and 'cr'");
+            LOG_warn("-policies option is ignored for commands other than 'ir' and 'cr'");
         if (opt_policy_oids != NULL)
-            LOG(FL_WARN, "-policy_oids option is ignored for commands other than 'ir' and 'cr'");
+            LOG_warn("-policy_oids option is ignored for commands other than 'ir' and 'cr'");
     }
 
     if (use_case != pkcs10 && opt_csr != NULL)
-        LOG(FL_WARN, "-csr option is ignored for commands other than 'p10cr'");
+        LOG_warn("-csr option is ignored for commands other than 'p10cr'");
     if (use_case != update && use_case != revocation && opt_oldcert != NULL)
-        LOG(FL_WARN, "-oldcert option is ignored for commands other than 'kur' and 'rr'");
+        LOG_warn("-oldcert option is ignored for commands other than 'kur' and 'rr'");
     if (use_case == revocation) {
         if (opt_implicitconfirm)
-            LOG(FL_WARN, "-implicitconfirm option is ignored for 'rr' commands");
+            LOG_warn("-implicitconfirm option is ignored for 'rr' commands");
         if (opt_disableconfirm)
-            LOG(FL_WARN, "-disableconfirm option is ignored for 'rr' commands");
+            LOG_warn("-disableconfirm option is ignored for 'rr' commands");
         if (opt_certout != NULL)
-            LOG(FL_WARN, "-certout option is ignored for 'rr' commands");
+            LOG_warn("-certout option is ignored for 'rr' commands");
     } else {
         if (opt_revreason != CRL_REASON_NONE)
-            LOG(FL_WARN, "-revreason option is ignored for commands other than 'rr'");
+            LOG_warn("-revreason option is ignored for commands other than 'rr'");
     }
 
     if (opt_tls_cert != NULL || opt_tls_key != NULL || opt_tls_keypass != NULL
         || opt_tls_extra != NULL || opt_tls_trusted != NULL
         || opt_tls_host != NULL)
-        /* force using TLS: opt_tls_used = true*/;
+        if (!opt_tls_used)
+            LOG_warn("TLS options(s) given but not -tls_used");
     if ((err = setup_transfer(ctx)) != CMP_OK)
         goto err;
 
@@ -1200,7 +1192,7 @@ static int CMPclient_demo(enum use_case use_case)
         if ((int)opt_revreason < CRL_REASON_NONE
                 || (int)opt_revreason > CRL_REASON_AA_COMPROMISE
                 || (int)opt_revreason == 7) {
-            LOG(FL_ERR, "invalid revreason. Valid values are -1..6, 8..10.");
+            LOG_err("invalid revreason. Valid values are -1..6, 8..10.");
             err = 20;
             goto err;
         }
@@ -1220,7 +1212,7 @@ static int CMPclient_demo(enum use_case use_case)
         err = 21;
     }
     if (err != CMP_OK) {
-        LOG(FL_ERR, "Failed to perform CMP request");
+        LOG_err("Failed to perform CMP request");
         goto err;
     }
 
@@ -1264,7 +1256,7 @@ static int CMPclient_demo(enum use_case use_case)
         if (opt_newkey != NULL && opt_newkeytype != NULL) {
             const char *new_desc = "newly enrolled certificate and related chain and key";
             if (!CREDENTIALS_save(new_creds, opt_certout, opt_newkey, opt_newkeypass, new_desc)) {
-                LOG(FL_ERR, "Failed to save newly enrolled credentials");
+                LOG_err("Failed to save newly enrolled credentials");
                 err = 26;
                 goto err;
             }
@@ -1283,7 +1275,7 @@ static int CMPclient_demo(enum use_case use_case)
 
             if(sk_X509_unshift(certs, cert) == 0) /* prepend cert */
             {
-                LOG(FL_ERR, "out of memory writing certs to file '%s'", opt_certout);
+                LOG(FL_ERR, "Out of memory writing certs to file '%s'", opt_certout);
                 err = 28;
                 goto err;
             }
@@ -1325,8 +1317,15 @@ int main(int argc, char *argv[])
 #endif
 
     sec_ctx *sec_ctx = sec_init();
+    OSSL_cmp_log_cb_t log_fn = NULL;
+    if (CMPclient_init(log_fn) != CMP_OK) {
+        fprintf(stderr, "cannot set up logging for %s\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+    LOG_set_name("cmpClient");
+
     if (sec_ctx == NULL) {
-        LOG(FL_ERR, "failure getting SecUtils ctx");
+        LOG_err("failure getting SecUtils ctx");
         return EXIT_FAILURE;
     }
 
@@ -1342,8 +1341,11 @@ int main(int argc, char *argv[])
         } else if (strcmp(argv[1], "revoke") == 0) {
             use_case = revocation;
         } else if (strcmp(argv[1], "-help") == 0) {
-            LOG(FL_INFO, "\nUsage: %s [imprint | bootstrap | update | revoke] [options]\n",
-                argv[0]);
+            LOG(FL_INFO, "\nUsage:\n"
+                "%s (imprint | bootstrap | update | revoke) [-section <CA>]\n"
+                "%s options\n\n"
+                "Available options are:\n",
+                argv[0], argv[0]);
             OPT_help(cmp_opts, bio_stdout);
             goto err;
         }
@@ -1394,7 +1396,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     vpm = X509_VERIFY_PARAM_new();
     if (vpm == 0) {
-        LOG(FL_ERR, "Out of memory");
+        LOG_err("Out of memory");
         return EXIT_FAILURE;
     }
     if (!CONF_read_vpm(config, opt_section, vpm))
@@ -1434,7 +1436,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    if ((rc = CMPclient_demo(use_case)) != CMP_OK)
+    if ((rc = CMPclient(use_case, log_fn)) != CMP_OK)
         goto err;
 
     if (sec_deinit(sec_ctx) == -1)

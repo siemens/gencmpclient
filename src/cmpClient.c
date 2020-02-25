@@ -821,7 +821,7 @@ static int reqExtensions_have_SAN(X509_EXTENSIONS *exts)
     return X509v3_get_ext_by_NID(exts, NID_subject_alt_name, -1) >= 0;
 }
 
-/* TODO move to SecUtils/src/config/opt.c */
+/* TODO? move to SecUtils/src/config/opt.c */
 /*
  * return OPTION_choice index on success, -1 if options does not match and
  * OPT_END if all options are handled
@@ -886,7 +886,7 @@ static int opt_next(int argc, char **argv)
     return OPT_ERR;
 }
 
-/* TODO move to SecUtils/src/config/opt.c */
+/* TODO? move to SecUtils/src/config/opt.c */
 /*
  * returns -1 when printing option help, 0 on success
  * and 1 on error
@@ -998,7 +998,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
     }
 
     if (opt_ref == NULL && opt_cert == NULL && opt_subject == NULL) {
-        /* cert or subject should determine the sender */
+        /* ossl_cmp_hdr_init() takes sender name from cert or else subject */
         /* TODO maybe else take as sender default the subjectName of oldCert or p10cr */
         LOG_err("must give -ref if no -cert and no -subject given");
         err = 1;

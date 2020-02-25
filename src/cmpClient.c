@@ -404,7 +404,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
     return 1;
 }
 
-SSL_CTX *setup_TLS(void)
+SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 {
 #ifdef SEC_NO_TLS
     fprintf(stderr, "TLS is not enabled in this build\n");
@@ -420,12 +420,6 @@ SSL_CTX *setup_TLS(void)
         truststore = STORE_load(opt_tls_trusted, "trusted certs for TLS level");
         if (truststore == NULL)
             goto err;
-
-        if (opt_tls_host != NULL
-            && !STORE_set1_host_ip(truststore, opt_tls_host, opt_tls_host)) {
-            LOG_err("error setting expected TLS host");
-            goto err;
-        }
 
         if (opt_crls != NULL) {
             /* TODO maybe combine with CRL loading for CMP level */
@@ -459,15 +453,17 @@ SSL_CTX *setup_TLS(void)
         if (tls_creds == NULL)
             goto err;
     }
-    const STACK_OF(X509) *untrusted_certs = NULL;
-    /*
-     * TODO maybe also add untrusted certs to help building chain of TLS client
-     * and checking stapled OCSP responses
-     */
     const int security_level = -1;
     tls = TLS_new(truststore, untrusted_certs, tls_creds, tls_ciphers, security_level);
     if (tls == NULL)
         goto err;
+
+    /* if we did this before TLS_new() the expected host name for own TLS cert would be wrong */
+    if (truststore != NULL && opt_tls_host != NULL
+        && !STORE_set1_host_ip(truststore, opt_tls_host, opt_tls_host)) {
+        LOG_err("error setting expected TLS host");
+        goto err;
+    }
 
     /* If present we append to the list also the certs from opt_tls_extra */
     if (opt_tls_extra != NULL) {
@@ -949,7 +945,7 @@ int setup_transfer(CMP_CTX *ctx)
     }
 
     SSL_CTX *tls = NULL;
-    if (opt_tls_used && (tls = setup_TLS()) == NULL) {
+    if (opt_tls_used && (tls = setup_TLS(OSSL_CMP_CTX_get0_untrusted_certs(ctx))) == NULL) {
         LOG_err("Unable to setup TLS for CMP client");
         err = 17;
         goto err;

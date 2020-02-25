@@ -7,9 +7,8 @@ with associated CLI-based demo/test client and documentation.
 
 * All features agreed with the participating Siemens business units
 have been implemented and documented in FY 2019.
-* So far, high-level tests are available only on a rather limited scale;
-better test coverage is in preparation.
-* Open-source clearing is in preparation.
+* Several hundreds of test cases have been compiled and executed successfully.
+* Open-source clearing has been finished in Feb 2020.
 * Maintenance (i.e., minor updates and fixes, also to the documentation)
 is ongoing, at least for FY 2020.
 
@@ -17,7 +16,7 @@ is ongoing, at least for FY 2020.
 ## Prerequisites
 
 This software should work with any flavor of Linux, including [Cygwin](https://www.cygwin.com/),
-potentially running on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
+also on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
 
 The following network and development tools are required.
 * SSH (tested with OpenSSH 7.4 and 7.9)
@@ -31,9 +30,9 @@ For instance, on a Debian system these may be installed as follows:
 ```
 sudo apt install libssl-dev
 ```
-while `apt install git make gcc` usually is not needed.
+while `apt install ssh wget git make gcc` usually is not needed because these tools are pre-installed.
 
-Using the [CPP-VM](https://ccp.siemens.com/docs/meta-siemens/docs/getting-started/), everything works out of the box.
+Using the [CPP-VM](https://ccp.siemens.com/docs/meta-siemens/docs/getting-started/), all prerequisites are available out of the box.
 
 As a sanity check you can execute in a shell:
 ```
@@ -59,7 +58,7 @@ rm -f OpenSSL_version
 
 For accessing `git@code.siemens.com` you will need an SSH client with credentials allowing to read from that repository.
 
-For accessing `https://github.com/mpeylo/cmpossl` you may need to set up an HTTP proxy, for instance:
+For accessing `https://github.com/mpeylo/cmpossl` from the Siemens intranet you may need to set up an HTTP proxy, for instance:
 ```
 export https_proxy=http://de.coia.siemens.net:9400
 ```
@@ -93,7 +92,7 @@ make
 ```
 
 The result is in, for instance, `./libgencmpcl.so`.
-This also builds all required dependencies (such as `./libcmp.so` and `./securityUtilities/libSecUtils.so`) and a demo application (`./cmpClientDemo`).
+This also builds all required dependencies (such as `./libcmp.so` and `./securityUtilities/libSecUtils.so`) and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
 
 **Important Note:** by default, the Security Utilities make use of the
 [Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library
@@ -104,7 +103,7 @@ This means that secure storage of protection credentials for private keys and tr
 
 ## Using the demo client
 
-Have a look at the demo client in [`src/cmpClientDemo.c`](src/cmpClientDemo.c).
+The CMP demo client is implemented in [`src/cmpClient.c`](src/cmpClient.c).
 It can be executed with
 ```
 make test
@@ -115,7 +114,7 @@ or manually like this:
 ```
 export no_proxy=ppki-playground.ct.siemens.com
 wget "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O creds/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl
-./cmpClientDemo
+./cmpClient
 ```
 
 Among others, successful execution should produce a new certificate at `creds/new.crt`.
@@ -126,10 +125,9 @@ openssl x509 -noout -text -in creds/new.crt
 
 The demo client allows also to update and revoke the enrolled certificate, like this:
 ```
-./cmpClientDemo update
-./cmpClientDemo revoke
+./cmpClient update
+./cmpClient revoke
 ```
-
 
 The demo client may also interact with the external Insta Certifier Demo CA via
 ```
@@ -140,14 +138,15 @@ make test_insta
 
 ## Using the CLI-based test client
 
-The Comand Line Interface (CLI) supports most of the features of the genCMPClient library.
+The Comand Line Interface (CLI) of the CMP client is implemented in [`src/cmpClient.c`](src/cmpClient.c).
+It supports most of the features of the genCMPClient library.
 The CLI use with the available options are documented in [`cmpClient-cli.md`](doc/cmpClient-cli.md).
 
-Several hundreds of CLI-based tests may be invoked using
+CLI-based tests may be invoked using
 ```
 http_proxy=de.coia.siemens.net:9400 make test_Insta
 ```
-assuming the proxy is sufficient to reach the external Insta Certifier Demo CA
+assuming the proxy is needed and sufficient to reach the external Insta CA
 or
 ```
 make test_CmpWsRa
@@ -157,9 +156,7 @@ assuming a local CmpWsRa instance is running and forwards requests to the Siemen
 
 ## Using the library in own applications
 
-You will need to include in your application sources the file [`genericCMPClient.h`](include/genericCMPClient.h).
-
-For compiling you will need to add the directories `include`, `include_cmp`, and `securityUtilities/include` to your C headers path and
+For compiling the library itself you will need to add the directories `include`, `include_cmp`, and `securityUtilities/include` to your C headers path and
 make sure that any OpenSSL header files included have the same version as the one used to build the standalone CMP library `libcmp`.
 
 For linking you will need to add the directories `.` and `securityUtilities` to your library path and
@@ -167,7 +164,9 @@ refer the linker to the CMP and SecUtils libraries, e.g., `-lcmp -lSecUtils`.
 Also make sure that the OpenSSL libraries (typically referred to via `-lssl -lcrypto`) are in your library path and
 (the version) of the libraries found there by the linker match the header files found by the compiler.
 
-All this is already done for the demo application.
+For building your application you will need to `#include` the header file [`genericCMPClient.h`](include/genericCMPClient.h) and link using `-lgencmpcl`.
+
+All this is already done for the cmp client application.
 
 
 ## Documentation

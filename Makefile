@@ -63,7 +63,7 @@ endif
 
 
 ################################################################
-# generic CMP Client lib and demo
+# generic CMP Client lib and client
 ################################################################
 
 .phony: default build
@@ -139,7 +139,7 @@ ifeq ($(LPATH),)
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 
-PROXY ?= http_proxy=http://de.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com # or, e.g., tsy1.coia.siemens.net = 194.145.60.1
+#PROXY ?= http_proxy=http://de.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com # or, e.g., tsy1.coia.siemens.net = 194.145.60.1:9400
 
 ifdef INSTA
     unreachable="cannot reach pki.certificate.fi"
@@ -161,7 +161,7 @@ cmpossl/test/recipes/81-test_cmp_cli_data/CmpWsRa/:
 	cp -r test/CmpWsRa/ cmpossl/test/recipes/81-test_cmp_cli_data/
 
 test: build | creds/crls
-	@/bin/echo -e "\n##### running cmpClientDemo #####"
+	@/bin/echo -e "\n##### running cmpClient Demo #####"
 ifndef INSTA
 	ping >/dev/null $(PINGCOUNTOPT) 1 ppki-playground.ct.siemens.com
 	@ # || echo $(unreachable); exit 1
@@ -178,18 +178,18 @@ else
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl"
 endif
-	$(PROXY) ./cmpClientDemo$(EXE) bootstrap -section $(CA_SECTION)
+	$(PROXY) ./cmpClient$(EXE) bootstrap -section $(CA_SECTION)
 	@echo :
 	openssl x509 -noout -text -in creds/new.crt | sed '/^         [0-9a-f].*/d'
 	@echo
-	$(PROXY) ./cmpClientDemo$(EXE) imprint -section $(CA_SECTION)
+	$(PROXY) ./cmpClient$(EXE) imprint -section $(CA_SECTION)
 	@echo
-	$(PROXY) ./cmpClientDemo$(EXE) update -section $(CA_SECTION)
+	$(PROXY) ./cmpClient$(EXE) update -section $(CA_SECTION)
 	@echo :
 	$(OCSP_CHECK)
 	@echo
 	@sleep 1 # for INSTA helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
-	$(PROXY) ./cmpClientDemo$(EXE) revoke -section $(CA_SECTION)
+	$(PROXY) ./cmpClient$(EXE) revoke -section $(CA_SECTION)
 	@echo :
 	$(OCSP_CHECK)
 
@@ -222,7 +222,7 @@ zip:
 	zip genCMPClient.zip \
             LICENSE README.md .gitmodules Makefile{,_src} CMakeLists.txt \
 	    OpenSSL_version.{c,mk} include/genericCMPClient.h \
-	    src/cmpClientDemo.c src/genericCMPClient.c
+	    src/cmpClient.c src/genericCMPClient.c
 
 
 
@@ -279,7 +279,7 @@ buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 # Target for debian packaging
 OUTBIN=libgencmpcl$(DLL)
 
-#SRCS=Makefile include/genericCMPClient.h src/genericCMPClient.c src/cmpClientDemo.c
+#SRCS=Makefile include/genericCMPClient.h src/genericCMPClient.c src/cmpClient.c
 #SRCS_TAR=libgencmpcl_0.1.0.orig.tar.gz
 .phony: deb deb_clean
 deb:

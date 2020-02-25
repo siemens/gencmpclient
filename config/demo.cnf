@@ -40,6 +40,7 @@ recipient = "/C=FI/O=Insta Demo/CN=Insta Demo CA"
 subject = "/CN=test-genCMPClientDemo"
 srvcert = creds/trusted/InstaDemoCA.crt
 #trusted = creds/trusted/InstaDemoCA.crt
+
 tls_trusted = creds/trusted/InstaDemoCA.crt
 tls_host = pki.certificate.fi:8700
 tls_cert = creds/insta_client.p12

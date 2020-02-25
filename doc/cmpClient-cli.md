@@ -4,9 +4,8 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 
 # SYNOPSIS
 
-**cmpClientDemo**
+**cmpClient**
 \[**imprint|bootstrap|update|revoke|pkcs10**\]
-\[**options**\]
 
 \[**-help**\]
 \[**-config** _filename_\]
@@ -73,16 +72,16 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-tls\_trusted** _filenames_\]
 \[**-tls\_host** _name_\]
 
-\[**-crls\_url** _URLs_\]
-\[**-crls\_file** _filename_\]
-\[**-crl\_use\_cdp**\]
+\[**-crls** _URLs_\]
+\[**-use\_cdp**\]
 \[**-cdp\_url** _URL_\]
+\[**-use\_aia**\]
 \[**-ocsp\_url** _URL_\]
 
 # DESCRIPTION
 
-The **cmpClientDemo** command is a demo client implementation for the Certificate
-Management Protocol (CMP) as defined in RFC4210.
+The **cmpClient** command is a demo and test client implementation for the Certificate
+Management Protocol (CMP) as defined in RFC 4210.
 It can be used to request certificates from a CA server,
 update their certificates,
 request certificates to be revoked, and perform other CMP requests.
@@ -91,13 +90,11 @@ request certificates to be revoked, and perform other CMP requests.
 
 - **imprint|bootstrap|update|revoke|pkcs10**
 
-    Define `use_case` of the cmpClient application. The corresponding CMP request
+    Select demo `use_case` of the cmpClient application. The corresponding CMP request
     will be executed with default settings. These settings could be adapt via the
     file 'config/demo.cnf'.
 
-- **options**
-
-    List of options implemented in the `cmpClient` application.
+- List of options available for the `cmpClient` application:
 
 # OPTIONS
 
@@ -348,7 +345,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
 - **-cmd** _ir|cr|kur|p10cr|rr_
 
-    CMP command to execute. Overwrites `use_case` if present.
+    CMP command to execute. Overrides `use_case` if present.
     Currently implemented commands are:
 
     - ir    - Initialization Request
@@ -541,7 +538,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
 - **-tls\_used**
 
-    Force using TLS (even when other TLS\_related options are not set)
+    Enable using TLS (even when other TLS\_related options are not set)
     when connecting to CMP server.
 
 - **-tls\_cert** _filename_
@@ -581,43 +578,37 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     validation.
     This may be a Common Name, a DNS name, or an IP address.
 
-## Certificate verification options, for both CMP and TLS
+## Certificate status checking options, for both CMP and TLS
 
-- **-crls\_url** _URLs_
+- **-crls** _URLs_
 
     Use given CRL(s) as primary source of certificate revocation information.
     The URLs argument may be a single element or a comma- or whitespace-separated
     list,
     each element starting with `http:` or `file:` or being a filename or pathname.
 
-    This option enables CRL checking for, e.g., the CMP/TLS server certificate
-    as it is the leaf certificate of the certificate chain.
+    This option enables CRL checking for, e.g., the CMP/TLS server certificate.
 
-- **-crls\_file** _filename_
+- **-use\_cdp**
 
-    Use given local file(s) as primary CLR source.
-
-    The filename argument may be a single element or a comma- or
-    whitespace-separated list.
-
-- **-crls\_use\_cdp**
-
-    Retrieve CRLs form CDPs given in certs as secondary (fallback) source.
+    Enable CRL-based status checking and enable use of CDP entries in certificates.
 
 - **-cdp\_url** _URL_
 
-    URL(s) to use as secondary CRL source if given.
+    Enable CRL-based status checking and use given URL as fallback
+    certificate distribution point (CDP).
+
+- **-use\_aia**
+
+    Enable OCSP-based status checking and enable use of AIA entries in certificates.
 
 - **-ocsp\_url** _URL_
 
-    Use OCSP with given URL as secondary (fallback) address of OCSP responder.
-    On OCSP response error try revocation status checking using CRLs if enabled.
+    Enable OCSP-based status checking and use given OCSP responder URL as fallback.
 
 # COPYRIGHT
 
-Copyright 2007-2019 The OpenSSL Project Authors. All Rights Reserved.
+Copyright (c) 2020 Siemens AG.
 
-Licensed under the OpenSSL license (the "License").  You may not use
-this file except in compliance with the License.  You can obtain a copy
-in the file LICENSE in the source distribution or at
-[https://www.openssl.org/source/license.html](https://www.openssl.org/source/license.html).
+Licensed under the Apache License, Version 2.0
+SPDX-License-Identifier: Apache-2.0

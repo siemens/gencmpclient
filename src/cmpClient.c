@@ -197,7 +197,7 @@ opt_t cmp_opts[] = {
 
     OPT_SECTION("Generic message"),
     { "cmd", OPT_TXT, {.txt = NULL}, { &opt_cmd },
-      "CMP request to send: ir/cr/p10cr/kur/rr. Overwrites 'use_case' if given"}, /* TODO? add genm */
+      "CMP request to send: ir/cr/p10cr/kur/rr. Overrides 'use_case' if given"}, /* TODO? add genm */
     { "infotype", OPT_TXT, {.txt = NULL}, { &opt_infotype },
       "InfoType name for requesting specific info in genm, currently ignored"},
     { "geninfo", OPT_TXT, {.txt = NULL}, { &opt_geninfo },
@@ -257,7 +257,7 @@ opt_t cmp_opts[] = {
 
     OPT_SECTION("TLS connection"),
     { "tls_used", OPT_BOOL, {.bool = false}, { (char **) &opt_tls_used },
-      "Force using TLS (also when other TLS options are not set)"},
+      "Enable using TLS (also when other TLS options are not set)"},
     { "tls_cert", OPT_TXT, {.txt = NULL}, { &opt_tls_cert },
       "Client certificate (plus any extra certs) for TLS connection"},
     { "tls_key", OPT_TXT, {.txt = NULL}, { &opt_tls_key },
@@ -273,7 +273,7 @@ opt_t cmp_opts[] = {
 
     /* TODO? OPT_SECTION("Client-side debugging"), */
 
-    OPT_SECTION("Specific CMP and TLS certificate verification"),
+    OPT_SECTION("CMP and TLS certificate status checking"),
     /* TODO extend verification options and align with cmpossl/apps/cmp.c */
     { "crls", OPT_TXT, {.txt = NULL}, {&opt_crls},
       "Enable CRL-based status checking and use given CRLs from given file(s)/URL(s)"},
@@ -285,7 +285,7 @@ opt_t cmp_opts[] = {
     { "use_aia", OPT_BOOL, {.bool = false}, { (char **) &opt_use_aia },
       "Enable OCSP-based status checking and enable use of AIA entries in certs"},
     { "ocsp_url", OPT_TXT, {.txt = NULL}, {&opt_ocsp_url},
-      "Enable OCSP-based status checking and use given OCSP responder as fallback"},
+      "Enable OCSP-based status checking and use given OCSP responder URL as fallback"},
 #endif
 
     /* TODO? add OPT_V_OPTIONS or the like */
@@ -1161,7 +1161,7 @@ static int CMPclient_demo(enum use_case use_case)
     if (opt_tls_cert != NULL || opt_tls_key != NULL || opt_tls_keypass != NULL
         || opt_tls_extra != NULL || opt_tls_trusted != NULL
         || opt_tls_host != NULL)
-        opt_tls_used = true;
+        /* force using TLS: opt_tls_used = true*/;
     if ((err = setup_transfer(ctx)) != CMP_OK)
         goto err;
 

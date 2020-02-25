@@ -77,7 +77,7 @@ endif
 
 LIBGENCMPCL=$(PARENT_DIR)/libgencmpcl$(DLL)
 
-OBJS = src/genericCMPClient$(OBJ) src/cmpClientDemo$(OBJ)
+OBJS = src/genericCMPClient$(OBJ) src/cmpClient$(OBJ)
 
 SRCS = $(OBJS:$(OBJ)=.c)
 
@@ -85,7 +85,7 @@ DEPS = $(SRCS:.c=.d)
 
 OPENSSL_DLLS = *{crypto,ssl}*.dll
 
-EXES = $(PARENT_DIR)/cmpClientDemo$(EXE)
+EXES = $(PARENT_DIR)/cmpClient$(EXE)
 
 ########## rules and targets
 
@@ -114,7 +114,7 @@ $(OBJS): %$(OBJ): %.c | $(SECUTILS_DIR)/$(LIBSECUTILS) $(PARENT_DIR)/$(LIBCMP_OU
 $(LIBGENCMPCL): src/genericCMPClient$(OBJ)
 	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@
 
-$(PARENT_DIR)/cmpClientDemo$(EXE): src/cmpClientDemo$(OBJ) | $(LIBGENCMPCL)
+$(PARENT_DIR)/cmpClient$(EXE): src/cmpClient$(OBJ) | $(LIBGENCMPCL)
 	$(CC) $(LDFLAGS) $< -lgencmpcl $(LIBS) -o $@
 
 .PHONY: all archive

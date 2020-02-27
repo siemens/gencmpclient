@@ -20,9 +20,6 @@
 /* needed for OSSL_CMP_ITAV_gen() in function CMPclient() */
 #include "../cmpossl/crypto/cmp/cmp_local.h"
 
-#define CONFIG_DEFAULT "config/demo.cnf"
-#define DEFAULT_SECTION "default"
-
 #ifdef LOCAL_DEFS
 X509 *CREDENTIALS_get_cert(const CREDENTIALS *creds);
 #endif
@@ -35,68 +32,66 @@ enum use_case { no_use_case,
 #define RSA_SPEC "RSA:2048"
 #define ECC_SPEC "EC:prime256v1"
 
-/* Option states */
-static int opt_index = 1;
-static char *arg;
-
-char *opt_config; /* OpenSSL-style configuration file */
+#define CONFIG_DEFAULT "config/demo.cnf"
+char *opt_config = CONFIG_DEFAULT; /* OpenSSL-style configuration file */
 CONF *config = NULL; /* OpenSSL configuration structure */
-char *opt_section; /* name(s) of config file section(s) to use */
+char *opt_section = "EJBCA"; /* name(s) of config file section(s) to use */
+#define DEFAULT_SECTION "default"
 char demo_sections[80];
 
-char *opt_server;
-char *opt_proxy;
-char *opt_no_proxy;
+const char *opt_server;
+const char *opt_proxy;
+const char *opt_no_proxy;
 
-char *opt_path;
+const char *opt_path;
 long  opt_msgtimeout;
 long  opt_totaltimeout;
 
-char *opt_trusted;
-char *opt_untrusted;
-char *opt_srvcert;
-char *opt_recipient;
-char *opt_expect_sender;
+const char *opt_trusted;
+const char *opt_untrusted;
+const char *opt_srvcert;
+const char *opt_recipient;
+const char *opt_expect_sender;
 bool  opt_ignore_keyusage;
 bool  opt_unprotectederrors;
-char *opt_extracertsout;
-char *opt_cacertsout;
+const char *opt_extracertsout;
+const char *opt_cacertsout;
 
-char *opt_ref;
-char *opt_secret;
+const char *opt_ref;
+const char *opt_secret;
 /* TODO re-add creds */
-char *opt_cert;
-char *opt_key;
-char *opt_keypass;
-char *opt_digest;
-char *opt_mac;
-char *opt_extracerts;
+const char *opt_cert;
+const char *opt_key;
+const char *opt_keypass;
+const char *opt_digest;
+const char *opt_mac;
+const char *opt_extracerts;
 bool opt_unprotectedrequests;
 
-char *opt_cmd; /* TODO? add genm */
-char *opt_infotype;
-char *opt_geninfo;
+const char *opt_cmd; /* TODO? add genm */
+const char *opt_infotype;
+const char *opt_geninfo;
 
-char *opt_newkeytype;
-char *opt_newkey;
-char *opt_newkeypass;
-char *opt_subject;
-char *opt_issuer;
+const char *opt_newkeytype;
+const char *opt_newkey;
+const char *opt_newkeypass;
+const char *opt_subject;
+const char *opt_issuer;
 long opt_days;
-char *opt_reqexts;
+const char *opt_reqexts;
 char *opt_sans;
 bool opt_san_nodefault;
-char *opt_policies;
+const char *opt_policies;
 char *opt_policy_oids;
 bool  opt_policy_oids_critical;
 long  opt_popo;
-char *opt_csr;
-char *opt_out_trusted;
+const char *opt_csr;
+const char *opt_out_trusted;
 bool  opt_implicitconfirm;
 bool  opt_disableconfirm;
-char *opt_certout;
+const char *opt_certout;
 
-char *opt_oldcert;
+const char *opt_oldcert;
 long opt_revreason;
 
 /* TODO? add credentials format options */
@@ -104,39 +99,34 @@ long opt_revreason;
 
 bool opt_tls_used;
 /* TODO re-add tls_creds */
-char *opt_tls_cert;
-char *opt_tls_key;
-char *opt_tls_keypass;
-char *opt_tls_extra;
-char *opt_tls_trusted;
-char *opt_tls_host;
+const char *opt_tls_cert;
+const char *opt_tls_key;
+const char *opt_tls_keypass;
+const char *opt_tls_extra;
+const char *opt_tls_trusted;
+const char *opt_tls_host;
 
-/* TODO extend verification options and align with cmpossl/apps/cmp.c */
-char *opt_crls;
+/* TODO further extend verification options and align with cmpossl/apps/cmp.c */
+bool opt_check_all;
+const char *opt_crls;
 bool opt_use_cdp;
-char *opt_cdp_url;
-#ifndef OPENSSL_NO_OCSP
+const char *opt_cdp_url;
 bool opt_use_aia;
-char *opt_ocsp_url;
-#endif
+const char *opt_ocsp_url;
+bool opt_try_stapling;
 
-X509_VERIFY_PARAM *vpm;
+X509_VERIFY_PARAM *vpm = NULL;
+STACK_OF(X509_CRL) *crls = NULL;
 
-/*
- * *****************************************************************************
- * Table of configuration options
- * *****************************************************************************
- */
 opt_t cmp_opts[] = {
-    /* entries must be in the same order as enumerated above!! */
-    { "help", OPT_BOOL, {.bool = false}, { NULL },
+    { "help", OPT_BOOL, {.num = -1}, { NULL },
       "Display this summary"},
-    { "config", OPT_TXT, {.txt = CONFIG_DEFAULT}, { &opt_config },
-      "Configuration file to use. \"\" = default. Default 'config/demo.cnf'"},
-    { "section", OPT_TXT, {.txt = DEFAULT_SECTION}, { &opt_section },
+    { "config", OPT_TXT, {.txt = NULL}, { NULL },
+      "Configuration file to use. \"\" = none. Default 'config/demo.cnf'"},
+    { "section", OPT_TXT, {.txt = NULL}, { NULL },
       "Section(s) in config file to get options from. \"\" = 'default'"},
 
-    OPT_SECTION("Message transfer"),
+    OPT_HEADER("Message transfer"),
     { "server", OPT_TXT, {.txt = NULL}, { &opt_server },
       "'address[:port]' of the CMP server. Default port 80."},
     OPT_MORE("The address may be a DNS name or an IP address"),
@@ -148,12 +138,12 @@ opt_t cmp_opts[] = {
     OPT_MORE("Default from environment variable 'no_proxy', else 'NO_PROXY', else none"),
     { "path", OPT_TXT, {.txt = "/"}, { &opt_path },
       "HTTP path (aka CMP alias) at the CMP server. Default \"/\""},
-    { "msgtimeout", OPT_NUM, {.num = 120}, { (char **)&opt_msgtimeout },
+    { "msgtimeout", OPT_NUM, {.num = 120}, { (const char **)&opt_msgtimeout },
       "Timeout per CMP message round trip (or 0 for none). Default 120 seconds"},
-    { "totaltimeout", OPT_NUM, {.num = 0}, { (char **)&opt_totaltimeout},
+    { "totaltimeout", OPT_NUM, {.num = 0}, { (const char **)&opt_totaltimeout},
       "Overall time an enrollment incl. polling may take. Default: 0 = infinite"},
 
-    OPT_SECTION("Server authentication"),
+    OPT_HEADER("Server authentication"),
     { "trusted", OPT_TXT, {.txt = NULL}, { &opt_trusted },
       "Trusted certificates for CMP server authentication (CMP trust anchors)"},
     { "untrusted", OPT_TXT, {.txt = NULL}, { &opt_untrusted },
@@ -164,9 +154,9 @@ opt_t cmp_opts[] = {
       "X509 Name of the recipient"},
     { "expect_sender", OPT_TXT, {.txt = NULL}, { &opt_expect_sender },
       "DN of expected sender (CMP server). Defaults to DN of -srvcert, if provided"},
-    { "ignore_keyusage", OPT_BOOL, {.bool = false}, { (char **)&opt_ignore_keyusage },
+    { "ignore_keyusage", OPT_BOOL, {.bool = false}, { (const char **)&opt_ignore_keyusage },
       "Ignore CMP signer cert key usage, else 'digitalSignature' must be allowed"},
-    { "unprotectederrors", OPT_BOOL, {.bool = false}, { (char **) &opt_unprotectederrors },
+    { "unprotectederrors", OPT_BOOL, {.bool = false}, { (const char **) &opt_unprotectederrors },
       "Accept missing or invalid protection of regular error messages and negative"},
     OPT_MORE("certificate responses (ip/cp/kup), revocation responses (rp), and PKIConf"),
     { "extracertsout", OPT_TXT, {.txt = NULL}, { &opt_extracertsout },
@@ -174,7 +164,7 @@ opt_t cmp_opts[] = {
     { "cacertsout", OPT_TXT, {.txt = NULL}, { &opt_cacertsout },
       "File to save CA certificates received in the caPubs field of 'ip' messages"},
 
-    OPT_SECTION("Client authentication"),
+    OPT_HEADER("Client authentication"),
     { "ref", OPT_TXT, {.txt = NULL}, { &opt_ref },
       "Reference value to use as senderKID in case no -cert is given"},
     { "secret", OPT_TXT, {.txt = NULL}, { &opt_secret },
@@ -192,10 +182,10 @@ opt_t cmp_opts[] = {
       "MAC algorithm to use in PBM-based message protection. Default \"hmac-sha1\""},
     { "extracerts", OPT_TXT, {.txt = NULL}, { &opt_extracerts },
       "File(s) with certificates to append in extraCerts field of outgoing messages"},
-    { "unprotectedrequests", OPT_BOOL, {.bool = false}, { (char **) &opt_unprotectedrequests },
+    { "unprotectedrequests", OPT_BOOL, {.bool = false}, { (const char **) &opt_unprotectedrequests },
       "Send messages without CMP-level protection"},
 
-    OPT_SECTION("Generic message"),
+    OPT_HEADER("Generic message"),
     { "cmd", OPT_TXT, {.txt = NULL}, { &opt_cmd },
       "CMP request to send: ir/cr/p10cr/kur/rr. Overrides 'use_case' if given"}, /* TODO? add genm */
     { "infotype", OPT_TXT, {.txt = NULL}, { &opt_infotype },
@@ -204,7 +194,7 @@ opt_t cmp_opts[] = {
       "generalInfo to place in request PKIHeader with type and integer value"},
     OPT_MORE("given in the form <OID>:int:<n>, e.g. \"1.2.3:int:987\""),
 
-    OPT_SECTION("Certificate enrollment"),
+    OPT_HEADER("Certificate enrollment"),
     { "newkeytype", OPT_TXT, {.txt = NULL}, { &opt_newkeytype },
       "Type of key to generate, e.g., \"ECC\" or \"RSA\""},
     { "newkey", OPT_TXT, {.txt = NULL}, { &opt_newkey },
@@ -216,47 +206,47 @@ opt_t cmp_opts[] = {
       "Distinguished Name (DN) of subject to use in the requested cert template"},
     { "issuer", OPT_TXT, {.txt = NULL}, { &opt_issuer },
       "DN of the issuer to place in the requested certificate template"},
-    { "days", OPT_NUM, {.num = 0}, { (char **) &opt_days },
+    { "days", OPT_NUM, {.num = 0}, { (const char **) &opt_days },
       "Requested validity time of new cert in number of days"},
     { "reqexts", OPT_TXT, {.txt = NULL}, { &opt_reqexts },
       "Name of config file section defining certificate request extensions"},
-    { "sans", OPT_TXT, {.txt = NULL}, { &opt_sans },
+    { "sans", OPT_TXT, {.txt = NULL}, { (const char **) &opt_sans },
       "Subject Alt Names (IPADDR/DNS/URI) to add as (critical) cert req extension"},
-    { "san_nodefault", OPT_BOOL, {.bool = false}, { (char **) &opt_san_nodefault},
+    { "san_nodefault", OPT_BOOL, {.bool = false}, { (const char **) &opt_san_nodefault},
       "Do not take default SANs from reference certificate (see -oldcert)"},
     { "policies", OPT_TXT, {.txt = NULL}, { &opt_policies},
       "Name of config file section defining policies request extension"},
-    { "policy_oids", OPT_TXT, {.txt = NULL}, { &opt_policy_oids},
+    { "policy_oids", OPT_TXT, {.txt = NULL}, { (const char **) &opt_policy_oids},
       "Policy OID(s) to add as certificate policies request extension"},
-    { "policy_oids_critical", OPT_BOOL, {.bool = false}, { (char **) &opt_policy_oids_critical},
+    { "policy_oids_critical", OPT_BOOL, {.bool = false}, { (const char **) &opt_policy_oids_critical},
       "Flag the policy OID(s) given with -policies_ as critical"},
-    { "popo", OPT_NUM, {.num = OSSL_CRMF_POPO_NONE - 1}, { (char **) &opt_popo },
+    { "popo", OPT_NUM, {.num = OSSL_CRMF_POPO_NONE - 1}, { (const char **) &opt_popo },
       "Proof-of-Possession (POPO) method to use for ir/cr/kur where"},
     OPT_MORE("-1 = NONE, 0 = RAVERIFIED, 1 = SIGNATURE (default), 2 = KEYENC"),
     { "csr", OPT_TXT, {.txt = NULL}, { &opt_csr },
       "CSR file in PKCS#10 format to use in p10cr for legacy support"},
     { "out_trusted", OPT_TXT, {.txt = NULL}, { &opt_out_trusted },
       "File(s) with certs to trust when verifying newly enrolled certs; defaults to -srvcert"},
-    { "implicitconfirm", OPT_BOOL, {.bool = false}, { (char **) &opt_implicitconfirm },
+    { "implicitconfirm", OPT_BOOL, {.bool = false}, { (const char **) &opt_implicitconfirm },
       "Request implicit confirmation of newly enrolled certificates"},
-    { "disableconfirm", OPT_BOOL, {.bool = false}, { (char **) &opt_disableconfirm },
+    { "disableconfirm", OPT_BOOL, {.bool = false}, { (const char **) &opt_disableconfirm },
       "Do not confirm newly enrolled certificates w/o requesting implicit confirm"},
     { "certout", OPT_TXT, {.txt = NULL}, { &opt_certout },
       "File to save newly enrolled certificate"},
 
-    OPT_SECTION("Certificate update and revocation"),
+    OPT_HEADER("Certificate update and revocation"),
     { "oldcert", OPT_TXT, {.txt = NULL}, { &opt_oldcert },
       "Certificate to be updated (defaulting to -cert) or to be revoked in rr;"},
     OPT_MORE("Its issuer is used as recipient unless -srvcert, -recipient or -issuer given"),
-    { "revreason", OPT_NUM, {.num = CRL_REASON_NONE}, { (char **) &opt_revreason },
+    { "revreason", OPT_NUM, {.num = CRL_REASON_NONE}, { (const char **) &opt_revreason },
       "Reason code to include in revocation request (RR)."},
     OPT_MORE("Values: 0..6, 8..10 (see RFC5280, 5.3.1) or -1. Default -1 = none included"),
 
-    /* TODO? OPT_SECTION("Credentials format"), */
+    /* TODO? OPT_HEADER("Credentials format"), */
     /* TODO add opt_engine */
 
-    OPT_SECTION("TLS connection"),
-    { "tls_used", OPT_BOOL, {.bool = false}, { (char **) &opt_tls_used },
+    OPT_HEADER("TLS connection"),
+    { "tls_used", OPT_BOOL, {.bool = false}, { (const char **) &opt_tls_used },
       "Enable using TLS (also when other TLS options are not set)"},
     { "tls_cert", OPT_TXT, {.txt = NULL}, { &opt_tls_cert },
       "Client certificate (plus any extra certs) for TLS connection"},
@@ -271,86 +261,30 @@ opt_t cmp_opts[] = {
     { "tls_host", OPT_TXT, {.txt = NULL}, { &opt_tls_host },
       "Address (rather than -server) to be checked during TLS host name validation"},
 
-    /* TODO? OPT_SECTION("Client-side debugging"), */
+    /* TODO? OPT_HEADER("Client-side debugging"), */
 
-    OPT_SECTION("CMP and TLS certificate status checking"),
+    OPT_HEADER("CMP and TLS certificate status checking"),
     /* TODO extend verification options and align with cmpossl/apps/cmp.c */
+    { "check_all", OPT_BOOL, {.bool = false}, { (const char **) &opt_check_all},
+      "Do status checking not only for leaf certs but for all (except root) certs"},
     { "crls", OPT_TXT, {.txt = NULL}, {&opt_crls},
-      "Enable CRL-based status checking and use given CRLs from given file(s)/URL(s)"},
-    { "use_cdp", OPT_BOOL, {.bool = false}, { (char **) &opt_use_cdp },
-      "Enable CRL-based status checking and enable use of CDP entries in certs"},
+      "Enable CRL-based status checking and use  CRLs from given file(s) or URL(s)"},
+    { "use_cdp", OPT_BOOL, {.bool = false}, { (const char **) &opt_use_cdp },
+      "Enable CRL-based status checking and enable using any CDP entries in certs"},
     { "cdp_url", OPT_TXT, {.txt = NULL}, {&opt_cdp_url},
       "Enable CRL-based status checking and use given URL as fallback CDP"},
-#ifndef OPENSSL_NO_OCSP
-    { "use_aia", OPT_BOOL, {.bool = false}, { (char **) &opt_use_aia },
-      "Enable OCSP-based status checking and enable use of AIA entries in certs"},
+    { "use_aia", OPT_BOOL, {.bool = false}, { (const char **) &opt_use_aia },
+      "Enable OCSP-based status checking and enable using any AIA entries in certs"},
     { "ocsp_url", OPT_TXT, {.txt = NULL}, {&opt_ocsp_url},
       "Enable OCSP-based status checking and use given OCSP responder URL as fallback"},
-#endif
+    { "try_stapling", OPT_BOOL, {.bool = false}, { (const char **) &opt_try_stapling },
+      "Enable OCSP-based status checking and enable the OCSP stapling TLS extension"},
 
-    /* TODO? add OPT_V_OPTIONS or the like */
-    /*
-     * subsumes:
-     * {"crl_check_all", OPT_CRLALL, '-',
-     *  "Check CRLs not only for leaf certificate but for full cert chain"},
-     */
-
-    { NULL, OPT_TXT, {.txt = NULL}, { NULL }, NULL}
-};
-
-/* OPTION_CHOICE values must be in the same order as enumerated above!! */
-typedef enum OPTION_choice {
-    OPT_ERR = -1,
-
-    OPT_SECTION_1,
-    OPT_HELP, OPT_CONFIG, OPT_SECTION,
-
-    OPT_SECTION_2,
-    OPT_SERVER, OPT_PROXY, OPT_NO_PROXY, OPT_PATH,
-    OPT_MSGTIMEOUT, OPT_TOTALTIMEOUT,
-
-    OPT_SECTION_3,
-    OPT_TRUSTED, OPT_UNTRUSTED, OPT_SRVCERT, OPT_RECIPIENT,
-    OPT_EXPECT_SENDER, OPT_IGNORE_KEYUSAGE, OPT_UNPROTECTEDERRORS, OPT_EXTRACERTSOUT,
-    OPT_CACERTSOUT,
-
-    OPT_SECTION_4,
-    OPT_REF, OPT_SECRET, OPT_CERT, OPT_KEY,
-    OPT_KEYPASS, OPT_DIGEST, OPT_MAC, OPT_EXTRACERTS,
-    OPT_UNPROTECTEDREQUESTS,
-
-    OPT_SECTION_5,
-    OPT_CMD, OPT_INFOTYPE, OPT_GENINFO, OPT_MORE_STR_1,
-
-    OPT_SECTION_6,
-    OPT_NEWKEY, OPT_NEWKEYPASS, OPT_SUBJECT, OPT_ISSUER,
-    OPT_DAYS, OPT_REQEXTS, OPT_SANS, OPT_SAN_NODEFAULT,
-    OPT_POLICIES, OPT_POLICY_OIDS, OPT_POLICY_OIDS_CRITICAL,
-    OPT_POPO, OPT_CSR, OPT_OUT_TRUSTED,
-    OPT_IMPLICITCONFIRM, OPT_DISABLECONFIRM, OPT_CERTOUT,
-
-    OPT_SECTION_7,
-    OPT_OLDCERT, OPT_REVREASON, OPT_MORE_STR_2,
-
-    OPT_SECTION_8,
-    OPT_NEWKEYTYPE,
-
-    OPT_SECTION_9,
-    OPT_TLS_USED, OPT_TLS_CERT, OPT_TLS_KEY, OPT_TLS_KEYPASS,
-    OPT_TLS_EXTRA, OPT_TLS_TRUSTED, OPT_TLS_HOST,
-
-    OPT_SECTION_10,
-    OPT_CRLS, OPT_USE_CDP, OPT_CDP_URL,
-#ifndef OPENSSL_NO_OCSP
-    OPT_USE_AIA,
-    OPT_OCSP_URL,
-#endif
+    OPT_V_OPTIONS, /* excludes "crl_check" and "crl_check_all" */
 
     OPT_END
-} OPTION_CHOICE;
+};
 
-
-const char *tls_ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
 
 static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
 {
@@ -376,8 +310,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
         next = UTIL_next_item(names);
 
         if (strcmp(names, "critical") == 0) {
-            (void)OSSL_CMP_CTX_set_option(ctx,
-                                          OSSL_CMP_OPT_SUBJECTALTNAME_CRITICAL, 1);
+            (void)OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_CRITICAL, 1);
             continue;
         }
 
@@ -411,35 +344,18 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     return NULL;
 #else
 
-    STACK_OF(X509_CRL) *crls = NULL;
     CREDENTIALS *tls_creds = NULL;
     SSL_CTX *tls = NULL;
 
-    X509_STORE *truststore = NULL;
+    X509_STORE *tls_truststore = NULL;
     if (opt_tls_trusted != NULL) {
-        truststore = STORE_load(opt_tls_trusted, "trusted certs for TLS level");
-        if (truststore == NULL)
+        tls_truststore = STORE_load(opt_tls_trusted, "trusted certs for TLS level");
+        if (tls_truststore == NULL)
             goto err;
-
-        if (opt_crls != NULL) {
-            /* TODO maybe combine with CRL loading for CMP level */
-            crls = CRLs_load(opt_crls, "CRLs for TLS level");
-            if (crls == NULL)
-                goto err;
-        }
-        const X509_VERIFY_PARAM *vpm = NULL;
-        const bool use_CDPs = opt_use_cdp;
-        const char *CRLs_url = opt_cdp_url;
-        const bool use_AIAs = opt_use_aia;
-        const char *OCSP_url = opt_ocsp_url;
-        const bool full_chain = crls != NULL || use_CDPs || CRLs_url != NULL
-            || use_AIAs || OCSP_url != NULL;
-        const bool try_stapling = (use_AIAs || OCSP_url != NULL)
-            && OPENSSL_VERSION_NUMBER >= 0x1010001fL;
-        if (!STORE_set_parameters(truststore, vpm,
-                                  full_chain, try_stapling, crls,
-                                  use_CDPs, CRLs_url,
-                                  use_AIAs, OCSP_url))
+        if (!STORE_set_parameters(tls_truststore, vpm,
+                                  opt_check_all, opt_try_stapling, crls,
+                                  opt_use_cdp, opt_cdp_url,
+                                  opt_use_aia, opt_ocsp_url))
             goto err;
     }
 
@@ -453,16 +369,17 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
         if (tls_creds == NULL)
             goto err;
     }
+    static const char *tls_ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
     const int security_level = -1;
-    tls = TLS_new(truststore, untrusted_certs, tls_creds, tls_ciphers, security_level);
+    tls = TLS_new(tls_truststore, untrusted_certs, tls_creds, tls_ciphers, security_level);
     if (tls == NULL)
         goto err;
 
-    /* if we did this before TLS_new() the expected host name for own TLS cert would be wrong */
-    if (truststore != NULL && opt_tls_host != NULL
-        && !STORE_set1_host_ip(truststore, opt_tls_host, opt_tls_host)) {
-        LOG_err("error setting expected TLS host");
-        goto err;
+    /* if we did this before TLS_new() the expected host name while checking own TLS cert would be wrong */
+    if (tls_truststore != NULL) {
+        const char *host = opt_tls_host != NULL ? opt_tls_host : opt_server;
+        if (!STORE_set1_host_ip(tls_truststore, host, host))
+            goto err;
     }
 
     /* If present we append to the list also the certs from opt_tls_extra */
@@ -477,8 +394,7 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     }
 
  err:
-    STORE_free(truststore);
-    CRLs_free(crls);
+    STORE_free(tls_truststore);
     CREDENTIALS_free(tls_creds);
     return tls;
 #endif
@@ -486,38 +402,23 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 
 X509_STORE *setup_CMP_truststore(void)
 {
-    STACK_OF(X509_CRL) *crls = NULL;
     X509_STORE *cmp_truststore = NULL;
 
     const char *trusted_cert_files = opt_trusted;
     cmp_truststore = STORE_load(trusted_cert_files, "trusted certs for CMP level");
     if (cmp_truststore == NULL)
         goto err;
-
-    if (opt_crls != NULL) {
-        crls = CRLs_load(opt_crls, "CRLs for CMP level");
-        if (crls == NULL)
-            goto err;
-    }
-    const X509_VERIFY_PARAM *vpm = NULL;
-    const bool try_stapling = false;
-    const bool use_CDPs = opt_use_cdp;
-    const char *CRLs_url = opt_cdp_url;
-    const bool use_AIAs = opt_use_aia;
-    const char *OCSP_url = opt_ocsp_url;
-    const bool full_chain = crls != NULL || use_CDPs || CRLs_url != NULL
-        || use_AIAs || OCSP_url != NULL;
     if (!STORE_set_parameters(cmp_truststore, vpm,
-                              full_chain, try_stapling, crls,
-                              use_CDPs, CRLs_url,
-                              use_AIAs, OCSP_url)) {
+                              opt_check_all, false /* try_stapling */, crls,
+                              opt_use_cdp, opt_cdp_url,
+                              opt_use_aia, opt_ocsp_url) ||
+        /* clear any expected host/ip/email address; opt_expect_sender is used instead */
+        !STORE_set1_host_ip(cmp_truststore, NULL, NULL)) {
         STORE_free(cmp_truststore);
         cmp_truststore = NULL;
     }
 
  err:
-    CRLs_free(crls);
-    /* X509_VERIFY_PARAM_free(vpm); */
     return cmp_truststore;
 }
 
@@ -554,7 +455,7 @@ X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
 
     if (opt_policy_oids_critical) {
         if (opt_policy_oids == NULL)
-            LOG_warn("-opt_policy_oids_critical has no effect unless -policy_oids is given");
+            LOG_warn("-policy_oids_critical has no effect unless -policy_oids is given");
         if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POLICIES_CRITICAL, 1)) {
             LOG_err("Failed to set 'setPoliciesCritical' field of CMP context");
             goto err;
@@ -623,7 +524,7 @@ int setup_cert_template(CMP_CTX *ctx)
 
     if (opt_san_nodefault) {
         if (opt_sans != NULL)
-            LOG_warn("-opt_san_nodefault has no effect when -sans is used");
+            LOG_warn("-san_nodefault has no effect when -sans is used");
         if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT, 1)) {
             LOG_err("Failed to set 'SubjectAltName_nodefault' field of CMP context");
             goto err;
@@ -636,7 +537,7 @@ int setup_cert_template(CMP_CTX *ctx)
         goto err;
     }
 
-   err:
+ err:
     return err;
 }
 
@@ -760,26 +661,46 @@ int setup_ctx(CMP_CTX *ctx)
     return err;
 }
 
-CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
-                           OPTIONAL CREDENTIALS *cmp_creds)
+CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
 {
+    X509_STORE *cmp_truststore = NULL;
+    CMP_err err = 1;
+
+    const char *const creds_desc = "credentials for CMP level";
+    CREDENTIALS *cmp_creds =
+        (use_case != update && use_case != revocation && opt_secret != NULL)
+            || (opt_secret != NULL && opt_ref != NULL)
+        /* use PBM except for kur and rr if secret is present */
+        ? CREDENTIALS_new(NULL, NULL, NULL, opt_secret, opt_ref)
+        : CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
+    if (cmp_creds == NULL) {
+        LOG(FL_ERR, "Unable to set up %s", creds_desc);
+        goto err;
+    }
+
+    err = 2;
     if (opt_srvcert != NULL && opt_trusted != NULL)
         LOG_warn("-trusted option is ignored since -srvcert option is present");
 
-    X509_STORE *cmp_truststore = opt_trusted == NULL ? NULL : setup_CMP_truststore();
+    cmp_truststore = opt_trusted == NULL ? NULL : setup_CMP_truststore();
     STACK_OF(X509) *untrusted_certs = opt_untrusted == NULL ? NULL :
         CERTS_load(opt_untrusted, "untrusted certs for CMP");
     if ((cmp_truststore == NULL && opt_trusted != NULL)
             || (untrusted_certs == NULL && opt_untrusted != NULL))
-        return 2;
+        goto err;
 
-    CMP_err err = 3;
+    err = 3;
     X509_STORE *new_cert_truststore = NULL;
     const char *new_cert_trusted = opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
     if (new_cert_trusted != NULL) {
-        LOG(FL_INFO, "Using '%s' as cert trust store for verifying new cert", new_cert_trusted);
+        LOG(FL_DEBUG, "Using '%s' as cert trust store for verifying new cert", new_cert_trusted);
         new_cert_truststore = STORE_load(new_cert_trusted, "trusted certs for verifying new cert");
         if (new_cert_truststore == NULL)
+            goto err;
+        /* any -verify_hostname, -verify_ip, and -verify_email apply here */
+        if (!STORE_set_parameters(new_cert_truststore, vpm,
+                                  false, false, NULL,
+                                  false, NULL, false, NULL))
             goto err;
     }
     /* no revocation done for newly enrolled cert */
@@ -788,7 +709,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
     const bool implicit_confirm = opt_implicitconfirm;
 
     if ((int)opt_totaltimeout < -1) {
-        LOG_err("only non-negative values allowed for opt_totaltimeout");
+        LOG_err("only non-negative values allowed for -totaltimeout");
         goto err;
     }
     err = CMPclient_prepare(pctx, log_fn,
@@ -809,7 +730,9 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
             err = 4;
         X509_free(srvcert);
     }
+
  err:
+    CREDENTIALS_free(cmp_creds);
     STORE_free(cmp_truststore);
     return err;
 }
@@ -821,116 +744,6 @@ static int reqExtensions_have_SAN(X509_EXTENSIONS *exts)
     return X509v3_get_ext_by_NID(exts, NID_subject_alt_name, -1) >= 0;
 }
 
-/* TODO? move to SecUtils/src/config/opt.c */
-/*
- * return OPTION_choice index on success, -1 if options does not match and
- * OPT_END if all options are handled
- */
-static int opt_next(int argc, char **argv)
-{
-    int i;
-    char *param;
-
- retry:
-    /* Look at current arg; at end of the list? */
-    arg = NULL;
-    param = argv[opt_index];
-    if (param == NULL)
-        return OPT_END;
-
-    /* If word doesn't start with a -, it failed to parse all options. */
-    if (*param != '-') {
-        LOG_err("Failed to parse all options");
-        arg = param;
-        return OPT_ERR;
-    }
-
-    /* if starting with '-', snip it of */
-    if (*param == '-')
-        param++;
-
-    opt_index++;
-    for (i = 0; i < OPT_END; i++) {
-        /* already handled, check next option */
-        if (strcmp(param, "section") == 0 ||
-            strcmp(param, "config") == 0) {
-            opt_index++;
-            goto retry;
-        }
-        if (strcmp(param, "help") == 0)
-            return OPT_HELP;
-        if (strcmp(param, cmp_opts[i].name) == 0) {
-            /* Boolean options have no parameter, just return index */
-            if (cmp_opts[i].type == OPT_BOOL)
-                return i;
-            /* check non-bool options for parameters */
-            if (argv[opt_index] == NULL) {
-                LOG(FL_ERR, "Option -%s needs a value", param);
-                return OPT_ERR;
-            }
-            arg = argv[opt_index];
-            opt_index++;
-            return i;
-        }
-    }
-
-    if (i == OPT_END) {
-        /* in case of unknown option, return option with leading '-' */
-        arg = --param;
-        LOG(FL_ERR, "Unknown option '%s'", arg);
-        return OPT_ERR;
-    }
-
-    if (opt_index == argc)
-        return OPT_END;
-    return OPT_ERR;
-}
-
-/* TODO? move to SecUtils/src/config/opt.c */
-/*
- * returns -1 when printing option help, 0 on success
- * and 1 on error
- */
-static int get_opts(int argc, char **argv)
-{
-    OPTION_CHOICE o;
-
-    while ((o = opt_next(argc, argv)) != OPT_END) {
-        if (o == OPT_ERR) {
-            return 1;
-        }
-        if (o == OPT_HELP) {
-            return -1;
-        }
-
-        switch (cmp_opts[o].type) {
-        case OPT_TXT:
-            if (arg[0] == '\0') {
-                *cmp_opts[o].varref_u.txt = cmp_opts[o].default_value.txt;
-                break;
-            }
-            *cmp_opts[o].varref_u.txt = arg;
-            break;
-        case OPT_NUM:
-            if (arg[0] == '\0') {
-                *cmp_opts[o].varref_u.num = cmp_opts[o].default_value.num;
-                break;
-            }
-            if ((*cmp_opts[o].varref_u.num = UTIL_atoint(arg)) == INT_MIN) {
-                LOG(FL_ERR, "Can't parse '%s' as number", arg);
-                return 1;
-            }
-            break;
-        case OPT_BOOL:
-            *cmp_opts[o].varref_u.bool = true;
-            break;
-        default:
-            return 1;
-        }
-    }
-    return 0;
-}
-
 int setup_transfer(CMP_CTX *ctx)
 {
     CMP_err err;
@@ -939,7 +752,7 @@ int setup_transfer(CMP_CTX *ctx)
     const char *server = opt_server;
 
     if ((int)opt_msgtimeout < -1) {
-        LOG_err("only non-negative values allowed for opt_msgtimeout");
+        LOG_err("only non-negative values allowed for -msgtimeout");
         err = 16;
         goto err;
     }
@@ -971,9 +784,8 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
     EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
     CREDENTIALS *new_creds = NULL;
-    CREDENTIALS *cmp_creds;
 
-    if (opt_infotype != NULL)  /* TODO? implement when genm is supported */
+    if (opt_infotype != NULL) /* TODO? implement when genm is supported */
         LOG_warn("-infotype option is ignored as long as 'genm' is not supported");
 
     if (use_case == update) {
@@ -1020,21 +832,29 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
         err = 21;
         goto err;
     }
-    const char *const creds_desc = "credentials for CMP level";
-    cmp_creds =
-        (use_case != update && use_case != revocation && opt_secret != NULL)
-            || (opt_secret != NULL && opt_ref != NULL)
-        /* use PBM except for kur and rr if secret is present */
-        ? CREDENTIALS_new(NULL, NULL, NULL, opt_secret, opt_ref)
-        : CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
-    if (cmp_creds == NULL) {
-        LOG_err("Unable to set up credentials for CMP level");
-        err = 1;
+
+    if (opt_check_all
+        && opt_crls == NULL && !opt_use_cdp && opt_cdp_url != NULL
+        && opt_use_aia && opt_ocsp_url == NULL && !opt_try_stapling) {
+        LOG_err("-check_all is given without any other option enabling cert status checking");
+        err = 30;
         goto err;
     }
+#ifdef OPENSSL_NO_OCSP
+    if (opt_use_aia || opt_ocsp_url != NULL || opt_try_stapling)
+        LOG_warn("OCSP may be not supported by the OpenSSL build used by the SecUtils");
+#endif
+#if defined(OPENSSL_NO_OCSP) || OPENSSL_VERSION_NUMBER < 0x1010001fL
+    if (opt_try_stapling)
+        LOG_warn("OCSP stapling may be not supported by the OpenSSL build used by the SecUtils");
+#endif
+    if (opt_crls != NULL) {
+        crls = CRLs_load(opt_crls, "CRLs for CMP and possibly TLS level");
+        if (crls == NULL)
+            goto err;
+    }
 
-    err = prepare_CMP_client(&ctx, log_fn, cmp_creds);
-    CREDENTIALS_free(cmp_creds);
+    err = prepare_CMP_client(&ctx, use_case, log_fn);
     if (err != CMP_OK) {
         LOG_err("Failed to prepare CMP client");
         goto err;
@@ -1069,8 +889,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
                 err = 18;
                 goto err;
             }
-        }
-        else {
+        } else {
             if (opt_newkey == NULL && opt_key == NULL) {
                 LOG_err("Missing -newkeytype or -newkey or -key option");
                 err = 18;
@@ -1259,25 +1078,24 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
         } else {
             const char *new_desc = "newly enrolled certificate";
             sec_file_format format = FILES_get_format(opt_certout);
-            X509* cert = CREDENTIALS_get_cert(new_creds);
+            X509 *cert = CREDENTIALS_get_cert(new_creds);
             STACK_OF(X509)* certs = CREDENTIALS_get_chain(new_creds);
 
-            if(certs == NULL) {
-                if(!FILES_store_cert(cert, opt_certout, format, new_desc)) {
+            if (certs == NULL) {
+                if (!FILES_store_cert(cert, opt_certout, format, new_desc)) {
                     err = 27;
                     goto err;
                 }
             }
 
-            if(sk_X509_unshift(certs, cert) == 0) /* prepend cert */
-            {
+            if (sk_X509_unshift(certs, cert) == 0) { /* prepend cert */
                 LOG(FL_ERR, "Out of memory writing certs to file '%s'", opt_certout);
                 err = 28;
                 goto err;
             }
 
             if (certs != NULL) {
-                if(FILES_store_certs(certs, opt_certout, format, new_desc) < 0) {
+                if (FILES_store_certs(certs, opt_certout, format, new_desc) < 0) {
                     err = 29;
                     goto err;
                 }
@@ -1290,6 +1108,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
     KEY_free(new_pkey);
     EXTENSIONS_free(exts);
     CREDENTIALS_free(new_creds);
+    CRLs_free(crls);
 
     LOG_close(); /* not really needed since done also in sec_deinit() */
     if (err != CMP_OK) {
@@ -1301,7 +1120,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
 int main(int argc, char *argv[])
 {
     int i;
-    int rc = 0;
+    int rv, rc = EXIT_FAILURE;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100002L
 # ifndef OPENSSL_NO_CRYPTO_MDEBUG
@@ -1312,18 +1131,14 @@ int main(int argc, char *argv[])
 # endif
 #endif
 
-    sec_ctx *sec_ctx = sec_init();
-    OSSL_cmp_log_cb_t log_fn = NULL;
-    if (CMPclient_init(log_fn) != CMP_OK) {
-        fprintf(stderr, "cannot set up logging for %s\n", argv[0]);
-        return EXIT_FAILURE;
-    }
     LOG_set_name("cmpClient");
+    sec_ctx *sec_ctx = sec_init(); /* this also initializes logging to default */
+    if (sec_ctx == NULL)
+        goto end;
 
-    if (sec_ctx == NULL) {
-        LOG_err("failure getting SecUtils ctx");
-        return EXIT_FAILURE;
-    }
+    OSSL_cmp_log_cb_t log_fn = NULL;
+    if (CMPclient_init(log_fn) != CMP_OK)
+        goto end;
 
     BIO *bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
     enum use_case use_case = no_use_case; /* default */
@@ -1343,12 +1158,15 @@ int main(int argc, char *argv[])
                 "Available options are:\n",
                 argv[0], argv[0]);
             OPT_help(cmp_opts, bio_stdout);
-            goto err;
+            goto end;
         }
     }
 
     if (!OPT_init(cmp_opts))
-        return EXIT_FAILURE;
+        goto end;
+    /*
+     * handle OPT_CONFIG and OPT_SECTION upfront to take effect for other opts
+     */
     for (i = 1; i < argc; i++) {
         if (*argv[i] == '-') {
             if (strcmp(argv[i], "-section") == 0)
@@ -1359,9 +1177,7 @@ int main(int argc, char *argv[])
     }
 
     if (opt_config[0] == '\0')
-        opt_config = CONFIG_DEFAULT;
-    LOG(FL_INFO, "Using CMP configuration from '%s'", opt_config);
-
+        opt_config = NULL;
     if (opt_section[0] == '\0')
         opt_section = DEFAULT_SECTION;
     if (use_case != no_use_case) {
@@ -1381,32 +1197,36 @@ int main(int argc, char *argv[])
             demo_section = "revoke";
             break;
         default:
-            return EXIT_FAILURE;
+            goto end;
         }
         snprintf(demo_sections, sizeof(demo_sections), "%s,%s", demo_section, opt_section);
         opt_section = demo_sections;
     }
 
-    LOG(FL_INFO, "Using configuration section(s) '%s'", opt_section);
-    if ((config = CONF_load_options(NULL, opt_config, opt_section, cmp_opts)) == NULL)
-        return EXIT_FAILURE;
+    if (opt_config != NULL) {
+        LOG(FL_INFO, "Using section(s) '%s' of CMP configuration file '%s'",
+            opt_section, opt_config);
+        if ((config = CONF_load_options(NULL, opt_config, opt_section, cmp_opts)) == NULL)
+            goto end;
+    }
     vpm = X509_VERIFY_PARAM_new();
     if (vpm == 0) {
         LOG_err("Out of memory");
-        return EXIT_FAILURE;
+        goto end;
     }
-    if (!CONF_read_vpm(config, opt_section, vpm))
-        return EXIT_FAILURE;
-
+    if (config != NULL && !CONF_update_vpm(config, opt_section, vpm))
+        goto end;
+    argv++;
     if (use_case != no_use_case)
-        opt_index++; /* skip first option since use_case is given */
-    rc = get_opts(argc, argv);
-    if (rc == -1) {
-        OPT_help(cmp_opts, bio_stdout);
-        return EXIT_SUCCESS;
+        argv++; /* skip first option since use_case is given */
+    rv = OPT_read(cmp_opts, argv, vpm);
+    if (rv <= 0) {
+        if (rv == -1) {
+            OPT_help(cmp_opts, bio_stdout);
+            rc = EXIT_SUCCESS;
+        }
+        goto end;
     }
-    if (rc == 1)
-        return EXIT_FAILURE;
 
     /* handle here to start correct demo use case */
     if (opt_cmd != NULL) {
@@ -1425,18 +1245,22 @@ int main(int argc, char *argv[])
                 LOG(FL_ERR, "CMP request type '%s' is not supported", opt_cmd);
             else
                 LOG(FL_ERR, "Unknown CMP request command '%s'", opt_cmd);
-            return EXIT_FAILURE;
+            goto end;
         }
     } else if (use_case == no_use_case && opt_cmd == NULL) {
         LOG(FL_ERR, "No use case and no '-cmd' option given. Use -help to show usage.");
-        return EXIT_FAILURE;
+        goto end;
     }
 
-    if ((rc = CMPclient(use_case, log_fn)) != CMP_OK)
-        goto err;
+    if ((CMPclient(use_case, log_fn)) == CMP_OK)
+        rc = EXIT_SUCCESS;
 
-    if (sec_deinit(sec_ctx) == -1)
-        return EXIT_FAILURE;
+ end:
+    X509_VERIFY_PARAM_free(vpm);
+    BIO_free(bio_stdout);
+
+    if (sec_ctx != NULL && sec_deinit(sec_ctx) == -1)
+        rc = EXIT_FAILURE;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100002L
 # ifndef OPENSSL_NO_CRYPTO_MDEBUG
@@ -1445,6 +1269,5 @@ int main(int argc, char *argv[])
 # endif
 #endif
 
- err:
-    return rc > 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+    return rc;
 }

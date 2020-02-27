@@ -254,11 +254,15 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IMPLICITCONFIRM, implicit_confirm)) {
         goto err;
     }
-    if (new_cert_truststore != NULL
-        && (!OSSL_CMP_CTX_set_certConf_cb(ctx, OSSL_CMP_certConf_cb) ||
+    if (new_cert_truststore != NULL) {
+        /* ignore any -attime option here, since new certs are current anyway */
+        X509_VERIFY_PARAM *out_vpm = X509_STORE_get0_param(new_cert_truststore);
+        X509_VERIFY_PARAM_clear_flags(out_vpm, X509_V_FLAG_USE_CHECK_TIME);
+
+        if (!OSSL_CMP_CTX_set_certConf_cb(ctx, OSSL_CMP_certConf_cb) ||
             !OSSL_CMP_CTX_set_certConf_cb_arg(ctx, new_cert_truststore) ||
-            !X509_STORE_up_ref(new_cert_truststore))) {
-        goto err;
+            !X509_STORE_up_ref(new_cert_truststore))
+            goto err;
     }
 
     *pctx = ctx;
@@ -366,14 +370,14 @@ static int proxy_connect(OSSL_CMP_CTX *ctx, BIO *bio)
     char *proxypass = NULL;
 #  define base64encode(str, len) OPENSSL_strdup(str)
     if (proxyuser != NULL) {
-        size_t l;
+        size_t len;
         char *proxyauth, *proxyauthenc;
 
-        l = strlen(proxyuser);
+        len = strlen(proxyuser);
         if (proxypass != NULL)
-            l += strlen(proxypass);
-        proxyauth = OPENSSL_malloc(l + 2);
-        snprintf(proxyauth, l + 2, "%s:%s", proxyuser, (proxypass != NULL) ? proxypass : "");
+            len += strlen(proxypass);
+        proxyauth = OPENSSL_malloc(len + 2);
+        snprintf(proxyauth, len + 2, "%s:%s", proxyuser, (proxypass != NULL) ? proxypass : "");
         proxyauthenc = base64encode(proxyauth, strlen(proxyauth));
         BIO_printf(fbio, "Proxy-Authorization: Basic %s\r\n", proxyauthenc);
         OPENSSL_clear_free(proxyauth, strlen(proxyauth));

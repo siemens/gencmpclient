@@ -5,6 +5,7 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 # SYNOPSIS
 
 **cmpClient** (**imprint|bootstrap|update|revoke|pkcs10**) \[**-section** _CA_\]
+
 **cmpClient** _options_
 
 \[**-help**\]
@@ -57,6 +58,9 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-popo** _number_\]
 \[**-csr** _filename_\]
 \[**-out\_trusted** _filenames_\]
+\[**-verify\_hostname** _cn_\]
+\[**-verify\_ip** _ip_\]
+\[**-verify\_email** _email_\]
 \[**-implicitconfirm**\]
 \[**-disableconfirm**\]
 \[**-certout** _filename_\]
@@ -72,11 +76,13 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-tls\_trusted** _filenames_\]
 \[**-tls\_host** _name_\]
 
+\[**-check\_all**\]
 \[**-crls** _URLs_\]
 \[**-use\_cdp**\]
 \[**-cdp\_url** _URL_\]
 \[**-use\_aia**\]
 \[**-ocsp\_url** _URL_\]
+\[**-try\_stapling**\]
 
 # DESCRIPTION
 
@@ -273,25 +279,28 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
 - **-ref** _value_
 
-    Reference number/value to use as senderKID; this is required
+    Reference number/string/value to use as fallback senderKID; this is required
     if no sender name can be determined from the **-cert** or <-subject> options and
     is typically used when authenticating with pre-shared key (password-based MAC).
 
 - **-secret** _arg_
 
-    Source of secret value to use for authenticating with pre-shared keys
-    (password-based MAC).
+    Source of secret value to use for creating PBM-based protection of outgoing
+    messages and for verifying any PBM-based protection of incoming messages.
+    PBM stands for Password-Based Message Authentication Code.
     This takes precedence over the **-cert** option.
 
-    For more information about the format of **arg** see the
-    **PASS PHRASE ARGUMENTS** section in [openssl(1)](http://man.he.net/man1/openssl).
+    Currently only plain passwords are supported,
+    which should be preceded by "pass:".
 
 - **-cert** _filename_
 
-    The client's currently existing certificate.
-    Unless the **-secret** option indicating PBM is given,
-    this will be used for signature-based message protection.
+    The client's current certificate.
     Requires for the corresponding key to be given with **-key**.
+    The subject of this certificate will be used as the "sender" field
+    of outgoing CMP messages, while **-subjectName** may provide a fallback value.
+    When using signature-based message protection, this "protection certificate"
+    will be included first in the extraCerts field of outgoing messages.
     For IR this can be used for authenticating a request message
     using an external entity certificate as defined in appendix E.7 of RFC 4210.
     For KUR this is also used as certificate to be updated if the **-oldcert**
@@ -303,6 +312,8 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
     The corresponding private key file for the client's current certificate given in
     the **-cert** option.
+    This will be used for signature-based message protection
+    unless the **-secret** option indicating PBM or **-unprotectedrequests** is given.
 
 - **-keypass** _arg_
 
@@ -377,7 +388,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     generalInfo integer values to place in request PKIHeader with given OID,
     e.g., `1.2.3:int:987`.
 
-## Certificate request options
+## Certificate enrollment options
 
 - **-newkeytype** _ECC|RSA_
 
@@ -485,6 +496,24 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     Multiple filenames may be given, separated by commas and/or whitespace.
     Each source may contain multiple certificates.
 
+- **-verify\_hostname** _name_
+
+    When verification of the newly enrolled certificate is enabled (with the
+    **-out\_trusted** option), check if any DNS Subject Alternative Name (or if no
+    DNS SAN is included, the Common Name in the subject) equals the given **name**.
+
+- **-verify\_ip** _ip_
+
+    When verification of the newly enrolled certificate is enabled (with the
+    **-out\_trusted** option), check if there is
+    an IP address Subject Alternative Name matching the given IP address.
+
+- **-verify\_email** _email_
+
+    When verification of the newly enrolled certificate is enabled (with the
+    **-out\_trusted** option), check if there is
+    an email address Subject Alternative Name matching the given email address.
+
 - **-implicitconfirm**
 
     Request implicit confirmation of newly enrolled certificates.
@@ -534,7 +563,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
              aACompromise           (10)
          }
 
-## TLS options
+## TLS connection options
 
 - **-tls\_used**
 
@@ -574,37 +603,82 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
 - **-tls\_host** _name_
 
-    Address to be checked (rather than **-server** address) during hostname
-    validation.
+    Address to be checked (rather than **-server** address)
+    during TLS hostname validation.
     This may be a Common Name, a DNS name, or an IP address.
 
 ## Certificate status checking options, for both CMP and TLS
 
+The following set of options determine various parameters of
+certificate revocation status checking to be performed by the client
+on setting up any TLS connection and on checking any signature-based protection
+of CMP messages received, but not when verifying newly enrolled certificates.
+Status checking is demanded if any of these options are used.
+
+For each certificate for which the status check is demanded the
+certification verification procedure will try to obtain the revocation status
+first via OCSP stapling if enabled,
+then from any locally available CRLs,
+then from any Online Certificate Status Protocol (OCSP) responders if enabled,
+and finally via any certificate distribution points (CDPs) if enabled.
+Verification fails if no valid and current revocation status can be found
+or the status indicates that the certificate has been revoked.
+
+- **-check\_all**
+
+    Do certificate status checking not only for leaf certificates of a chain
+    but for all (except root) certificates.
+
 - **-crls** _URLs_
 
-    Use given CRL(s) as primary source of certificate revocation information.
-    The URLs argument may be a single element or a comma- or whitespace-separated
-    list,
+    Enable CRL-based status checking and
+    use given CRL(s) as primary source of certificate revocation information.
+    The URLs argument may contain a single element or
+    a comma- or whitespace-separated list,
     each element starting with `http:` or `file:` or being a filename or pathname.
-
-    This option enables CRL checking for, e.g., the CMP/TLS server certificate.
 
 - **-use\_cdp**
 
-    Enable CRL-based status checking and enable use of CDP entries in certificates.
+    Enable CRL-based status checking and
+    enable using any CDP entries in certificates.
 
 - **-cdp\_url** _URL_
 
-    Enable CRL-based status checking and use given URL as fallback
-    certificate distribution point (CDP).
+    Enable CRL-based status checking and
+    use the given URL as fallback certificate distribution point (CDP).
 
 - **-use\_aia**
 
-    Enable OCSP-based status checking and enable use of AIA entries in certificates.
+    Enable OCSP-based status checking and
+    enable using any AIA entries in certificates.
 
 - **-ocsp\_url** _URL_
 
     Enable OCSP-based status checking and use given OCSP responder URL as fallback.
+
+- **-try\_stapling**
+
+    Enable OCSP-based status checking and
+    enable the TLS certificate status request extension ("OCSP stapling").
+
+## Certificate validation options, for both CMP and TLS
+
+- **-policy**, **-purpose**, **-verify\_name**, **-verify\_depth**,
+**-attime**,
+**-ignore\_critical**,
+**-policy\_check**,
+**-explicit\_policy**, **-inhibit\_any**, **-inhibit\_map**,
+**-x509\_strict**, **-extended\_crl**, **-use\_deltas**,
+**-policy\_print**, **-check\_ss\_sig**, **-trusted\_first**,
+**-suiteB\_128\_only**, **-suiteB\_128**, **-suiteB\_192**,
+**-partial\_chain**,
+**-no\_check\_time**,
+**-auth\_level**,
+**-allow\_proxy\_certs**
+
+    Set various options of certificate chain verification.
+    See the [openssl-verify(1)](http://man.he.net/man1/openssl-verify) manual page
+    or ["Verification Options" in openssl(1)](http://man.he.net/man1/openssl) for details.
 
 # COPYRIGHT
 

@@ -9,7 +9,7 @@ no_proxy = ppki-playground.ct.siemens.com
 
 [EJBCA]
 server = ppki-playground.ct.siemens.com:443
-secret = SecretCmp
+secret = pass:SecretCmp
 cert = creds/ppki_playground_cmp_signer.p12
 key = creds/ppki_playground_cmp_signer.p12
 keypass = pass:12345
@@ -34,7 +34,7 @@ ocsp_url = http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp
 attime = 1
 server = pki.certificate.fi:8700
 path = pkix/
-secret = insta
+secret = pass:insta
 ref = 3078
 cert = creds/insta_client.p12
 key = $cert

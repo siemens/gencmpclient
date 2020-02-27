@@ -9,11 +9,11 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
+#include <genericCMPClient.h> /* must be included before securityUtilities.h for OpenSSL 1.0.2 compatibility */
+
 #include <securityUtilities.h>
 #include <SecUtils/config/config.h>
 #include <SecUtils/util/log.h>
-
-#include <genericCMPClient.h>
 
 #include <openssl/ssl.h>
 
@@ -106,6 +106,8 @@ const char *opt_tls_extra;
 const char *opt_tls_trusted;
 const char *opt_tls_host;
 
+long opt_verbosity;
+
 /* TODO further extend verification options and align with cmpossl/apps/cmp.c */
 bool opt_check_all;
 const char *opt_crls;
@@ -122,9 +124,9 @@ opt_t cmp_opts[] = {
     { "help", OPT_BOOL, {.num = -1}, { NULL },
       "Display this summary"},
     { "config", OPT_TXT, {.txt = NULL}, { NULL },
-      "Configuration file to use. \"\" = none. Default 'config/demo.cnf'"},
+      "Configuration file to use. \"\" means none. Default 'config/demo.cnf'"},
     { "section", OPT_TXT, {.txt = NULL}, { NULL },
-      "Section(s) in config file to get options from. \"\" = 'default'"},
+      "Section(s) in config file to use. \"\" means 'default'. Default 'EJBCA'"},
 
     OPT_HEADER("Message transfer"),
     { "server", OPT_TXT, {.txt = NULL}, { &opt_server },
@@ -168,9 +170,9 @@ opt_t cmp_opts[] = {
     { "ref", OPT_TXT, {.txt = NULL}, { &opt_ref },
       "Reference value to use as senderKID in case no -cert is given"},
     { "secret", OPT_TXT, {.txt = NULL}, { &opt_secret },
-      "Secret value for authentication with a pre-shared key (PBM)"},
+      "Secret value for authentication with a pre-shared key (PBM). Prepend 'pass:'"},
     { "cert", OPT_TXT, {.txt = NULL}, { &opt_cert },
-      "Client certificate (plus any extra one), needed unless using -secret for PBM."},
+      "Client cert (plus any extra one), needed unless using -secret for PBM."},
     OPT_MORE("This also used as default reference for subject DN and SANs"),
     { "key", OPT_TXT, {.txt = NULL}, { &opt_key },
       "Key for the client certificate"},
@@ -198,7 +200,7 @@ opt_t cmp_opts[] = {
     { "newkeytype", OPT_TXT, {.txt = NULL}, { &opt_newkeytype },
       "Type of key to generate, e.g., \"ECC\" or \"RSA\""},
     { "newkey", OPT_TXT, {.txt = NULL}, { &opt_newkey },
-      "Key to use for cert request (defaulting to -key) unless -newkeytype is given;"},
+      "Key to use for cert request (defaulting to -key) if no -newkeytype is given."},
     OPT_MORE("File to save new generated key if -newkeytype is given"),
     { "newkeypass", OPT_TXT, {.txt = NULL}, { &opt_newkeypass },
       "Password for the file given for -newkey"},
@@ -226,7 +228,7 @@ opt_t cmp_opts[] = {
     { "csr", OPT_TXT, {.txt = NULL}, { &opt_csr },
       "CSR file in PKCS#10 format to use in p10cr for legacy support"},
     { "out_trusted", OPT_TXT, {.txt = NULL}, { &opt_out_trusted },
-      "File(s) with certs to trust when verifying newly enrolled certs; defaults to -srvcert"},
+      "Certs to trust when verifying newly enrolled certs; defaults to -srvcert"},
     { "implicitconfirm", OPT_BOOL, {.bool = false}, { (const char **) &opt_implicitconfirm },
       "Request implicit confirmation of newly enrolled certificates"},
     { "disableconfirm", OPT_BOOL, {.bool = false}, { (const char **) &opt_disableconfirm },
@@ -261,7 +263,9 @@ opt_t cmp_opts[] = {
     { "tls_host", OPT_TXT, {.txt = NULL}, { &opt_tls_host },
       "Address (rather than -server) to be checked during TLS host name validation"},
 
-    /* TODO? OPT_HEADER("Client-side debugging"), */
+    OPT_HEADER("Debugging"),
+    { "verbosity", OPT_NUM, {.num = 0}, { NULL },
+      "Logging level; 3=ERR, 4=WARN, 6=INFO, 7=DEBUG, 8=TRACE. Default 6 = INFO"},
 
     OPT_HEADER("CMP and TLS certificate status checking"),
     /* TODO extend verification options and align with cmpossl/apps/cmp.c */
@@ -276,7 +280,7 @@ opt_t cmp_opts[] = {
     { "use_aia", OPT_BOOL, {.bool = false}, { (const char **) &opt_use_aia },
       "Enable OCSP-based status checking and enable using any AIA entries in certs"},
     { "ocsp_url", OPT_TXT, {.txt = NULL}, {&opt_ocsp_url},
-      "Enable OCSP-based status checking and use given OCSP responder URL as fallback"},
+      "Enable OCSP-based status checking and use given OCSP responder as fallback"},
     { "try_stapling", OPT_BOOL, {.bool = false}, { (const char **) &opt_try_stapling },
       "Enable OCSP-based status checking and enable the OCSP stapling TLS extension"},
 
@@ -667,11 +671,12 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL
     CMP_err err = 1;
 
     const char *const creds_desc = "credentials for CMP level";
+    const char *pass = FILES_get_pass(opt_secret, "PBM-based message protection");
     CREDENTIALS *cmp_creds =
         (use_case != update && use_case != revocation && opt_secret != NULL)
             || (opt_secret != NULL && opt_ref != NULL)
         /* use PBM except for kur and rr if secret is present */
-        ? CREDENTIALS_new(NULL, NULL, NULL, opt_secret, opt_ref)
+        ? CREDENTIALS_new(NULL, NULL, NULL, pass, opt_ref)
         : CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
     if (cmp_creds == NULL) {
         LOG(FL_ERR, "Unable to set up %s", creds_desc);
@@ -802,8 +807,11 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
             opt_key = opt_newkey;
             opt_keypass = opt_newkeypass;
         }
+    } else {
+        if (opt_secret != NULL)
+            LOG_warn("-key value will not be used for signing messages since -secret option selects PBM-based protection");
     }
-    if (!opt_unprotectedrequests && !opt_secret && !(opt_cert && opt_key)) {
+    if (!opt_unprotectedrequests && opt_secret == NULL && opt_key == NULL) {
         LOG_err("must give client credentials unless -unprotectedrequests is set");
         err = 1;
         goto err;
@@ -1117,6 +1125,20 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
     return err;
 }
 
+int print_help(const char *prog)
+{
+    BIO *bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
+
+    BIO_printf(bio_stdout, "Usage:\n"
+               "%s (imprint | bootstrap | update | revoke) [-section <CA>]\n"
+               "%s options\n\n"
+               "Available options are:\n",
+               prog, prog);
+    OPT_help(cmp_opts, bio_stdout);
+    BIO_free(bio_stdout);
+    return EXIT_SUCCESS;
+}
+
 int main(int argc, char *argv[])
 {
     int i;
@@ -1140,7 +1162,6 @@ int main(int argc, char *argv[])
     if (CMPclient_init(log_fn) != CMP_OK)
         goto end;
 
-    BIO *bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
     enum use_case use_case = no_use_case; /* default */
     if (argc > 1) {
         if (strcmp(argv[1], "imprint") == 0) {
@@ -1151,55 +1172,43 @@ int main(int argc, char *argv[])
             use_case = update;
         } else if (strcmp(argv[1], "revoke") == 0) {
             use_case = revocation;
-        } else if (strcmp(argv[1], "-help") == 0) {
-            LOG(FL_INFO, "\nUsage:\n"
-                "%s (imprint | bootstrap | update | revoke) [-section <CA>]\n"
-                "%s options\n\n"
-                "Available options are:\n",
-                argv[0], argv[0]);
-            OPT_help(cmp_opts, bio_stdout);
-            goto end;
         }
     }
 
     if (!OPT_init(cmp_opts))
         goto end;
     /*
-     * handle OPT_CONFIG and OPT_SECTION upfront to take effect for other opts
+     * handle -help, -config, -section, and -verbosity upfront to take effect for other opts
      */
+    opt_verbosity = LOG_INFO;
+    const char *prog = argv[0];
     for (i = 1; i < argc; i++) {
-        if (*argv[i] == '-') {
-            if (strcmp(argv[i], "-section") == 0)
-                opt_section = argv[++i];
-            else if (strcmp(argv[i], "-config") == 0)
+        if (argv[i][0] == '-') {
+            if (argv[i][1] == '-')
+                argv[i]++;
+            if (strcmp(argv[i] + 1, "help") == 0)
+                return print_help(prog);
+            else if (strcmp(argv[i] + 1, "config") == 0)
                 opt_config = argv[++i];
+            else if (strcmp(argv[i] + 1, "section") == 0)
+                opt_section = argv[++i];
+            else if (strcmp(argv[i] + 1, "verbosity") == 0) {
+                opt_verbosity = UTIL_atoint(argv[++i]); /* == INT_MIN on parse error */
+                if (opt_verbosity < LOG_EMERG || opt_verbosity > LOG_TRACE) {
+                    LOG(FL_ERR, "Logging verbosity level %d out of range (0 .. 8)", opt_verbosity);
+                    goto end;
+                }
+                LOG_set_verbosity((severity)opt_verbosity);
+            }
         }
     }
-
     if (opt_config[0] == '\0')
         opt_config = NULL;
     if (opt_section[0] == '\0')
         opt_section = DEFAULT_SECTION;
-    if (use_case != no_use_case) {
-        char *demo_section;
 
-        switch (use_case) {
-        case bootstrap:
-            demo_section = "bootstrap";
-            break;
-        case imprint:
-            demo_section = "imprint";
-            break;
-        case update:
-            demo_section = "update";
-            break;
-        case revocation:
-            demo_section = "revoke";
-            break;
-        default:
-            goto end;
-        }
-        snprintf(demo_sections, sizeof(demo_sections), "%s,%s", demo_section, opt_section);
+    if (use_case != no_use_case) {
+        snprintf(demo_sections, sizeof(demo_sections), "%s,%s", argv[1], opt_section);
         opt_section = demo_sections;
     }
 
@@ -1220,13 +1229,10 @@ int main(int argc, char *argv[])
     if (use_case != no_use_case)
         argv++; /* skip first option since use_case is given */
     rv = OPT_read(cmp_opts, argv, vpm);
-    if (rv <= 0) {
-        if (rv == -1) {
-            OPT_help(cmp_opts, bio_stdout);
-            rc = EXIT_SUCCESS;
-        }
+    if (rv == -1) /* can only happen for ---help since [-]-help has already been handled */
+        return print_help(prog);
+    if (rv <= 0)
         goto end;
-    }
 
     /* handle here to start correct demo use case */
     if (opt_cmd != NULL) {
@@ -1257,12 +1263,12 @@ int main(int argc, char *argv[])
 
  end:
     X509_VERIFY_PARAM_free(vpm);
-    BIO_free(bio_stdout);
+    // TODO fix mem leaks; find out why this crashes: CONF_free(config);
 
     if (sec_ctx != NULL && sec_deinit(sec_ctx) == -1)
         rc = EXIT_FAILURE;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100002L
+#if OPENSSL_VERSION_NUMBER >= 0x10100002L /* TODO remove: */ && 0
 # ifndef OPENSSL_NO_CRYPTO_MDEBUG
     if (CRYPTO_mem_leaks_fp(stderr) <= 0)
         rc = EXIT_FAILURE;

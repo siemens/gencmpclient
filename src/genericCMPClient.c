@@ -156,9 +156,10 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     if (pctx == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
-
     if ((ctx = OSSL_CMP_CTX_new()) == NULL ||
-        !OSSL_CMP_CTX_set_log_cb(ctx, log_fn)) {
+        !OSSL_CMP_CTX_set_log_cb(ctx, log_fn != NULL ? log_fn :
+                                 /* only difference is in 'int' vs. 'bool' */
+                                 (OSSL_cmp_log_cb_t)LOG_default)) {
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
     }
     if ((cmp_truststore != NULL

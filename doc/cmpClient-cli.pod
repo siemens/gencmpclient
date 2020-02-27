@@ -78,6 +78,8 @@ B<cmpClient> I<options>
 [B<-tls_trusted> I<filenames>]
 [B<-tls_host> I<name>]
 
+[B<-verbosity> I<level>]
+
 [B<-check_all>]
 [B<-crls> I<URLs>]
 [B<-use_cdp>]
@@ -674,6 +676,18 @@ Each source may contain multiple certificates.
 Address to be checked (rather than B<-server> address)
 during TLS hostname validation.
 This may be a Common Name, a DNS name, or an IP address.
+
+=back
+
+
+=head2 Debugging options
+
+=item B<-verbosity> I<level>
+
+Level of verbosity for logging, error output, etc.
+0 = EMERG, 1 = ALERT, 2 = CRIT, 3 = ERR, 4 = WARN, 5 = NOTE,
+6 = INFO, 7 = DEBUG, 8 = TRACE.
+Defaults to 6 = INFO.
 
 =back
 

@@ -52,10 +52,16 @@ typedef struct credentials {
 #  endif /* OPTIONAL */
 #  ifndef FL_EMERG
 
-typedef enum {
-    LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERR,
-    LOG_WARNING, LOG_NOTICE, LOG_INFO, LOG_DEBUG
-} severity;
+typedef int severity;
+#define LOG_EMERG   0 // A panic condition was reported to all processes.
+#define LOG_ALERT   1 // A condition that should be corrected immediately.
+#define LOG_CRIT    2 // A critical condition.
+#define LOG_ERR     3 // An error message.
+#define LOG_WARNING 4 // A warning message.
+#define LOG_NOTICE  5 // A condition requiring special handling.
+#define LOG_INFO    6 // A general information message.
+#define LOG_DEBUG   7 // A message useful for debugging programs.
+#define LOG_TRACE   8 // A verbose message useful for detailed debugging.
 
 typedef int (*LOG_cb_t) (OPTIONAL const char *file, int lineno,
                          severity level, const char *msg);

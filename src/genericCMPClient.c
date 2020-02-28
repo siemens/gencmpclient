@@ -569,8 +569,10 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 
 #ifndef SEC_NO_TLS
     if (tls != NULL) {
-        if (server != NULL &&
-            !STORE_set1_host_ip(SSL_CTX_get_cert_store(tls), server, server)) {
+        X509_STORE *ts = SSL_CTX_get_cert_store(tls);
+        /* set expected host if not already done by caller */
+        if (STORE_get0_host(ts) == NULL &&
+            !STORE_set1_host_ip(ts, server, server)) {
             goto err;
         }
         if (!OSSL_CMP_CTX_set_http_cb(ctx, tls_http_cb) ||

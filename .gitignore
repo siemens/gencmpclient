@@ -24,4 +24,4 @@ libsecurityutilities*
 example/example4
 tests/component/secUtils_Verification
 creds/new.*
-cmpClientDemo
+cmpClient

@@ -9,11 +9,12 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
-#include <genericCMPClient.h> /* must be included before securityUtilities.h for OpenSSL 1.0.2 compatibility */
 
 #include <securityUtilities.h>
 #include <SecUtils/config/config.h>
 #include <SecUtils/util/log.h>
+
+#include <genericCMPClient.h>
 
 #include <openssl/ssl.h>
 

@@ -219,6 +219,11 @@ test_Insta:
 
 all:	build test
 
+doc: doc/cmpClient-cli.md
+
+doc/cmpClient-cli.md: doc/cmpClient-cli.pod
+	pod2markdown doc/cmpClient-cli.pod doc/cmpClient-cli.md
+
 zip:
 	zip genCMPClient.zip \
             LICENSE README.md .gitmodules Makefile{,_src} CMakeLists.txt \

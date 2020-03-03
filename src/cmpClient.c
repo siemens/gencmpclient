@@ -111,12 +111,14 @@ long opt_verbosity;
 
 /* TODO further extend verification options and align with cmpossl/apps/cmp.c */
 bool opt_check_all;
+bool opt_check_any;
 const char *opt_crls;
 bool opt_use_cdp;
-const char *opt_cdp_url;
+const char *opt_cdps;
 bool opt_use_aia;
-const char *opt_ocsp_url;
-bool opt_try_stapling;
+const char *opt_ocsp;
+bool opt_ocsp_last;
+bool opt_stapling;
 
 X509_VERIFY_PARAM *vpm = NULL;
 STACK_OF(X509_CRL) *crls = NULL;
@@ -271,19 +273,23 @@ opt_t cmp_opts[] = {
     OPT_HEADER("CMP and TLS certificate status checking"),
     /* TODO extend verification options and align with cmpossl/apps/cmp.c */
     { "check_all", OPT_BOOL, {.bool = false}, { (const char **) &opt_check_all},
-      "Do status checking not only for leaf certs but for all (except root) certs"},
+      "Check status not only for leaf certs but for all certs (except root)"},
+    { "check_any", OPT_BOOL, {.bool = false}, { (const char **) &opt_check_any},
+      "Check status for those certs (except root) that contain a CDP or AIA entry"},
     { "crls", OPT_TXT, {.txt = NULL}, {&opt_crls},
-      "Enable CRL-based status checking and use  CRLs from given file(s) or URL(s)"},
+      "Enable CRL-based status checking and first use CRLs from given file/URL(s)"},
     { "use_cdp", OPT_BOOL, {.bool = false}, { (const char **) &opt_use_cdp },
       "Enable CRL-based status checking and enable using any CDP entries in certs"},
-    { "cdp_url", OPT_TXT, {.txt = NULL}, {&opt_cdp_url},
-      "Enable CRL-based status checking and use given URL as fallback CDP"},
+    { "cdps", OPT_TXT, {.txt = NULL}, {&opt_cdps},
+      "Enable CRL-based status checking and use given URL(s) as fallback CDP"},
     { "use_aia", OPT_BOOL, {.bool = false}, { (const char **) &opt_use_aia },
       "Enable OCSP-based status checking and enable using any AIA entries in certs"},
-    { "ocsp_url", OPT_TXT, {.txt = NULL}, {&opt_ocsp_url},
-      "Enable OCSP-based status checking and use given OCSP responder as fallback"},
-    { "try_stapling", OPT_BOOL, {.bool = false}, { (const char **) &opt_try_stapling },
-      "Enable OCSP-based status checking and enable the OCSP stapling TLS extension"},
+    { "ocsp", OPT_TXT, {.txt = NULL}, {&opt_ocsp},
+      "Enable OCSP-based status checking and use given OCSP responder(s) as fallback"},
+    { "ocsp_last", OPT_BOOL, {.bool = false}, { (const char **) &opt_ocsp_last },
+      "Do OCSP-based status checks last (else before using CRLs downloaded from CDPs)"},
+    { "stapling", OPT_BOOL, {.bool = false}, { (const char **) &opt_stapling },
+      "Enable OCSP-based status checking and for TLS try OCSP stapling first"},
 
     OPT_V_OPTIONS, /* excludes "crl_check" and "crl_check_all" */
 
@@ -358,9 +364,9 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
         if (tls_truststore == NULL)
             goto err;
         if (!STORE_set_parameters(tls_truststore, vpm,
-                                  opt_check_all, opt_try_stapling, crls,
-                                  opt_use_cdp, opt_cdp_url,
-                                  opt_use_aia, opt_ocsp_url))
+                                  opt_check_all, opt_stapling, crls,
+                                  opt_use_cdp, opt_cdps,
+                                  opt_use_aia, opt_ocsp))
             goto err;
     }
 
@@ -414,9 +420,9 @@ X509_STORE *setup_CMP_truststore(void)
     if (cmp_truststore == NULL)
         goto err;
     if (!STORE_set_parameters(cmp_truststore, vpm,
-                              opt_check_all, false /* try_stapling */, crls,
-                              opt_use_cdp, opt_cdp_url,
-                              opt_use_aia, opt_ocsp_url) ||
+                              opt_check_all, false /* stapling */, crls,
+                              opt_use_cdp, opt_cdps,
+                              opt_use_aia, opt_ocsp) ||
         /* clear any expected host/ip/email address; opt_expect_sender is used instead */
         !STORE_set1_host_ip(cmp_truststore, NULL, NULL)) {
         STORE_free(cmp_truststore);
@@ -671,6 +677,27 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL
     X509_STORE *cmp_truststore = NULL;
     CMP_err err = 1;
 
+    err = 3;
+    X509_STORE *new_cert_truststore = NULL;
+    const char *new_cert_trusted = opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
+    if (new_cert_trusted != NULL) {
+        LOG(FL_DEBUG, "Using '%s' as cert trust store for verifying new cert", new_cert_trusted);
+        new_cert_truststore = STORE_load(new_cert_trusted, "trusted certs for verifying new cert");
+        if (new_cert_truststore == NULL)
+            goto err;
+        /* any -verify_hostname, -verify_ip, and -verify_email apply here */
+        /* no revocation done for newly enrolled cert */
+        if (!STORE_set_parameters(new_cert_truststore, vpm,
+                                  false, false, NULL,
+                                  false, NULL, false, NULL))
+            goto err;
+    }
+    /* cannot set these vpm options before STORE_set_parameters(new_cert_truststore, ...) */
+    if (opt_check_any)
+        X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_STATUS_CHECK_ANY);
+    if (opt_ocsp_last)
+        X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_OCSP_LAST);
+
     const char *const creds_desc = "credentials for CMP level";
     const char *pass = FILES_get_pass(opt_secret, "PBM-based message protection");
     CREDENTIALS *cmp_creds =
@@ -687,29 +714,12 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL
     err = 2;
     if (opt_srvcert != NULL && opt_trusted != NULL)
         LOG_warn("-trusted option is ignored since -srvcert option is present");
-
     cmp_truststore = opt_trusted == NULL ? NULL : setup_CMP_truststore();
     STACK_OF(X509) *untrusted_certs = opt_untrusted == NULL ? NULL :
         CERTS_load(opt_untrusted, "untrusted certs for CMP");
     if ((cmp_truststore == NULL && opt_trusted != NULL)
             || (untrusted_certs == NULL && opt_untrusted != NULL))
         goto err;
-
-    err = 3;
-    X509_STORE *new_cert_truststore = NULL;
-    const char *new_cert_trusted = opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
-    if (new_cert_trusted != NULL) {
-        LOG(FL_DEBUG, "Using '%s' as cert trust store for verifying new cert", new_cert_trusted);
-        new_cert_truststore = STORE_load(new_cert_trusted, "trusted certs for verifying new cert");
-        if (new_cert_truststore == NULL)
-            goto err;
-        /* any -verify_hostname, -verify_ip, and -verify_email apply here */
-        if (!STORE_set_parameters(new_cert_truststore, vpm,
-                                  false, false, NULL,
-                                  false, NULL, false, NULL))
-            goto err;
-    }
-    /* no revocation done for newly enrolled cert */
 
     OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     const bool implicit_confirm = opt_implicitconfirm;
@@ -842,19 +852,25 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
         goto err;
     }
 
-    if (opt_check_all
-        && opt_crls == NULL && !opt_use_cdp && opt_cdp_url != NULL
-        && opt_use_aia && opt_ocsp_url == NULL && !opt_try_stapling) {
-        LOG_err("-check_all is given without any other option enabling cert status checking");
+    if ((opt_check_all || opt_check_any)
+        && opt_crls == NULL && !opt_use_cdp && opt_cdps != NULL
+        && !opt_use_aia && opt_ocsp == NULL && !opt_stapling) {
+        LOG_err("-check_all or -check_any is given without any other option enabling cert status checking");
+        err = 30;
+        goto err;
+    }
+    if (opt_ocsp_last
+        && !opt_use_aia && opt_ocsp == NULL && !opt_stapling) {
+        LOG_err("-ocsp_last is given without any other option enabling OCSP-based cert status checking");
         err = 30;
         goto err;
     }
 #ifdef OPENSSL_NO_OCSP
-    if (opt_use_aia || opt_ocsp_url != NULL || opt_try_stapling)
+    if (opt_use_aia || opt_ocsp != NULL || opt_ocsp_last || opt_stapling)
         LOG_warn("OCSP may be not supported by the OpenSSL build used by the SecUtils");
 #endif
 #if defined(OPENSSL_NO_OCSP) || OPENSSL_VERSION_NUMBER < 0x1010001fL
-    if (opt_try_stapling)
+    if (opt_stapling)
         LOG_warn("OCSP stapling may be not supported by the OpenSSL build used by the SecUtils");
 #endif
     if (opt_crls != NULL) {
@@ -1234,6 +1250,10 @@ int main(int argc, char *argv[])
         return print_help(prog);
     if (rv <= 0)
         goto end;
+    if (opt_check_all && opt_check_any) {
+        LOG_err("Cannot use both -check_all and -check_any options");
+        goto end;
+    }
 
     /* handle here to start correct demo use case */
     if (opt_cmd != NULL) {

@@ -16,7 +16,7 @@ keypass = pass:12345
 recipient = "/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
 subject = "/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
 #srvcert = creds/trusted/PPKIPlaygroundECCRootCAv10.crt
-trusted = creds/trusted/PPKIPlaygroundECCRootCAv10.crt,creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt
+trusted = "creds/trusted/PPKIPlaygroundECCRootCAv10.crt, creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt"
 out_trusted = $trusted
 tls_trusted = creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt
 #tls_host = $server
@@ -24,11 +24,11 @@ tls_cert = creds/ppki_playground_tls.p12
 tls_key = creds/ppki_playground_tls.p12
 tls_keypass = pass:12345
 tls_used = 1
-crls = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN%3dPPKI+Playground+ECC+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE, creds/crls/PPKIPlaygroundECCRootCAv10.crl, creds/crls/PPKIPlaygroundInfrastructureRootCAv10.crl"
+crls = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+ECC+Issuing+CA+v1.0%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE, creds/crls/PPKIPlaygroundECCRootCAv10.crl, creds/crls/PPKIPlaygroundInfrastructureRootCAv10.crl"
 use_cdp = 1
-cdp_url = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist;jsessionid=OphNvbMxFNbju-ctvhnTSndA.undefined?cmd=crl&issuer=CN%3dPPKI+Playground+"KEYTYPE"+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE, https://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist;jsessionid=OphNvbMxFNbju-ctvhnTSndA.undefined?cmd=crl&issuer=CN%3dPPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE"
+cdps = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+ECC+Root+CA+v1.0%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE, https://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE"
 use_aia = 1
-ocsp_url = http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp
+ocsp = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp"
 
 [Insta]
 attime = 1

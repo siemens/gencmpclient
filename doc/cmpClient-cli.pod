@@ -81,12 +81,14 @@ B<cmpClient> I<options>
 [B<-verbosity> I<level>]
 
 [B<-check_all>]
+[B<-check_any>]
 [B<-crls> I<URLs>]
 [B<-use_cdp>]
-[B<-cdp_url> I<URL>]
+[B<-cdps> I<URLs>]
 [B<-use_aia>]
-[B<-ocsp_url> I<URL>]
-[B<-try_stapling>]
+[B<-ocsp> I<URLs>]
+[B<-ocsp_last>]
+[B<-stapling>]
 
 
 =head1 DESCRIPTION
@@ -682,12 +684,15 @@ This may be a Common Name, a DNS name, or an IP address.
 
 =head2 Debugging options
 
+=over 4
+
 =item B<-verbosity> I<level>
 
 Level of verbosity for logging, error output, etc.
 0 = EMERG, 1 = ALERT, 2 = CRIT, 3 = ERR, 4 = WARN, 5 = NOTE,
 6 = INFO, 7 = DEBUG, 8 = TRACE.
 Defaults to 6 = INFO.
+The levels DEBUG and TRACE are most useful for certificate status check issues.
 
 =back
 
@@ -698,14 +703,21 @@ The following set of options determine various parameters of
 certificate revocation status checking to be performed by the client
 on setting up any TLS connection and on checking any signature-based protection
 of CMP messages received, but not when verifying newly enrolled certificates.
-Status checking is demanded if any of these options are used.
+
+Status checking is demanded if any of the status checking options are set.
+Then by default only the leaf certificates of a chain are checked, i.e.,
+the certificates of CMP servers and of TLS servers (as far as TLS is used).
+The options B<-check_all> and B<-check_any> may be used to change the extent
+of the checks to futher elements in the CA chain of these certificates.
 
 For each certificate for which the status check is demanded the
 certification verification procedure will try to obtain the revocation status
 first via OCSP stapling if enabled,
 then from any locally available CRLs,
 then from any Online Certificate Status Protocol (OCSP) responders if enabled,
-and finally via any certificate distribution points (CDPs) if enabled.
+and finally from CRLs downloaded from certificate distribution points (CDPs)
+if enabled.
+With the B<-ocsp_last> option CDPs are tried before trying OCSP.
 Verification fails if no valid and current revocation status can be found
 or the status indicates that the certificate has been revoked.
 
@@ -713,8 +725,13 @@ or the status indicates that the certificate has been revoked.
 
 =item B<-check_all>
 
-Do certificate status checking not only for leaf certificates of a chain
-but for all (except root) certificates.
+Check certificate status not only for leaf certificates of a chain
+but for all certificates (except root, i.e., self-issued certificates).
+
+=item B<-check_any>
+
+Check certificate status for those certificates (except root certificates)
+that contain a CDP or AIA entry or for which OCSP stapling for TLS is enabled.
 
 =item B<-crls> I<URLs>
 
@@ -727,26 +744,36 @@ each element starting with C<http:> or C<file:> or being a filename or pathname.
 =item B<-use_cdp>
 
 Enable CRL-based status checking and
-enable using any CDP entries in certificates.
+enable using CRL Distribution Points (CDP) extension entries in certificates.
 
-=item B<-cdp_url> I<URL>
+=item B<-cdps> I<URLs>
 
 Enable CRL-based status checking and
-use the given URL as fallback certificate distribution point (CDP).
+use the given URL(s) as fallback certificate distribution points (CDP).
 
 =item B<-use_aia>
 
 Enable OCSP-based status checking and
-enable using any AIA entries in certificates.
+enable using Authority Information Access (AIA) OCSP responder entries
+in certificates.
 
-=item B<-ocsp_url> I<URL>
-
-Enable OCSP-based status checking and use given OCSP responder URL as fallback.
-
-=item B<-try_stapling>
+=item B<-ocsp> I<URLs>
 
 Enable OCSP-based status checking and
-enable the TLS certificate status request extension ("OCSP stapling").
+use given OCSP responder URL(s) as fallback.
+
+=item B<-ocsp_last>
+
+If both OCSP-based checks and checks using CRLs downloaded from CDPs are enabled
+then do OCSP-based checks last (else before using CRLs downloaded from CDPs).
+
+=item B<-stapling>
+
+Enable OCSP-based status checking and
+try using the TLS certificate status request extension ("OCSP stapling") first.
+So far OCSP multi-stapling is not supported,
+so status information can be obtained in this way only for the leaf certificate
+(i.e., the TLS server certificate).
 
 =back
 

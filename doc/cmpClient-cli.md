@@ -76,13 +76,17 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-tls\_trusted** _filenames_\]
 \[**-tls\_host** _name_\]
 
+\[**-verbosity** _level_\]
+
 \[**-check\_all**\]
+\[**-check\_any**\]
 \[**-crls** _URLs_\]
 \[**-use\_cdp**\]
-\[**-cdp\_url** _URL_\]
+\[**-cdps** _URLs_\]
 \[**-use\_aia**\]
-\[**-ocsp\_url** _URL_\]
-\[**-try\_stapling**\]
+\[**-ocsp** _URLs_\]
+\[**-ocsp\_last**\]
+\[**-stapling**\]
 
 # DESCRIPTION
 
@@ -607,27 +611,49 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     during TLS hostname validation.
     This may be a Common Name, a DNS name, or an IP address.
 
+## Debugging options
+
+- **-verbosity** _level_
+
+    Level of verbosity for logging, error output, etc.
+    0 = EMERG, 1 = ALERT, 2 = CRIT, 3 = ERR, 4 = WARN, 5 = NOTE,
+    6 = INFO, 7 = DEBUG, 8 = TRACE.
+    Defaults to 6 = INFO.
+    The levels DEBUG and TRACE are most useful for certificate status check issues.
+
 ## Certificate status checking options, for both CMP and TLS
 
 The following set of options determine various parameters of
 certificate revocation status checking to be performed by the client
 on setting up any TLS connection and on checking any signature-based protection
 of CMP messages received, but not when verifying newly enrolled certificates.
-Status checking is demanded if any of these options are used.
+
+Status checking is demanded if any of the status checking options are set.
+Then by default only the leaf certificates of a chain are checked, i.e.,
+the certificates of CMP servers and of TLS servers (as far as TLS is used).
+The options **-check\_all** and **-check\_any** may be used to change the extent
+of the checks to futher elements in the CA chain of these certificates.
 
 For each certificate for which the status check is demanded the
 certification verification procedure will try to obtain the revocation status
 first via OCSP stapling if enabled,
 then from any locally available CRLs,
 then from any Online Certificate Status Protocol (OCSP) responders if enabled,
-and finally via any certificate distribution points (CDPs) if enabled.
+and finally from CRLs downloaded from certificate distribution points (CDPs)
+if enabled.
+With the **-ocsp\_last** option CDPs are tried before trying OCSP.
 Verification fails if no valid and current revocation status can be found
 or the status indicates that the certificate has been revoked.
 
 - **-check\_all**
 
-    Do certificate status checking not only for leaf certificates of a chain
-    but for all (except root) certificates.
+    Check certificate status not only for leaf certificates of a chain
+    but for all certificates (except root, i.e., self-issued certificates).
+
+- **-check\_any**
+
+    Check certificate status for those certificates (except root certificates)
+    that contain a CDP or AIA entry or for which OCSP stapling for TLS is enabled.
 
 - **-crls** _URLs_
 
@@ -640,26 +666,36 @@ or the status indicates that the certificate has been revoked.
 - **-use\_cdp**
 
     Enable CRL-based status checking and
-    enable using any CDP entries in certificates.
+    enable using CRL Distribution Points (CDP) extension entries in certificates.
 
-- **-cdp\_url** _URL_
+- **-cdps** _URLs_
 
     Enable CRL-based status checking and
-    use the given URL as fallback certificate distribution point (CDP).
+    use the given URL(s) as fallback certificate distribution points (CDP).
 
 - **-use\_aia**
 
     Enable OCSP-based status checking and
-    enable using any AIA entries in certificates.
+    enable using Authority Information Access (AIA) OCSP responder entries
+    in certificates.
 
-- **-ocsp\_url** _URL_
-
-    Enable OCSP-based status checking and use given OCSP responder URL as fallback.
-
-- **-try\_stapling**
+- **-ocsp** _URLs_
 
     Enable OCSP-based status checking and
-    enable the TLS certificate status request extension ("OCSP stapling").
+    use given OCSP responder URL(s) as fallback.
+
+- **-ocsp\_last**
+
+    If both OCSP-based checks and checks using CRLs downloaded from CDPs are enabled
+    then do OCSP-based checks last (else before using CRLs downloaded from CDPs).
+
+- **-stapling**
+
+    Enable OCSP-based status checking and
+    try using the TLS certificate status request extension ("OCSP stapling") first.
+    So far OCSP multi-stapling is not supported,
+    so status information can be obtained in this way only for the leaf certificate
+    (i.e., the TLS server certificate).
 
 ## Certificate validation options, for both CMP and TLS
 

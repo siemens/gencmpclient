@@ -93,13 +93,13 @@ $(SECUTILS)/libs/interfaces/include/operators.h: $(SECUTILS)/include
 	cd $(SECUTILS) && git submodule update --init libs/interfaces
 
 $(SECUTILS)/include:
-	git submodule update --init $(SECUTILS)
+	git submodule update --progress --init $(SECUTILS)
 
 $(SECUTILS_LIB):
 	$(MAKE) -C $(SECUTILS) build_only CFLAGS="$(CFLAGS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)"
 
 $(LIBCMP_INC):
-	git submodule update --init cmpossl
+	git submodule update --progress --init --depth 1 cmpossl
 
 $(LIBCMP_LIB):
 	@ # the old way to build with CMP was: buildCMPforOpenSSL

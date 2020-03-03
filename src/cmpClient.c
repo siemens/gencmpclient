@@ -819,7 +819,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
             opt_keypass = opt_newkeypass;
         }
     } else {
-        if (opt_secret != NULL)
+        if (opt_secret != NULL && opt_key != NULL)
             LOG_warn("-key value will not be used for signing messages since -secret option selects PBM-based protection");
     }
     if (!opt_unprotectedrequests && opt_secret == NULL && opt_key == NULL) {

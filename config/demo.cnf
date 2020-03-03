@@ -44,7 +44,7 @@ subject = "/CN=test-genCMPClientDemo"
 cacert = creds/trusted/InstaDemoCA.crt
 srvcert = $cacert
 #trusted = $cacert
-crls_file = creds/crls/InstaDemoCA.crl
+crls = creds/crls/InstaDemoCA.crl
 out_trusted = $cacert
 
 tls_used = 0
@@ -54,6 +54,7 @@ tls_used = 0
 #tls_key = $key
 
 [imprint]
+cmd = ir
 path = /ejbca/publicweb/cmp/PlaygroundECC
 cert = # is overridden by CA setting
 key = # is overridden by CA setting
@@ -66,6 +67,7 @@ san_nodefault = 1
 certout = creds/new.crt
 
 [bootstrap]
+cmd = cr
 path = /ejbca/publicweb/cmp/PlaygroundECC
 secret = # is overridden by CA setting
 newkeytype = $imprint::newkeytype
@@ -77,6 +79,7 @@ san_nodefault = 1
 certout = $imprint::certout
 
 [update]
+cmd = kur
 path = /ejbca/publicweb/cmp/PlaygroundCMPSigning
 secret = # is overridden by CA setting
 # not needed: newkeytype = $imprint::newkeytype
@@ -88,6 +91,7 @@ implicitconfirm = 1
 certout = $imprint::certout
 
 [revoke]
+cmd = rr
 path = /ejbca/publicweb/cmp/PlaygroundCMPSigning
 secret = # is overridden by CA setting
 oldcert = $update::certout # creds/new.crt
@@ -96,10 +100,10 @@ subject = # is overridden by CA setting
 # not needed: newkeypass = $imprint::newkeypass
 
 [pkcs10]
+cmd = p10cr
 path = /ejbca/publicweb/cmp/PlaygroundECC
 # Insta will respond with CMP body popdecc POPODecKeyChallContent, --pop Challenge
 ref = dummy # in EJBCA case there is no ref - fallback for sender as no cert and subject is given
-cmd = p10cr
 csr = creds/test.csr.pem
 subject = # is overridden by CA setting
 certout = $imprint::certout

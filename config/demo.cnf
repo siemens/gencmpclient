@@ -11,7 +11,7 @@ no_proxy = ppki-playground.ct.siemens.com
 server = ppki-playground.ct.siemens.com:443
 secret = pass:SecretCmp
 cert = creds/ppki_playground_cmp_signer.p12
-key = creds/ppki_playground_cmp_signer.p12
+key = $cert
 keypass = pass:12345
 recipient = "/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
 subject = "/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
@@ -21,7 +21,7 @@ out_trusted = $trusted
 tls_trusted = creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt
 #tls_host = $server
 tls_cert = creds/ppki_playground_tls.p12
-tls_key = creds/ppki_playground_tls.p12
+tls_key = $tls_cert
 tls_keypass = pass:12345
 tls_used = 1
 crls = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+ECC+Issuing+CA+v1.0%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE, creds/crls/PPKIPlaygroundECCRootCAv10.crl, creds/crls/PPKIPlaygroundInfrastructureRootCAv10.crl"
@@ -38,6 +38,7 @@ secret = pass:insta
 ref = 3078
 cert = creds/insta_client.p12
 key = $cert
+keypass = pass:12345
 recipient = "/C=FI/O=Insta Demo/CN=Insta Demo CA"
 subject = "/CN=test-genCMPClientDemo"
 cacert = creds/trusted/InstaDemoCA.crt
@@ -47,13 +48,15 @@ crls_file = creds/crls/InstaDemoCA.crl
 out_trusted = $cacert
 
 tls_used = 0
-tls_trusted = $cacert
+#tls_trusted = $cacert
 #tls_host = pki.certificate.fi
-tls_cert = $cert
-tls_key = $key
+#tls_cert = $cert
+#tls_key = $key
 
 [imprint]
 path = /ejbca/publicweb/cmp/PlaygroundECC
+cert = # is overridden by CA setting
+key = # is overridden by CA setting
 newkeytype = ECC
 newkey = creds/new.pem
 newkeypass = pass:12345
@@ -64,6 +67,7 @@ certout = creds/new.crt
 
 [bootstrap]
 path = /ejbca/publicweb/cmp/PlaygroundECC
+secret = # is overridden by CA setting
 newkeytype = $imprint::newkeytype
 newkey = $imprint::newkey
 newkeypass = $imprint::newkeypass

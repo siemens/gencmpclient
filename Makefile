@@ -179,18 +179,18 @@ else
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl"
 endif
-	$(PROXY) ./cmpClient$(EXE) bootstrap -section $(CA_SECTION)
+	$(PROXY) ./cmpClient$(EXE) imprint -section $(CA_SECTION) -cert "" -key ""
+	@echo
+	$(PROXY) ./cmpClient$(EXE) bootstrap -section $(CA_SECTION) -secret ""
 	@echo :
 	openssl x509 -noout -text -in creds/new.crt | sed '/^         [0-9a-f].*/d'
 	@echo
-	$(PROXY) ./cmpClient$(EXE) imprint -section $(CA_SECTION)
-	@echo
-	$(PROXY) ./cmpClient$(EXE) update -section $(CA_SECTION)
+	$(PROXY) ./cmpClient$(EXE) update -section $(CA_SECTION) -secret "" -subject ""
 	@echo :
 	$(OCSP_CHECK)
 	@echo
 	@sleep 1 # for INSTA helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
-	$(PROXY) ./cmpClient$(EXE) revoke -section $(CA_SECTION)
+	$(PROXY) ./cmpClient$(EXE) revoke -section $(CA_SECTION) -secret "" -subject ""
 	@echo :
 	$(OCSP_CHECK)
 

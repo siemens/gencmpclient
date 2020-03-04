@@ -213,6 +213,7 @@ test_cli: build
 
 test_SimpleLra: cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra
 	make test_cli CMP_TESTS=SimpleLra
+	rm -f test/cmpossl/recipes/81-test_cmp_cli_data/SimpleLra/test.cert.pem
 
 test_Insta:
 	make test_cli CMP_TESTS=Insta

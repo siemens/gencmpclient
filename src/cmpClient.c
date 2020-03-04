@@ -1044,7 +1044,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
                 err = CMPclient_revoke(ctx, oldcert, (int)opt_revreason);
             X509_free(oldcert);
         }
-        /* CmpWsRa does not accept CRL_REASON_NONE: "missing crlEntryDetails for REVOCATION_REQ" */
+        /* SimpleLra does not accept CRL_REASON_NONE: "missing crlEntryDetails for REVOCATION_REQ" */
         break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);

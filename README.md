@@ -149,9 +149,9 @@ http_proxy=de.coia.siemens.net:9400 make test_Insta
 assuming the proxy is needed and sufficient to reach the external Insta CA
 or
 ```
-make test_CmpWsRa
+make test_SimpleLra
 ```
-assuming a local CmpWsRa instance is running and forwards requests to the Siemens Product PKI (PPKI) Playground server.
+assuming a local SimpleLra instance is running and forwards requests to the Siemens Product PKI (PPKI) Playground server.
 
 
 ## Using the library in own applications

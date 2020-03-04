@@ -201,9 +201,9 @@ opt_t cmp_opts[] = {
 
     OPT_HEADER("Certificate enrollment"),
     { "newkeytype", OPT_TXT, {.txt = NULL}, { &opt_newkeytype },
-      "Type of key to generate, e.g., \"ECC\" or \"RSA\""},
+      "Generate key for ir/cr/kur of given type, e.g., EC:secp256r1 or RSA-2048"},
     { "newkey", OPT_TXT, {.txt = NULL}, { &opt_newkey },
-      "Key to use for cert request (defaulting to -key) if no -newkeytype is given."},
+      "Key to use for ir/cr/kur (defaulting to -key) if no -newkeytype is given."},
     OPT_MORE("File to save new generated key if -newkeytype is given"),
     { "newkeypass", OPT_TXT, {.txt = NULL}, { &opt_newkeypass },
       "Password for the file given for -newkey"},
@@ -698,17 +698,19 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL
     if (opt_ocsp_last)
         X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_OCSP_LAST);
 
-    const char *const creds_desc = "credentials for CMP level";
-    const char *pass = FILES_get_pass(opt_secret, "PBM-based message protection");
-    CREDENTIALS *cmp_creds =
-        (use_case != update && use_case != revocation && opt_secret != NULL)
-            || (opt_secret != NULL && opt_ref != NULL)
-        /* use PBM except for kur and rr if secret is present */
-        ? CREDENTIALS_new(NULL, NULL, NULL, pass, opt_ref)
-        : CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
-    if (cmp_creds == NULL) {
-        LOG(FL_ERR, "Unable to set up %s", creds_desc);
-        goto err;
+    CREDENTIALS *cmp_creds = NULL;
+    if (opt_secret != NULL || opt_key != NULL) {
+        const char *const creds_desc = "credentials for CMP level";
+        const char *pass = FILES_get_pass(opt_secret, "PBM-based message protection");
+        cmp_creds = (opt_secret != NULL && opt_ref != NULL)
+            || (use_case != update && use_case != revocation && opt_secret != NULL)
+            /* use PBM except for kur and rr if secret is present */
+            ? CREDENTIALS_new(NULL, NULL, NULL, pass, opt_ref)
+            : CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
+        if (cmp_creds == NULL) {
+            LOG(FL_ERR, "Unable to set up %s", creds_desc);
+            goto err;
+        }
     }
 
     err = 2;
@@ -795,7 +797,7 @@ int setup_transfer(CMP_CTX *ctx)
 
 static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
 {
-    CMP_err err = CMP_OK;
+    CMP_err err = 1;
     CMP_CTX *ctx = NULL;
     EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
@@ -824,7 +826,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
     }
     if (!opt_unprotectedrequests && opt_secret == NULL && opt_key == NULL) {
         LOG_err("must give client credentials unless -unprotectedrequests is set");
-        err = 1;
         goto err;
     }
 
@@ -832,37 +833,38 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
         /* ossl_cmp_hdr_init() takes sender name from cert or else subject */
         /* TODO maybe else take as sender default the subjectName of oldCert or p10cr */
         LOG_err("must give -ref if no -cert and no -subject given");
-        err = 1;
         goto err;
     }
     if (!opt_secret && ((opt_cert == NULL) != (opt_key == NULL))) {
         LOG_err("must give both -cert and -key options or neither");
-        err = 1;
         goto err;
     }
 
+    if (opt_check_all && opt_check_any) {
+        LOG_err("Cannot use both -check_all and -check_any options");
+        goto err;
+    }
+
+    err = 21;
     if (use_case == pkcs10 && opt_csr == NULL) {
         LOG_err("-csr option is missing for command 'p10cr'");
-        err = 21;
         goto err;
     }
     if (use_case == revocation && opt_oldcert == NULL) {
         LOG_err("-oldcert option is missing for command 'rr' (revocation)");
-        err = 21;
         goto err;
     }
 
+    err = 30;
     if ((opt_check_all || opt_check_any)
         && opt_crls == NULL && !opt_use_cdp && opt_cdps != NULL
         && !opt_use_aia && opt_ocsp == NULL && !opt_stapling) {
         LOG_err("-check_all or -check_any is given without any other option enabling cert status checking");
-        err = 30;
         goto err;
     }
     if (opt_ocsp_last
         && !opt_use_aia && opt_ocsp == NULL && !opt_stapling) {
         LOG_err("-ocsp_last is given without any other option enabling OCSP-based cert status checking");
-        err = 30;
         goto err;
     }
 #ifdef OPENSSL_NO_OCSP
@@ -873,6 +875,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
     if (opt_stapling)
         LOG_warn("OCSP stapling may be not supported by the OpenSSL build used by the SecUtils");
 #endif
+    err = 31;
     if (opt_crls != NULL) {
         crls = CRLs_load(opt_crls, "CRLs for CMP and possibly TLS level");
         if (crls == NULL)
@@ -900,24 +903,22 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
         if (opt_popo != OSSL_CRMF_POPO_NONE - 1)
             LOG_warn("-popo option is ignored for commands other than 'ir', 'cr', and 'p10cr'");
     } else {
+        err = 18;
         if (opt_newkeytype != NULL) {
             if (opt_newkey == NULL) {
-                LOG_err("Missing -newkey option for saving the new key");
-                err = 18;
+                LOG_err("Missing -newkey option specifying the file to save the new key");
                 goto err;
             }
-            const char *key_spec = strcmp(opt_newkeytype, "RSA") == 0 ? RSA_SPEC : ECC_SPEC;
+            const char *key_spec = strcmp(opt_newkeytype, "ECC") == 0 ? "EC:secp256r1" : opt_newkeytype;
             new_pkey = KEY_new(key_spec);
             if (new_pkey == NULL) {
                 LOG(FL_ERR, "Unable to generate new private key according to specification '%s'",
                     key_spec);
-                err = 18;
                 goto err;
             }
         } else {
             if (opt_newkey == NULL && opt_key == NULL) {
                 LOG_err("Missing -newkeytype or -newkey or -key option");
-                err = 18;
                 goto err;
             }
             if (opt_newkey != NULL) {
@@ -926,7 +927,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
                                                   opt_newkeypass, NULL /* engine */,
                                                   "private key to use for certificate request");
                 if (new_pkey == NULL) {
-                    err = 18;
                     goto err;
                 }
             }
@@ -940,8 +940,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
             goto err;
         }
 
-        err = setup_cert_template(ctx);
-        if (err != CMP_OK)
+        if ((err = setup_cert_template(ctx)) != CMP_OK)
             goto err;
         if ((exts = setup_X509_extensions(ctx)) == NULL) {
             LOG_err("Unable to set up X509 extensions for CMP client");
@@ -1093,7 +1092,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
     }
 
     if (use_case != revocation) {
-        if (opt_newkey != NULL && opt_newkeytype != NULL) {
+        if (use_case != pkcs10 && opt_newkey != NULL && opt_newkeytype != NULL) {
             const char *new_desc = "newly enrolled certificate and related chain and key";
             if (!CREDENTIALS_save(new_creds, opt_certout, opt_newkey, opt_newkeypass, new_desc)) {
                 LOG_err("Failed to save newly enrolled credentials");
@@ -1203,19 +1202,21 @@ int main(int argc, char *argv[])
         if (argv[i][0] == '-') {
             if (argv[i][1] == '-')
                 argv[i]++;
-            if (strcmp(argv[i] + 1, "help") == 0)
+            if (strcmp(argv[i] + 1, "help") == 0) {
                 return print_help(prog);
-            else if (strcmp(argv[i] + 1, "config") == 0)
-                opt_config = argv[++i];
-            else if (strcmp(argv[i] + 1, "section") == 0)
-                opt_section = argv[++i];
-            else if (strcmp(argv[i] + 1, "verbosity") == 0) {
-                opt_verbosity = UTIL_atoint(argv[++i]); /* == INT_MIN on parse error */
-                if (opt_verbosity < LOG_EMERG || opt_verbosity > LOG_TRACE) {
-                    LOG(FL_ERR, "Logging verbosity level %d out of range (0 .. 8)", opt_verbosity);
-                    goto end;
+            } else if (i + 1 < argc) {
+                if (strcmp(argv[i] + 1, "config") == 0)
+                    opt_config = argv[++i];
+                else if (strcmp(argv[i] + 1, "section") == 0)
+                    opt_section = argv[++i];
+                else if (strcmp(argv[i] + 1, "verbosity") == 0) {
+                    opt_verbosity = UTIL_atoint(argv[++i]); /* == INT_MIN on parse error */
+                    if (opt_verbosity < LOG_EMERG || opt_verbosity > LOG_TRACE) {
+                        LOG(FL_ERR, "Logging verbosity level %d out of range (0 .. 8)", opt_verbosity);
+                        goto end;
+                    }
+                    LOG_set_verbosity((severity)opt_verbosity);
                 }
-                LOG_set_verbosity((severity)opt_verbosity);
             }
         }
     }
@@ -1250,10 +1251,6 @@ int main(int argc, char *argv[])
         return print_help(prog);
     if (rv <= 0)
         goto end;
-    if (opt_check_all && opt_check_any) {
-        LOG_err("Cannot use both -check_all and -check_any options");
-        goto end;
-    }
 
     /* handle here to start correct demo use case */
     if (opt_cmd != NULL) {

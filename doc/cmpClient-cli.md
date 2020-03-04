@@ -41,9 +41,9 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 
 \[**-cmd** _ir|cr|kur|p10cr|rr_\]
 \[**-infotype** _name_\]
-\[**-geninfo** _OID:int:N_\]
+\[**-geninfo** _OID_:int:_N_\]
 
-\[**-newkeytype** _ECC|RSA_\]
+\[**-newkeytype** EC:_curve_|RSA-_len_\]
 \[**-newkey** _filename_\]
 \[**-newkeypass** _arg_\]
 \[**-subject** _name_\]
@@ -325,8 +325,8 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     Also used for **-cert** and **-oldcert** in case it is an encrypted PKCS#12 file.
     If not given here, the password will be prompted for if needed.
 
-    For more information about the format of **arg** see the
-    **PASS PHRASE ARGUMENTS** section in [openssl(1)](http://man.he.net/man1/openssl).
+    Currently only plain passwords are supported,
+    which should be preceded by "pass:".
 
 - **-digest** _name_
 
@@ -387,32 +387,34 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     Set InfoType name to use for requesting specific info in **genm**,
     e.g., `signKeyPairTypes`.
 
-- **-geninfo** _OID:int:N_
+- **-geninfo** _OID_:int:_N_
 
     generalInfo integer values to place in request PKIHeader with given OID,
     e.g., `1.2.3:int:987`.
 
 ## Certificate enrollment options
 
-- **-newkeytype** _ECC|RSA_
+- **-newkeytype** _spec_
 
-    The type of newly generated certificate. File to save this new key is specified
-    with the **-newkey** option.
+    In case of IR, CR, or KUR,
+    generate a new key of the given type for the requested certifiate.
+    The _spec_ may be of the form "EC:_curve_" or "RSA-_length_".
+    The key will be saved in the file specified with the **-newkey** option.
 
 - **-newkey** _filename_
 
-    The file containing the private or public key for the certificate requested
-    in IR, CR or KUR.
-    Default is the public key in the PKCS#10 CSR given with the **-csr** option,
-    if any, or else the current client key, if given.
+    The file to save the newly generated key (in case  **-newkeytype** is given).
+    Otherwise the file to read the private or public key from
+    for the certificate requested in IR, CR or KUR.
+    Default is the current client key, if given.
 
 - **-newkeypass** _arg_
 
-    Pass phrase source for the key given with the **-newkey** option.
+    Pass phrase source for the key file given with the **-newkey** option.
     If not given here, the password will be prompted for if needed.
 
-    For more information about the format of **arg** see the
-    **PASS PHRASE ARGUMENTS** section in [openssl(1)](http://man.he.net/man1/openssl).
+    Currently only plain passwords are supported,
+    which should be preceded by "pass:".
 
 - **-subject** _name_
 
@@ -590,8 +592,8 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     Also used for **-tls\_cert** in case it is an encrypted PKCS#12 file.
     If not given here, the password will be prompted for if needed.
 
-    For more information about the format of **arg** see the
-    **PASS PHRASE ARGUMENTS** section in [openssl(1)](http://man.he.net/man1/openssl).
+    Currently only plain passwords are supported,
+    which should be preceded by "pass:".
 
 - **-tls\_extra** _filenames_
 

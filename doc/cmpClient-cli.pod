@@ -43,9 +43,9 @@ B<cmpClient> I<options>
 
 [B<-cmd> I<ir|cr|kur|p10cr|rr>]
 [B<-infotype> I<name>]
-[B<-geninfo> I<OID:int:N>]
+[B<-geninfo> I<OID>:int:I<N>]
 
-[B<-newkeytype> I<ECC|RSA>]
+[B<-newkeytype> EC:I<curve>|RSA-I<len>]
 [B<-newkey> I<filename>]
 [B<-newkeypass> I<arg>]
 [B<-subject> I<name>]
@@ -365,8 +365,8 @@ Pass phrase source for the private key given with the B<-key> option.
 Also used for B<-cert> and B<-oldcert> in case it is an encrypted PKCS#12 file.
 If not given here, the password will be prompted for if needed.
 
-For more information about the format of B<arg> see the
-B<PASS PHRASE ARGUMENTS> section in L<openssl(1)>.
+Currently only plain passwords are supported,
+which should be preceded by "pass:".
 
 =item B<-digest> I<name>
 
@@ -440,7 +440,7 @@ B<rr> requests revocation of an existing, given certificate.
 Set InfoType name to use for requesting specific info in B<genm>,
 e.g., C<signKeyPairTypes>.
 
-=item B<-geninfo> I<OID:int:N>
+=item B<-geninfo> I<OID>:int:I<N>
 
 generalInfo integer values to place in request PKIHeader with given OID,
 e.g., C<1.2.3:int:987>.
@@ -452,25 +452,27 @@ e.g., C<1.2.3:int:987>.
 
 =over 4
 
-=item B<-newkeytype> I<ECC|RSA>
+=item B<-newkeytype> I<spec>
 
-The type of newly generated certificate. File to save this new key is specified
-with the B<-newkey> option.
+In case of IR, CR, or KUR,
+generate a new key of the given type for the requested certifiate.
+The I<spec> may be of the form "EC:I<curve>" or "RSA-I<length>".
+The key will be saved in the file specified with the B<-newkey> option.
 
 =item B<-newkey> I<filename>
 
-The file containing the private or public key for the certificate requested
-in IR, CR or KUR.
-Default is the public key in the PKCS#10 CSR given with the B<-csr> option,
-if any, or else the current client key, if given.
+The file to save the newly generated key (in case  B<-newkeytype> is given).
+Otherwise the file to read the private or public key from
+for the certificate requested in IR, CR or KUR.
+Default is the current client key, if given.
 
 =item B<-newkeypass> I<arg>
 
-Pass phrase source for the key given with the B<-newkey> option.
+Pass phrase source for the key file given with the B<-newkey> option.
 If not given here, the password will be prompted for if needed.
 
-For more information about the format of B<arg> see the
-B<PASS PHRASE ARGUMENTS> section in L<openssl(1)>.
+Currently only plain passwords are supported,
+which should be preceded by "pass:".
 
 =item B<-subject> I<name>
 
@@ -658,8 +660,8 @@ Pass phrase source for client's private TLS key B<tls_key>.
 Also used for B<-tls_cert> in case it is an encrypted PKCS#12 file.
 If not given here, the password will be prompted for if needed.
 
-For more information about the format of B<arg> see the
-B<PASS PHRASE ARGUMENTS> section in L<openssl(1)>.
+Currently only plain passwords are supported,
+which should be preceded by "pass:".
 
 =item B<-tls_extra> I<filenames>
 

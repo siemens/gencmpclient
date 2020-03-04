@@ -127,8 +127,8 @@ endif
 clean_test:
 	rm -f creds/new.*
 	rm -rf creds/crls
-	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Insta/test.*cert*.pem
-	rm -rf cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra
+	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/*/test.*cert*.pem
+	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra
 
 clean:
 	$(MAKE) -f Makefile_src clean
@@ -158,8 +158,9 @@ endif
 creds/crls:
 	mkdir $@
 
-cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra/:
-	cp -a test/SimpleLra/ cmpossl/test/recipes/81-test_cmp_cli_data/
+cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra:
+	cd cmpossl/test/recipes/81-test_cmp_cli_data && \
+	ln -s ../../../../test/cmpossl/recipes/81-test_cmp_cli_data/SimpleLra
 
 test: build | creds/crls
 	@/bin/echo -e "\n##### running cmpClient Demo #####"
@@ -207,10 +208,10 @@ test_cli: build
 	  BIN_D=. \
 	  EXE_EXT= \
 	  LD_LIBRARY_PATH=$(BIN_D) \
-	  $(PERL) test/81-test_cmp_cli.t )
+	  $(PERL) test/cmpossl/recipes/81-test_cmp_cli.t )
 	@ :
 
-test_SimpleLra: cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra/
+test_SimpleLra: cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra
 	make test_cli CMP_TESTS=SimpleLra
 
 test_Insta:

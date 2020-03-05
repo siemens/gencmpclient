@@ -1258,8 +1258,10 @@ int main(int argc, char *argv[])
             use_case = imprint;
         } else if (strcmp(opt_cmd, "cr") == 0) {
             use_case = bootstrap;
+            opt_secret = NULL;
         } else if (strcmp(opt_cmd, "p10cr") == 0) {
             use_case = pkcs10;
+            opt_secret = NULL;
         } else if (strcmp(opt_cmd, "kur") == 0) {
             use_case = update;
         } else if (strcmp(opt_cmd, "rr") == 0) {

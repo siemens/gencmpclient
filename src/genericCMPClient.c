@@ -180,7 +180,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
         const char *pwdref = CREDENTIALS_get_pwdref(creds);
         if ((pkey != NULL && !OSSL_CMP_CTX_set1_pkey(ctx, pkey)) ||
             (cert != NULL && !OSSL_CMP_CTX_set1_clCert(ctx, cert)) ||
-            (sk_X509_num(chain) > 0 && !OSSL_CMP_CTX_set1_extraCertsOut(ctx, chain)) ||
+            (!OSSL_CMP_CTX_set1_untrusted_certs(ctx, chain)) ||
             (pwd != NULL
              && !OSSL_CMP_CTX_set1_secretValue(ctx, (unsigned char *) pwd, (int)strlen(pwd))) ||
             (pwdref != NULL

@@ -267,7 +267,7 @@ opt_t cmp_opts[] = {
       "Address (rather than -server) to be checked during TLS host name validation"},
 
     OPT_HEADER("Debugging"),
-    { "verbosity", OPT_NUM, {.num = 0}, { NULL },
+    { "verbosity", OPT_NUM, {.num = LOG_INFO}, { (const char **) &opt_verbosity},
       "Logging level; 3=ERR, 4=WARN, 6=INFO, 7=DEBUG, 8=TRACE. Default 6 = INFO"},
 
     OPT_HEADER("CMP and TLS certificate status checking"),
@@ -1167,6 +1167,16 @@ int print_help(const char *prog)
     return EXIT_SUCCESS;
 }
 
+bool set_verbosity(void)
+{
+    if (opt_verbosity < LOG_EMERG || opt_verbosity > LOG_TRACE) {
+        LOG(FL_ERR, "Logging verbosity level %d out of range (0 .. 8)", opt_verbosity);
+        return false;
+    }
+    LOG_set_verbosity((severity)opt_verbosity);
+    return true;
+}
+
 int main(int argc, char *argv[])
 {
     int i;
@@ -1208,7 +1218,6 @@ int main(int argc, char *argv[])
     /*
      * handle -help, -config, -section, and -verbosity upfront to take effect for other opts
      */
-    opt_verbosity = LOG_INFO;
     const char *prog = argv[0];
     for (i = 1; i < argc; i++) {
         if (argv[i][0] == '-') {
@@ -1223,11 +1232,8 @@ int main(int argc, char *argv[])
                     opt_section = argv[++i];
                 else if (strcmp(argv[i] + 1, "verbosity") == 0) {
                     opt_verbosity = UTIL_atoint(argv[++i]); /* == INT_MIN on parse error */
-                    if (opt_verbosity < LOG_EMERG || opt_verbosity > LOG_TRACE) {
-                        LOG(FL_ERR, "Logging verbosity level %d out of range (0 .. 8)", opt_verbosity);
+                    if (!set_verbosity())
                         goto end;
-                    }
-                    LOG_set_verbosity((severity)opt_verbosity);
                 }
             }
         }
@@ -1248,6 +1254,8 @@ int main(int argc, char *argv[])
         if ((config = CONF_load_options(NULL, opt_config, opt_section, cmp_opts)) == NULL)
             goto end;
     }
+    if (!set_verbosity())
+        goto end;
     vpm = X509_VERIFY_PARAM_new();
     if (vpm == 0) {
         LOG_err("Out of memory");

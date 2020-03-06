@@ -85,7 +85,7 @@ else
 .phony: get_submodules build_submodules clean_submodules
 submodules: build_submodules
 
-build_submodules: get_submodules $(SECUTILS_LIB) $(LIBCMP_LIB)
+build_submodules: get_submodules build_cmpossl build_secUtils # $(LIBCMP_LIB) $(SECUTILS_LIB)
 
 get_submodules: $(SECUTILS)/libs/interfaces/include/operators.h $(LIBCMP_INC)
 
@@ -96,12 +96,20 @@ $(SECUTILS)/include:
 	git submodule update --progress --init $(SECUTILS)
 
 $(SECUTILS_LIB):
+	build_secUtils
+
+.phony: build_secUtils
+build_secUtils:
 	$(MAKE) -C $(SECUTILS) build_only CFLAGS="$(CFLAGS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)"
 
 $(LIBCMP_INC):
 	git submodule update --progress --init --depth 1 cmpossl
 
 $(LIBCMP_LIB):
+	build_cmpossl
+
+.phony: cmpossl
+build_cmpossl:
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 

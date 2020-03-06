@@ -356,7 +356,6 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 #else
 
     CREDENTIALS *tls_creds = NULL;
-    STACK_OF(X509) *tls_chain = NULL;
     SSL_CTX *tls = NULL;
 
     X509_STORE *tls_truststore = NULL;
@@ -380,20 +379,10 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
                                      "credentials for TLS level");
         if (tls_creds == NULL)
             goto err;
-        tls_chain = OSSL_CMP_build_cert_chain(untrusted_certs,
-                                              CREDENTIALS_get_cert(tls_creds));
-        if (tls_chain != NULL) {
-            X509 *tls_client_cert = sk_X509_shift(tls_chain);
-            X509_free(tls_client_cert);
-        } else {
-            LOG(FL_WARN, "Could not build proper chain for own TLS client cert, resorting to all untrusted certs");
-            tls_chain = X509_chain_up_ref(untrusted_certs);
-        }
     }
-
     static const char *tls_ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
     const int security_level = -1;
-    tls = TLS_new(tls_truststore, tls_chain, tls_creds, tls_ciphers, security_level);
+    tls = TLS_new(tls_truststore, untrusted_certs, tls_creds, tls_ciphers, security_level);
     if (tls == NULL)
         goto err;
 
@@ -416,7 +405,6 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     }
 
  err:
-    CERTS_free(tls_chain);
     STORE_free(tls_truststore);
     CREDENTIALS_free(tls_creds);
     return tls;

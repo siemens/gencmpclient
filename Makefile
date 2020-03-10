@@ -61,6 +61,11 @@ ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # same as comparing == 1.0
 endif
 endif
 
+ifeq ($(shell git help submodule | grep progress),)
+    GIT_PROGRESS=
+else
+    GIT_PROGRESS=--progress
+endif
 
 ################################################################
 # generic CMP Client lib and client
@@ -93,7 +98,7 @@ $(SECUTILS)/libs/interfaces/include/operators.h: $(SECUTILS)/include
 	cd $(SECUTILS) && git submodule update --init libs/interfaces
 
 $(SECUTILS)/include:
-	git submodule update --progress --init $(SECUTILS)
+	git submodule update $(GIT_PROGRESS) --init $(SECUTILS)
 
 $(SECUTILS_LIB):
 	build_secUtils
@@ -103,7 +108,7 @@ build_secUtils:
 	$(MAKE) -C $(SECUTILS) build_only CFLAGS="$(CFLAGS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)"
 
 $(LIBCMP_INC):
-	git submodule update --progress --init --depth 1 cmpossl
+	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
 
 $(LIBCMP_LIB):
 	build_cmpossl

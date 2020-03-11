@@ -70,7 +70,7 @@ STACK_OF(X509) *FILES_load_certs_multi(const char *files, sec_file_format format
                                        OPTIONAL const char *pass,
                                        OPTIONAL const char *desc);
 STACK_OF(X509_CRL) *FILES_load_crls_multi(const char *files, sec_file_format format,
-                                          const char *desc);
+                                          int timeout, const char *desc);
 
 X509_STORE *STORE_load_trusted(const char *files, OPTIONAL const char *desc,
                                OPTIONAL void /* uta_ctx */ *ctx);
@@ -587,7 +587,8 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     }
 #endif
 
-    LOG(FL_INFO, "contacting %s%s%s%s%s", server, path[0] == '/' ? "" : "/", path,
+    LOG(FL_INFO, "will contact http%s://%s%s%s%s%s", tls != NULL ? "s" : "",
+        server, path[0] == '/' ? "" : "/", path,
         proxy != NULL ? " via proxy " : "", proxy != NULL ? proxy : "");
     return CMP_OK;
 
@@ -835,9 +836,9 @@ X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc)
 }
 
 inline
-STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc)
+STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout, OPTIONAL const char *desc)
 {
-    return FILES_load_crls_multi(files, FORMAT_ASN1, desc);
+    return FILES_load_crls_multi(files, FORMAT_ASN1, timeout, desc);
 }
 
 inline

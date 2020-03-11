@@ -180,7 +180,7 @@ void LOG_close(void);
 STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc);
 void CERTS_free(OPTIONAL STACK_OF(X509) *certs);
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
-STACK_OF(X509_CRL) *CRLs_load(const char *files, OPTIONAL const char *desc);
+STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout, OPTIONAL const char *desc);
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls);
 # ifdef LOCAL_DEFS
 bool STORE_add_crls(X509_STORE *truststore, OPTIONAL const STACK_OF(X509_CRL) *crls);
@@ -189,8 +189,8 @@ bool STORE_set_parameters(X509_STORE *truststore,
                           OPTIONAL const X509_VERIFY_PARAM *vpm,
                           bool full_chain, bool try_stapling,
                           OPTIONAL const STACK_OF(X509_CRL) *crls,
-                          bool use_CDPs, OPTIONAL const char *CRLs_url,
-                          bool use_AIAs, OPTIONAL const char *OCSP_url);
+                          bool use_CDPs, OPTIONAL const char *CRLs_url, int crls_timeout,
+                          bool use_AIAs, OPTIONAL const char *OCSP_url, int ocsp_timeout);
 void STORE_free(OPTIONAL X509_STORE *truststore);
 
 /* EVP_PKEY helpers */

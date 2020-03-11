@@ -83,8 +83,10 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-crls** _URLs_\]
 \[**-use\_cdp**\]
 \[**-cdps** _URLs_\]
+\[**-crls\_timeout** _seconds_\]
 \[**-use\_aia**\]
 \[**-ocsp** _URLs_\]
+\[**-ocsp\_timeout** _seconds_\]
 \[**-ocsp\_last**\]
 \[**-stapling**\]
 
@@ -678,6 +680,11 @@ or the status indicates that the certificate has been revoked.
     Enable CRL-based status checking and
     use the given URL(s) as fallback certificate distribution points (CDP).
 
+- **-crls\_timeout** _seconds_
+
+    Number of seconds fetching a CRL may take, or 0 for infinite.
+    A negative value implies the default: 10 seconds.
+
 - **-use\_aia**
 
     Enable OCSP-based status checking and
@@ -688,6 +695,11 @@ or the status indicates that the certificate has been revoked.
 
     Enable OCSP-based status checking and
     use given OCSP responder URL(s) as fallback.
+
+- **-ocsp\_timeout** _seconds_
+
+    Number of seconds getting an OCSP response may take, or 0 for infinite.
+    A negative value implies the default: 10 seconds.
 
 - **-ocsp\_last**
 

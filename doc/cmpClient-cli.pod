@@ -85,8 +85,10 @@ B<cmpClient> I<options>
 [B<-crls> I<URLs>]
 [B<-use_cdp>]
 [B<-cdps> I<URLs>]
+[B<-crls_timeout> I<seconds>]
 [B<-use_aia>]
 [B<-ocsp> I<URLs>]
+[B<-ocsp_timeout> I<seconds>]
 [B<-ocsp_last>]
 [B<-stapling>]
 
@@ -756,6 +758,11 @@ enable using CRL Distribution Points (CDP) extension entries in certificates.
 Enable CRL-based status checking and
 use the given URL(s) as fallback certificate distribution points (CDP).
 
+=item B<-crls_timeout> I<seconds>
+
+Number of seconds fetching a CRL may take, or 0 for infinite.
+A negative value implies the default: 10 seconds.
+
 =item B<-use_aia>
 
 Enable OCSP-based status checking and
@@ -766,6 +773,11 @@ in certificates.
 
 Enable OCSP-based status checking and
 use given OCSP responder URL(s) as fallback.
+
+=item B<-ocsp_timeout> I<seconds>
+
+Number of seconds getting an OCSP response may take, or 0 for infinite.
+A negative value implies the default: 10 seconds.
 
 =item B<-ocsp_last>
 

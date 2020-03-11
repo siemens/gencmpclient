@@ -45,16 +45,16 @@ const char *opt_proxy;
 const char *opt_no_proxy;
 
 const char *opt_path;
-long  opt_msgtimeout;
-long  opt_totaltimeout;
+long opt_msgtimeout;
+long opt_totaltimeout;
 
 const char *opt_trusted;
 const char *opt_untrusted;
 const char *opt_srvcert;
 const char *opt_recipient;
 const char *opt_expect_sender;
-bool  opt_ignore_keyusage;
-bool  opt_unprotectederrors;
+bool opt_ignore_keyusage;
+bool opt_unprotectederrors;
 const char *opt_extracertsout;
 const char *opt_cacertsout;
 
@@ -84,12 +84,12 @@ char *opt_sans;
 bool opt_san_nodefault;
 const char *opt_policies;
 char *opt_policy_oids;
-bool  opt_policy_oids_critical;
-long  opt_popo;
+bool opt_policy_oids_critical;
+long opt_popo;
 const char *opt_csr;
 const char *opt_out_trusted;
-bool  opt_implicitconfirm;
-bool  opt_disableconfirm;
+bool opt_implicitconfirm;
+bool opt_disableconfirm;
 const char *opt_certout;
 
 const char *opt_oldcert;
@@ -115,8 +115,10 @@ bool opt_check_any;
 const char *opt_crls;
 bool opt_use_cdp;
 const char *opt_cdps;
+long opt_crls_timeout;
 bool opt_use_aia;
 const char *opt_ocsp;
+long opt_ocsp_timeout;
 bool opt_ocsp_last;
 bool opt_stapling;
 
@@ -282,10 +284,14 @@ opt_t cmp_opts[] = {
       "Enable CRL-based status checking and enable using any CDP entries in certs"},
     { "cdps", OPT_TXT, {.txt = NULL}, {&opt_cdps},
       "Enable CRL-based status checking and use given URL(s) as fallback CDP"},
+    { "crls_timeout", OPT_NUM, {.num = -1}, { (const char **)&opt_crls_timeout },
+      "Timeout for CRL fetching, or 0 for none, -1 for default: 10 seconds"},
     { "use_aia", OPT_BOOL, {.bit = false}, { (const char **) &opt_use_aia },
       "Enable OCSP-based status checking and enable using any AIA entries in certs"},
     { "ocsp", OPT_TXT, {.txt = NULL}, {&opt_ocsp},
       "Enable OCSP-based status checking and use given OCSP responder(s) as fallback"},
+    { "ocsp_timeout", OPT_NUM, {.num = -1}, { (const char **)&opt_ocsp_timeout },
+      "Timeout for getting OCSP responses, or 0 for none, -1 for default: 10 seconds"},
     { "ocsp_last", OPT_BOOL, {.bit = false}, { (const char **) &opt_ocsp_last },
       "Do OCSP-based status checks last (else before using CRLs downloaded from CDPs)"},
     { "stapling", OPT_BOOL, {.bit = false}, { (const char **) &opt_stapling },
@@ -365,9 +371,11 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
             goto err;
         if (!STORE_set_parameters(tls_truststore, vpm,
                                   opt_check_all, opt_stapling, crls,
-                                  opt_use_cdp, opt_cdps,
-                                  opt_use_aia, opt_ocsp))
+                                  opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
+                                  opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout))
             goto err;
+    } else {
+        LOG_warn("-tls_used given without -tls_trusted; will not authenticate the server");
     }
 
     if ((opt_tls_cert == NULL) != (opt_tls_key == NULL)) {
@@ -379,6 +387,8 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
                                      "credentials for TLS level");
         if (tls_creds == NULL)
             goto err;
+    } else {
+        LOG_warn("-tls_used given without -tls_key; cannot authenticate to the server");
     }
     static const char *tls_ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
     const int security_level = -1;
@@ -421,8 +431,8 @@ X509_STORE *setup_CMP_truststore(void)
         goto err;
     if (!STORE_set_parameters(cmp_truststore, vpm,
                               opt_check_all, false /* stapling */, crls,
-                              opt_use_cdp, opt_cdps,
-                              opt_use_aia, opt_ocsp) ||
+                              opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
+                              opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout) ||
         /* clear any expected host/ip/email address; opt_expect_sender is used instead */
         !STORE_set1_host_ip(cmp_truststore, NULL, NULL)) {
         STORE_free(cmp_truststore);
@@ -689,7 +699,8 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL
         /* no cert status/revocation checks done for newly enrolled cert */
         if (!STORE_set_parameters(new_cert_truststore, vpm,
                                   false, false, NULL,
-                                  false, NULL, false, NULL))
+                                  false, NULL, -1,
+                                  false, NULL, -1))
             goto err;
     }
     /* cannot set these vpm options before STORE_set_parameters(new_cert_truststore, ...) */
@@ -858,11 +869,17 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
     err = 30;
     bool crl_check = opt_crls != NULL || opt_use_cdp || opt_cdps != NULL;
     bool ocsp_check = opt_use_aia || opt_ocsp != NULL;
+    if (opt_crls_timeout >= 0 && !opt_use_cdp && opt_cdps == NULL) {
+        LOG_warn("Ingoring -crls_timeout since -use_cdp and -cdps options are not given");
+    }
+    if (opt_ocsp_timeout >= 0 && !ocsp_check) {
+        LOG_warn("Ingoring -ocsp_timeout since -use_aia and -ocsp options are not given");
+    }
     if ((crl_check || ocsp_check) && opt_trusted == NULL) {
         LOG_warn("Certificate status checks are enabled without providing the -trusted option");
     }
     if ((crl_check || ocsp_check || opt_stapling) && opt_tls_used && opt_tls_trusted == NULL) {
-        LOG_warn("Using TLS and certificate status checks are enabled without providing the -tls_trusted option");
+        LOG_warn("Cannot do TLS certificate status checks without -tls_trusted option");
     }
     if ((opt_check_all || opt_check_any) && !crl_check && !ocsp_check) {
         LOG_err("-check_all or -check_any is given without any option enabling use of CRLs or OCSP");
@@ -885,7 +902,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
 #endif
     err = 31;
     if (opt_crls != NULL) {
-        crls = CRLs_load(opt_crls, "CRLs for CMP and possibly TLS level");
+        crls = CRLs_load(opt_crls, (int)opt_crls_timeout, "CRLs for CMP and possibly TLS level");
         if (crls == NULL)
             goto err;
     }

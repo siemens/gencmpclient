@@ -97,24 +97,27 @@ get_submodules: $(SECUTILS)/libs/interfaces/include/operators.h $(LIBCMP_INC)
 $(SECUTILS)/libs/interfaces/include/operators.h: $(SECUTILS)/include
 	cd $(SECUTILS) && git submodule update --init libs/interfaces
 
-$(SECUTILS)/include:
-	git submodule update $(GIT_PROGRESS) --init $(SECUTILS)
+$(SECUTILS)/include: update_secUtils
 
 $(SECUTILS_LIB):
 	build_secUtils
 
-.phony: build_secUtils
-build_secUtils:
+.phony: build_secUtils update_secUtils
+update_secUtils:
+	git submodule update $(GIT_PROGRESS) --init $(SECUTILS)
+build_secUtils: update_secUtils 
 	$(MAKE) -C $(SECUTILS) build_only CFLAGS="$(CFLAGS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)"
 
-$(LIBCMP_INC):
-	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
+
+$(LIBCMP_INC): update_cmpossl
 
 $(LIBCMP_LIB):
 	build_cmpossl
 
-.phony: cmpossl
-build_cmpossl:
+.phony: update_cmpossl build_cmpossl
+update_cmpossl:
+	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
+build_cmpossl: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 

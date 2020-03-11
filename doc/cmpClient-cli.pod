@@ -191,8 +191,8 @@ Default is 0 (infinite).
 =item B<-trusted> I<filenames>
 
 When verifying signature-based protection of CMP response messages,
-these are the CA certificate(s) to trust while checking certificate chains
-during CMP server authentication.
+use a trust store containing the given certificate(s) as trusted
+while verifying certificates during CMP server authentication.
 This option gives more flexibility than the B<-srvcert> option because
 it does not pin down the expected CMP server by allowing only one certificate.
 
@@ -643,6 +643,7 @@ Reason numbers defined in RFC 5280 are:
 
 Enable using TLS (even when other TLS_related options are not set)
 when connecting to CMP server.
+The following TLS-related options are ignored if B<-tls_used> is not given.
 
 =item B<-tls_cert> I<filename>
 
@@ -706,7 +707,9 @@ certificate revocation status checking to be performed by the client
 on setting up any TLS connection and on checking any signature-based protection
 of CMP messages received, but not when verifying newly enrolled certificates.
 
-Status checking is demanded if any of the status checking options are set.
+By default no certificate status checks are performed.
+Status checking is demanded if any of the below status checking options are set,
+but only as far as a trust store is provided for TLS or at CMP level.
 Then by default only the leaf certificates of a chain are checked, i.e.,
 the certificates of CMP servers and of TLS servers (as far as TLS is used).
 The options B<-check_all> and B<-check_any> may be used to change the extent
@@ -733,7 +736,7 @@ but for all certificates (except root, i.e., self-issued certificates).
 =item B<-check_any>
 
 Check certificate status for those certificates (except root certificates)
-that contain a CDP or AIA entry or for which OCSP stapling for TLS is enabled.
+that contain a CDP or AIA entry (or for which OCSP stapling for TLS is enabled).
 
 =item B<-crls> I<URLs>
 
@@ -766,13 +769,15 @@ use given OCSP responder URL(s) as fallback.
 
 =item B<-ocsp_last>
 
-If both OCSP-based checks and checks using CRLs downloaded from CDPs are enabled
+This option can be used only when OCSP-based checks are enabled using B<-ocsp>
+or B<-use_aia>. If checks downloading CRLs from CDPs are also enabled
 then do OCSP-based checks last (else before using CRLs downloaded from CDPs).
 
 =item B<-stapling>
 
-Enable OCSP-based status checking and
-try using the TLS certificate status request extension ("OCSP stapling") first.
+Enable the TLS certificate status request extension ("OCSP stapling"),
+which is tried first before any other methods of certificate status checking.
+This makes sense only if B<-tls_used> is given.
 So far OCSP multi-stapling is not supported,
 so status information can be obtained in this way only for the leaf certificate
 (i.e., the TLS server certificate).

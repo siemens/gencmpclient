@@ -169,8 +169,8 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 - **-trusted** _filenames_
 
     When verifying signature-based protection of CMP response messages,
-    these are the CA certificate(s) to trust while checking certificate chains
-    during CMP server authentication.
+    use a trust store containing the given certificate(s) as trusted
+    while verifying certificates during CMP server authentication.
     This option gives more flexibility than the **-srvcert** option because
     it does not pin down the expected CMP server by allowing only one certificate.
 
@@ -575,6 +575,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
     Enable using TLS (even when other TLS\_related options are not set)
     when connecting to CMP server.
+    The following TLS-related options are ignored if **-tls\_used** is not given.
 
 - **-tls\_cert** _filename_
 
@@ -630,7 +631,9 @@ certificate revocation status checking to be performed by the client
 on setting up any TLS connection and on checking any signature-based protection
 of CMP messages received, but not when verifying newly enrolled certificates.
 
-Status checking is demanded if any of the status checking options are set.
+By default no certificate status checks are performed.
+Status checking is demanded if any of the below status checking options are set,
+but only as far as a trust store is provided for TLS or at CMP level.
 Then by default only the leaf certificates of a chain are checked, i.e.,
 the certificates of CMP servers and of TLS servers (as far as TLS is used).
 The options **-check\_all** and **-check\_any** may be used to change the extent
@@ -655,7 +658,7 @@ or the status indicates that the certificate has been revoked.
 - **-check\_any**
 
     Check certificate status for those certificates (except root certificates)
-    that contain a CDP or AIA entry or for which OCSP stapling for TLS is enabled.
+    that contain a CDP or AIA entry (or for which OCSP stapling for TLS is enabled).
 
 - **-crls** _URLs_
 
@@ -688,13 +691,15 @@ or the status indicates that the certificate has been revoked.
 
 - **-ocsp\_last**
 
-    If both OCSP-based checks and checks using CRLs downloaded from CDPs are enabled
+    This option can be used only when OCSP-based checks are enabled using **-ocsp**
+    or **-use\_aia**. If checks downloading CRLs from CDPs are also enabled
     then do OCSP-based checks last (else before using CRLs downloaded from CDPs).
 
 - **-stapling**
 
-    Enable OCSP-based status checking and
-    try using the TLS certificate status request extension ("OCSP stapling") first.
+    Enable the TLS certificate status request extension ("OCSP stapling"),
+    which is tried first before any other methods of certificate status checking.
+    This makes sense only if **-tls\_used** is given.
     So far OCSP multi-stapling is not supported,
     so status information can be obtained in this way only for the leaf certificate
     (i.e., the TLS server certificate).

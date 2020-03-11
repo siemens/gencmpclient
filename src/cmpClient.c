@@ -289,7 +289,7 @@ opt_t cmp_opts[] = {
     { "ocsp_last", OPT_BOOL, {.bit = false}, { (const char **) &opt_ocsp_last },
       "Do OCSP-based status checks last (else before using CRLs downloaded from CDPs)"},
     { "stapling", OPT_BOOL, {.bit = false}, { (const char **) &opt_stapling },
-      "Enable OCSP-based status checking and for TLS try OCSP stapling first"},
+      "Enable OCSP stapling for TLS; is tried before any other cert status checks"},
 
     OPT_V_OPTIONS, /* excludes "crl_check" and "crl_check_all" */
 
@@ -308,7 +308,7 @@ static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
     }
     sk_X509_free(certs); /* must not free the stack elements */
     if (res == 0)
-        LOG_err("error: unable to use TLS extra certs");
+        LOG_err("Unable to use TLS extra certs");
     return res;
 }
 
@@ -371,7 +371,7 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     }
 
     if ((opt_tls_cert == NULL) != (opt_tls_key == NULL)) {
-        LOG_err("must give both -tls_cert and -tls_key options or neither");
+        LOG_err("Must give both -tls_cert and -tls_key options or neither");
         goto err;
     }
     if (opt_tls_key != NULL) {
@@ -460,7 +460,7 @@ X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
     }
 
     if (opt_policies != NULL && opt_policy_oids != NULL) {
-        LOG_err("cannot have policies both via -policies and via -policy_oids");
+        LOG_err("Cannot have policies both via -policies and via -policy_oids");
         goto err;
     }
 
@@ -611,40 +611,40 @@ int setup_ctx(CMP_CTX *ctx)
         char *valptr = strchr(opt_geninfo, ':');
 
         if (valptr == NULL) {
-            LOG_err("missing ':' in -geninfo option");
+            LOG_err("Missing ':' in -geninfo option");
             goto err;
         }
         valptr[0] = '\0';
         valptr++;
 
         if (strncmp(valptr, "int:", 4) != 0) {
-            LOG_err("missing 'int:' in -geninfo option");
+            LOG_err("Missing 'int:' in -geninfo option");
             goto err;
         }
         valptr += 4;
 
         value = strtol(valptr, &endstr, 10);
         if (endstr == valptr || *endstr != '\0') {
-            LOG_err("cannot parse int in -geninfo option");
+            LOG_err("Cannot parse int in -geninfo option");
             goto err;
         }
 
         type = OBJ_txt2obj(opt_geninfo, 1);
         if (type == NULL) {
-            LOG_err("cannot parse OID in -geninfo option");
+            LOG_err("Cannot parse OID in -geninfo option");
             goto err;
         }
 
         aint = ASN1_INTEGER_new();
         if (aint == NULL || !ASN1_INTEGER_set(aint, value)) {
-            LOG_err("cannot set ASN1 integer");
+            LOG_err("Cannot set ASN1 integer");
             err = 11;
             goto err;
         }
 
         val = ASN1_TYPE_new();
         if (val == NULL) {
-            LOG_err("cannot create new ASN1 type");
+            LOG_err("Cannot create new ASN1 type");
             err = 12;
             ASN1_INTEGER_free(aint);
             goto err;
@@ -686,7 +686,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL
         if (new_cert_truststore == NULL)
             goto err;
         /* any -verify_hostname, -verify_ip, and -verify_email apply here */
-        /* no revocation done for newly enrolled cert */
+        /* no cert status/revocation checks done for newly enrolled cert */
         if (!STORE_set_parameters(new_cert_truststore, vpm,
                                   false, false, NULL,
                                   false, NULL, false, NULL))
@@ -727,7 +727,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL
     const bool implicit_confirm = opt_implicitconfirm;
 
     if ((int)opt_totaltimeout < -1) {
-        LOG_err("only non-negative values allowed for -totaltimeout");
+        LOG_err("Only non-negative values allowed for -totaltimeout");
         goto err;
     }
     err = CMPclient_prepare(pctx, log_fn,
@@ -770,7 +770,7 @@ int setup_transfer(CMP_CTX *ctx)
     const char *server = opt_server;
 
     if ((int)opt_msgtimeout < -1) {
-        LOG_err("only non-negative values allowed for -msgtimeout");
+        LOG_err("Only non-negative values allowed for -msgtimeout");
         err = 16;
         goto err;
     }
@@ -825,18 +825,18 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
             LOG_warn("-key value will not be used for signing messages since -secret option selects PBM-based protection");
     }
     if (!opt_unprotectedrequests && opt_secret == NULL && opt_key == NULL) {
-        LOG_err("must give client credentials unless -unprotectedrequests is set");
+        LOG_err("Must give client credentials unless -unprotectedrequests is set");
         goto err;
     }
 
     if (opt_ref == NULL && opt_cert == NULL && opt_subject == NULL) {
         /* ossl_cmp_hdr_init() takes sender name from cert or else subject */
         /* TODO maybe else take as sender default the subjectName of oldCert or p10cr */
-        LOG_err("must give -ref if no -cert and no -subject given");
+        LOG_err("Must give -ref if no -cert and no -subject given");
         goto err;
     }
     if (!opt_secret && ((opt_cert == NULL) != (opt_key == NULL))) {
-        LOG_err("must give both -cert and -key options or neither");
+        LOG_err("Must give both -cert and -key options or neither");
         goto err;
     }
 
@@ -856,19 +856,27 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
     }
 
     err = 30;
-    if ((opt_check_all || opt_check_any)
-        && opt_crls == NULL && !opt_use_cdp && opt_cdps != NULL
-        && !opt_use_aia && opt_ocsp == NULL && !opt_stapling) {
-        LOG_err("-check_all or -check_any is given without any other option enabling cert status checking");
+    bool crl_check = opt_crls != NULL || opt_use_cdp || opt_cdps != NULL;
+    bool ocsp_check = opt_use_aia || opt_ocsp != NULL;
+    if ((crl_check || ocsp_check) && opt_trusted == NULL) {
+        LOG_warn("Certificate status checks are enabled without providing the -trusted option");
+    }
+    if ((crl_check || ocsp_check || opt_stapling) && opt_tls_used && opt_tls_trusted == NULL) {
+        LOG_warn("Using TLS and certificate status checks are enabled without providing the -tls_trusted option");
+    }
+    if ((opt_check_all || opt_check_any) && !crl_check && !ocsp_check) {
+        LOG_err("-check_all or -check_any is given without any option enabling use of CRLs or OCSP");
         goto err;
     }
-    if (opt_ocsp_last
-        && !opt_use_aia && opt_ocsp == NULL && !opt_stapling) {
-        LOG_err("-ocsp_last is given without any other option enabling OCSP-based cert status checking");
+    if (opt_ocsp_last && !ocsp_check) {
+        LOG_err("-ocsp_last is given without -ocsp or -use_aia enabling OCSP-based cert status checking");
         goto err;
+    }
+    if (opt_stapling && !opt_tls_used) {
+        LOG_warn("-stapling option is given without -tls_used");
     }
 #ifdef OPENSSL_NO_OCSP
-    if (opt_use_aia || opt_ocsp != NULL || opt_ocsp_last || opt_stapling)
+    if (ocsp_check || opt_stapling)
         LOG_warn("OCSP may be not supported by the OpenSSL build used by the SecUtils");
 #endif
 #if defined(OPENSSL_NO_OCSP) || OPENSSL_VERSION_NUMBER < 0x1010001fL
@@ -992,7 +1000,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
         || opt_tls_extra != NULL || opt_tls_trusted != NULL
         || opt_tls_host != NULL)
         if (!opt_tls_used)
-            LOG_warn("TLS options(s) given but not -tls_used");
+            LOG_warn("TLS options(s) are ignored since -tls_used is not given");
     if ((err = setup_transfer(ctx)) != CMP_OK)
         goto err;
 
@@ -1031,7 +1039,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
         if ((int)opt_revreason < CRL_REASON_NONE
                 || (int)opt_revreason > CRL_REASON_AA_COMPROMISE
                 || (int)opt_revreason == 7) {
-            LOG_err("invalid revreason. Valid values are -1..6, 8..10.");
+            LOG_err("Invalid revreason given. Valid values are -1..6, 8..10.");
             err = 20;
             goto err;
         }

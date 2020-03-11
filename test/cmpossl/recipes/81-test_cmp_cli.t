@@ -93,7 +93,7 @@ my @ca_configurations = (); # ("EJBCA", "Insta", "SimpleLra");
 @ca_configurations = split /\s+/, $ENV{CMP_TESTS} if $ENV{CMP_TESTS};
 # set env variable, e.g., CMP_TESTS="EJBCA Insta" to include certain CAs
 
-my @all_aspects = ("connection", "verification", "credentials", "commands", "enrollment");
+my @all_aspects = ("connection", "verification", "credentials", "commands", "enrollment", "certstatus");
 @all_aspects = split /\s+/, $ENV{CMP_ASPECTS} if $ENV{CMP_ASPECTS};
 # set env variable, e.g., CMP_ASPECTS="commands" to select specific aspects
 

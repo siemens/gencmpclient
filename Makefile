@@ -224,11 +224,17 @@ test_cli: build
 	  $(PERL) test/cmpossl/recipes/81-test_cmp_cli.t )
 	@ :
 
-test_SimpleLra: cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra
+creds/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl:
+	$(MAKE) test
+
+creds/crls/InstaDemoCA.crl:
+	$(MAKE) test_insta
+
+test_SimpleLra: cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra creds/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl
 	make test_cli CMP_TESTS=SimpleLra
 	rm -f test/cmpossl/recipes/81-test_cmp_cli_data/SimpleLra/test.cert.pem
 
-test_Insta:
+test_Insta: creds/crls/InstaDemoCA.crl
 	make test_cli CMP_TESTS=Insta
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Insta/test.{cert,extracerts}.pem
 

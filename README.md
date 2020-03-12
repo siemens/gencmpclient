@@ -3,6 +3,7 @@
 This is the code repository for the cross-division generic CMP client library
 with associated CLI-based demo/test client and documentation.
 
+
 ## Status
 
 * All features agreed with the participating Siemens business units
@@ -74,6 +75,11 @@ make get_submodules
 This will fetch also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
 the [Security Utilities (SecUtils)](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities) library
 (which has some recursive submodules, of which only `libs/interfaces` is fetched).
+
+When you later want to update your local copy of all relevant repositories it is sufficient to invoke
+```
+make update
+```
 
 
 ## Building the software

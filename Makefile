@@ -161,7 +161,7 @@ ifeq ($(LPATH),)
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="../$(LIBCMP_OUT)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 
-#PROXY ?= http_proxy=http://de.coia.siemens.net:9400 no_proxy=ppki-playground.ct.siemens.com # or, e.g., tsy1.coia.siemens.net = 194.145.60.1:9400
+PROXY ?= http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy no_proxy=ppki-playground.ct.siemens.com # or, e.g., tsy1.coia.siemens.net = 194.145.60.1:9400
 
 ifdef INSTA
     unreachable="cannot reach pki.certificate.fi"

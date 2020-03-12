@@ -31,7 +31,6 @@ use_aia = 1
 ocsp = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp"
 
 [Insta]
-attime = 1
 server = pki.certificate.fi:8700
 path = pkix/
 secret = pass:insta
@@ -42,8 +41,8 @@ keypass = pass:12345
 recipient = "/C=FI/O=Insta Demo/CN=Insta Demo CA"
 subject = "/CN=test-genCMPClientDemo"
 cacert = creds/trusted/InstaDemoCA.crt
-srvcert = $cacert
-#trusted = $cacert
+#srvcert = $cacert
+trusted = $cacert
 crls = creds/crls/InstaDemoCA.crl
 out_trusted = $cacert
 

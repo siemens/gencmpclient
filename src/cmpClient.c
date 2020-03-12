@@ -786,6 +786,13 @@ int setup_transfer(CMP_CTX *ctx)
         goto err;
     }
 
+    if (opt_tls_cert == NULL && opt_tls_key == NULL && opt_tls_keypass == NULL
+          && opt_tls_extra == NULL && opt_tls_trusted == NULL
+          && opt_tls_host == NULL && opt_tls_used == true) {
+        LOG_warn("-tls_used will be ignored. No other tls options set");
+        opt_tls_used = false;
+    }
+
     SSL_CTX *tls = NULL;
     if (opt_tls_used && (tls = setup_TLS(OSSL_CMP_CTX_get0_untrusted_certs(ctx))) == NULL) {
         LOG_err("Unable to setup TLS for CMP client");

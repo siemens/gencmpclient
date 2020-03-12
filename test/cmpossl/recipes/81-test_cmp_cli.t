@@ -54,16 +54,19 @@ my $sleep = 0;  # The time to sleep between two requests
 
 sub load_config {
     my $name = shift;
+    my $write_new = shift;
     open (CH, $test_config) or die "Can't open $test_config: $!";
-    $ca_dn = undef;
-    $server_dn = undef;
-    $server_cn = undef;
-    $server_ip = undef;
-    $server_port = undef;
-    $server_cert = undef;
-    $secret = undef;
-    $column = undef;
-    $sleep = undef;
+    if ($write_new) {
+        $ca_dn = undef;
+        $server_dn = undef;
+        $server_cn = undef;
+        $server_ip = undef;
+        $server_port = undef;
+        $server_cert = undef;
+        $secret = undef;
+        $column = undef;
+        $sleep = undef;
+    }
     my $active = 0;
     while (<CH>) {
         if (m/\[\s*$name\s*\]/) {
@@ -134,7 +137,13 @@ indir "../cmpossl/test/recipes/81-test_cmp_cli_data" => sub {
     # TODO: complete and thoroughly review _all_ of the around 500 test cases
     foreach my $name (@ca_configurations) {
         $name =~ s/^\"(.*?)\"$/$1/; # chop any leading/trailing '"' (for Win)
-        load_config($name);
+        load_config($name,1);
+        foreach my $aspect (@all_aspects) {
+            $aspect =~ s/^\"(.*?)\"$/$1/; # chop any leading/trailing '"'
+            if (not($name =~ m/Insta/)) { # overwrite CA server configuration with settings defined in aspect section if it is not Insta
+                load_config($aspect,0);
+            }
+        }
         indir $name => sub {
             foreach my $aspect (@all_aspects) {
                 $aspect =~ s/^\"(.*?)\"$/$1/; # chop any leading/trailing '"'

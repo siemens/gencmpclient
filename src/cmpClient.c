@@ -45,8 +45,8 @@ const char *opt_proxy;
 const char *opt_no_proxy;
 
 const char *opt_path;
-long opt_msgtimeout;
-long opt_totaltimeout;
+long opt_msg_timeout;
+long opt_total_timeout;
 
 const char *opt_trusted;
 const char *opt_untrusted;
@@ -88,8 +88,8 @@ bool opt_policy_oids_critical;
 long opt_popo;
 const char *opt_csr;
 const char *opt_out_trusted;
-bool opt_implicitconfirm;
-bool opt_disableconfirm;
+bool opt_implicit_confirm;
+bool opt_disable_confirm;
 const char *opt_certout;
 
 const char *opt_oldcert;
@@ -145,9 +145,9 @@ opt_t cmp_opts[] = {
     OPT_MORE("Default from environment variable 'no_proxy', else 'NO_PROXY', else none"),
     { "path", OPT_TXT, {.txt = "/"}, { &opt_path },
       "HTTP path (aka CMP alias) at the CMP server. Default \"/\""},
-    { "msgtimeout", OPT_NUM, {.num = 120}, { (const char **)&opt_msgtimeout },
+    { "msg_timeout", OPT_NUM, {.num = 120}, { (const char **)&opt_msg_timeout },
       "Timeout per CMP message round trip (or 0 for none). Default 120 seconds"},
-    { "totaltimeout", OPT_NUM, {.num = 0}, { (const char **)&opt_totaltimeout},
+    { "total_timeout", OPT_NUM, {.num = 0}, { (const char **)&opt_total_timeout},
       "Overall time an enrollment incl. polling may take. Default: 0 = infinite"},
 
     OPT_HEADER("Server authentication"),
@@ -234,9 +234,9 @@ opt_t cmp_opts[] = {
       "CSR file in PKCS#10 format to use in p10cr for legacy support"},
     { "out_trusted", OPT_TXT, {.txt = NULL}, { &opt_out_trusted },
       "Certs to trust when verifying newly enrolled certs; defaults to -srvcert"},
-    { "implicitconfirm", OPT_BOOL, {.bit = false}, { (const char **) &opt_implicitconfirm },
+    { "implicit_confirm", OPT_BOOL, {.bit = false}, { (const char **) &opt_implicit_confirm },
       "Request implicit confirmation of newly enrolled certificates"},
-    { "disableconfirm", OPT_BOOL, {.bit = false}, { (const char **) &opt_disableconfirm },
+    { "disable_confirm", OPT_BOOL, {.bit = false}, { (const char **) &opt_disable_confirm },
       "Do not confirm newly enrolled certificates w/o requesting implicit confirm"},
     { "certout", OPT_TXT, {.txt = NULL}, { &opt_certout },
       "File to save newly enrolled certificate"},
@@ -605,7 +605,7 @@ int setup_ctx(CMP_CTX *ctx)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITYDAYS, (int)opt_days)
         || (opt_popo >= OSSL_CRMF_POPO_NONE
             && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPOMETHOD, (int)opt_popo))
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLECONFIRM, opt_disableconfirm)
+        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLE_CONFIRM, opt_disable_confirm)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, opt_unprotectedrequests)) {
         LOG_err("Failed to set option flags of CMP context");
         goto err;
@@ -735,17 +735,17 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL
         goto err;
 
     OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
-    const bool implicit_confirm = opt_implicitconfirm;
+    const bool implicit_confirm = opt_implicit_confirm;
 
-    if ((int)opt_totaltimeout < -1) {
-        LOG_err("Only non-negative values allowed for -totaltimeout");
+    if ((int)opt_total_timeout < -1) {
+        LOG_err("Only non-negative values allowed for -total_timeout");
         goto err;
     }
     err = CMPclient_prepare(pctx, log_fn,
                             cmp_truststore, opt_recipient,
                             untrusted_certs,
                             cmp_creds, opt_digest, opt_mac,
-                            transfer_fn, (int)opt_totaltimeout,
+                            transfer_fn, (int)opt_total_timeout,
                             new_cert_truststore, implicit_confirm);
     CERTS_free(untrusted_certs);
     STORE_free(new_cert_truststore);
@@ -780,8 +780,8 @@ int setup_transfer(CMP_CTX *ctx)
     const char *path = opt_path;
     const char *server = opt_server;
 
-    if ((int)opt_msgtimeout < -1) {
-        LOG_err("Only non-negative values allowed for -msgtimeout");
+    if ((int)opt_msg_timeout < -1) {
+        LOG_err("Only non-negative values allowed for -msg_timeout");
         err = 16;
         goto err;
     }
@@ -800,7 +800,7 @@ int setup_transfer(CMP_CTX *ctx)
         goto err;
     }
 
-    err = CMPclient_setup_HTTP(ctx, server, path, (int)opt_msgtimeout,
+    err = CMPclient_setup_HTTP(ctx, server, path, (int)opt_msg_timeout,
                                tls, opt_proxy, opt_no_proxy);
 #ifndef SEC_NO_TLS
     TLS_free(tls);
@@ -1009,10 +1009,10 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
     if (use_case != update && use_case != revocation && opt_oldcert != NULL)
         LOG_warn("-oldcert option is ignored for commands other than 'kur' and 'rr'");
     if (use_case == revocation) {
-        if (opt_implicitconfirm)
-            LOG_warn("-implicitconfirm option is ignored for 'rr' commands");
-        if (opt_disableconfirm)
-            LOG_warn("-disableconfirm option is ignored for 'rr' commands");
+        if (opt_implicit_confirm)
+            LOG_warn("-implicit_confirm option is ignored for 'rr' commands");
+        if (opt_disable_confirm)
+            LOG_warn("-disable_confirm option is ignored for 'rr' commands");
         if (opt_certout != NULL)
             LOG_warn("-certout option is ignored for 'rr' commands");
     } else {

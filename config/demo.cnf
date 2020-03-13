@@ -1,7 +1,7 @@
 [default]
 digest = sha256
-msgtimeout = 10
-totaltimeout = 100
+msg_timeout = 10
+total_timeout = 100
 ignore_keyusage = 1
 unprotectederrors = 1
 #proxy = http://de.coia.siemens.net:9400
@@ -86,7 +86,7 @@ secret = # is overridden by CA setting
 # not needed: newkeypass = $imprint::newkeypass
 oldcert = $imprint::certout # creds/new.crt # TODO check why needed
 subject = # is overridden by CA setting
-implicitconfirm = 1
+implicit_confirm = 1
 certout = $imprint::certout
 
 [revoke]

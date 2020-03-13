@@ -16,8 +16,8 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-proxy** _\[http://\]address\[:port\]\[/path\]_\]
 \[**-no\_proxy** _addresses_\]
 \[**-path** _remote\_path_\]
-\[**-msgtimeout** _seconds_\]
-\[**-totaltimeout** _seconds_\]
+\[**-msg\_timeout** _seconds_\]
+\[**-total\_timeout** _seconds_\]
 
 \[**-trusted** _filenames_\]
 \[**-untrusted** _sources_\]
@@ -61,8 +61,8 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-verify\_hostname** _cn_\]
 \[**-verify\_ip** _ip_\]
 \[**-verify\_email** _email_\]
-\[**-implicitconfirm**\]
-\[**-disableconfirm**\]
+\[**-implicit\_confirm**\]
+\[**-disable\_confirm**\]
 \[**-certout** _filename_\]
 
 \[**-oldcert** _filename_\]
@@ -154,13 +154,13 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     HTTP path at the CMP server (aka CMP alias) to use for POST requests.
     Defaults to "/".
 
-- **-msgtimeout** _seconds_
+- **-msg\_timeout** _seconds_
 
     Number of seconds (or 0 for infinite) a CMP message round trip is
     allowed to take before a timeout error is returned.
     Default is 120.
 
-- **-totaltimeout** _seconds_
+- **-total\_timeout** _seconds_
 
     Maximum number seconds an enrollment may take, including attempts polling for
     certificates on `waiting` PKIStatus.
@@ -522,11 +522,11 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     **-out\_trusted** option), check if there is
     an email address Subject Alternative Name matching the given email address.
 
-- **-implicitconfirm**
+- **-implicit\_confirm**
 
     Request implicit confirmation of newly enrolled certificates.
 
-- **-disableconfirm**
+- **-disable\_confirm**
 
     Do not send certificate confirmation message for newly enrolled certificate
     without requesting implicit confirmation

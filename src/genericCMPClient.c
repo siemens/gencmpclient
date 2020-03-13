@@ -249,10 +249,10 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
 
     if ((transfer_fn != NULL && !OSSL_CMP_CTX_set_transfer_cb(ctx, transfer_fn)) ||
         (total_timeout >= 0
-         && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_TOTALTIMEOUT, total_timeout))) {
+         && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_TOTAL_TIMEOUT, total_timeout))) {
         goto err;
     }
-    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IMPLICITCONFIRM, implicit_confirm)) {
+    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IMPLICIT_CONFIRM, implicit_confirm)) {
         goto err;
     }
     if (new_cert_truststore != NULL) {
@@ -349,7 +349,7 @@ static int proxy_connect(OSSL_CMP_CTX *ctx, BIO *bio)
     int rv;
     int ret = 0;
     BIO *fbio = BIO_new(BIO_f_buffer());
-    time_t max_time = ctx->msgtimeout > 0 ? time(NULL) + ctx->msgtimeout : 0;
+    time_t max_time = ctx->msg_timeout > 0 ? time(NULL) + ctx->msg_timeout : 0;
 
     if (mbuf == NULL || fbio == NULL) {
         LOG(FL_ERR, "out of memory");
@@ -541,7 +541,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         goto err;
     }
     if (!OSSL_CMP_CTX_set1_serverPath(ctx, path) ||
-        (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MSGTIMEOUT, timeout))) {
+        (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT, timeout))) {
         goto err;
     }
 

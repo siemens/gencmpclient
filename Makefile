@@ -167,6 +167,7 @@ ifdef INSTA
     unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
     OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/new.crt
+    EXTRA_OPTS=-path pkix/
 else
     unreachable="cannot reach ppki-playground.ct.siemens.com"
     CA_SECTION=EJBCA
@@ -174,6 +175,7 @@ else
                -CAfile creds/trusted/PPKIPlaygroundECCRootCAv10.crt -issuer creds/PPKIPlaygroundECCIssuingCAv10.crt \
                -CAfile creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -issuer creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt \
                -cert creds/new.crt
+    EXTRA_OPTS=
 endif
 
 creds/crls:
@@ -201,18 +203,18 @@ else
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl"
 endif
-	$(PROXY) ./cmpClient$(EXE) imprint -section $(CA_SECTION) -cert "" -key ""
+	$(PROXY) ./cmpClient$(EXE) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo
-	$(PROXY) ./cmpClient$(EXE) bootstrap -section $(CA_SECTION) -secret ""
+	$(PROXY) ./cmpClient$(EXE) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
 	openssl x509 -noout -text -in creds/new.crt | sed '/^         [0-9a-f].*/d'
 	@echo
-	$(PROXY) ./cmpClient$(EXE) update -section $(CA_SECTION) -secret "" -subject ""
+	$(PROXY) ./cmpClient$(EXE) update -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
 	$(OCSP_CHECK)
 	@echo
 	@sleep 1 # for INSTA helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
-	$(PROXY) ./cmpClient$(EXE) revoke -section $(CA_SECTION) -secret "" -subject ""
+	$(PROXY) ./cmpClient$(EXE) revoke -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
 	$(OCSP_CHECK)
 

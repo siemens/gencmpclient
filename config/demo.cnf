@@ -9,6 +9,7 @@ no_proxy = ppki-playground.ct.siemens.com
 
 [EJBCA]
 server = ppki-playground.ct.siemens.com:443
+path = /ejbca/publicweb/cmp/PlaygroundECC
 secret = pass:SecretCmp
 cert = creds/ppki_playground_cmp_signer.p12
 key = $cert
@@ -54,9 +55,8 @@ tls_used = 0
 
 [imprint]
 cmd = ir
-path = /ejbca/publicweb/cmp/PlaygroundECC
-cert = # is overridden by CA setting
-key = # is overridden by CA setting
+cert =
+key =
 newkeytype = EC:prime256v1 # ECC implies EC:secp256r1
 newkey = creds/new.pem
 newkeypass = pass:12345
@@ -67,8 +67,7 @@ certout = creds/new.crt
 
 [bootstrap]
 cmd = cr
-path = /ejbca/publicweb/cmp/PlaygroundECC
-secret = # is overridden by CA setting
+secret =
 newkeytype = $imprint::newkeytype
 newkey = $imprint::newkey
 newkeypass = $imprint::newkeypass
@@ -80,27 +79,26 @@ certout = $imprint::certout
 [update]
 cmd = kur
 path = /ejbca/publicweb/cmp/PlaygroundCMPSigning
-secret = # is overridden by CA setting
+secret =
 # not needed: newkeytype = $imprint::newkeytype
 # not needed: newkey = $imprint::newkey
 # not needed: newkeypass = $imprint::newkeypass
 oldcert = $imprint::certout # creds/new.crt # TODO check why needed
-subject = # is overridden by CA setting
+subject =
 implicit_confirm = 1
 certout = $imprint::certout
 
 [revoke]
 cmd = rr
 path = /ejbca/publicweb/cmp/PlaygroundCMPSigning
-secret = # is overridden by CA setting
+secret =
 oldcert = $update::certout # creds/new.crt
-subject = # is overridden by CA setting
+subject =
 # not needed: newkey = $imprint::newkey
 # not needed: newkeypass = $imprint::newkeypass
 
 [pkcs10]
 cmd = p10cr
-path = /ejbca/publicweb/cmp/PlaygroundECC
 # Insta will respond with CMP body popdecc POPODecKeyChallContent, --pop Challenge
 ref = dummy # in EJBCA case there is no ref - fallback for sender as no cert and subject is given
 csr = creds/test.csr.pem

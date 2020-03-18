@@ -1264,7 +1264,7 @@ int main(int argc, char *argv[])
         opt_section = DEFAULT_SECTION;
 
     if (use_case != no_use_case) {
-        snprintf(demo_sections, sizeof(demo_sections), "%s,%s", argv[1], opt_section);
+        snprintf(demo_sections, sizeof(demo_sections), "%s,%s", opt_section, argv[1]);
         opt_section = demo_sections;
     }
 

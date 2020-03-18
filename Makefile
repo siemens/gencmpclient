@@ -146,7 +146,7 @@ clean_uta:
 endif
 
 clean_test:
-	rm -f creds/new.*
+	rm -f creds/{manufacturer,operational}.*
 	rm -rf creds/crls
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/*/test.*cert*.pem
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra
@@ -166,15 +166,15 @@ PROXY ?= http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy no_
 ifdef INSTA
     unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
-    OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/new.crt
+    OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
     EXTRA_OPTS=-path pkix/
 else
     unreachable="cannot reach ppki-playground.ct.siemens.com"
     CA_SECTION=EJBCA
     OCSP_CHECK=openssl ocsp -url http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp \
                -CAfile creds/trusted/PPKIPlaygroundECCRootCAv10.crt -issuer creds/PPKIPlaygroundECCIssuingCAv10.crt \
-               -CAfile creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -issuer creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt \
-               -cert creds/new.crt
+               -cert creds/operational.crt
+#              -CAfile creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -issuer creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt \
     EXTRA_OPTS=
 endif
 
@@ -207,7 +207,7 @@ endif
 	@echo
 	$(PROXY) ./cmpClient$(EXE) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
-	openssl x509 -noout -text -in creds/new.crt | sed '/^         [0-9a-f].*/d'
+	openssl x509 -noout -text -in creds/operational.crt | sed '/^         [0-9a-f].*/d'
 	@echo
 	$(PROXY) ./cmpClient$(EXE) update -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :

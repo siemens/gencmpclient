@@ -123,10 +123,10 @@ wget "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd
 ./cmpClient
 ```
 
-Among others, successful execution should produce a new certificate at `creds/new.crt`.
+Among others, successful execution should produce a new certificate at `creds/operational.crt`.
 You can view this certificate for instance by executing
 ```
-openssl x509 -noout -text -in creds/new.crt
+openssl x509 -noout -text -in creds/operational.crt
 ```
 
 The demo client allows also to update and revoke the enrolled certificate, like this:

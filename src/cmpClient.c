@@ -691,7 +691,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL
     X509_STORE *new_cert_truststore = NULL;
     const char *new_cert_trusted = opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
     if (new_cert_trusted != NULL) {
-        LOG(FL_DEBUG, "Using '%s' as cert trust store for verifying new cert", new_cert_trusted);
+        LOG(FL_TRACE, "Using '%s' as cert trust store for verifying new cert", new_cert_trusted);
         new_cert_truststore = STORE_load(new_cert_trusted, "trusted certs for verifying new cert");
         if (new_cert_truststore == NULL)
             goto err;
@@ -1063,7 +1063,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
         if ((int)opt_revreason < CRL_REASON_NONE
                 || (int)opt_revreason > CRL_REASON_AA_COMPROMISE
                 || (int)opt_revreason == 7) {
-            LOG_err("Invalid revreason given. Valid values are -1..6, 8..10.");
+            LOG_err("Invalid revreason given. Valid values are -1..6, 8..10");
             err = 20;
             goto err;
         }
@@ -1312,7 +1312,7 @@ int main(int argc, char *argv[])
             goto end;
         }
     } else if (use_case == no_use_case && opt_cmd == NULL) {
-        LOG(FL_ERR, "No use case and no '-cmd' option given. Use -help to show usage.");
+        LOG(FL_ERR, "No use case and no '-cmd' option given. Use -help to show usage");
         goto end;
     }
 

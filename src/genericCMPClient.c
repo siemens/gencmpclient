@@ -716,6 +716,7 @@ CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                           OPTIONAL const X509_EXTENSIONS *exts)
 {
     if (new_key == NULL || subject == NULL) {
+        LOG_err("No parameter for either -newkey or -subject option");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
@@ -732,6 +733,7 @@ CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                             OPTIONAL const X509_EXTENSIONS *exts)
 {
     if (new_key == NULL || subject == NULL) {
+        LOG_err("No parameter for either -newkey or -subject option");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
@@ -746,6 +748,7 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                          const X509_REQ *csr)
 {
     if (csr == NULL) {
+        LOG_err("No parameter for -csr option");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 

@@ -248,6 +248,16 @@ test_Insta: creds/crls/InstaDemoCA.crl
 	make test_cli CMP_TESTS=Insta
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Insta/test.{cert,extracerts}.pem
 
+test_profile: build
+	@/bin/echo -e "\n##### running CMP Profile EE04 #####"
+	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLRA,EE04'
+	@/bin/echo -e "\n##### running CMP Profile EE01 #####"
+	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLRA,EE01'
+	@/bin/echo -e "\n##### running CMP Profile EE03 #####"
+	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLRA,EE03'
+	@/bin/echo -e "\n##### running CMP Profile EE02 #####"
+	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLRA,EE02'
+
 all:	build test
 
 doc: doc/cmpClient-cli.md

@@ -1,0 +1,91 @@
+[default]
+digest = sha256
+msg_timeout = 10
+total_timeout = 100
+ignore_keyusage = 1
+unprotectederrors = 1
+#proxy = http://de.coia.siemens.net:9400
+no_proxy = ppki-playground.ct.siemens.com
+verbosity = 7
+
+[SimpleLRA]
+server = localhost:9080
+path = cmp/PlaygroundECC/
+secret = pass:SecretCmp
+cert = creds/ppki_playground_cmp_signer.p12
+key = $cert
+keypass = pass:12345
+recipient = "/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
+subject = "/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
+trusted = "creds/trusted/PPKIPlaygroundECCRootCAv10.crt, creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt"
+out_trusted = $trusted
+
+[EE04]
+cmd = ir
+cert =
+key =
+newkeytype = EC:secp521r1
+newkey = creds/manufacturer.pem
+newkeypass = pass:12345
+certout = creds/manufacturer.crt
+
+[EE01]
+cmd = ir
+secret = 
+cert = creds/manufacturer.crt
+key = creds/manufacturer.pem
+newkeytype = $EE04::newkeytype
+newkey = $EE04::newkey
+newkeypass = $EE04::newkeypass
+certout = $EE04::certout
+
+[EE03]
+cmd = cr
+secret =
+newkeytype = EC:prime256v1 # ECC implies EC:secp256r1
+newkey = creds/operational.pem
+newkeypass = pass:12345
+reqexts = reqexts
+policies = certificatePolicies
+san_nodefault = 1
+certout = creds/operational.crt
+
+[EE02]
+cmd = kur
+secret = 
+cert = $EE03::certout
+key = $EE03::newkey
+keypass = $EE03::newkeypass
+newkeytype = $EE03::newkeytype
+newkey = $EE03::newkey
+newkeypass = $EE03::newkeypass
+certout = $EE03::certout
+subject =
+
+[empty]
+#keyUsage =
+#extendedKeyUsage =
+#subjectAltName =
+
+[reqexts]
+#basicConstraints = CA:FASE
+keyUsage = "critical, digitalSignature" # is ignored by PPKI Playground ECC Issuing CA
+extendedKeyUsage = "critical, serverAuth, 1.3.6.1.5.5.7.3.2" # is ignored by PPKI Playground ECC Issuing CA
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.0 = localhost
+IP.0 = 127.0.0.1
+IP.1 = 192.168.0.1
+URI.0 = http://192.168.0.2
+
+[certificatePolicies]
+certificatePolicies = "critical, @pkiPolicy"
+
+[pkiPolicy]
+policyIdentifier = 1.3.6.1.4.1.4329.38.4.2.2
+CPS = http://www.siemens.com/pki-policy/
+userNotice.1 = @notice
+
+[notice]
+explicitText=Siemens policy text

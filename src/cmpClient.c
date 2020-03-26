@@ -1274,8 +1274,6 @@ int main(int argc, char *argv[])
         if ((config = CONF_load_options(NULL, opt_config, opt_section, cmp_opts)) == NULL)
             goto end;
     }
-    if (!set_verbosity())
-        goto end;
     vpm = X509_VERIFY_PARAM_new();
     if (vpm == 0) {
         LOG_err("Out of memory");
@@ -1290,6 +1288,8 @@ int main(int argc, char *argv[])
     if (rv == -1) /* can only happen for ---help since [-]-help has already been handled */
         return print_help(prog);
     if (rv <= 0)
+        goto end;
+    if (!set_verbosity())
         goto end;
 
     /* handle here to start correct demo use case */

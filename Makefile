@@ -185,9 +185,7 @@ cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra:
 	cd cmpossl/test/recipes/81-test_cmp_cli_data && \
 	ln -s ../../../../test/cmpossl/recipes/81-test_cmp_cli_data/SimpleLra
 
-test: build | creds/crls
-	@/bin/echo -e "\n##### running cmpClient Demo #####"
-ifndef INSTA
+get_PPKI_crls: | creds/crls
 	ping >/dev/null $(PINGCOUNTOPT) 1 ppki-playground.ct.siemens.com
 	@ # || echo $(unreachable); exit 1
 	@for CA in 'Infrastructure+Root+CA+v1.0' 'Infrastructure+Issuing+CA+v1.0' 'ECC+Root+CA+v1.0' 'RSA+Root+CA+v1.0'; \
@@ -195,14 +193,21 @@ ifndef INSTA
 		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
 		wget -q "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+$$CA%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O "creds/crls/PPKIPlayground$$ca.crl"; \
 	done
-else
+
+get_Insta_crls: | creds/crls
 	@ #curl -m 2 -s pki.certificate.fi ...
 	$(PROXY) wget -O /dev/null --tries=1 --max-redirect=0 --timeout=2 https://www.insta.fi/ --no-verbose
 	@ # | fgrep "301 Moved Permanently" -q
 	@ # || (echo $(unreachable); exit 1)
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl"
+
+ifndef INSTA
+test: build get_PPKI_crls
+else
+test: build get_Insta_crls
 endif
+	@/bin/echo -e "\n##### running cmpClient Demo #####"
 	$(PROXY) ./cmpClient$(EXE) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo
 	$(PROXY) ./cmpClient$(EXE) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS)
@@ -234,17 +239,11 @@ test_cli: build
 	  $(PERL) test/cmpossl/recipes/81-test_cmp_cli.t )
 	@ :
 
-creds/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl:
-	$(MAKE) test
-
-creds/crls/InstaDemoCA.crl:
-	$(MAKE) test_insta
-
-test_SimpleLra: cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra creds/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl
+test_SimpleLra: get_PPKI_crls
 	make test_cli CMP_TESTS=SimpleLra
 	rm -f test/cmpossl/recipes/81-test_cmp_cli_data/SimpleLra/test.cert.pem
 
-test_Insta: creds/crls/InstaDemoCA.crl
+test_Insta: get_Insta_crls
 	make test_cli CMP_TESTS=Insta
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Insta/test.{cert,extracerts}.pem
 

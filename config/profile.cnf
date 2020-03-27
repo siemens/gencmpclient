@@ -8,7 +8,7 @@
 #no_proxy = ppki-playground.ct.siemens.com
 #verbosity = 7
 
-[SimpleLRA]
+[SimpleLra]
 server = localhost:9080
 path = cmp/PlaygroundECC/
 trusted = "creds/trusted/PPKIPlaygroundECCRootCAv10.crt, creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt"

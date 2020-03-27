@@ -249,19 +249,19 @@ test_Insta: get_Insta_crls
 
 test_profile: build
 	@/bin/echo -e "\n##### running CMP Profile EE04: A certificate from a PKI with MAC protection (RECOMMENDED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLRA,EE04'
+	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE04'
 	@/bin/echo -e "\n##### running CMP Profile EE01: A certificate from a new PKI with signature protection (REQUIRED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLRA,EE01'
+	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE01'
 	@/bin/echo -e "\n##### running CMP Profile EE02: Update an existing certificate with signature protection (REQUIRED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLRA,EE02'
+	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE02'
 	@/bin/echo -e "\n##### running CMP Profile EE03: A certificate from an established PKI with signature protection (RECOMMENDED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLRA,EE03'
+	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE03'
 	@/bin/echo -e "\n##### running CMP Profile EE09: Revoking a certificate (EE: OPTIONAL, (L)RA/CA: RECOMMENDED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLRA,EE09'
+	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE09'
 	@/bin/echo -e "\n##### running CMP Profile EE10: Error reporting (REQUIRED) #####"
-	! ./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLRA,EE10'
+	! ./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE10'
 	@/bin/echo -e "\n##### running CMP Profile RA11: Error reporting (REQUIRED) #####"
-	! ./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLRA,RA11'
+	! ./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,RA11'
 
 all:	build test
 

@@ -42,7 +42,7 @@ SECUTILS_DIR=$(PARENT_DIR)/$(SECUTILS_DIR_)
 LIBCMP_INC ?= include_cmp
 LIBCMP_OUT ?= .
 
-CC = gcc
+CC ?= gcc
 ifdef NDEBUG
     override CFLAGS += -DNDEBUG=1 -O2
 else

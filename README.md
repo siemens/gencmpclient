@@ -24,7 +24,7 @@ The following network and development tools are required.
 * wget (tested with versions 1.17, 1.18, and 1.20)
 * Git (tested with versions 2.7.2, 2.11.0, and 2.20)
 * GNU make (tested with versions 4.1 and 4.2.1)
-* GNU C compiler (tested with versions 5.4.0, 7.3.0, and 8.3.0)
+* GNU C compiler (tested with versions 5.4.0, 7.3.0, 8.3.0, and 10.0.1)
 * OpenSSL (version >= 1.0.2) with header files
 
 For instance, on a Debian system these may be installed as follows:

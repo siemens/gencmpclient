@@ -36,7 +36,7 @@ tls_keypass = pass:12345
 unprotectederrors = 1
 
 
-[EE04] # A certificate from a PKI with MAC protection (RECOMMENDED)
+[EE04] # 5.1.4 Request a certificate from a PKI with MAC protection (RECOMMENDED)
 cmd = ir
 secret = pass:SecretCmp
 #cert =
@@ -48,7 +48,7 @@ newkeypass = pass:12345
 newkey = creds/manufacturer.pem
 certout = creds/manufacturer.crt
 
-[EE01] # A certificate from a new PKI with signature protection (REQUIRED)
+[EE01] #_5.1.1 Request a certificate from a new PKI with signature protection (MANDATORY)
 cmd = ir
 #secret =
 cert = $EE04::certout
@@ -60,22 +60,7 @@ newkeypass = pass:12345
 newkey = creds/operational.pem
 certout = creds/operational.crt
 
-[EE02] # Update an existing certificate with signature protection (REQUIRED)
-cmd = kur
-server = localhost:9083
-path = cmp/PlaygroundSelf/
-#secret =
-cert = $EE01::certout
-key = $EE01::newkey
-keypass = $EE01::newkeypass
-
-subject =
-newkeytype = $EE01::newkeytype
-newkey = $EE01::newkey
-newkeypass = $EE01::newkeypass
-certout = $EE01::certout
-
-[EE03] # A certificate from an established PKI with signature protection (RECOMMENDED)
+[EE03] # 5.1.2 Request a certificate from a trusted PKI with signature protection (OPTIONAL)
 cmd = cr
 #secret =
 cert = $EE01::certout
@@ -91,7 +76,28 @@ newkeypass = pass:123456
 newkey = creds/operational2.pem
 certout = creds/operational2.crt
 
-[EE09] # Revoking a certificate (EE: OPTIONAL, (L)RA/CA: RECOMMENDED)
+[EE02] # 5.1.3 Update an existing certificate with signature protection (MANDATORY)
+cmd = kur
+server = localhost:9083
+path = cmp/PlaygroundSelf/
+#secret =
+cert = $EE01::certout
+key = $EE01::newkey
+keypass = $EE01::newkeypass
+
+subject =
+newkeytype = $EE01::newkeytype
+newkey = $EE01::newkey
+newkeypass = $EE01::newkeypass
+certout = $EE01::certout
+
+[EE??] # 5.1.5 Request a certificate from a legacy PKI using PKCS#10 request (OPTIONAL)
+
+[EE??] # 5.1.6 Generate the key pair centrally ...  (OPTIONAL)
+
+[EE??] # 5.1.7 Delayed enrollment (RECOMMENDED)
+
+[EE09] # 5.2 Revoking a certificate (RECOMMENDED)
 cmd = rr
 #secret =
 cert = $EE03::certout
@@ -103,7 +109,7 @@ newkeytype =
 oldcert = $EE03::certout
 revreason = 5 # cessationOfOperation
 
-[EE10] # Error reporting (REQUIRED)
+[EE10] # 5.3 Error reporting (MANDATORY)
 cmd = $EE01::cmd
 #secret =
 cert = $EE01::cert
@@ -116,7 +122,15 @@ newkey = $EE01::newkey
 certout = $EE01::certout
 out_trusted = $EE04::certout # wrong trust anchor
 
-[RA11] # Error reporting (REQUIRED)
+[EE??] # 5.4.1 General message and response  (OPTIONAL)
+
+[EE??] # 5.4.2 Get CA certificates  (OPTIONAL)
+
+[EE??] # 5.4.3 Get root CA certificate update  (OPTIONAL)
+
+[EE??] # 5.4.4 Get certificate request parameters  (OPTIONAL)
+
+[RA11] # 6.3 Error reporting (MANDATORY)
 cmd = $EE01::cmd
 #secret =
 cert = $EE01::cert
@@ -128,6 +142,18 @@ newkeytype = $EE01::newkeytype
 newkeypass = $EE01::newkeypass
 newkey = $EE01::newkey
 certout = $EE01::certout
+
+[S_7.1-??] # HTTP transport
+
+[S_7.2-??] # HTTPS transport using certificates
+
+[S_7.3-??] # HTTPS transport using shared secrets
+
+[S_7.4-??] # File-based transport
+
+[S_7.5-??] # CoAP transport
+
+[S_7.6-??] # Piggybacking on another reliable transport
 
 
 [reqexts]

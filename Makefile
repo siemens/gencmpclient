@@ -248,20 +248,21 @@ test_Insta: get_Insta_crls
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Insta/test.{cert,extracerts}.pem
 
 test_profile: build
-	@/bin/echo -e "\n##### running CMP Profile EE04: A certificate from a PKI with MAC protection (RECOMMENDED) #####"
+	@/bin/echo -e "\n##### Request a certificate from a PKI with MAC protection (RECOMMENDED) #####"
 	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE04'
-	@/bin/echo -e "\n##### running CMP Profile EE01: A certificate from a new PKI with signature protection (REQUIRED) #####"
+	@/bin/echo -e "\n##### Request a certificate from a new PKI with signature protection (REQUIRED) #####"
 	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE01'
-	@/bin/echo -e "\n##### running CMP Profile EE02: Update an existing certificate with signature protection (REQUIRED) #####"
+	@/bin/echo -e "\n##### Update an existing certificate with signature protection (REQUIRED) #####"
 	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE02'
-	@/bin/echo -e "\n##### running CMP Profile EE03: A certificate from an established PKI with signature protection (RECOMMENDED) #####"
+	@/bin/echo -e "\n##### Request a certificate from a trusted PKI with signature protection (OPTIONAL) #####"
 	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE03'
-	@/bin/echo -e "\n##### running CMP Profile EE09: Revoking a certificate (EE: OPTIONAL, (L)RA/CA: RECOMMENDED) #####"
+	@/bin/echo -e "\n##### Revoking a certificate (RECOMMENDED) #####"
 	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE09'
-	@/bin/echo -e "\n##### running CMP Profile EE10: Error reporting (REQUIRED) #####"
+	@/bin/echo -e "\n##### Error reporting by EE (REQUIRED) #####"
 	! ./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE10'
-	@/bin/echo -e "\n##### running CMP Profile RA11: Error reporting (REQUIRED) #####"
+	@/bin/echo -e "\n##### Error reporting by RA (REQUIRED) #####"
 	! ./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,RA11'
+	echo "\n##### All profile tests passed #####"
 
 all:	build test
 

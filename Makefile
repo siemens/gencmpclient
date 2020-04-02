@@ -203,11 +203,11 @@ get_Insta_crls: | creds/crls
 	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl"
 
 ifndef INSTA
-test: build get_PPKI_crls
+demo: build get_PPKI_crls
 else
-test: build get_Insta_crls
+demo: build get_Insta_crls
 endif
-	@/bin/echo -e "\n##### running cmpClient Demo #####"
+	@/bin/echo -e "\n##### running cmpClient demo #####"
 	$(PROXY) ./cmpClient$(EXE) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo
 	$(PROXY) ./cmpClient$(EXE) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS)
@@ -222,9 +222,11 @@ endif
 	$(PROXY) ./cmpClient$(EXE) revoke -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
 	$(OCSP_CHECK)
+	@echo -e "\n#### demo finished ####"
+	@echo :
 
-test_insta: build
-	INSTA=1 $(MAKE) test
+demo_insta:
+	INSTA=1 $(MAKE) demo
 
 test_cli: build
 	@echo -e "\n#### running CLI-based tests #### with CMP_TESTS=$$CMP_TESTS"
@@ -239,12 +241,12 @@ test_cli: build
 	  $(PERL) test/cmpossl/recipes/81-test_cmp_cli.t )
 	@ :
 
-test_SimpleLra: get_PPKI_crls
+test_SimpleLra: get_PPKI_crls cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra
 	make test_cli CMP_TESTS=SimpleLra
 	rm -f test/cmpossl/recipes/81-test_cmp_cli_data/SimpleLra/test.cert.pem
 
 test_Insta: get_Insta_crls
-	make test_cli CMP_TESTS=Insta
+	$(PROXY) make test_cli CMP_TESTS=Insta
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Insta/test.{cert,extracerts}.pem
 
 test_profile: build
@@ -262,7 +264,7 @@ test_profile: build
 	! ./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE10'
 	@/bin/echo -e "\n##### Error reporting by RA (REQUIRED) #####"
 	! ./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,RA11'
-	echo "\n##### All profile tests passed #####"
+	echo "\n##### All profile tests succeeded #####"
 
 all:	build test
 

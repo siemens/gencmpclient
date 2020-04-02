@@ -112,7 +112,7 @@ This means that secure storage of protection credentials for private keys and tr
 The CMP demo client is implemented in [`src/cmpClient.c`](src/cmpClient.c).
 It can be executed with
 ```
-make test
+make demo
 ```
 
 or manually like this:
@@ -138,26 +138,26 @@ The demo client allows also to update and revoke the enrolled certificate, like 
 The demo client may also interact with the external Insta Certifier Demo CA via
 ```
 export http_proxy=de.coia.siemens.net:9400  # adapt to your needs
-make test_insta
+make demo_insta
 ```
 
 
-## Using the CLI-based test client
+## Using the CLI-based client
 
 The Comand Line Interface (CLI) of the CMP client is implemented in [`src/cmpClient.c`](src/cmpClient.c).
 It supports most of the features of the genCMPClient library.
 The CLI use with the available options are documented in [`cmpClient-cli.md`](doc/cmpClient-cli.md).
 
-CLI-based tests may be invoked using
+CLI-based tests using the external Insta Demo CA may be invoked using
 ```
-http_proxy=de.coia.siemens.net:9400 make test_Insta
+make test_Insta
 ```
-assuming the proxy is needed and sufficient to reach the external Insta CA
+where the PROXY environment variable may be used to override the default (which is `http_proxy=de.coia.siemens.net:9400`) in order to reach the external Insta CA
 or
 ```
 make test_SimpleLra
 ```
-assuming a local SimpleLra instance is running and forwards requests to the Siemens Product PKI (PPKI) Playground server.
+assuming a local SimpleLra instance is running and forwards requests to the Siemens Product PKI (PPKI) Playground CA server.
 
 
 ## Using the library in own applications

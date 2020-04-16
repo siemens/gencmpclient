@@ -30,6 +30,8 @@ char *CREDENTIALS_get_pwd(const CREDENTIALS *creds);
 char *CREDENTIALS_get_pwdref(const CREDENTIALS *creds);
 
 void LOG_init(OPTIONAL LOG_cb_t log_fn);
+bool LOG_default(OPTIONAL const char* func, OPTIONAL const char* file, int lineno, severity level, const char* msg);
+
 bool LOG(OPTIONAL const char *func, OPTIONAL const char *file,
          int lineno, OPTIONAL severity level, const char *fmt, ...);
 
@@ -50,6 +52,7 @@ bool LOG(OPTIONAL const char *func, OPTIONAL const char *file,
 # define FL_WARN  LOG_FUNC_FILE_LINE, LOG_WARNING
 # define FL_INFO  LOG_FUNC_FILE_LINE, LOG_INFO
 # define FL_DEBUG LOG_FUNC_FILE_LINE, LOG_DEBUG
+#define LOG_err(msg) LOG(FL_ERR, msg)     /*!< simple error message */
 
 void UTIL_setup_openssl(long version, const char *build_name);
 int UTIL_parse_server_and_port(char *s);
@@ -75,13 +78,15 @@ STACK_OF(X509_CRL) *FILES_load_crls_multi(const char *files, sec_file_format for
 X509_STORE *STORE_load_trusted(const char *files, OPTIONAL const char *desc,
                                OPTIONAL void /* uta_ctx */ *ctx);
 bool STORE_set1_host_ip(X509_STORE *truststore, const char *host, const char *ip);
+const char* STORE_get0_host(X509_STORE* store);
 bool STORE_set0_tls_bio(X509_STORE *store, BIO *bio);
 bool STORE_EX_init_index(void);
 void STORE_EX_free_index(void);
 
 # ifndef SEC_NO_TLS
 bool TLS_init(void);
-SSL_CTX *TLS_CTX_new(int client, OPTIONAL X509_STORE *truststore,
+SSL_CTX *TLS_CTX_new(OPTIONAL SSL_CTX* ssl_ctx,
+                     int client, OPTIONAL X509_STORE *truststore,
                      OPTIONAL const STACK_OF(X509) *untrusted,
                      OPTIONAL const CREDENTIALS *creds,
                      OPTIONAL const char *ciphers, int security_level,
@@ -716,7 +721,7 @@ CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                           OPTIONAL const X509_EXTENSIONS *exts)
 {
     if (new_key == NULL || subject == NULL) {
-        LOG_err("No parameter for either -newkey or -subject option");
+        LOG(FL_ERR, "No parameter for either -newkey or -subject option");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
@@ -733,7 +738,7 @@ CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                             OPTIONAL const X509_EXTENSIONS *exts)
 {
     if (new_key == NULL || subject == NULL) {
-        LOG_err("No parameter for either -newkey or -subject option");
+        LOG(FL_ERR, "No parameter for either -newkey or -subject option");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
@@ -748,7 +753,7 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                          const X509_REQ *csr)
 {
     if (csr == NULL) {
-        LOG_err("No parameter for -csr option");
+        LOG(FL_ERR, "No parameter for -csr option");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 

@@ -63,8 +63,7 @@ typedef int severity;
 #define LOG_DEBUG   7 // A message useful for debugging programs.
 #define LOG_TRACE   8 // A verbose message useful for detailed debugging.
 
-typedef int (*LOG_cb_t) (OPTIONAL const char *file, int lineno,
-                         severity level, const char *msg);
+typedef bool (*LOG_cb_t)(OPTIONAL const char* func, OPTIONAL const char* file, int lineno, severity level, const char* msg);
 
 #  endif /* FL_EMERG */
 # else /* LOCAL_DEFS */

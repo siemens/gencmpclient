@@ -13,6 +13,7 @@
 #include <securityUtilities.h>
 #include <SecUtils/config/config.h>
 #include <SecUtils/util/log.h>
+#include <SecUtils/certstatus/crls.h> /* just for use in test_load_crl_cb() */
 
 #include <genericCMPClient.h>
 
@@ -354,6 +355,16 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
     return 1;
 }
 
+static X509_CRL *test_load_crl_cb(OPTIONAL void *arg, const char *url, int timeout,
+                                  OPTIONAL const X509 *cert, OPTIONAL const char *desc)
+{
+    LOG(FL_DEBUG, "%s with url=%s\ndesc='%s'\n", (char *)arg, url, desc);
+    if (url != NULL)
+        return CONN_load_crl_http(url, timeout, desc);
+    LOG_cert(FL_DEBUG, "could have used information from", cert);
+    return NULL;
+}
+
 SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 {
 #ifdef SEC_NO_TLS
@@ -373,6 +384,8 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
                                   opt_check_all, opt_stapling, crls,
                                   opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
                                   opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout))
+            goto err;
+        if (!STORE_set_crl_callback(tls_truststore, test_load_crl_cb, "test_load_crl_cb() called on TLS level"))
             goto err;
     } else {
         LOG_warn("-tls_used given without -tls_trusted; will not authenticate the server");
@@ -433,7 +446,8 @@ X509_STORE *setup_CMP_truststore(void)
                               opt_check_all, false /* stapling */, crls,
                               opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
                               opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout) ||
-        /* clear any expected host/ip/email address; opt_expect_sender is used instead */
+        !STORE_set_crl_callback(cmp_truststore, test_load_crl_cb, "test_load_crl_cb() called on CMP level") ||
+        /* clear any expected host/ip/email address; opt_expect_sender is used instead: */
         !STORE_set1_host_ip(cmp_truststore, NULL, NULL)) {
         STORE_free(cmp_truststore);
         cmp_truststore = NULL;

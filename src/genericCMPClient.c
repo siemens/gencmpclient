@@ -561,6 +561,8 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (proxy != NULL) {
         if (strncmp(proxy, URL_HTTP_PREFIX, strlen(URL_HTTP_PREFIX)) == 0)
             proxy += strlen(URL_HTTP_PREFIX);
+        else if (strncmp(proxy, URL_HTTPS_PREFIX, strlen(URL_HTTPS_PREFIX)) == 0)
+            proxy += strlen(URL_HTTPS_PREFIX);
         snprintf(addr, sizeof(addr), "%s", proxy);
         port = UTIL_parse_server_and_port(addr);
         if (port < 0) {

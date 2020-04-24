@@ -742,6 +742,7 @@ int setup_ctx(CMP_CTX *ctx)
 CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
 {
     X509_STORE *cmp_truststore = NULL;
+    CREDENTIALS *cmp_creds = NULL;
     CMP_err err = 1;
 
     err = 3;
@@ -766,7 +767,6 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL
     if (opt_ocsp_last)
         X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_OCSP_LAST);
 
-    CREDENTIALS *cmp_creds = NULL;
     if (opt_secret != NULL || opt_key != NULL) {
         const char *const creds_desc = "credentials for CMP level";
         const char *pass = FILES_get_pass(opt_secret, "PBM-based message protection");

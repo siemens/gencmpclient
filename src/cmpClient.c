@@ -23,7 +23,50 @@
 #include "../cmpossl/crypto/cmp/cmp_local.h"
 
 #ifdef LOCAL_DEFS
+/* files.h */
+enum
+{
+    B_FORMAT_TEXT = 0x8000
+};
+typedef enum
+{
+    FORMAT_UNDEF = 0,               /*! undefined file format */
+    FORMAT_ASN1 = 4,                /*! ASN.1/DER */
+    FORMAT_PEM = 5 | B_FORMAT_TEXT, /*! PEM */
+    FORMAT_PKCS12 = 6,              /*! PKCS#12 */
+    FORMAT_ENGINE = 8,              /*! crypto engine, which is not really a file format */
+    FORMAT_HTTP = 13                /*! download using HTTP */
+} sec_file_format;                  /*! type of format for security-related files or other input */
+sec_file_format FILES_get_format(const char* filename);
+const char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc);
+X509* FILES_load_cert(const char* file, sec_file_format format, OPTIONAL const char* pass, OPTIONAL const char* desc);
+EVP_PKEY* FILES_load_key_autofmt(OPTIONAL const char* key, sec_file_format file_format, bool maybe_stdin,
+                                 OPTIONAL const char* pass, OPTIONAL const char* engine, OPTIONAL const char* desc);
+X509_REQ* FILES_load_csr_autofmt(const char* infile, sec_file_format format, OPTIONAL const char* desc);
+bool FILES_store_cert(const X509* cert, const char* file, sec_file_format format, OPTIONAL const char* desc);
+int FILES_store_certs(const STACK_OF(X509) * certs, const char* file, sec_file_format format,
+                      OPTIONAL const char* desc);
+
+/* credentials.h */
 X509 *CREDENTIALS_get_cert(const CREDENTIALS *creds);
+STACK_OF(X509) * CREDENTIALS_get_chain(const CREDENTIALS* creds);
+
+/* store.h */
+bool STORE_set1_host_ip(X509_STORE* truststore, const char* host, const char* ip);
+typedef X509_CRL* (* CONN_load_crl_cb_t)(OPTIONAL void* arg, const char* url, int timeout,
+                                         OPTIONAL const X509* cert, OPTIONAL const char* desc);
+bool STORE_set_crl_callback(X509_STORE* store,
+                            OPTIONAL CONN_load_crl_cb_t crl_cb,
+                            OPTIONAL void* crl_cb_arg);
+/* certstatus.h */
+#define X509_V_FLAG_STATUS_CHECK_ANY 0x1000000 /* any cert containing CDP/AIA */
+#ifndef OPENSSL_NO_OCSP
+# include <openssl/ocsp.h>
+# define X509_V_FLAG_OCSP_LAST       0x8000000 /* Try OCSP last (after CRLs) */
+#endif /* !defined(OPENSSL_NO_OCSP) */
+void LOG_cert(OPTIONAL const char* func, OPTIONAL const char* file, int lineno, severity level,
+              const char* msg, const X509* cert);
+
 #endif
 
 enum use_case { no_use_case,

@@ -153,7 +153,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_CMP_log_cb_t log_fn
                           OPTIONAL const CREDENTIALS *creds,
                           OPTIONAL const char *digest,
                           OPTIONAL const char *mac_algnid,
-                          OPTIONAL OSSL_cmp_transfer_cb_t transfer_fn, int total_timeout,
+                          OPTIONAL OSSL_CMP_transfer_cb_t transfer_fn, int total_timeout,
                           OPTIONAL X509_STORE *new_cert_truststore, bool implicit_confirm)
 {
     OSSL_CMP_CTX *ctx = NULL;
@@ -541,7 +541,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (port < 0) {
         return CMP_R_INVALID_PARAMETERS;
     }
-    if (!OSSL_CMP_CTX_set1_serverName(ctx, addr) ||
+    if (!OSSL_CMP_CTX_set1_server(ctx, addr) ||
         (port > 0 && !OSSL_CMP_CTX_set_serverPort(ctx, port))) {
         goto err;
     }
@@ -568,7 +568,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         if (port < 0) {
             return CMP_R_INVALID_PARAMETERS;
         }
-        if (!OSSL_CMP_CTX_set1_proxyName(ctx, addr) ||
+        if (!OSSL_CMP_CTX_set1_proxy(ctx, addr) ||
             (port > 0 && !OSSL_CMP_CTX_set_proxyPort(ctx, port))) {
             goto err;
         }

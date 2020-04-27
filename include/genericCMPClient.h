@@ -86,7 +86,7 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL OSSL_CMP_log_cb_t log_fn,
                           OPTIONAL const CREDENTIALS *creds,
                           OPTIONAL const char *digest,
                           OPTIONAL const char *mac_algnid,
-                          OPTIONAL OSSL_cmp_transfer_cb_t transfer_fn,
+                          OPTIONAL OSSL_CMP_transfer_cb_t transfer_fn,
                           int total_timeout,
                           OPTIONAL X509_STORE *new_cert_truststore,
                           bool implicit_confirm);

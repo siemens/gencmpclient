@@ -659,9 +659,9 @@ int setup_ctx(CMP_CTX *ctx)
     /* set option flags directly via CMP API */
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS, opt_unprotectederrors)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE, opt_ignore_keyusage)
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITYDAYS, (int)opt_days)
+        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITY_DAYS, (int)opt_days)
         || (opt_popo >= OSSL_CRMF_POPO_NONE
-            && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPOMETHOD, (int)opt_popo))
+            && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPO_METHOD, (int)opt_popo))
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLE_CONFIRM, opt_disable_confirm)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, opt_unprotectedrequests)) {
         LOG_err("Failed to set option flags of CMP context");
@@ -791,7 +791,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL
             || (untrusted_certs == NULL && opt_untrusted != NULL))
         goto err;
 
-    OSSL_cmp_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
+    OSSL_CMP_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     const bool implicit_confirm = opt_implicit_confirm;
 
     if ((int)opt_total_timeout < -1) {

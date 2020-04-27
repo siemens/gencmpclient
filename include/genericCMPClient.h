@@ -76,10 +76,10 @@ typedef bool (*LOG_cb_t)(OPTIONAL const char* func, OPTIONAL const char* file, i
 
 /* CMP client core functions */
 /* should be called once, as soon as the application starts */
-CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn);
+CMP_err CMPclient_init(OPTIONAL OSSL_CMP_log_cb_t log_fn);
 
 /* must be called first */
-CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
+CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL OSSL_CMP_log_cb_t log_fn,
                           OPTIONAL X509_STORE *cmp_truststore,
                           OPTIONAL const char *recipient,
                           OPTIONAL const STACK_OF(X509) *untrusted,

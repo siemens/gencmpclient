@@ -126,7 +126,7 @@ static int CMPOSSL_error()
  * Core functionality
  */
 
-CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn)
+CMP_err CMPclient_init(OPTIONAL OSSL_CMP_log_cb_t log_fn)
 {
     LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
     UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, "genericCMPClient");
@@ -146,7 +146,7 @@ CMP_err CMPclient_init(OPTIONAL OSSL_cmp_log_cb_t log_fn)
     return CMP_OK;
 }
 
-CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn,
+CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_CMP_log_cb_t log_fn,
                           OPTIONAL X509_STORE *cmp_truststore,
                           OPTIONAL const char *recipient,
                           OPTIONAL const STACK_OF(X509) *untrusted,
@@ -164,7 +164,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_cmp_log_cb_t log_fn
     if ((ctx = OSSL_CMP_CTX_new()) == NULL ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn != NULL ? log_fn :
                                  /* only difference is in 'int' vs. 'bool' */
-                                 (OSSL_cmp_log_cb_t)LOG_default)) {
+                                 (OSSL_CMP_log_cb_t)LOG_default)) {
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
     }
     if ((cmp_truststore != NULL

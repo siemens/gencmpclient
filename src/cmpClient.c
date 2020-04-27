@@ -739,7 +739,7 @@ int setup_ctx(CMP_CTX *ctx)
     return err;
 }
 
-CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
+CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL OSSL_CMP_log_cb_t log_fn)
 {
     X509_STORE *cmp_truststore = NULL;
     CREDENTIALS *cmp_creds = NULL;
@@ -870,7 +870,7 @@ int setup_transfer(CMP_CTX *ctx)
     return err;
 }
 
-static int CMPclient(enum use_case use_case, OPTIONAL OSSL_cmp_log_cb_t log_fn)
+static int CMPclient(enum use_case use_case, OPTIONAL OSSL_CMP_log_cb_t log_fn)
 {
     CMP_err err = 1;
     CMP_CTX *ctx = NULL;
@@ -1273,7 +1273,7 @@ int main(int argc, char *argv[])
     if (sec_ctx == NULL)
         goto end;
 
-    OSSL_cmp_log_cb_t log_fn = NULL;
+    OSSL_CMP_log_cb_t log_fn = NULL;
     if (CMPclient_init(log_fn) != CMP_OK)
         goto end;
 

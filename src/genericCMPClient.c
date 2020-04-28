@@ -4,7 +4,7 @@
  *
  * @author David von Oheimb, CT RDA CST SEA, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2018-2019 Siemens AG
+ *  Copyright (c) 2018-2020 Siemens AG
  *  Licensed under the Apache License, Version 2.0
  *  SPDX-License-Identifier: Apache-2.0
  */
@@ -126,7 +126,7 @@ static int CMPOSSL_error()
  * Core functionality
  */
 
-CMP_err CMPclient_init(OPTIONAL OSSL_CMP_log_cb_t log_fn)
+CMP_err CMPclient_init(OPTIONAL LOG_cb_t log_fn)
 {
     LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
     UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, "genericCMPClient");
@@ -146,7 +146,7 @@ CMP_err CMPclient_init(OPTIONAL OSSL_CMP_log_cb_t log_fn)
     return CMP_OK;
 }
 
-CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_CMP_log_cb_t log_fn,
+CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
                           OPTIONAL X509_STORE *cmp_truststore,
                           OPTIONAL const char *recipient,
                           OPTIONAL const STACK_OF(X509) *untrusted,
@@ -162,8 +162,8 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL OSSL_CMP_log_cb_t log_fn
         return ERR_R_PASSED_NULL_PARAMETER;
     }
     if ((ctx = OSSL_CMP_CTX_new()) == NULL ||
-        !OSSL_CMP_CTX_set_log_cb(ctx, log_fn != NULL ? log_fn :
-                                 /* only difference is in 'int' vs. 'bool' */
+        !OSSL_CMP_CTX_set_log_cb(ctx, log_fn != NULL ? (OSSL_CMP_log_cb_t)log_fn :
+                                 /* difference is in 'int' vs. 'bool' and additinal TRACE value */
                                  (OSSL_CMP_log_cb_t)LOG_default)) {
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
     }

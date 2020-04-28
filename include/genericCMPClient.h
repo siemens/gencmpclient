@@ -79,7 +79,8 @@ typedef bool (*LOG_cb_t)(OPTIONAL const char* func, OPTIONAL const char* file, i
 CMP_err CMPclient_init(OPTIONAL LOG_cb_t log_fn);
 
 /* must be called first */
-CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
+CMP_err CMPclient_prepare(CMP_CTX **pctx,
+                          OPTIONAL LOG_cb_t log_fn,
                           OPTIONAL X509_STORE *cmp_truststore,
                           OPTIONAL const char *recipient,
                           OPTIONAL const STACK_OF(X509) *untrusted,
@@ -94,7 +95,6 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
 # define URL_HTTP_PREFIX "http://"
 # define URL_HTTPS_PREFIX "https://"
 /* must be called next in case the transfer_fn is NULL, which implies HTTP_transfer */
-/* copies server and proxy address (of the form "<name>[:<port>]") and HTTP path */
 CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
                              int timeout, OPTIONAL SSL_CTX *tls,
                              OPTIONAL const char *proxy,
@@ -158,7 +158,7 @@ void CMPclient_finish(CMP_CTX *ctx);
 /* CREDENTIALS helpers */
 # ifdef LOCAL_DEFS
 CREDENTIALS *CREDENTIALS_new(OPTIONAL const EVP_PKEY *pkey,
-                             OPTIONAL const OPTIONAL X509 *cert,
+                             OPTIONAL const X509 *cert,
                              OPTIONAL const STACK_OF(X509) *chain,
                              OPTIONAL const char *pwd,
                              OPTIONAL const char *pwdref);
@@ -178,9 +178,9 @@ void LOG_close(void);
 # endif /* LOCAL_DEFS */
 STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc);
 void CERTS_free(OPTIONAL STACK_OF(X509) *certs);
-X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
 STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout, OPTIONAL const char *desc);
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls);
+X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
 # ifdef LOCAL_DEFS
 bool STORE_add_crls(X509_STORE *truststore, OPTIONAL const STACK_OF(X509_CRL) *crls);
 /* also sets certificate verification callback: */

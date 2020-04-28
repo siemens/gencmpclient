@@ -411,10 +411,9 @@ static X509_CRL *test_load_crl_cb(OPTIONAL void *arg, const char *url, int timeo
 SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 {
 #ifdef SEC_NO_TLS
-    fprintf(stderr, "TLS is not enabled in this build\n");
+    LOG_err("TLS is not enabled in this build");
     return NULL;
 #else
-
     CREDENTIALS *tls_creds = NULL;
     SSL_CTX *tls = NULL;
 

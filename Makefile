@@ -159,16 +159,16 @@ clean_uta:
 endif
 
 clean_test:
-	rm -f creds/{manufacturer,operational}.*
+	rm -f creds/{manufacturer,operational*}.*
 	rm -rf creds/crls
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/*/test.*cert*.pem
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra
 
-clean:
+clean: clean_test
 	$(MAKE) -f Makefile_src clean
 	rm -f $(LIBCMP_LIB)
 
-clean_all: clean clean_test
+clean_all: clean
 ifeq ($(LPATH),)
 	$(MAKE) -C $(SECUTILS)  OUT_DIR="$(LIBCMP_OUT_REVERSE_DIR)" clean || true
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="$(LIBCMP_OUT_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"

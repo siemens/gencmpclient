@@ -123,7 +123,7 @@ CMP_err CMPclient_setup_certreq(CMP_CTX *ctx,
 
 /*
  * either the internal CMPclient_enroll() or the specific CMPclient_imprint(),
- * CMPclient_bootstrap(), CMPclient_pkcs10(), or CMPclient_update())
+ * CMPclient_bootstrap(), CMPclient_pkcs10(), or CMPclient_update[_anycert]())
  * or CMPclient_revoke() can be called next, only once for the given ctx
  */
 /* the structure returned in *new_creds must be freed by the caller */
@@ -188,8 +188,14 @@ bool STORE_set_parameters(X509_STORE *truststore,
                           OPTIONAL const X509_VERIFY_PARAM *vpm,
                           bool full_chain, bool try_stapling,
                           OPTIONAL const STACK_OF(X509_CRL) *crls,
-                          bool use_CDPs, OPTIONAL const char *CRLs_url, int crls_timeout,
-                          bool use_AIAs, OPTIONAL const char *OCSP_url, int ocsp_timeout);
+                          bool use_CDP, OPTIONAL const char *cdps, int crls_timeout,
+                          bool use_AIA, OPTIONAL const char *ocsp, int ocsp_timeout);
+typedef X509_CRL *(*CONN_load_crl_cb_t)(OPTIONAL void *arg,
+                                        OPTIONAL const char *url, int timeout,
+                                        const X509 *cert, OPTIONAL const char *desc);
+bool STORE_set_crl_callback(X509_STORE *store,
+                            OPTIONAL CONN_load_crl_cb_t crl_cb,
+                            OPTIONAL void* crl_cb_arg);
 void STORE_free(OPTIONAL X509_STORE *truststore);
 
 /* EVP_PKEY helpers */

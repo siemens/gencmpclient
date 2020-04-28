@@ -152,7 +152,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
                           OPTIONAL const STACK_OF(X509) *untrusted,
                           OPTIONAL const CREDENTIALS *creds,
                           OPTIONAL const char *digest,
-                          OPTIONAL const char *mac_algnid,
+                          OPTIONAL const char *mac,
                           OPTIONAL OSSL_CMP_transfer_cb_t transfer_fn, int total_timeout,
                           OPTIONAL X509_STORE *new_cert_truststore, bool implicit_confirm)
 {
@@ -241,14 +241,14 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
         }
     }
 
-    if (mac_algnid != NULL) {
-        int mac = OBJ_ln2nid(mac_algnid);
-        if (mac == NID_undef) {
-            LOG(FL_ERR, "MAC algorithm name not recognized: '%s'", mac_algnid);
+    if (mac != NULL) {
+        int mac_algnid = OBJ_ln2nid(mac);
+        if (mac_algnid == NID_undef) {
+            LOG(FL_ERR, "MAC algorithm name not recognized: '%s'", mac);
             OSSL_CMP_CTX_free(ctx);
             return CMP_R_UNKNOWN_ALGORITHM_ID;
         }
-        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MAC_ALGNID, mac))
+        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MAC_ALGNID, mac_algnid))
             goto err;
     }
 

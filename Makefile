@@ -136,7 +136,7 @@ build_cmpossl: # not: update_cmpossl
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 
 clean_submodules:
-	rm -rf $(SECUTILS) cmpossl $(LIBCMP_LIB)
+	rm -rf $(SECUTILS) cmpossl $(LIBCMP_LIB) $(SECUTILS_LIB)
 
 endif # eq ($(SECUTILS),)
 
@@ -165,7 +165,6 @@ clean_test:
 
 clean: clean_test
 	$(MAKE) -f Makefile_src clean
-	rm -f $(LIBCMP_LIB)
 
 clean_all: clean
 ifeq ($(LPATH),)

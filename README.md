@@ -9,7 +9,7 @@ with associated CLI-based demo/test client and documentation.
 * All features agreed with the participating Siemens business units
 have been implemented and documented in FY 2019.
 * Several hundreds of test cases have been compiled and executed successfully.
-* Open-source clearing has been finished in Feb 2020.
+* [Open-source clearing has been finished](https://sw360.siemens.com/group/guest/projects/-/project/detail/a85b052efc1c3d42ebd3ef217fd600a4#/tab-ClearingStatus) in Feb 2020.
 * Maintenance (i.e., minor updates and fixes, also to the documentation)
 is ongoing, at least for FY 2020.
 

@@ -98,7 +98,7 @@ make
 ```
 
 The result is in, for instance, `./libgencmpcl.so`.
-This also builds all required dependencies (such as `./libcmp.so` and `./securityUtilities/libSecUtils.so`) and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
+This also builds all required dependencies (such as `./libcmp.so` and `./libSecUtils.so`) and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
 
 **Important Note:** by default, the Security Utilities make use of the
 [Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library

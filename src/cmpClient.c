@@ -57,9 +57,6 @@ const char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* des
 EVP_PKEY* FILES_load_key_autofmt(OPTIONAL const char* key, sec_file_format file_format, bool maybe_stdin,
                                  OPTIONAL const char* pass, OPTIONAL const char* engine, OPTIONAL const char* desc);
 X509_REQ* FILES_load_csr_autofmt(const char* infile, sec_file_format format, OPTIONAL const char* desc);
-bool FILES_store_cert(const X509* cert, const char* file, sec_file_format format, OPTIONAL const char* desc);
-int FILES_store_certs(const STACK_OF(X509) * certs, const char* file, sec_file_format format,
-                      OPTIONAL const char* desc);
 
 /* credentials.h */
 
@@ -574,7 +571,7 @@ X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
     return exts;
 
  err:
-    sk_X509_EXTENSION_pop_free(exts, X509_EXTENSION_free);
+    EXTENSIONS_free(exts);
     return NULL;
 }
 
@@ -643,11 +640,11 @@ int setup_ctx(CMP_CTX *ctx)
         } else {
             if (!OSSL_CMP_CTX_set1_extraCertsOut(ctx, certs)) {
                 LOG_err("Failed to set 'extraCerts' field of CMP context");
-                sk_X509_pop_free(certs, X509_free);
+                CERTS_free(certs);
                 err = 9;
                 goto err;
             }
-            sk_X509_pop_free(certs, X509_free);
+            CERTS_free(certs);
         }
     }
 
@@ -1148,39 +1145,27 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
 
     if (opt_cacertsout != NULL) {
-        sec_file_format format = FILES_get_format(opt_cacertsout);
         STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_caPubs(ctx);
-        if (format == FORMAT_UNDEF) {
-            LOG(FL_ERR, "Failed to determine format for file endings of '%s'", opt_cacertsout);
-            err = 22;
-            goto err;
-        }
         if (sk_X509_num(certs) > 0
-                && FILES_store_certs(certs, opt_cacertsout, format, "CA") < 0) {
-            LOG(FL_ERR, "Failed to store '%s'", opt_cacertsout);
-            sk_X509_pop_free(certs, X509_free);
+                && CERTS_store(certs, opt_cacertsout, "CA") < 0) {
+            LOG(FL_ERR, "Failed to store %s certs in '%s'", opt_cacertsout);
+            CERTS_free(certs);
             err = 23;
             goto err;
         }
-        sk_X509_pop_free(certs, X509_free);
+        CERTS_free(certs);
     }
 
     if (opt_extracertsout != NULL) {
-        sec_file_format format = FILES_get_format(opt_extracertsout);
         STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_extraCertsIn(ctx);
-        if (format == FORMAT_UNDEF) {
-            LOG(FL_ERR, "Failed to determine format for file endings of '%s'", opt_extracertsout);
-            err = 24;
-            goto err;
-        }
         if (sk_X509_num(certs) > 0
-                && FILES_store_certs(certs, opt_extracertsout, format, "extra") < 0) {
+                && CERTS_store(certs, opt_extracertsout, "extra") < 0) {
             LOG(FL_ERR, "Failed to store '%s'", opt_extracertsout);
-            sk_X509_pop_free(certs, X509_free);
+            CERTS_free(certs);
             err = 25;
             goto err;
         }
-        sk_X509_pop_free(certs, X509_free);
+        CERTS_free(certs);
     }
 
     if (use_case != revocation) {
@@ -1193,12 +1178,11 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             }
         } else {
             const char *new_desc = "newly enrolled certificate";
-            sec_file_format format = FILES_get_format(opt_certout);
             X509 *cert = CREDENTIALS_get_cert(new_creds);
             STACK_OF(X509)* certs = CREDENTIALS_get_chain(new_creds);
 
             if (certs == NULL) {
-                if (!FILES_store_cert(cert, opt_certout, format, new_desc)) {
+                if (!CERT_store(cert, opt_certout, new_desc)) {
                     err = 27;
                     goto err;
                 }
@@ -1211,7 +1195,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             }
 
             if (certs != NULL) {
-                if (FILES_store_certs(certs, opt_certout, format, new_desc) < 0) {
+                if (CERTS_store(certs, opt_certout, new_desc) < 0) {
                     err = 29;
                     goto err;
                 }

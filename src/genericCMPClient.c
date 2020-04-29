@@ -55,6 +55,9 @@ int UTIL_parse_server_and_port(char *s);
 X509_NAME *UTIL_parse_name(const char *dn, long chtype, bool multirdn);
 
 X509* FILES_load_cert(const char* file, sec_file_format format, OPTIONAL const char* pass, OPTIONAL const char* desc);
+bool FILES_store_cert(const X509* cert, const char* file, sec_file_format format, OPTIONAL const char* desc);
+int FILES_store_certs(const STACK_OF(X509) * certs, const char* file, sec_file_format format,
+                      OPTIONAL const char* desc);
 STACK_OF(X509) *FILES_load_certs_multi(const char *files, sec_file_format format,
                                        OPTIONAL const char *pass,
                                        OPTIONAL const char *desc);
@@ -672,9 +675,20 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 /* credentials helpers */
 
 inline
-X509* CERT_load(const char* file, OPTIONAL const char* pass, OPTIONAL const char* desc)
+X509* CERT_load(const char *file, OPTIONAL const char *pass, OPTIONAL const char *desc)
 {
     return FILES_load_cert(file, FILES_get_format(file), pass, desc);
+}
+
+inline
+bool CERT_store(const X509 *cert, const char *file, OPTIONAL const char *desc)
+{
+    sec_file_format format = FILES_get_format(file);
+    if (format == FORMAT_UNDEF) {
+        LOG(FL_ERR, "Failed to determine format from file name ending of '%s'", file);
+        return false;
+    }
+    return FILES_store_cert(cert, file, format, desc);
 }
 
 /* X509_STORE helpers */
@@ -683,6 +697,17 @@ inline
 STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc)
 {
     return FILES_load_certs_multi(files, FORMAT_PEM, NULL /* pass */, desc);
+}
+
+inline
+int CERTS_store(const STACK_OF(X509) *certs, const char *file, OPTIONAL const char *desc)
+{
+    sec_file_format format = FILES_get_format(file);
+    if (format == FORMAT_UNDEF) {
+        LOG(FL_ERR, "Failed to determine format from file name ending of '%s'", file);
+        return -1;
+    }
+    return FILES_store_certs(certs, file, format, desc);
 }
 
 inline

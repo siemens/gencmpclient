@@ -194,16 +194,18 @@ bool LOG(OPTIONAL const char *func, OPTIONAL const char *file,
          int lineno, OPTIONAL severity level, const char *fmt, ...);
 
 void LOG_set_verbosity(severity level);
-void LOG_set_name(OPTIONAL const char* name);
+void LOG_set_name(OPTIONAL const char *name);
 void LOG_close(void);
 
 
 /* X509_STORE helpers */
 # endif /* LOCAL_DEFS */
 
-X509* CERT_load(const char* file, OPTIONAL const char* pass, OPTIONAL const char* desc);
+X509* CERT_load(const char *file, OPTIONAL const char *pass, OPTIONAL const char *desc);
+bool CERT_store(const X509* cert, const char *file, OPTIONAL const char *desc);
 STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc);
 void CERTS_free(OPTIONAL STACK_OF(X509) *certs);
+int CERTS_store(const STACK_OF(X509) *certs, const char *file, OPTIONAL const char *desc);
 STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout, OPTIONAL const char *desc);
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls);
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
@@ -222,7 +224,7 @@ typedef X509_CRL *(*CONN_load_crl_cb_t)(OPTIONAL void *arg,
 bool STORE_set_crl_callback(X509_STORE *store,
                             OPTIONAL CONN_load_crl_cb_t crl_cb,
                             OPTIONAL void* crl_cb_arg);
-bool STORE_set1_host_ip(X509_STORE* truststore, const char* host, const char* ip);
+bool STORE_set1_host_ip(X509_STORE *truststore, const char *host, const char *ip);
 void STORE_free(OPTIONAL X509_STORE *truststore);
 
 /* EVP_PKEY helpers */

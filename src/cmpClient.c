@@ -54,9 +54,6 @@ int UTIL_atoint(const char* str); /* returns INT_MIN on error */
 
 /* files.h */
 const char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc);
-EVP_PKEY* FILES_load_key_autofmt(OPTIONAL const char* key, sec_file_format file_format, bool maybe_stdin,
-                                 OPTIONAL const char* pass, OPTIONAL const char* engine, OPTIONAL const char* desc);
-X509_REQ* FILES_load_csr_autofmt(const char* infile, sec_file_format format, OPTIONAL const char* desc);
 
 /* credentials.h */
 
@@ -1013,9 +1010,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
                 goto err;
             }
             if (opt_newkey != NULL) {
-                sec_file_format format = FILES_get_format(opt_newkey);
-                new_pkey = FILES_load_key_autofmt(opt_newkey, format, false,
-                                                  opt_newkeypass, NULL /* engine */,
+                new_pkey = KEY_load(opt_newkey, opt_newkeypass, NULL /* engine */,
                                                   "private key to use for certificate request");
                 if (new_pkey == NULL) {
                     goto err;
@@ -1096,7 +1091,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         break;
     case pkcs10:
         {
-            X509_REQ *csr = FILES_load_csr_autofmt(opt_csr, FORMAT_PEM, "PKCS#10 CSR for p10cr");
+            X509_REQ *csr = CSR_load(opt_csr, "PKCS#10 CSR for p10cr");
             if (csr == NULL) {
                 err = 15;
                 goto err;

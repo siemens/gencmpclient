@@ -54,6 +54,8 @@ void UTIL_setup_openssl(long version, const char *build_name);
 int UTIL_parse_server_and_port(char *s);
 X509_NAME *UTIL_parse_name(const char *dn, long chtype, bool multirdn);
 
+EVP_PKEY* FILES_load_key_autofmt(OPTIONAL const char* key, sec_file_format file_format, bool maybe_stdin,
+                                 OPTIONAL const char* pass, OPTIONAL const char* engine, OPTIONAL const char* desc);
 X509* FILES_load_cert(const char* file, sec_file_format format, OPTIONAL const char* pass, OPTIONAL const char* desc);
 bool FILES_store_cert(const X509* cert, const char* file, sec_file_format format, OPTIONAL const char* desc);
 int FILES_store_certs(const STACK_OF(X509) * certs, const char* file, sec_file_format format,
@@ -61,6 +63,7 @@ int FILES_store_certs(const STACK_OF(X509) * certs, const char* file, sec_file_f
 STACK_OF(X509) *FILES_load_certs_multi(const char *files, sec_file_format format,
                                        OPTIONAL const char *pass,
                                        OPTIONAL const char *desc);
+X509_REQ* FILES_load_csr_autofmt(const char* file, sec_file_format format, OPTIONAL const char* desc);
 STACK_OF(X509_CRL) *FILES_load_crls_multi(const char *files, sec_file_format format,
                                           int timeout, const char *desc);
 
@@ -675,6 +678,14 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 /* credentials helpers */
 
 inline
+EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
+                   OPTIONAL const char *engine, OPTIONAL const char *desc)
+{
+    return FILES_load_key_autofmt(file, FILES_get_format(file), false,
+                                  pass, engine, desc);
+}
+
+inline
 X509* CERT_load(const char *file, OPTIONAL const char *pass, OPTIONAL const char *desc)
 {
     return FILES_load_cert(file, FILES_get_format(file), pass, desc);
@@ -689,6 +700,12 @@ bool CERT_store(const X509 *cert, const char *file, OPTIONAL const char *desc)
         return false;
     }
     return FILES_store_cert(cert, file, format, desc);
+}
+
+inline
+X509_REQ *CSR_load(const char *file, OPTIONAL const char *desc)
+{
+    return FILES_load_csr_autofmt(file, FILES_get_format(file), desc);
 }
 
 /* X509_STORE helpers */

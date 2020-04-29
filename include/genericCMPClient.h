@@ -201,11 +201,16 @@ void LOG_close(void);
 /* X509_STORE helpers */
 # endif /* LOCAL_DEFS */
 
+EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
+                   OPTIONAL const char *engine, OPTIONAL const char *desc);
 X509* CERT_load(const char *file, OPTIONAL const char *pass, OPTIONAL const char *desc);
 bool CERT_store(const X509* cert, const char *file, OPTIONAL const char *desc);
 STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc);
 void CERTS_free(OPTIONAL STACK_OF(X509) *certs);
 int CERTS_store(const STACK_OF(X509) *certs, const char *file, OPTIONAL const char *desc);
+X509_REQ *CSR_load(const char *file, OPTIONAL const char *desc);
+
+
 STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout, OPTIONAL const char *desc);
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls);
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);

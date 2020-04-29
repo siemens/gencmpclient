@@ -1377,7 +1377,8 @@ int main(int argc, char *argv[])
 
  end:
     X509_VERIFY_PARAM_free(vpm);
-    // TODO fix mem leaks; find out why this crashes: CONF_free(config);
+    // TODO fix potential memory leaks; find out why this potentially crashes:
+    NCONF_free(config);
 
     if (sec_ctx != NULL && sec_deinit(sec_ctx) == -1)
         rc = EXIT_FAILURE;

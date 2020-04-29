@@ -173,6 +173,22 @@ bool CREDENTIALS_save(const CREDENTIALS *creds,
 X509 *CREDENTIALS_get_cert(const CREDENTIALS *creds);
 STACK_OF(X509) *CREDENTIALS_get_chain(const CREDENTIALS *creds);
 
+/* FILE helpers */
+enum
+{
+    B_FORMAT_TEXT = 0x8000
+};
+typedef enum
+{
+    FORMAT_UNDEF = 0,               /*! undefined file format */
+    FORMAT_ASN1 = 4,                /*! ASN.1/DER */
+    FORMAT_PEM = 5 | B_FORMAT_TEXT, /*! PEM */
+    FORMAT_PKCS12 = 6,              /*! PKCS#12 */
+    FORMAT_ENGINE = 8,              /*! crypto engine, which is not really a file format */
+    FORMAT_HTTP = 13                /*! download using HTTP */
+} sec_file_format;                  /*! type of format for security-related files or other input */
+sec_file_format FILES_get_format(const char* filename);
+
 /* LOG helpers */
 bool LOG(OPTIONAL const char *func, OPTIONAL const char *file,
          int lineno, OPTIONAL severity level, const char *fmt, ...);
@@ -184,6 +200,8 @@ void LOG_close(void);
 
 /* X509_STORE helpers */
 # endif /* LOCAL_DEFS */
+
+X509* CERT_load(const char* file, OPTIONAL const char* pass, OPTIONAL const char* desc);
 STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc);
 void CERTS_free(OPTIONAL STACK_OF(X509) *certs);
 STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout, OPTIONAL const char *desc);

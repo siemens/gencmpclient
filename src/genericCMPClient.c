@@ -21,7 +21,7 @@ typedef
 STACK_OF(X509_EXTENSION) *(*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTENSION) *a);
 #endif
 
-#ifdef LOCAL_DEFS
+#ifdef LOCAL_DEFS /* internal helper functions not documented in API spec */
 
 EVP_PKEY *CREDENTIALS_get_pkey(const CREDENTIALS *creds);
 char *CREDENTIALS_get_pwd(const CREDENTIALS *creds);
@@ -54,17 +54,7 @@ void UTIL_setup_openssl(long version, const char *build_name);
 int UTIL_parse_server_and_port(char *s);
 X509_NAME *UTIL_parse_name(const char *dn, long chtype, bool multirdn);
 
-enum {
-    B_FORMAT_TEXT = 0x8000
-};
-typedef enum {
-    FORMAT_UNDEF  = 0, /* undefined file format */
-    FORMAT_ASN1   = 4, /* ASN.1/DER */
-    FORMAT_PEM    = 5 | B_FORMAT_TEXT, /* PEM */
-    FORMAT_PKCS12 = 6, /* PKCS#12 */
-    FORMAT_ENGINE = 8, /* crypto engine, which is not really a file format */
-    FORMAT_HTTP   = 13 /* download using HTTP */
-} sec_file_format;     /* type of format for security-related files or other input */
+X509* FILES_load_cert(const char* file, sec_file_format format, OPTIONAL const char* pass, OPTIONAL const char* desc);
 STACK_OF(X509) *FILES_load_certs_multi(const char *files, sec_file_format format,
                                        OPTIONAL const char *pass,
                                        OPTIONAL const char *desc);
@@ -678,6 +668,14 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 /*
  * Support functionality
  */
+
+/* credentials helpers */
+
+inline
+X509* CERT_load(const char* file, OPTIONAL const char* pass, OPTIONAL const char* desc)
+{
+    return FILES_load_cert(file, FILES_get_format(file), pass, desc);
+}
 
 /* X509_STORE helpers */
 

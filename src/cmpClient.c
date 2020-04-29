@@ -53,22 +53,7 @@ int UTIL_atoint(const char* str); /* returns INT_MIN on error */
 #define LOG_warn(msg) LOG(FL_WARN, msg)   /*!< simple warning message */
 
 /* files.h */
-enum
-{
-    B_FORMAT_TEXT = 0x8000
-};
-typedef enum
-{
-    FORMAT_UNDEF = 0,               /*! undefined file format */
-    FORMAT_ASN1 = 4,                /*! ASN.1/DER */
-    FORMAT_PEM = 5 | B_FORMAT_TEXT, /*! PEM */
-    FORMAT_PKCS12 = 6,              /*! PKCS#12 */
-    FORMAT_ENGINE = 8,              /*! crypto engine, which is not really a file format */
-    FORMAT_HTTP = 13                /*! download using HTTP */
-} sec_file_format;                  /*! type of format for security-related files or other input */
-sec_file_format FILES_get_format(const char* filename);
 const char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc);
-X509* FILES_load_cert(const char* file, sec_file_format format, OPTIONAL const char* pass, OPTIONAL const char* desc);
 EVP_PKEY* FILES_load_key_autofmt(OPTIONAL const char* key, sec_file_format file_format, bool maybe_stdin,
                                  OPTIONAL const char* pass, OPTIONAL const char* engine, OPTIONAL const char* desc);
 X509_REQ* FILES_load_csr_autofmt(const char* infile, sec_file_format format, OPTIONAL const char* desc);
@@ -831,8 +816,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
         goto err;
 
     if (opt_srvcert != NULL) {
-        sec_file_format format = FILES_get_format(opt_srvcert);
-        X509 *srvcert = FILES_load_cert(opt_srvcert, format, NULL /* pass */, "directly trusted CMP server certificate");
+        X509 *srvcert = CERT_load(opt_srvcert, NULL /* pass */, "directly trusted CMP server certificate");
         if (srvcert == NULL || !OSSL_CMP_CTX_set1_srvCert(*pctx, srvcert))
             err = 4;
         X509_free(srvcert);
@@ -1128,8 +1112,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         if (opt_oldcert == NULL) {
             err = CMPclient_update(ctx, &new_creds, new_pkey);
         } else {
-            sec_file_format format = FILES_get_format(opt_oldcert);
-            X509 *oldcert = FILES_load_cert(opt_oldcert, format, opt_keypass, "certificate to be updated");
+            X509 *oldcert = CERT_load(opt_oldcert, opt_keypass, "certificate to be updated");
             if (oldcert == NULL)
                 err = 19;
             else
@@ -1146,8 +1129,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             goto err;
         }
         {
-            sec_file_format format = FILES_get_format(opt_oldcert);
-            X509 *oldcert = FILES_load_cert(opt_oldcert, format, opt_keypass, "certificate to be revoked");
+            X509 *oldcert = CERT_load(opt_oldcert, opt_keypass, "certificate to be revoked");
             if (oldcert == NULL)
                 err = 21;
             else

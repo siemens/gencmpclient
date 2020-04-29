@@ -24,16 +24,12 @@ STACK_OF(X509_EXTENSION) *(*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTE
 #ifdef LOCAL_DEFS
 
 EVP_PKEY *CREDENTIALS_get_pkey(const CREDENTIALS *creds);
-X509 *CREDENTIALS_get_cert(const CREDENTIALS *creds);
-STACK_OF(X509) *CREDENTIALS_get_chain(const CREDENTIALS *creds);
 char *CREDENTIALS_get_pwd(const CREDENTIALS *creds);
 char *CREDENTIALS_get_pwdref(const CREDENTIALS *creds);
 
 void LOG_init(OPTIONAL LOG_cb_t log_fn);
 bool LOG_default(OPTIONAL const char* func, OPTIONAL const char* file, int lineno, severity level, const char* msg);
-
-bool LOG(OPTIONAL const char *func, OPTIONAL const char *file,
-         int lineno, OPTIONAL severity level, const char *fmt, ...);
+extern BIO* bio_err;
 
 # if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901)
 #  define LOG_FUNC __func__ /* function name is only available starting from C99. */

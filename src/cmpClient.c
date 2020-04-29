@@ -12,17 +12,46 @@
 
 #include <securityUtilities.h>
 #include <SecUtils/config/config.h>
-#include <SecUtils/util/log.h>
+//#include <SecUtils/util/log.h>
 #include <SecUtils/certstatus/crls.h> /* just for use in test_load_crl_cb() */
 
 #include <genericCMPClient.h>
 
 #include <openssl/ssl.h>
 
-/* needed for OSSL_CMP_ITAV_gen() in function CMPclient() */
+/* needed for OSSL_CMP_ITAV_gen() in function CMPclient(), TODO remove */
 #include "../cmpossl/crypto/cmp/cmp_local.h"
 
-#ifdef LOCAL_DEFS
+#ifdef LOCAL_DEFS /* helper functions not documented in API spec */
+
+/* util.h */
+#include <string.h>  /* for strcmp, strlen */
+char* UTIL_next_item(char* str);
+X509_NAME* UTIL_parse_name(const char* dn, long chtype, bool multirdn);
+int UTIL_atoint(const char* str); /* returns INT_MIN on error */
+
+/* log.h */
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901)
+#define LOG_FUNC __func__ /* function name is only available starting from C99.*/
+/* Trying platform-specific and compiler-specific alternatives as fallback if possible. */
+#elif defined(__STDC__) && defined(PEDANTIC)
+#define LOG_FUNC "(PEDANTIC disallows function name)"
+#elif defined(WIN32) || defined(__GNUC__) || defined(__GNUG__)
+#define LOG_FUNC __FUNCTION__
+#elif defined(__FUNCSIG__)
+#define LOG_FUNC __FUNCSIG__
+#else
+#define LOG_FUNC "(unknown function)"
+#endif
+#define LOG_FUNC_FILE_LINE LOG_FUNC, OPENSSL_FILE, OPENSSL_LINE
+#define FL_ERR LOG_FUNC_FILE_LINE, LOG_ERR      /*!< An error message. */
+#define FL_WARN LOG_FUNC_FILE_LINE, LOG_WARNING /*!< A warning message. */
+#define FL_INFO LOG_FUNC_FILE_LINE, LOG_INFO    /*!< A general information message. */
+#define FL_DEBUG LOG_FUNC_FILE_LINE, LOG_DEBUG  /*!< A message useful for debugging programs. */
+#define FL_TRACE LOG_FUNC_FILE_LINE, LOG_TRACE /*!< A verbose message useful for detailed debugging. */
+#define LOG_err(msg) LOG(FL_ERR, msg)     /*!< simple error message */
+#define LOG_warn(msg) LOG(FL_WARN, msg)   /*!< simple warning message */
+
 /* files.h */
 enum
 {
@@ -48,16 +77,9 @@ int FILES_store_certs(const STACK_OF(X509) * certs, const char* file, sec_file_f
                       OPTIONAL const char* desc);
 
 /* credentials.h */
-X509 *CREDENTIALS_get_cert(const CREDENTIALS *creds);
-STACK_OF(X509) * CREDENTIALS_get_chain(const CREDENTIALS* creds);
 
 /* store.h */
-bool STORE_set1_host_ip(X509_STORE* truststore, const char* host, const char* ip);
-typedef X509_CRL* (* CONN_load_crl_cb_t)(OPTIONAL void* arg, const char* url, int timeout,
-                                         OPTIONAL const X509* cert, OPTIONAL const char* desc);
-bool STORE_set_crl_callback(X509_STORE* store,
-                            OPTIONAL CONN_load_crl_cb_t crl_cb,
-                            OPTIONAL void* crl_cb_arg);
+
 /* certstatus.h */
 #define X509_V_FLAG_STATUS_CHECK_ANY 0x1000000 /* any cert containing CDP/AIA */
 #ifndef OPENSSL_NO_OCSP
@@ -67,7 +89,7 @@ bool STORE_set_crl_callback(X509_STORE* store,
 void LOG_cert(OPTIONAL const char* func, OPTIONAL const char* file, int lineno, severity level,
               const char* msg, const X509* cert);
 
-#endif
+#endif /* LOCAL_DEFS */ /* end helper functions not documented in API spec */
 
 enum use_case { no_use_case,
                 imprint, bootstrap, pkcs10, update,

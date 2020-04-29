@@ -170,9 +170,17 @@ CREDENTIALS *CREDENTIALS_load(OPTIONAL const char *certs,
 bool CREDENTIALS_save(const CREDENTIALS *creds,
                       OPTIONAL const char *certs, OPTIONAL const char *key,
                       OPTIONAL const char *source, OPTIONAL const char *desc);
+X509 *CREDENTIALS_get_cert(const CREDENTIALS *creds);
+STACK_OF(X509) *CREDENTIALS_get_chain(const CREDENTIALS *creds);
 
 /* LOG helpers */
+bool LOG(OPTIONAL const char *func, OPTIONAL const char *file,
+         int lineno, OPTIONAL severity level, const char *fmt, ...);
+
+void LOG_set_verbosity(severity level);
+void LOG_set_name(OPTIONAL const char* name);
 void LOG_close(void);
+
 
 /* X509_STORE helpers */
 # endif /* LOCAL_DEFS */
@@ -196,6 +204,7 @@ typedef X509_CRL *(*CONN_load_crl_cb_t)(OPTIONAL void *arg,
 bool STORE_set_crl_callback(X509_STORE *store,
                             OPTIONAL CONN_load_crl_cb_t crl_cb,
                             OPTIONAL void* crl_cb_arg);
+bool STORE_set1_host_ip(X509_STORE* truststore, const char* host, const char* ip);
 void STORE_free(OPTIONAL X509_STORE *truststore);
 
 /* EVP_PKEY helpers */
@@ -203,7 +212,7 @@ EVP_PKEY *KEY_new(const char *spec); /* spec may be "RSA:<length>" or "EC:<curve
 void KEY_free(OPTIONAL EVP_PKEY *pkey);
 
 /* SSL_CTX helpers for HTTPS */
-# endif  /* LOCAL_DEFS */
+# endif /* LOCAL_DEFS */
 # ifndef SEC_NO_TLS
 SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
                  OPTIONAL const STACK_OF(X509) *untrusted,

@@ -692,7 +692,7 @@ X509* CERT_load(const char *file, OPTIONAL const char *pass, OPTIONAL const char
 }
 
 inline
-bool CERT_store(const X509 *cert, const char *file, OPTIONAL const char *desc)
+bool CERT_save(const X509 *cert, const char *file, OPTIONAL const char *desc)
 {
     sec_file_format format = FILES_get_format(file);
     if (format == FORMAT_UNDEF) {
@@ -717,7 +717,7 @@ STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc)
 }
 
 inline
-int CERTS_store(const STACK_OF(X509) *certs, const char *file, OPTIONAL const char *desc)
+int CERTS_save(const STACK_OF(X509) *certs, const char *file, OPTIONAL const char *desc)
 {
     sec_file_format format = FILES_get_format(file);
     if (format == FORMAT_UNDEF) {

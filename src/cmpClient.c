@@ -1142,7 +1142,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     if (opt_cacertsout != NULL) {
         STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_caPubs(ctx);
         if (sk_X509_num(certs) > 0
-                && CERTS_store(certs, opt_cacertsout, "CA") < 0) {
+                && CERTS_save(certs, opt_cacertsout, "CA") < 0) {
             LOG(FL_ERR, "Failed to store %s certs in '%s'", opt_cacertsout);
             CERTS_free(certs);
             err = 23;
@@ -1154,7 +1154,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     if (opt_extracertsout != NULL) {
         STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_extraCertsIn(ctx);
         if (sk_X509_num(certs) > 0
-                && CERTS_store(certs, opt_extracertsout, "extra") < 0) {
+                && CERTS_save(certs, opt_extracertsout, "extra") < 0) {
             LOG(FL_ERR, "Failed to store '%s'", opt_extracertsout);
             CERTS_free(certs);
             err = 25;
@@ -1177,7 +1177,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             STACK_OF(X509)* certs = CREDENTIALS_get_chain(new_creds);
 
             if (certs == NULL) {
-                if (!CERT_store(cert, opt_certout, new_desc)) {
+                if (!CERT_save(cert, opt_certout, new_desc)) {
                     err = 27;
                     goto err;
                 }
@@ -1190,7 +1190,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             }
 
             if (certs != NULL) {
-                if (CERTS_store(certs, opt_certout, new_desc) < 0) {
+                if (CERTS_save(certs, opt_certout, new_desc) < 0) {
                     err = 29;
                     goto err;
                 }

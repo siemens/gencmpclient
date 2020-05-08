@@ -96,6 +96,8 @@ In the newly created directory `genCMPClient` you can build the software simply 
 ```
 make
 ```
+where the CC environment variable may be set as needed; it defaults to 'gcc'.
+Also the ROOTFS environment variable may be set, e.g., for cross compiliation.
 
 The result is in, for instance, `./libgencmpcl.so`.
 This also builds all required dependencies (such as `./libcmp.so` and `./libSecUtils.so`) and an application (`./cmpClient`) for demonstration, test, and exploration purposes.

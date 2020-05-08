@@ -25,7 +25,7 @@ The following network and development tools are required.
 * Git (tested with versions 2.7.2, 2.11.0, and 2.20)
 * GNU make (tested with versions 4.1 and 4.2.1)
 * GNU C compiler (tested with versions 5.4.0, 7.3.0, 8.3.0, and 10.0.1)
-* OpenSSL (version >= 1.0.2) with header files
+* OpenSSL (version >= 1.1.0) with header files
 
 For instance, on a Debian system these may be installed as follows:
 ```
@@ -84,7 +84,7 @@ make update
 
 ## Building the software
 
-The generic CMP client (and also its underlying CMP and SecUtils libraries) assumes that OpenSSL (with any version >= 1.0.2) is already installed,
+The generic CMP client (and also its underlying CMP and SecUtils libraries) assumes that OpenSSL (with any version >= 1.1.0) is already installed,
 including the C header files needed for development (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
 By default the OpenSSL headers will be searched for in `/usr/include` and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
 You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation, e.g.:

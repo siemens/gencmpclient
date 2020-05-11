@@ -965,7 +965,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 #endif
     err = 31;
     if (opt_crls != NULL) {
-        crls = CRLs_load(opt_crls, (int)opt_crls_timeout, "CRLs for CMP and possibly TLS level");
+        crls = CRLs_load(opt_crls, (int)opt_crls_timeout, "pre-loaded CRLs");
         if (crls == NULL)
             goto err;
     }

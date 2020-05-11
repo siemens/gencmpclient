@@ -204,9 +204,9 @@ Each source may contain multiple certificates.
 =item B<-untrusted> I<sources>
 
 Non-trusted intermediate certificate(s) that may be useful
-for building certificate chains when verifying
-the CMP server (when checking signature-based CMP message protection),
-the own TLS client cert (when constructing the TLS client cert chain),
+for constructing the TLS client cert chain (if TLS is enabled) and
+for building certificate chains while verifying the CMP server certificate
+(when checking signature-based CMP message protection),
 stapled OCSP responses (when establishing TLS connections),
 and/or the newly enrolled certificate.
 These may get added to the extraCerts field sent in requests as far as needed.

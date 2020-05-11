@@ -159,14 +159,13 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
                                  (OSSL_CMP_log_cb_t)LOG_default)) {
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
     }
-    if ((cmp_truststore != NULL
-         && (!X509_STORE_up_ref(cmp_truststore) ||
-             !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)))
-        ||
-        (untrusted != NULL
-         && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, (STACK_OF(X509) *)untrusted))) {
+    if (cmp_truststore != NULL
+        && (!X509_STORE_up_ref(cmp_truststore) ||
+            !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)))
         goto err;
-    }
+    if (untrusted != NULL
+        && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, (STACK_OF(X509) *)untrusted))
+        goto err;
 
     X509 *cert = NULL;
     if (creds != NULL) {
@@ -177,7 +176,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
         const char *pwdref = CREDENTIALS_get_pwdref(creds);
         if ((pkey != NULL && !OSSL_CMP_CTX_set1_pkey(ctx, pkey)) ||
             (cert != NULL && !OSSL_CMP_CTX_set1_clCert(ctx, cert)) ||
-            (!OSSL_CMP_CTX_set1_untrusted_certs(ctx, chain)) ||
+            (untrusted == NULL && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, chain)) ||
             (pwd != NULL
              && !OSSL_CMP_CTX_set1_secretValue(ctx, (unsigned char *) pwd, (int)strlen(pwd))) ||
             (pwdref != NULL
@@ -202,7 +201,8 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
         }
     } else if (cert == NULL) {
         if (sk_X509_num(untrusted) > 0) {
-            rcp = X509_NAME_dup((X509_get_subject_name(sk_X509_value(untrusted, 0))));
+            X509 *first = sk_X509_value(OSSL_CMP_CTX_get0_untrusted_certs(ctx), 0);
+            rcp = X509_NAME_dup((X509_get_subject_name(first)));
         } else {
             LOG(FL_WARN, "No explicit recipient, no cert, and no untrusted certs given; resorting to NULL DN");
             rcp = X509_NAME_new();

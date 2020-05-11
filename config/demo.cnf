@@ -85,10 +85,10 @@ keypass = $bootstrap::newkeypass
 newkeytype = $bootstrap::newkeytype
 newkey = $bootstrap::newkey
 newkeypass = $bootstrap::newkeypass
-reqexts = $bootstrap::reqexts
-policies = $bootstrap::policies
+reqexts = ""
+policies = ""
 #oldcert = $bootstrap::certout
-subject =
+subject = ""
 implicit_confirm = 1
 certout = $bootstrap::certout
 

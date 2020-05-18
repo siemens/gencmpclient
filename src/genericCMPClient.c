@@ -174,14 +174,19 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
         STACK_OF(X509) *chain = CREDENTIALS_get_chain(creds);
         const char *pwd = CREDENTIALS_get_pwd(creds);
         const char *pwdref = CREDENTIALS_get_pwdref(creds);
-        if ((pkey != NULL && !OSSL_CMP_CTX_set1_pkey(ctx, pkey)) ||
-            (cert != NULL && !OSSL_CMP_CTX_set1_clCert(ctx, cert)) ||
-            (untrusted == NULL && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, chain)) ||
-            (pwd != NULL
+        if ((pwd != NULL
              && !OSSL_CMP_CTX_set1_secretValue(ctx, (unsigned char *) pwd, (int)strlen(pwd))) ||
             (pwdref != NULL
              && !OSSL_CMP_CTX_set1_referenceValue(ctx, (unsigned char *)pwdref,
-                                                  (int)strlen(pwdref)))) {
+                                                  (int)strlen(pwdref))) ||
+            (pkey != NULL && !OSSL_CMP_CTX_set1_pkey(ctx, pkey)) ||
+            (cert != NULL && !OSSL_CMP_CTX_set1_clCert(ctx, cert))) {
+            goto err;
+        }
+        if (chain != NULL) {
+            if ((untrusted == NULL && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, chain)) ||
+                (untrusted != NULL && chain != NULL &&
+                 !UTIL_sk_X509_add1_certs(OSSL_CMP_CTX_get0_untrusted_certs(ctx), chain, 0, 1)))
             goto err;
         }
     } else {
@@ -201,7 +206,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
         }
     } else if (cert == NULL) {
         if (sk_X509_num(untrusted) > 0) {
-            X509 *first = sk_X509_value(OSSL_CMP_CTX_get0_untrusted_certs(ctx), 0);
+            X509 *first = sk_X509_value(untrusted, 0);
             rcp = X509_NAME_dup((X509_get_subject_name(first)));
         } else {
             LOG(FL_WARN, "No explicit recipient, no cert, and no untrusted certs given; resorting to NULL DN");

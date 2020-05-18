@@ -99,7 +99,7 @@ const char *opt_srvcert;
 const char *opt_recipient;
 const char *opt_expect_sender;
 bool opt_ignore_keyusage;
-bool opt_unprotectederrors;
+bool opt_unprotected_errors;
 const char *opt_extracertsout;
 const char *opt_cacertsout;
 
@@ -112,7 +112,7 @@ const char *opt_keypass;
 const char *opt_digest;
 const char *opt_mac;
 const char *opt_extracerts;
-bool opt_unprotectedrequests;
+bool opt_unprotected_requests;
 
 const char *opt_cmd; /* TODO? add genm */
 const char *opt_infotype;
@@ -208,7 +208,7 @@ opt_t cmp_opts[] = {
       "DN of expected sender (CMP server). Defaults to DN of -srvcert, if provided"},
     { "ignore_keyusage", OPT_BOOL, {.bit = false}, { (const char **)&opt_ignore_keyusage },
       "Ignore CMP signer cert key usage, else 'digitalSignature' must be allowed"},
-    { "unprotectederrors", OPT_BOOL, {.bit = false}, { (const char **) &opt_unprotectederrors },
+    { "unprotected_errors", OPT_BOOL, {.bit = false}, { (const char **) &opt_unprotected_errors },
       "Accept missing or invalid protection of regular error messages and negative"},
     OPT_MORE("certificate responses (ip/cp/kup), revocation responses (rp), and PKIConf"),
     { "extracertsout", OPT_TXT, {.txt = NULL}, { &opt_extracertsout },
@@ -234,7 +234,7 @@ opt_t cmp_opts[] = {
       "MAC algorithm to use in PBM-based message protection. Default \"hmac-sha1\""},
     { "extracerts", OPT_TXT, {.txt = NULL}, { &opt_extracerts },
       "File(s) with certificates to append in extraCerts field of outgoing messages"},
-    { "unprotectedrequests", OPT_BOOL, {.bit = false}, { (const char **) &opt_unprotectedrequests },
+    { "unprotected_requests", OPT_BOOL, {.bit = false}, { (const char **) &opt_unprotected_requests },
       "Send messages without CMP-level protection"},
 
     OPT_HEADER("Generic message"),
@@ -657,13 +657,13 @@ int setup_ctx(CMP_CTX *ctx)
         goto err;
     }
     /* set option flags directly via CMP API */
-    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS, opt_unprotectederrors)
+    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS, opt_unprotected_errors)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE, opt_ignore_keyusage)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITY_DAYS, (int)opt_days)
         || (opt_popo >= OSSL_CRMF_POPO_NONE
             && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPO_METHOD, (int)opt_popo))
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLE_CONFIRM, opt_disable_confirm)
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, opt_unprotectedrequests)) {
+        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, opt_unprotected_requests)) {
         LOG_err("Failed to set option flags of CMP context");
         goto err;
     }
@@ -898,8 +898,8 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         if (opt_secret != NULL && opt_key != NULL)
             LOG_warn("-key value will not be used for signing messages since -secret option selects PBM-based protection");
     }
-    if (!opt_unprotectedrequests && opt_secret == NULL && opt_key == NULL) {
-        LOG_err("Must give client credentials unless -unprotectedrequests is set");
+    if (!opt_unprotected_requests && opt_secret == NULL && opt_key == NULL) {
+        LOG_err("Must give client credentials unless -unprotected_requests is set");
         goto err;
     }
 

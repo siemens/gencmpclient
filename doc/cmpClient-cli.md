@@ -25,7 +25,7 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-recipient** _name_\]
 \[**-expect\_sender** _name_\]
 \[**-ignore\_keyusage**\]
-\[**-unprotectederrors**\]
+\[**-unprotected\_errors**\]
 \[**-extracertsout** _filename_\]
 \[**-cacertsout** _filename_\]
 
@@ -37,7 +37,7 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-digest** _name_\]
 \[**-mac** _name_\]
 \[**-extracerts** _sources_\]
-\[**-unprotectedrequests**\]
+\[**-unprotected\_requests**\]
 
 \[**-cmd** _ir|cr|kur|p10cr|rr_\]
 \[**-infotype** _name_\]
@@ -182,9 +182,9 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 - **-untrusted** _sources_
 
     Non-trusted intermediate certificate(s) that may be useful
-    for building certificate chains when verifying
-    the CMP server (when checking signature-based CMP message protection),
-    the own TLS client cert (when constructing the TLS client cert chain),
+    for constructing the TLS client cert chain (if TLS is enabled) and
+    for building certificate chains while verifying the CMP server certificate
+    (when checking signature-based CMP message protection),
     stapled OCSP responses (when establishing TLS connections),
     and/or the newly enrolled certificate.
     These may get added to the extraCerts field sent in requests as far as needed.
@@ -248,7 +248,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     signature-based protection of incoming CMP messages,
     else `digitalSignature` must be allowed for signer certificate.
 
-- **-unprotectederrors**
+- **-unprotected\_errors**
 
     Accept missing or invalid protection of negative responses from the server.
     This applies to the following message types and contents:
@@ -319,7 +319,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     The corresponding private key file for the client's current certificate given in
     the **-cert** option.
     This will be used for signature-based message protection
-    unless the **-secret** option indicating PBM or **-unprotectedrequests** is given.
+    unless the **-secret** option indicating PBM or **-unprotected\_requests** is given.
 
 - **-keypass** _arg_
 
@@ -354,7 +354,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     Multiple filenames or URLs may be given, separated by commas and/or whitespace.
     Each source may contain multiple certificates.
 
-- **-unprotectedrequests**
+- **-unprotected\_requests**
 
     Send messages without CMP-level protection.
 

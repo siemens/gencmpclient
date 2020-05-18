@@ -27,7 +27,7 @@ B<cmpClient> I<options>
 [B<-recipient> I<name>]
 [B<-expect_sender> I<name>]
 [B<-ignore_keyusage>]
-[B<-unprotectederrors>]
+[B<-unprotected_errors>]
 [B<-extracertsout> I<filename>]
 [B<-cacertsout> I<filename>]
 
@@ -39,7 +39,7 @@ B<cmpClient> I<options>
 [B<-digest> I<name>]
 [B<-mac> I<name>]
 [B<-extracerts> I<sources>]
-[B<-unprotectedrequests>]
+[B<-unprotected_requests>]
 
 [B<-cmd> I<ir|cr|kur|p10cr|rr>]
 [B<-infotype> I<name>]
@@ -270,7 +270,7 @@ Ignore key usage restrictions in CMP signer certificates when verifying
 signature-based protection of incoming CMP messages,
 else C<digitalSignature> must be allowed for signer certificate.
 
-=item B<-unprotectederrors>
+=item B<-unprotected_errors>
 
 Accept missing or invalid protection of negative responses from the server.
 This applies to the following message types and contents:
@@ -359,7 +359,7 @@ These may get added to the extraCerts field sent in requests as far as needed.
 The corresponding private key file for the client's current certificate given in
 the B<-cert> option.
 This will be used for signature-based message protection
-unless the B<-secret> option indicating PBM or B<-unprotectedrequests> is given.
+unless the B<-secret> option indicating PBM or B<-unprotected_requests> is given.
 
 =item B<-keypass> I<arg>
 
@@ -394,7 +394,7 @@ Certificates to append in the extraCerts field when sending messages.
 Multiple filenames or URLs may be given, separated by commas and/or whitespace.
 Each source may contain multiple certificates.
 
-=item B<-unprotectedrequests>
+=item B<-unprotected_requests>
 
 Send messages without CMP-level protection.
 

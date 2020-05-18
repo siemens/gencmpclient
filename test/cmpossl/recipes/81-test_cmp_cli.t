@@ -14,7 +14,7 @@ use strict;
 use warnings;
 
 use POSIX;
-use OpenSSL::Test qw/:DEFAULT with data_file data_dir/;
+use OpenSSL::Test qw/:DEFAULT with data_file data_dir bldtop_dir/;
 use OpenSSL::Test::Utils;
 use Data::Dumper; # for debugging purposes only
 
@@ -108,7 +108,6 @@ sub test_cmp_cli {
     my $expected_exit = shift;
     with({ exit_checker => sub {
         my $OK = shift == $expected_exit;
-        print Dumper @args if!($OK); # TODO: for debugging purposes only
         return $OK; } },
          sub { ok(run(app(["cmpClient", @$params,])),
                   $title); });
@@ -164,7 +163,6 @@ sub load_tests {
   LOOP:
     while (my $line = <$data>) {
         chomp $line;
-        #next LOOP if ($line =~ m/tls_/i); # skip tests requiring TLS
         $line =~ s{\r\n}{\n}g; # adjust line endings
         $line =~ s{_CA_DN}{$ca_dn}g;
         $line =~ s{_SERVER_DN}{$server_dn}g;

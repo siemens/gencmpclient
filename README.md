@@ -140,7 +140,7 @@ The demo client allows also to update and revoke the enrolled certificate, like 
 The demo client may also interact with the external Insta Certifier Demo CA via
 ```
 export http_proxy=de.coia.siemens.net:9400  # adapt to your needs
-make demo_insta
+make demo_Insta
 ```
 
 

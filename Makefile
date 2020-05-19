@@ -236,7 +236,7 @@ endif
 	@echo -e "\n#### demo finished ####"
 	@echo :
 
-demo_insta:
+demo_Insta:
 	INSTA=1 $(MAKE) demo
 
 test_cli: build

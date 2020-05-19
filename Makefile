@@ -277,7 +277,7 @@ test_profile: build
 	! ./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,RA11'
 	echo "\n##### All profile tests succeeded #####"
 
-all:	build test
+all:	build doc test
 
 doc: doc/cmpClient-cli.md
 

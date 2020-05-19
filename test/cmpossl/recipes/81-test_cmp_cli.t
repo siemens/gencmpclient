@@ -38,7 +38,7 @@ my $app = "cmpClient";
 my $test_config = "test_config.cnf";
 
 my @cmp_basic_tests = (
-    [ "output help",                      [ "-help"], 0 ],
+    [ "show help",                        [ "-help"], 0 ],
     [ "unknown CLI parameter",            [ "-config", $test_config, "-asdffdsa"], 1 ],
     [ "bad int syntax: non-digit",        [ "-config", $test_config, "-days", "a/" ], 1 ],
     [ "bad int syntax: float",            [ "-config", $test_config, "-days", "3.14" ], 1 ],
@@ -53,6 +53,7 @@ my $server_dn;  # The server's Distinguished Name
 my $server_cn;  # The server's domain name
 my $server_ip;  # The server's IP address
 my $server_port;# The server's port
+my $server_tls; # The server's TLSP port, if any, or 0
 my $server_cert;# The server's cert
 my $secret;     # The secret for PBM
 my $column;     # The column number of the expected result
@@ -68,21 +69,23 @@ sub load_server_config {
         } elsif (m/\[\s*.*?\s*\]/) {
             $active = 0;
         } elsif ($active) {
-            $ca_dn = $1 if m/\s*recipient\s*=\s*(.*)?\s*$/;
-            $server_dn = $1 if m/\s*ra\s*=\s*(.*)?\s*$/;
-            $server_cn = $1 if m/\s*server_cn\s*=\s*(.*)?\s*$/;
-            $server_ip = $1 if m/\s*server_ip\s*=\s*(.*)?\s*$/;
-            $server_port = $1 if m/\s*server_port\s*=\s*(.*)?\s*$/;
-            $server_cert = $1 if m/\s*server_cert\s*=\s*(.*)?\s*$/;
-            $secret = $1 if m/\s*pbm_secret\s*=\s*(.*)?\s*$/;
-            $column = $1 if m/\s*column\s*=\s*(.*)?\s*$/;
-            $sleep = $1 if m/\s*sleep\s*=\s*(.*)?\s*$/;
+            $ca_dn       = $1 eq "" ? '""""' : $1 if m/^\s*ca_dn\s*=\s*(.*)?\s*$/;
+            $server_dn   = $1 eq "" ? '""""' : $1 if m/^\s*ra\s*=\s*(.*)?\s*$/;
+            $server_cn   = $1 eq "" ? '""""' : $1 if m/^\s*server_cn\s*=\s*(.*)?\s*$/;
+            $server_ip   = $1 eq "" ? '""""' : $1 if m/^\s*server_ip\s*=\s*(.*)?\s*$/;
+            $server_port = $1 eq "" ? '""""' : $1 if m/^\s*server_port\s*=\s*(.*)?\s*$/;
+            $server_tls  = $1 eq "" ? '""""' : $1 if m/^\s*server_tls\s*=\s*(.*)?\s*$/;
+            $server_cert = $1 eq "" ? '""""' : $1 if m/^\s*server_cert\s*=\s*(.*)?\s*$/;
+            $secret      = $1 eq "" ? '""""' : $1 if m/^\s*pbm_secret\s*=\s*(.*)?\s*$/;
+            $column      = $1 eq "" ? '""""' : $1 if m/^\s*column\s*=\s*(.*)?\s*$/;
+            $sleep       = $1 eq "" ? '""""' : $1 if m/^\s*sleep\s*=\s*(.*)?\s*$/;
         }
     }
     close CH;
     die "Cannot find all CMP server config values in $test_config section [$name]\n"
-        if !defined $ca_dn || !defined $server_cn || !defined $server_ip || !defined $server_port ||
-           !defined $server_cert || !defined $secret || !defined $column || !defined $sleep;
+        if !defined $ca_dn || !defined $server_cn || !defined $server_ip
+        || !defined $server_port || !defined $server_tls || !defined $server_cert
+        || !defined $secret || !defined $column || !defined $sleep;
     $server_dn = $server_dn // $ca_dn;
 }
 
@@ -103,6 +106,8 @@ if ($ENV{HARNESS_FAILLOG}) {
 sub test_cmp_cli {
     my $name = shift;
     my $aspect = shift;
+    my $n = shift;
+    my $i = shift;
     my $title = shift;
     my $params = shift;
     my $expected_exit = shift;
@@ -112,7 +117,8 @@ sub test_cmp_cli {
         my $OK = $actual_exit == $expected_exit;
         if ($faillog && !$OK) {
             my $invocation = ("$path_app ").join(' ', map { $_ eq "" ? '""' : $_ =~ m/ / ? '"'.$_.'"' : $_ } @$params);
-            print $faillog "$name $aspect \"$title\" expected=$expected_exit actual=$actual_exit     ".$invocation."\n";
+            print $faillog "$name $aspect \"$title\" ($i/$n) expected=$expected_exit actual=$actual_exit\n";
+            print $faillog "$invocation\n\n";
         }
         return $OK; } },
          sub { ok(run(cmd([$path_app, @$params,])),
@@ -124,10 +130,12 @@ sub test_cmp_cli_aspect {
     my $aspect = shift;
     my $tests = shift;
     subtest "CMP app CLI $name $aspect\n" => sub {
-        plan tests => scalar @$tests;
+        my $n = scalar @$tests;
+        plan tests => $n;
+        my $i = 1;
         foreach (@$tests) {
           SKIP: {
-              test_cmp_cli($name, $aspect, $$_[0], $$_[1], $$_[2]);
+              test_cmp_cli($name, $aspect, $n, $i++, $$_[0], $$_[1], $$_[2]);
               sleep($sleep);
             }
         }
@@ -137,20 +145,20 @@ sub test_cmp_cli_aspect {
 indir "../cmpossl/test/recipes/81-test_cmp_cli_data" => sub {
     plan tests => 1 + @server_configurations * @all_aspects;
 
-    test_cmp_cli_aspect("CLI", "basic", \@cmp_basic_tests);
+    test_cmp_cli_aspect("basic", "options", \@cmp_basic_tests);
 
     # TODO: complete and thoroughly review _all_ of the around 500 test cases
-    foreach my $name (@server_configurations) {
-        $name = chop_dblquot($name);
-        load_server_config($name);
+    foreach my $server_name (@server_configurations) {
+        $server_name = chop_dblquot($server_name);
+        load_server_config($server_name);
         foreach my $aspect (@all_aspects) {
             $aspect = chop_dblquot($aspect);
-            if (not($name =~ m/Insta/)) { # do not update aspect-specific settings for Insta
+            if (not($server_name =~ m/Insta/)) { # do not update aspect-specific settings for Insta
             load_server_config($aspect); # update with any aspect-specific settings
             }
-            indir $name => sub {
-                my $tests = load_tests($name, $aspect);
-                test_cmp_cli_aspect($name, $aspect, $tests);
+            indir $server_name => sub {
+                my $tests = load_tests($server_name, $aspect);
+                test_cmp_cli_aspect($server_name, $aspect, $tests);
             };
         };
     };
@@ -174,6 +182,7 @@ sub load_tests {
         $line =~ s{_SERVER_CN}{$server_cn}g;
         $line =~ s{_SERVER_IP}{$server_ip}g;
         $line =~ s{_SERVER_PORT}{$server_port}g;
+        $line =~ s{_SERVER_TLS}{$server_tls}g;
         $line =~ s{_SRVCERT}{$server_cert}g;
         $line =~ s{_SECRET}{$secret}g;
         next LOOP if $no_proxy && $no_proxy =~ $server_cn && $line =~ m/,-proxy,/;

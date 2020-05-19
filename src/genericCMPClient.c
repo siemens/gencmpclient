@@ -56,13 +56,11 @@ X509_NAME *UTIL_parse_name(const char *dn, long chtype, bool multirdn);
 
 EVP_PKEY* FILES_load_key_autofmt(OPTIONAL const char* key, sec_file_format file_format, bool maybe_stdin,
                                  OPTIONAL const char* pass, OPTIONAL const char* engine, OPTIONAL const char* desc);
-X509* FILES_load_cert(const char* file, sec_file_format format, OPTIONAL const char* pass, OPTIONAL const char* desc);
+X509* FILES_load_cert(const char* file, sec_file_format format, OPTIONAL const char* source, OPTIONAL const char* desc);
 bool FILES_store_cert(const X509* cert, const char* file, sec_file_format format, OPTIONAL const char* desc);
 int FILES_store_certs(const STACK_OF(X509) * certs, const char* file, sec_file_format format,
                       OPTIONAL const char* desc);
-STACK_OF(X509) *FILES_load_certs_multi(const char *files, sec_file_format format,
-                                       OPTIONAL const char *pass,
-                                       OPTIONAL const char *desc);
+STACK_OF(X509) *FILES_load_certs_multi(const char *files, sec_file_format format, OPTIONAL const char *source,OPTIONAL const char *desc);
 X509_REQ* FILES_load_csr_autofmt(const char* file, sec_file_format format, OPTIONAL const char* desc);
 STACK_OF(X509_CRL) *FILES_load_crls_multi(const char *files, sec_file_format format,
                                           int timeout, const char *desc);
@@ -691,9 +689,9 @@ EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
 }
 
 inline
-X509* CERT_load(const char *file, OPTIONAL const char *pass, OPTIONAL const char *desc)
+X509* CERT_load(const char *file, OPTIONAL const char *source, OPTIONAL const char *desc)
 {
-    return FILES_load_cert(file, FILES_get_format(file), pass, desc);
+    return FILES_load_cert(file, FILES_get_format(file), source, desc);
 }
 
 inline
@@ -718,7 +716,7 @@ X509_REQ *CSR_load(const char *file, OPTIONAL const char *desc)
 inline
 STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc)
 {
-    return FILES_load_certs_multi(files, FORMAT_PEM, NULL /* pass */, desc);
+    return FILES_load_certs_multi(files, FORMAT_PEM, NULL /* password source */, desc);
 }
 
 inline

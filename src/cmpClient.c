@@ -53,7 +53,7 @@ int UTIL_atoint(const char* str); /* returns INT_MIN on error */
 #define LOG_warn(msg) LOG(FL_WARN, msg)   /*!< simple warning message */
 
 /* files.h */
-const char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc);
+char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc);
 
 /* credentials.h */
 
@@ -769,12 +769,15 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
 
     if (opt_secret != NULL || opt_key != NULL) {
         const char *const creds_desc = "credentials for CMP level";
-        const char *pass = FILES_get_pass(opt_secret, "PBM-based message protection");
-        cmp_creds = (opt_secret != NULL && opt_ref != NULL)
-            || (use_case != update && use_case != revocation && opt_secret != NULL)
+        if ((opt_secret != NULL && opt_ref != NULL)
+            || (use_case != update && use_case != revocation && opt_secret != NULL)) {
             /* use PBM except for kur and rr if secret is present */
-            ? CREDENTIALS_new(NULL, NULL, NULL, pass, opt_ref)
-            : CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
+            char *secret = FILES_get_pass(opt_secret, "PBM-based message protection");
+            cmp_creds = CREDENTIALS_new(NULL, NULL, NULL, secret, opt_ref);
+            UTIL_cleanse_free(secret);
+        } else {
+            cmp_creds = CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
+        }
         if (cmp_creds == NULL) {
             LOG(FL_ERR, "Unable to set up %s", creds_desc);
             goto err;
@@ -933,7 +936,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     bool crl_check = opt_crls != NULL || opt_use_cdp || opt_cdps != NULL;
     bool ocsp_check = opt_use_aia || opt_ocsp != NULL;
     if (opt_crls_timeout >= 0 && !opt_use_cdp && opt_cdps == NULL) {
-        LOG_warn("Ingoring -crls_timeout since -use_cdp and -cdps options are not given");
+        LOG_warn("Ignoring -crls_timeout since -use_cdp and -cdps options are not given");
     }
     if (opt_ocsp_timeout >= 0 && !ocsp_check) {
         LOG_warn("Ingoring -ocsp_timeout since -use_aia and -ocsp options are not given");
@@ -1061,7 +1064,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     if (use_case != pkcs10 && opt_csr != NULL)
         LOG_warn("-csr option is ignored for commands other than 'p10cr'");
     if (use_case != update && use_case != revocation && opt_oldcert != NULL)
-        LOG_warn("-oldcert option is ignored for commands other than 'kur' and 'rr'");
+        LOG_warn("-oldcert option used only as reference cert for commands other than 'kur' and 'rr'");
     if (use_case == revocation) {
         if (opt_implicit_confirm)
             LOG_warn("-implicit_confirm option is ignored for 'rr' commands");
@@ -1082,6 +1085,12 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     if ((err = setup_transfer(ctx)) != CMP_OK)
         goto err;
 
+    X509 *oldcert = NULL;
+    if (opt_oldcert != NULL)
+        oldcert = CERT_load(opt_oldcert, opt_keypass,
+                            use_case == update ? "certificate to be updated" :
+                            use_case == revocation ? "certificate to be revoked" :
+                            "reference certificate (oldcert)");
     switch (use_case) {
     case imprint:
         err = CMPclient_imprint(ctx, &new_creds, new_pkey, opt_subject, exts);
@@ -1101,16 +1110,10 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         }
         break;
     case update:
-        if (opt_oldcert == NULL) {
+        if (opt_oldcert == NULL)
             err = CMPclient_update(ctx, &new_creds, new_pkey);
-        } else {
-            X509 *oldcert = CERT_load(opt_oldcert, opt_keypass, "certificate to be updated");
-            if (oldcert == NULL)
-                err = 19;
-            else
-                err = CMPclient_update_anycert(ctx, &new_creds, oldcert, new_pkey);
-            X509_free(oldcert);
-        }
+        else
+            err = oldcert == NULL ? 19 : CMPclient_update_anycert(ctx, &new_creds, oldcert, new_pkey);
         break;
     case revocation:
         if ((int)opt_revreason < CRL_REASON_NONE
@@ -1120,20 +1123,14 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             err = 20;
             goto err;
         }
-        {
-            X509 *oldcert = CERT_load(opt_oldcert, opt_keypass, "certificate to be revoked");
-            if (oldcert == NULL)
-                err = 21;
-            else
-                err = CMPclient_revoke(ctx, oldcert, (int)opt_revreason);
-            X509_free(oldcert);
-        }
+        err = oldcert == NULL ? 21 : CMPclient_revoke(ctx, oldcert, (int)opt_revreason);
         /* SimpleLra does not accept CRL_REASON_NONE: "missing crlEntryDetails for REVOCATION_REQ" */
         break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);
         err = 21;
     }
+    X509_free(oldcert);
     if (err != CMP_OK) {
         LOG_err("Failed to perform CMP request");
         goto err;

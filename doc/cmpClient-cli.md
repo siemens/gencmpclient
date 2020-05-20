@@ -171,10 +171,11 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 - **-trusted** _filenames_
 
     When verifying signature-based protection of CMP response messages,
-    use a trust store containing the given certificate(s) as trusted
-    while verifying certificates during CMP server authentication.
-    This option gives more flexibility than the **-srvcert** option because
-    it does not pin down the expected CMP server by allowing only one certificate.
+    these are the CA certificate(s) to trust while checking certificate chains
+    during CMP server authentication.
+    This option gives more flexibility than the **-srvcert** option because the
+    protection certificate is not pinned but may be any certificate
+    for which a chain to one of the given trusted certificates can be constructed.
 
     Multiple filenames may be given, separated by commas and/or whitespace.
     Each source may contain multiple certificates.
@@ -194,53 +195,44 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
 - **-srvcert** _filename_
 
-    The specific CMP server certificate to use and directly trust (even if it is
+    The specific CMP server certificate to expect and directly trust (even if it is
     expired) when verifying signature-based protection of CMP response messages.
-    May be set alternatively to the **-trusted** option
-    if the certificate is available and only this one shall be accepted.
+    May be set alternatively to the **-trusted** option to pin the accepted server.
 
-    If set, the issuer of the certificate is also used as the recipient of the CMP
-    request and as the expected sender of the CMP response,
-    overriding any potential **-recipient** option.
+    If set, the subject of the certificate is also used
+    as default value for the recipient of CMP requests
+    and as default value for the expected sender of CMP responses.
 
 - **-recipient** _name_
 
-    Distinguished Name (DN) of the CMP message recipient,
+    Distinguished Name (DN) to use in the recipient field of CMP request messages,
     i.e., the CMP server (usually a CA or RA entity).
 
     The argument must be formatted as _/type0=value0/type1=value1/type2=..._,
     characters may be escaped by `\` (backslash), no spaces are skipped.
 
-    If a CMP server certificate is given with the **-srvcert** option, its subject
-    name is taken as the recipient name and the **-recipient** option is ignored.
-    If neither of the two are given, the recipient of the PKI message is
-    determined in the following order: from the **-issuer** option if present,
-    the issuer of old cert given with the **-oldcert** option if present,
-    the issuer of the client certificate (**-cert** option) if present.
-
-    Setting the recipient field in the CMP header is mandatory.
-    If none of the above options allowing to derive the recipient name is given,
-    no suitable value for the recipient in the PKIHeader is available.
-    As last resort it is set to NULL-DN.
-
-    When a response is received, its sender must match the recipient of the request.
+    The recipient field in the header of a CMP message is mandatory.
+    If not given explicitly the recipient is determined in the following order:
+    the subject of the CMP server certificate given with the **-srvcert** option
+    if present, the **-issuer** option if present,
+    the issuer of the certificate given with the **-oldcert** option if present,
+    the issuer of the CMP client certificate (**-cert** option) if present,
+    or else the NULL-DN as last resort.
 
 - **-expect\_sender** _name_
 
-    Distinguished Name (DN) of the expected sender of CMP response messages when
-    MSG\_SIG\_ALG is used for protection.
-    This can be used to ensure that only a particular entity is accepted
-    to act as CMP server, and attackers are not able to use arbitrary certificates
-    of a trusted PKI hieararchy to fraudulently pose as CMP server.
-    Note that this option gives slightly more freedom than **-srvcert**,
-    which pins down the server to a particular certificate,
-    while **-expect\_sender** _name_ will continue to match after updates of the
-    server cert.
+    Distinguished Name (DN) expected in the sender field of response messages.
+    Defaults to the subject DN of the pinned **-srvcert**, if any.
 
     The argument must be formatted as _/type0=value0/type1=value1/type2=..._,
     characters may be escaped by `\` (backslash), no spaces are skipped.
 
-    If not given, the subject DN of **-srvcert**, if provided, will be used.
+    This can be used to make sure that only a particular entity is accepted as
+    CMP message signer, and attackers are not able to use arbitrary certificates
+    of a trusted PKI hieararchy to fraudulently pose as CMP server.
+    Note that this option gives slightly more freedom than setting the **-srvcert**,
+    which pins the server to the holder of a particular certificate, while the
+    expected sender name will continue to match after updates of the server cert.
 
 - **-ignore\_keyusage**
 

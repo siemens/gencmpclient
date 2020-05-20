@@ -888,10 +888,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         goto err;
     }
     if (use_case == update) {
-        if (opt_secret != NULL) {
-            LOG_warn("-secret option is ignored for 'kur' commands");
-            opt_secret = NULL;
-        }
         if (opt_oldcert == NULL && opt_cert != NULL) {
             LOG(FL_INFO, "-oldcert is defaulting to -cert for 'kur' command");
             opt_oldcert = opt_cert;

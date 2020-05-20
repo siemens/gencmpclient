@@ -1092,8 +1092,8 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
                             use_case == revocation ? "certificate to be revoked" :
                             "reference certificate (oldcert)");
         err = 19;
-        if (oldcert == NULL)
-            goto err;
+        if (oldcert == NULL || !OSSL_CMP_CTX_set1_oldCert(ctx, oldcert))
+        goto err;
     }
 
     if ((int)opt_revreason < CRL_REASON_NONE

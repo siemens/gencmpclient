@@ -369,15 +369,11 @@ static bool use_proxy(const char *no_proxy, const char *server)
     return found == NULL;
 }
 
-static int starts_with(const char* prefix, const char* str)
-{
-    return 0 == strncmp(prefix, str, strlen(prefix));
-}
-
 static int is_localhost(const char* host)
 {
-    /* IPv6 is not supported. */
-    return starts_with("127.0.0.1", host) || starts_with("localhost", host);
+    return strcmp(host, "localhost") == 0
+        || strcmp(host, "127.0.0.1") == 0
+        || strcmp(host, "::1") == 0;
 }
 
 CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
@@ -443,7 +439,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 
         /* If server is localhost, we will will proceed without "host verification".
         This will enable Bootstrapping of LRA (by itself) using only SMC which doesn't contain host. */
-        if (is_localhost(server)) {
+        if (is_localhost(addr)) {
             LOG(FL_WARN, "skiping host verification on localhost");
         }
         else {

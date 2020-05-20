@@ -38,11 +38,12 @@ my $app = "cmpClient";
 my $test_config = "test_config.cnf";
 
 my @cmp_basic_tests = (
-    [ "show help",                        [ "-help"], 0 ],
-    [ "unknown CLI parameter",            [ "-config", $test_config, "-asdffdsa"], 1 ],
-    [ "bad int syntax: non-digit",        [ "-config", $test_config, "-days", "a/" ], 1 ],
-    [ "bad int syntax: float",            [ "-config", $test_config, "-days", "3.14" ], 1 ],
-    [ "bad int syntax: trailing garbage", [ "-config", $test_config, "-days", "314_+" ], 1 ],
+    [ "show help",                        [ "-help"                                        ], 0 ],
+    [ "unknown CLI option",               [ "-config", $test_config, "-asdffdsa"           ], 1 ],
+    [ "CLI option not starting with '-'", [ "-config", $test_config, "days", "1"           ], 1 ],
+    [ "bad int syntax: non-digit",        [ "-config", $test_config, "-days", "a/"         ], 1 ],
+    [ "bad int syntax: float",            [ "-config", $test_config, "-days", "3.14"       ], 1 ],
+    [ "bad int syntax: trailing garbage", [ "-config", $test_config, "-days", "314_+"      ], 1 ],
     [ "bad int: out of range",            [ "-config", $test_config, "-days", "2147483648" ], 1 ],
 );
 
@@ -53,7 +54,7 @@ my $server_dn;  # The server's Distinguished Name
 my $server_cn;  # The server's domain name
 my $server_ip;  # The server's IP address
 my $server_port;# The server's port
-my $server_tls; # The server's TLSP port, if any, or 0
+my $server_tls; # The server's TLS port, if any, or 0
 my $server_cert;# The server's cert
 my $secret;     # The secret for PBM
 my $column;     # The column number of the expected result
@@ -70,7 +71,7 @@ sub load_server_config {
             $active = 0;
         } elsif ($active) {
             $ca_dn       = $1 eq "" ? '""""' : $1 if m/^\s*ca_dn\s*=\s*(.*)?\s*$/;
-            $server_dn   = $1 eq "" ? '""""' : $1 if m/^\s*ra\s*=\s*(.*)?\s*$/;
+            $server_dn   = $1 eq "" ? '""""' : $1 if m/^\s*server_dn\s*=\s*(.*)?\s*$/;
             $server_cn   = $1 eq "" ? '""""' : $1 if m/^\s*server_cn\s*=\s*(.*)?\s*$/;
             $server_ip   = $1 eq "" ? '""""' : $1 if m/^\s*server_ip\s*=\s*(.*)?\s*$/;
             $server_port = $1 eq "" ? '""""' : $1 if m/^\s*server_port\s*=\s*(.*)?\s*$/;

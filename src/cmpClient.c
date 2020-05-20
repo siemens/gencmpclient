@@ -888,9 +888,9 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             LOG_warn("-secret option is ignored for 'kur' commands");
             opt_secret = NULL;
         }
-        if (opt_cert == NULL && opt_oldcert != NULL) {
-            LOG(FL_INFO, "-oldcert is defaulting to -cert");
-            opt_cert = opt_oldcert;
+        if (opt_oldcert == NULL && opt_cert != NULL) {
+            LOG(FL_INFO, "-oldcert is defaulting to -cert for 'kur' command");
+            opt_oldcert = opt_cert;
         }
         if (opt_key == NULL && opt_keypass == NULL) {
             LOG(FL_INFO, "-newkey and -newkeypass are defaulting to -key and -keypass");
@@ -1074,7 +1074,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             LOG_warn("-certout option is ignored for 'rr' commands");
     } else {
         if (opt_revreason != CRL_REASON_NONE)
-            LOG_warn("-revreason option is ignored for commands other than 'rr'");
+            LOG_warn("-revreason option given for commands other than 'rr'");
     }
 
     if (opt_tls_cert != NULL || opt_tls_key != NULL || opt_tls_keypass != NULL
@@ -1086,11 +1086,24 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         goto err;
 
     X509 *oldcert = NULL;
-    if (opt_oldcert != NULL)
+    if (opt_oldcert != NULL) {
         oldcert = CERT_load(opt_oldcert, opt_keypass,
                             use_case == update ? "certificate to be updated" :
                             use_case == revocation ? "certificate to be revoked" :
                             "reference certificate (oldcert)");
+        err = 19;
+        if (oldcert == NULL)
+            goto err;
+    }
+
+    if ((int)opt_revreason < CRL_REASON_NONE
+        || (int)opt_revreason > CRL_REASON_AA_COMPROMISE
+        || (int)opt_revreason == 7) {
+        LOG_err("Invalid revreason given. Valid values are -1..6, 8..10");
+        err = 20;
+        goto err;
+    }
+
     switch (use_case) {
     case imprint:
         err = CMPclient_imprint(ctx, &new_creds, new_pkey, opt_subject, exts);
@@ -1113,17 +1126,10 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         if (opt_oldcert == NULL)
             err = CMPclient_update(ctx, &new_creds, new_pkey);
         else
-            err = oldcert == NULL ? 19 : CMPclient_update_anycert(ctx, &new_creds, oldcert, new_pkey);
+            err = CMPclient_update_anycert(ctx, &new_creds, oldcert, new_pkey);
         break;
     case revocation:
-        if ((int)opt_revreason < CRL_REASON_NONE
-                || (int)opt_revreason > CRL_REASON_AA_COMPROMISE
-                || (int)opt_revreason == 7) {
-            LOG_err("Invalid revreason given. Valid values are -1..6, 8..10");
-            err = 20;
-            goto err;
-        }
-        err = oldcert == NULL ? 21 : CMPclient_revoke(ctx, oldcert, (int)opt_revreason);
+        err = CMPclient_revoke(ctx, oldcert, (int)opt_revreason);
         /* SimpleLra does not accept CRL_REASON_NONE: "missing crlEntryDetails for REVOCATION_REQ" */
         break;
     default:

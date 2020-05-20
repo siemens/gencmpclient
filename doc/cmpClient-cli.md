@@ -539,8 +539,9 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
     The reference certificate determined in this way, if any, is also used for
     deriving default subject DN and Subject Alternative Names for IR, CR, and KUR.
-    Its issuer, if any, is used as default recipient in the CMP message header
-    if neither **-srvcert**, **-recipient**, nor **-issuer** is available.
+    Its subject is used as sender in CMP message headers if **-cert** is not given.
+    Its issuer is used as default recipient in CMP message headers
+    if neither **-recipient**, **-srvcert**, nor **-issuer** is given.
 
 - **-revreason** _number_
 

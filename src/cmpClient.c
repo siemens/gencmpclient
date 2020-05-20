@@ -883,6 +883,10 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     if (opt_infotype != NULL) /* TODO? implement when genm is supported */
         LOG_warn("-infotype option is ignored as long as 'genm' is not supported");
 
+    if (!opt_secret && ((opt_cert == NULL) != (opt_key == NULL))) {
+        LOG_err("Must give both -cert and -key options or neither");
+        goto err;
+    }
     if (use_case == update) {
         if (opt_secret != NULL) {
             LOG_warn("-secret option is ignored for 'kur' commands");
@@ -910,10 +914,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         /* ossl_cmp_hdr_init() takes sender name from cert or else subject */
         /* TODO maybe else take as sender default the subjectName of oldCert or p10cr */
         LOG_err("Must give -ref if no -cert and no -subject given");
-        goto err;
-    }
-    if (!opt_secret && ((opt_cert == NULL) != (opt_key == NULL))) {
-        LOG_err("Must give both -cert and -key options or neither");
         goto err;
     }
 

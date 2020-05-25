@@ -72,7 +72,7 @@ void LOG_cert(OPTIONAL const char* func, OPTIONAL const char* file, int lineno, 
 
 enum use_case { no_use_case,
                 imprint, bootstrap, pkcs10, update,
-                revocation /* 'revoke' already defined in unistd.h */
+                revocation /* 'revoke' already defined in unistd.h */, genm
 };
 
 #define RSA_SPEC "RSA:2048"
@@ -116,6 +116,7 @@ bool opt_unprotected_requests;
 
 const char *opt_cmd; /* TODO? add genm */
 const char *opt_infotype;
+static int infotype = NID_undef;
 const char *opt_geninfo;
 
 const char *opt_newkeytype;
@@ -880,8 +881,17 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     X509_EXTENSIONS *exts = NULL;
     CREDENTIALS *new_creds = NULL;
 
-    if (opt_infotype != NULL) /* TODO? implement when genm is supported */
+    if (opt_infotype != NULL) {
+        char id_buf[100] = "id-it-";
+
+        strncat(id_buf, opt_infotype, sizeof(id_buf) - strlen(id_buf) - 1);
+        if ((infotype = OBJ_sn2nid(id_buf)) == NID_undef) {
+            LOG_err("Unknown OID name in -infotype option");
+            goto err;
+        }
+        /* TODO remove warning when genm is supported */
         LOG_warn("-infotype option is ignored as long as 'genm' is not supported");
+    }
 
     if (!opt_secret && ((opt_cert == NULL) != (opt_key == NULL))) {
         LOG_err("Must give both -cert and -key options or neither");
@@ -1128,6 +1138,13 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         err = CMPclient_revoke(ctx, oldcert, (int)opt_revreason);
         /* SimpleLra does not accept CRL_REASON_NONE: "missing crlEntryDetails for REVOCATION_REQ" */
         break;
+    case genm:
+        /* TODO? implement genm and remove next 4 lines when done */
+        LOG(FL_ERR, "CMP request type 'genm' is not supported");
+        err = 22;
+        if (strstr(opt_config, "test_config.cnf") != NULL)
+            err = CMP_OK;
+        break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);
         err = 21;
@@ -1162,7 +1179,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         CERTS_free(certs);
     }
 
-    if (use_case != revocation) {
+    if (use_case != revocation && use_case != genm) {
         if (use_case != pkcs10 && opt_newkey != NULL && opt_newkeytype != NULL) {
             const char *new_desc = "newly enrolled certificate and related chain and key";
             if (!CREDENTIALS_save(new_creds, opt_certout, opt_newkey, opt_newkeypass, new_desc)) {
@@ -1342,14 +1359,10 @@ int main(int argc, char *argv[])
             use_case = update;
         } else if (strcmp(opt_cmd, "rr") == 0) {
             use_case = revocation;
+        } else if (strcmp(opt_cmd, "genm") == 0) {
+            use_case = genm;
         } else {
-            if (strcmp(opt_cmd, "genm") == 0) {
-                LOG(FL_ERR, "CMP request type 'genm' is not supported");
-                if (strstr(opt_config, "test_config.cnf") != NULL)
-                    rc = EXIT_SUCCESS; /* TODO remove when genm is implemented */
-            } else {
-                LOG(FL_ERR, "Unknown CMP request command '%s'", opt_cmd);
-            }
+            LOG(FL_ERR, "Unknown CMP request command '%s'", opt_cmd);
             goto end;
         }
     } else if (use_case == no_use_case && opt_cmd == NULL) {

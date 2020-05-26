@@ -31,7 +31,7 @@ sub chop_dblquot { # chop any leading & trailing '"' (needed for Windows)
 
 my $proxy = "<EMPTY>";
 $proxy = chop_dblquot($ENV{http_proxy} // $ENV{HTTP_PROXY} // $proxy);
-$proxy =~ s{http://}{};
+$proxy =~ s{^https?://}{}i;
 my $no_proxy = $ENV{no_proxy} // $ENV{NO_PROXY};
 
 my $app = "cmpClient";
@@ -184,10 +184,11 @@ sub load_tests {
         $line =~ s{_SERVER_IP}{$server_ip}g;
         $line =~ s{_SERVER_PORT}{$server_port}g;
         $line =~ s{_SERVER_TLS}{$server_tls}g;
-        $line =~ s{_SRVCERT}{$server_cert}g;
+        $line =~ s{_SERVER_CERT}{$server_cert}g;
         $line =~ s{_SECRET}{$secret}g;
-        next LOOP if $no_proxy && $no_proxy =~ $server_cn && $line =~ m/,-proxy,/;
-        $line =~ s{-section,,}{-section,,-proxy,$proxy,} unless $line =~ m/,-proxy,/;
+        my $noproxy = $line =~ m/,\s*-no_proxy\s*,(.*?)(,|$)/ ? $1 : $no_proxy;
+        next LOOP if $no_proxy && ($noproxy =~ $server_cn || $noproxy =~ $server_ip) && $line =~ m/,\s*-proxy\s*,/;
+        $line =~ s{-section,,}{-section,,-proxy,$proxy,} unless $line =~ m/,\s*-proxy\s*,/;
         $line =~ s{-section,,}{-config,../$test_config,-section,$name $aspect,};
         my @fields = grep /\S/, split ",", $line;
         s/^<EMPTY>$// for (@fields); # used for proxy=""

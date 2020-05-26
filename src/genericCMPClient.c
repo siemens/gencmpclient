@@ -417,6 +417,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         proxy = NULL;
     if (proxy != NULL && !use_proxy(no_proxy, /* server */ addr))
         proxy = NULL;
+    /* TODO use !OSSL_CMP_CTX_set1_no_proxy() when available */
     if (proxy != NULL) {
         if (strncmp(proxy, URL_HTTP_PREFIX, strlen(URL_HTTP_PREFIX)) == 0)
             proxy += strlen(URL_HTTP_PREFIX);

@@ -33,46 +33,11 @@ typedef int CMP_err;
 
 /* # define LOCAL_DEFS */
 # ifdef LOCAL_DEFS
-#  ifndef OPTIONAL
-
-#   ifndef __cplusplus
-typedef enum { false = 0, true = 1 } bool; /* Boolean value */
-#   endif
-
-#   define OPTIONAL /* marker for non-required parameter, i.e., NULL allowed */
-
-typedef struct credentials {
-    OPTIONAL EVP_PKEY *pkey;        /* can refer to HW key store via engine */
-    OPTIONAL X509     *cert;        /* related certificate */
-    OPTIONAL STACK_OF(X509) *chain; /* intermediate/extra certs for cert */
-    OPTIONAL const char *pwd;       /* alternative: password (shared secret) */
-    OPTIONAL const char *pwdref;    /* reference identifying the password */
-} CREDENTIALS;
-
-#  endif /* OPTIONAL */
-#  ifndef FL_EMERG
-
-typedef int severity;
-#define LOG_EMERG   0 // A panic condition was reported to all processes.
-#define LOG_ALERT   1 // A condition that should be corrected immediately.
-#define LOG_CRIT    2 // A critical condition.
-#define LOG_ERR     3 // An error message.
-#define LOG_WARNING 4 // A warning message.
-#define LOG_NOTICE  5 // A condition requiring special handling.
-#define LOG_INFO    6 // A general information message.
-#define LOG_DEBUG   7 // A message useful for debugging programs.
-#define LOG_TRACE   8 // A verbose message useful for detailed debugging.
-
-typedef bool (*LOG_cb_t)(OPTIONAL const char* func, OPTIONAL const char* file, int lineno, severity level, const char* msg);
-
-#  endif /* FL_EMERG */
-# else /* LOCAL_DEFS */
-
+#  include "genericCMPClient_imports.h"
+# else
 #  include <SecUtils/credentials/credentials.h>
 #  include <SecUtils/util/log.h>
-
-# endif /* LOCAL_DEFS */
-
+# endif
 
 /* CMP client core functions */
 /* should be called once, as soon as the application starts */
@@ -157,50 +122,12 @@ void CMPclient_finish(CMP_CTX *ctx);
 
 /* CREDENTIALS helpers */
 # ifdef LOCAL_DEFS
-CREDENTIALS *CREDENTIALS_new(OPTIONAL const EVP_PKEY *pkey,
-                             OPTIONAL const X509 *cert,
-                             OPTIONAL const STACK_OF(X509) *chain,
-                             OPTIONAL const char *pwd,
-                             OPTIONAL const char *pwdref);
-void CREDENTIALS_free(OPTIONAL CREDENTIALS *creds);
-CREDENTIALS *CREDENTIALS_load(OPTIONAL const char *certs,
-                              OPTIONAL const char *key,
-                              OPTIONAL const char *source,
-                              OPTIONAL const char *desc /* for error msgs */);
-bool CREDENTIALS_save(const CREDENTIALS *creds,
-                      OPTIONAL const char *certs, OPTIONAL const char *key,
-                      OPTIONAL const char *source, OPTIONAL const char *desc);
-X509 *CREDENTIALS_get_cert(const CREDENTIALS *creds);
-STACK_OF(X509) *CREDENTIALS_get_chain(const CREDENTIALS *creds);
-
-/* FILE helpers */
-enum
-{
-    B_FORMAT_TEXT = 0x8000
-};
-typedef enum
-{
-    FORMAT_UNDEF = 0,               /*! undefined file format */
-    FORMAT_ASN1 = 4,                /*! ASN.1/DER */
-    FORMAT_PEM = 5 | B_FORMAT_TEXT, /*! PEM */
-    FORMAT_PKCS12 = 6,              /*! PKCS#12 */
-    FORMAT_ENGINE = 8,              /*! crypto engine, which is not really a file format */
-    FORMAT_HTTP = 13                /*! download using HTTP */
-} sec_file_format;                  /*! type of format for security-related files or other input */
-sec_file_format FILES_get_format(const char* filename);
-
-/* LOG helpers */
-bool LOG(OPTIONAL const char *func, OPTIONAL const char *file,
-         int lineno, OPTIONAL severity level, const char *fmt, ...);
-
-void LOG_set_verbosity(severity level);
-void LOG_set_name(OPTIONAL const char *name);
-void LOG_close(void);
-
+#  include "genericCMPClient_imports.h"
+# else
+#  include <SecUtils/credentials/key.h>
+# endif
 
 /* X509_STORE helpers */
-# endif /* LOCAL_DEFS */
-
 EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
                    OPTIONAL const char *engine, OPTIONAL const char *desc);
 X509* CERT_load(const char *file, OPTIONAL const char *pass, OPTIONAL const char *desc);
@@ -210,58 +137,34 @@ void CERTS_free(OPTIONAL STACK_OF(X509) *certs);
 int CERTS_save(const STACK_OF(X509) *certs, const char *file, OPTIONAL const char *desc);
 X509_REQ *CSR_load(const char *file, OPTIONAL const char *desc);
 
-
 STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout, OPTIONAL const char *desc);
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls);
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
 # ifdef LOCAL_DEFS
-bool STORE_add_crls(X509_STORE *truststore, OPTIONAL const STACK_OF(X509_CRL) *crls);
-/* also sets certificate verification callback: */
-bool STORE_set_parameters(X509_STORE *truststore,
-                          OPTIONAL const X509_VERIFY_PARAM *vpm,
-                          bool full_chain, bool try_stapling,
-                          OPTIONAL const STACK_OF(X509_CRL) *crls,
-                          bool use_CDP, OPTIONAL const char *cdps, int crls_timeout,
-                          bool use_AIA, OPTIONAL const char *ocsp, int ocsp_timeout);
-typedef X509_CRL *(*CONN_load_crl_cb_t)(OPTIONAL void *arg,
-                                        OPTIONAL const char *url, int timeout,
-                                        const X509 *cert, OPTIONAL const char *desc);
-bool STORE_set_crl_callback(X509_STORE *store,
-                            OPTIONAL CONN_load_crl_cb_t crl_cb,
-                            OPTIONAL void* crl_cb_arg);
-bool STORE_set1_host_ip(X509_STORE *truststore, const char *host, const char *ip);
-void STORE_free(OPTIONAL X509_STORE *truststore);
-
-/* EVP_PKEY helpers */
-EVP_PKEY *KEY_new(const char *spec); /* spec may be "RSA:<length>" or "EC:<curve>" */
-void KEY_free(OPTIONAL EVP_PKEY *pkey);
+#  include "genericCMPClient_imports.h"
+# else
+#  include <SecUtils/credentials/store.h>
+# endif
 
 /* SSL_CTX helpers for HTTPS */
-# endif /* LOCAL_DEFS */
 # ifndef SEC_NO_TLS
+#  ifdef LOCAL_DEFS
+#   include "genericCMPClient_imports.h"
+#  else
+#   include <SecUtils/connections/tls.h>
+#  endif
 SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
                  OPTIONAL const STACK_OF(X509) *untrusted,
                  OPTIONAL const CREDENTIALS *creds,
                  OPTIONAL const char *ciphers, int security_level);
 void TLS_free(OPTIONAL SSL_CTX *tls);
 # endif
-# ifdef LOCAL_DEFS
 
 /* X509_EXTENSIONS helpers */
-X509_EXTENSIONS *EXTENSIONS_new(void);
-/* add optionally critical Subject Alternative Names (SAN) to exts */
-bool EXTENSIONS_add_SANs(X509_EXTENSIONS *exts, const char *spec);
-/* add extension such as (extended) key usages, basic constraints, policies */
-bool EXTENSIONS_add_ext(X509_EXTENSIONS *exts, const char *name,
-                        const char *spec, OPTIONAL BIO *sections);
-void EXTENSIONS_free(OPTIONAL X509_EXTENSIONS *exts);
-
-# else /* LOCAL_DEFS */
-
-#  include <SecUtils/credentials/store.h>
-#  include <SecUtils/credentials/key.h>
+# ifdef LOCAL_DEFS
+#  include "genericCMPClient_imports.h"
+# else
 #  include <SecUtils/util/extensions.h>
-
-# endif /* LOCAL_DEFS */
+# endif
 
 #endif /* GENERIC_CMP_CLIENT_H */

@@ -22,53 +22,9 @@
 /* needed for OSSL_CMP_ITAV_gen() in function CMPclient(), TODO remove */
 #include "../cmpossl/crypto/cmp/cmp_local.h"
 
-#ifdef LOCAL_DEFS /* helper functions not documented in API spec */
-
-/* util.h */
-#include <string.h>  /* for strcmp, strlen */
-char* UTIL_next_item(char* str);
-X509_NAME* UTIL_parse_name(const char* dn, long chtype, bool multirdn);
-int UTIL_atoint(const char* str); /* returns INT_MIN on error */
-
-/* log.h */
-#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901)
-#define LOG_FUNC __func__ /* function name is only available starting from C99.*/
-/* Trying platform-specific and compiler-specific alternatives as fallback if possible. */
-#elif defined(__STDC__) && defined(PEDANTIC)
-#define LOG_FUNC "(PEDANTIC disallows function name)"
-#elif defined(WIN32) || defined(__GNUC__) || defined(__GNUG__)
-#define LOG_FUNC __FUNCTION__
-#elif defined(__FUNCSIG__)
-#define LOG_FUNC __FUNCSIG__
-#else
-#define LOG_FUNC "(unknown function)"
+#ifdef LOCAL_DEFS
+# include "genericCMPClient_use.h"
 #endif
-#define LOG_FUNC_FILE_LINE LOG_FUNC, OPENSSL_FILE, OPENSSL_LINE
-#define FL_ERR LOG_FUNC_FILE_LINE, LOG_ERR      /*!< An error message. */
-#define FL_WARN LOG_FUNC_FILE_LINE, LOG_WARNING /*!< A warning message. */
-#define FL_INFO LOG_FUNC_FILE_LINE, LOG_INFO    /*!< A general information message. */
-#define FL_DEBUG LOG_FUNC_FILE_LINE, LOG_DEBUG  /*!< A message useful for debugging programs. */
-#define FL_TRACE LOG_FUNC_FILE_LINE, LOG_TRACE /*!< A verbose message useful for detailed debugging. */
-#define LOG_err(msg) LOG(FL_ERR, msg)     /*!< simple error message */
-#define LOG_warn(msg) LOG(FL_WARN, msg)   /*!< simple warning message */
-
-/* files.h */
-char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc);
-
-/* credentials.h */
-
-/* store.h */
-
-/* certstatus.h */
-#define X509_V_FLAG_STATUS_CHECK_ANY 0x1000000 /* any cert containing CDP/AIA */
-#ifndef OPENSSL_NO_OCSP
-# include <openssl/ocsp.h>
-# define X509_V_FLAG_OCSP_LAST       0x8000000 /* Try OCSP last (after CRLs) */
-#endif /* !defined(OPENSSL_NO_OCSP) */
-void LOG_cert(OPTIONAL const char* func, OPTIONAL const char* file, int lineno, severity level,
-              const char* msg, const X509* cert);
-
-#endif /* LOCAL_DEFS */ /* end helper functions not documented in API spec */
 
 enum use_case { no_use_case,
                 imprint, bootstrap, pkcs10, update,

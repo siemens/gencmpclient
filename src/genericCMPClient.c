@@ -22,77 +22,15 @@ STACK_OF(X509_EXTENSION) *(*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTE
 #endif
 
 #ifdef LOCAL_DEFS /* internal helper functions not documented in API spec */
-
-EVP_PKEY *CREDENTIALS_get_pkey(const CREDENTIALS *creds);
-char *CREDENTIALS_get_pwd(const CREDENTIALS *creds);
-char *CREDENTIALS_get_pwdref(const CREDENTIALS *creds);
-
-void LOG_init(OPTIONAL LOG_cb_t log_fn);
-bool LOG_default(OPTIONAL const char* func, OPTIONAL const char* file, int lineno, severity level, const char* msg);
-extern BIO* bio_err;
-
-# if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901)
-#  define LOG_FUNC __func__ /* function name is only available starting from C99. */
-/* Trying platform-specific and compiler-specific alternatives as fallback if possible. */
-# elif defined(__STDC__) && defined(PEDANTIC)
-#  define LOG_FUNC "(PEDANTIC disallows function name)"
-# elif defined(WIN32) || defined(__GNUC__) || defined(__GNUG__)
-#  define LOG_FUNC __FUNCTION__
-# elif defined(__FUNCSIG__)
-#  define LOG_FUNC __FUNCSIG__
-# else
-#  define LOG_FUNC "(unknown function)"
-# endif
-# define LOG_FUNC_FILE_LINE LOG_FUNC, OPENSSL_FILE, OPENSSL_LINE
-# define FL_ERR   LOG_FUNC_FILE_LINE, LOG_ERR
-# define FL_WARN  LOG_FUNC_FILE_LINE, LOG_WARNING
-# define FL_INFO  LOG_FUNC_FILE_LINE, LOG_INFO
-# define FL_DEBUG LOG_FUNC_FILE_LINE, LOG_DEBUG
-#define LOG_err(msg) LOG(FL_ERR, msg)     /*!< simple error message */
-
-void UTIL_setup_openssl(long version, const char *build_name);
-int UTIL_parse_server_and_port(char *s);
-X509_NAME *UTIL_parse_name(const char *dn, long chtype, bool multirdn);
-
-EVP_PKEY* FILES_load_key_autofmt(OPTIONAL const char* key, sec_file_format file_format, bool maybe_stdin,
-                                 OPTIONAL const char* pass, OPTIONAL const char* engine, OPTIONAL const char* desc);
-X509* FILES_load_cert(const char* file, sec_file_format format, OPTIONAL const char* source, OPTIONAL const char* desc);
-bool FILES_store_cert(const X509* cert, const char* file, sec_file_format format, OPTIONAL const char* desc);
-int FILES_store_certs(const STACK_OF(X509) * certs, const char* file, sec_file_format format,
-                      OPTIONAL const char* desc);
-STACK_OF(X509) *FILES_load_certs_multi(const char *files, sec_file_format format, OPTIONAL const char *source,OPTIONAL const char *desc);
-X509_REQ* FILES_load_csr_autofmt(const char* file, sec_file_format format, OPTIONAL const char* desc);
-STACK_OF(X509_CRL) *FILES_load_crls_multi(const char *files, sec_file_format format,
-                                          int timeout, const char *desc);
-
-X509_STORE *STORE_load_trusted(const char *files, OPTIONAL const char *desc,
-                               OPTIONAL void /* uta_ctx */ *ctx);
-bool STORE_set1_host_ip(X509_STORE *truststore, const char *host, const char *ip);
-const char* STORE_get0_host(X509_STORE* store);
-bool STORE_set0_tls_bio(X509_STORE *store, BIO *bio);
-bool STORE_EX_check_index(void);
-
-# ifndef SEC_NO_TLS
-bool TLS_init(void);
-SSL_CTX *TLS_CTX_new(OPTIONAL SSL_CTX* ssl_ctx,
-                     int client, OPTIONAL X509_STORE *truststore,
-                     OPTIONAL const STACK_OF(X509) *untrusted,
-                     OPTIONAL const CREDENTIALS *creds,
-                     OPTIONAL const char *ciphers, int security_level,
-                     OPTIONAL X509_STORE_CTX_verify_cb verify_cb);
-void TLS_CTX_free(OPTIONAL SSL_CTX *ctx);
-# endif
-
-#else /* LOCAL_DEFS */
-
+# include "genericCMPClient_use.h"
+#else
 # include <SecUtils/storage/files.h>
 # include <SecUtils/credentials/verify.h>
 # include <SecUtils/credentials/store.h>
 # ifndef SEC_NO_TLS
 #  include <SecUtils/connections/tls.h>
 # endif
-
-#endif /* LOCAL_DEFS */
+#endif
 
 #if OPENSSL_VERSION_NUMBER < 0x10100006L
 # define SSL_CTX_up_ref(x)((x)->references++)

@@ -161,7 +161,7 @@ clean_test:
 	rm -f creds/{manufacturer,operational*}.*
 	rm -rf creds/crls
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/*/test.*cert*.pem
-	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra
+	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Simple
 
 clean: clean_test
 	$(MAKE) -f Makefile_src clean
@@ -192,9 +192,9 @@ endif
 creds/crls:
 	mkdir $@
 
-cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra:
+cmpossl/test/recipes/81-test_cmp_cli_data/Simple:
 	cd cmpossl/test/recipes/81-test_cmp_cli_data && \
-	ln -s ../../../../test/cmpossl/recipes/81-test_cmp_cli_data/SimpleLra
+	ln -s ../../../../test/cmpossl/recipes/81-test_cmp_cli_data/Simple
 
 get_PPKI_crls: | creds/crls
 	ping >/dev/null $(PINGCOUNTOPT) 1 ppki-playground.ct.siemens.com
@@ -240,41 +240,44 @@ demo_Insta:
 	INSTA=1 $(MAKE) demo
 
 test_cli: build
-	@echo -e "\n#### running CLI-based tests #### with CMP_TESTS=$$CMP_TESTS"
+	@echo -e "\n#### running CLI-based tests #### with CMP_TESTS=$$CMP_SERVER"
 	@ :
 	( HARNESS_ACTIVE=1 \
 	  HARNESS_VERBOSE=$(V) \
+          HARNESS_FAILLOG=faillog_$$CMP_SERVER.txt \
 	  SRCTOP=cmpossl \
 	  BLDTOP=. \
 	  BIN_D=. \
 	  EXE_EXT= \
 	  LD_LIBRARY_PATH=$(BIN_D) \
+          CMP_CONFIG=test_config.cnf \
 	  $(PERL) test/cmpossl/recipes/81-test_cmp_cli.t )
 	@ :
 
-test_SimpleLra: get_PPKI_crls cmpossl/test/recipes/81-test_cmp_cli_data/SimpleLra
-	make test_cli CMP_TESTS=SimpleLra
-	rm -f test/cmpossl/recipes/81-test_cmp_cli_data/SimpleLra/test.cert.pem
+test_Simple: get_PPKI_crls cmpossl/test/recipes/81-test_cmp_cli_data/Simple
+	make test_cli CMP_SERVER=Simple
+
+test_Mock:
+	make test_cli CMP_SERVER=Mock
 
 test_Insta: get_Insta_crls
-	$(PROXY) make test_cli CMP_TESTS=Insta
-	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Insta/test.{cert,extracerts}.pem
+	$(PROXY) make test_cli CMP_SERVER=Insta
 
 test_profile: build
 	@/bin/echo -e "\n##### Request a certificate from a PKI with MAC protection (RECOMMENDED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE04'
+	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE04'
 	@/bin/echo -e "\n##### Request a certificate from a new PKI with signature protection (REQUIRED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE01'
+	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE01'
 	@/bin/echo -e "\n##### Update an existing certificate with signature protection (REQUIRED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE02'
+	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE02'
 	@/bin/echo -e "\n##### Request a certificate from a trusted PKI with signature protection (OPTIONAL) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE03'
+	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE03'
 	@/bin/echo -e "\n##### Revoking a certificate (RECOMMENDED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE09'
+	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE09'
 	@/bin/echo -e "\n##### Error reporting by EE (REQUIRED) #####"
-	! ./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,EE10'
+	! ./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE10'
 	@/bin/echo -e "\n##### Error reporting by RA (REQUIRED) #####"
-	! ./cmpClient$(EXE) -config config/profile.cnf -section 'SimpleLra,RA11'
+	! ./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,RA11'
 	echo "\n##### All profile tests succeeded #####"
 
 all:	build doc test

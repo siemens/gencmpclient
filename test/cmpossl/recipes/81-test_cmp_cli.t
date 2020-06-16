@@ -14,6 +14,8 @@ use strict;
 use warnings;
 
 use POSIX;
+use File::Spec::Functions qw/catfile/;
+use File::Compare qw/compare_text/;
 use OpenSSL::Test qw/:DEFAULT with data_file data_dir bldtop_dir/;
 use OpenSSL::Test::Utils;
 use Data::Dumper; # for debugging purposes only
@@ -22,6 +24,10 @@ setup("test_cmp_cli");
 
 plan skip_all => "This test is not supported in a no-cmp build"
     if disabled("cmp");
+plan skip_all => "This test is not supported in a no-ec build"
+    if disabled("ec");
+plan skip_all => "Tests involving launching a server not available on Windows"
+    if $^O eq "MSWin32";
 
 sub chop_dblquot { # chop any leading & trailing '"' (needed for Windows)
     my $str = shift;
@@ -35,37 +41,53 @@ $proxy =~ s{^https?://}{}i;
 my $no_proxy = $ENV{no_proxy} // $ENV{NO_PROXY};
 
 my $app = "cmpClient";
-my $test_config = "test_config.cnf";
 
 my @cmp_basic_tests = (
-    [ "show help",                        [ "-help"                                        ], 0 ],
-    [ "unknown CLI option",               [ "-config", $test_config, "-asdffdsa"           ], 1 ],
-    [ "CLI option not starting with '-'", [ "-config", $test_config, "days", "1"           ], 1 ],
-    [ "bad int syntax: non-digit",        [ "-config", $test_config, "-days", "a/"         ], 1 ],
-    [ "bad int syntax: float",            [ "-config", $test_config, "-days", "3.14"       ], 1 ],
-    [ "bad int syntax: trailing garbage", [ "-config", $test_config, "-days", "314_+"      ], 1 ],
-    [ "bad int: out of range",            [ "-config", $test_config, "-days", "2147483648" ], 1 ],
+    [ "show help",                        [ "-config", '""', "-help"               ], 0 ],
+    [ "CLI option not starting with '-'", [ "-config", '""',  "days", "1"          ], 1 ],
+    [ "unknown CLI option",               [ "-config", '""', "-dayss"              ], 1 ],
+    [ "bad int syntax: non-digit",        [ "-config", '""', "-days", "a/"         ], 1 ],
+    [ "bad int syntax: float",            [ "-config", '""', "-days", "3.14"       ], 1 ],
+    [ "bad int syntax: trailing garbage", [ "-config", '""', "-days", "314_+"      ], 1 ],
+    [ "bad int: out of range",            [ "-config", '""', "-days", "2147483648" ], 1 ],
 );
 
+my $rsp_cert = "signer_only.crt";
+my $outfile = "test.cert.pem";
+my $secret = "pass:test";
+my $localport = 1700;
+
+# this uses the mock server directly in the cmp app, without TCP
+sub use_mock_srv_internally
+{
+    ok(run(cmd(["true"]))); # dummy since cmpClient does not support -use_mock_srv
+}
+
 # the CMP server configuration consists of:
-                # The CA name (implies directoy with certs etc. and CA-specific section in config file)
+#  $server_name # The server name (implies dir with certs etc. and CA-specific config section)
 my $ca_dn;      # The CA's Distinguished Name
 my $server_dn;  # The server's Distinguished Name
 my $server_cn;  # The server's domain name
 my $server_ip;  # The server's IP address
 my $server_port;# The server's port
 my $server_tls; # The server's TLS port, if any, or 0
+my $server_path;# The server's CMP alias
 my $server_cert;# The server's cert
-my $secret;     # The secret for PBM
+my $kur_port;   # The server's port for kur (cert update)
+my $pbm_port;   # The server port to be used for PBM
+my $pbm_ref;    # The reference for PBM
+my $pbm_secret; # The secret for PBM
 my $column;     # The column number of the expected result
 my $sleep = 0;  # The time to sleep between two requests
 
-sub load_server_config {
-    my $name = shift; # name of section to load
-    open (CH, $test_config) or die "Connot open $test_config: $!";
+sub load_config {
+    my $server_name = shift;
+    my $section = shift;
+    my $test_config = $ENV{CMP_CONFIG} // "test_$server_name.cnf";
+    open (CH, $test_config) or die "Cannot open $test_config: $!";
     my $active = 0;
     while (<CH>) {
-        if (m/\[\s*$name\s*\]/) {
+        if (m/\[\s*$section\s*\]/) {
             $active = 1;
         } elsif (m/\[\s*.*?\s*\]/) {
             $active = 0;
@@ -76,23 +98,31 @@ sub load_server_config {
             $server_ip   = $1 eq "" ? '""""' : $1 if m/^\s*server_ip\s*=\s*(.*)?\s*$/;
             $server_port = $1 eq "" ? '""""' : $1 if m/^\s*server_port\s*=\s*(.*)?\s*$/;
             $server_tls  = $1 eq "" ? '""""' : $1 if m/^\s*server_tls\s*=\s*(.*)?\s*$/;
+            $server_path = $1 eq "" ? '""""' : $1 if m/^\s*server_path\s*=\s*(.*)?\s*$/;
             $server_cert = $1 eq "" ? '""""' : $1 if m/^\s*server_cert\s*=\s*(.*)?\s*$/;
-            $secret      = $1 eq "" ? '""""' : $1 if m/^\s*pbm_secret\s*=\s*(.*)?\s*$/;
+            $kur_port    = $1 eq "" ? '""""' : $1 if m/^\s*kur_port\s*=\s*(.*)?\s*$/;
+            $pbm_port    = $1 eq "" ? '""""' : $1 if m/^\s*pbm_port\s*=\s*(.*)?\s*$/;
+            $pbm_ref     = $1 eq "" ? '""""' : $1 if m/^\s*pbm_ref\s*=\s*(.*)?\s*$/;
+            $pbm_secret  = $1 eq "" ? '""""' : $1 if m/^\s*pbm_secret\s*=\s*(.*)?\s*$/;
             $column      = $1 eq "" ? '""""' : $1 if m/^\s*column\s*=\s*(.*)?\s*$/;
             $sleep       = $1 eq "" ? '""""' : $1 if m/^\s*sleep\s*=\s*(.*)?\s*$/;
         }
     }
     close CH;
-    die "Cannot find all CMP server config values in $test_config section [$name]\n"
-        if !defined $ca_dn || !defined $server_cn || !defined $server_ip
-        || !defined $server_port || !defined $server_tls || !defined $server_cert
-        || !defined $secret || !defined $column || !defined $sleep;
+    die "Cannot find all CMP server config values in $test_config section [$section]\n"
+        if !defined $ca_dn || !defined $server_dn
+        || !defined $server_cn || !defined $server_ip
+        || !defined $server_port || !defined $server_tls
+        || !defined $server_path || !defined $server_cert
+        || !defined $kur_port || !defined $pbm_port
+        || !defined $pbm_ref || !defined $pbm_secret
+        || !defined $column || !defined $sleep;
     $server_dn = $server_dn // $ca_dn;
 }
 
-my @server_configurations = (); # ("EJBCA", "Insta", "SimpleLra");
-@server_configurations = split /\s+/, $ENV{CMP_TESTS} if $ENV{CMP_TESTS};
-# set env variable, e.g., CMP_TESTS="EJBCA Insta" to include certain CAs
+my @server_configurations = (); # ("Mock", "EJBCA", "Insta", "Simple");
+@server_configurations = split /\s+/, $ENV{CMP_SERVER} if $ENV{CMP_SERVER};
+# set env variable, e.g., CMP_SERVER="Mock Insta" to include further CMP servers
 
 my @all_aspects = ("connection", "verification", "credentials", "commands", "enrollment", "certstatus");
 @all_aspects = split /\s+/, $ENV{CMP_ASPECTS} if $ENV{CMP_ASPECTS};
@@ -105,7 +135,7 @@ if ($ENV{HARNESS_FAILLOG}) {
 }
 
 sub test_cmp_cli {
-    my $name = shift;
+    my $server_name = shift;
     my $aspect = shift;
     my $n = shift;
     my $i = shift;
@@ -117,8 +147,10 @@ sub test_cmp_cli {
         my $actual_exit = shift;
         my $OK = $actual_exit == $expected_exit;
         if ($faillog && !$OK) {
-            my $invocation = ("$path_app ").join(' ', map { $_ eq "" ? '""' : $_ =~ m/ / ? '"'.$_.'"' : $_ } @$params);
-            print $faillog "$name $aspect \"$title\" ($i/$n) expected=$expected_exit actual=$actual_exit\n";
+            sub quote_spc_empty(_) { $_ eq "" ? '""' : $_ =~ m/ / ? '"'.$_.'"' : $_ };
+            my $invocation = ("$path_app ").join(' ', map quote_spc_empty @$params);
+            print $faillog "$server_name $aspect \"$title\" ($i/$n)".
+                " expected=$expected_exit actual=$actual_exit\n";
             print $faillog "$invocation\n\n";
         }
         return $OK; } },
@@ -127,49 +159,66 @@ sub test_cmp_cli {
 }
 
 sub test_cmp_cli_aspect {
-    my $name = shift;
+    my $server_name = shift;
     my $aspect = shift;
     my $tests = shift;
-    subtest "CMP app CLI $name $aspect\n" => sub {
+    subtest "CMP app CLI $server_name $aspect\n" => sub {
         my $n = scalar @$tests;
         plan tests => $n;
         my $i = 1;
         foreach (@$tests) {
           SKIP: {
-              test_cmp_cli($name, $aspect, $n, $i++, $$_[0], $$_[1], $$_[2]);
+              test_cmp_cli($server_name, $aspect, $n, $i++, $$_[0], $$_[1], $$_[2]);
               sleep($sleep);
             }
         }
     };
+    unlink "test.cert.pem", "test.cacerts.pem", "test.extracerts.pem";
 }
 
 indir "../cmpossl/test/recipes/81-test_cmp_cli_data" => sub {
-    plan tests => 1 + @server_configurations * @all_aspects;
+    plan tests => 1 + @server_configurations * @all_aspects
+        + (grep(/^Mock$/, @server_configurations)
+           && grep(/^certstatus$/, @all_aspects) ? 0 : 1);
 
     test_cmp_cli_aspect("basic", "options", \@cmp_basic_tests);
+
+    indir "Mock" => sub {
+        use_mock_srv_internally();
+    };
 
     # TODO: complete and thoroughly review _all_ of the around 500 test cases
     foreach my $server_name (@server_configurations) {
         $server_name = chop_dblquot($server_name);
-        load_server_config($server_name);
+        load_config($server_name, $server_name);
+        my $launch_mock = $server_name eq "Mock" && !$ENV{CMP_CONFIG};
+        if ($launch_mock) {
+            indir "Mock" => sub {
+                stop_mock_server(); # in case a previous run did not exit properly
+                start_mock_server("") || die "Cannot start CMP mock server";
+            }
+        }
         foreach my $aspect (@all_aspects) {
             $aspect = chop_dblquot($aspect);
+            next if $server_name eq "Mock" && $aspect eq "certstatus";
             if (not($server_name =~ m/Insta/)) { # do not update aspect-specific settings for Insta
-            load_server_config($aspect); # update with any aspect-specific settings
+            load_config($server_name, $aspect); # update with any aspect-specific settings
             }
             indir $server_name => sub {
                 my $tests = load_tests($server_name, $aspect);
                 test_cmp_cli_aspect($server_name, $aspect, $tests);
             };
         };
+        stop_mock_server() if $launch_mock;
     };
 };
 
 close($faillog) if $faillog;
 
 sub load_tests {
-    my $name = shift;
+    my $server_name = shift;
     my $aspect = shift;
+    my $test_config = $ENV{CMP_CONFIG} // "test_$server_name.cnf";
     my $file = data_file("test_$aspect.csv");
     my @result;
 
@@ -184,23 +233,51 @@ sub load_tests {
         $line =~ s{_SERVER_IP}{$server_ip}g;
         $line =~ s{_SERVER_PORT}{$server_port}g;
         $line =~ s{_SERVER_TLS}{$server_tls}g;
+        $line =~ s{_SERVER_PATH}{$server_path}g;
         $line =~ s{_SERVER_CERT}{$server_cert}g;
-        $line =~ s{_SECRET}{$secret}g;
+        $line =~ s{_KUR_PORT}{$kur_port}g;
+        $line =~ s{_PBM_PORT}{$pbm_port}g;
+        $line =~ s{_PBM_REF}{$pbm_ref}g;
+        $line =~ s{_PBM_SECRET}{$pbm_secret}g;
         my $noproxy = $line =~ m/,\s*-no_proxy\s*,(.*?)(,|$)/ ? $1 : $no_proxy;
-        next LOOP if $no_proxy && ($noproxy =~ $server_cn || $noproxy =~ $server_ip) && $line =~ m/,\s*-proxy\s*,/;
+        next LOOP if $no_proxy && ($noproxy =~ $server_cn || $noproxy =~ $server_ip)
+            && $line =~ m/,\s*-proxy\s*,/;
+        next LOOP if $server_tls == 0 && $line =~ m/,\s*-tls_used\s*,/;
         $line =~ s{-section,,}{-section,,-proxy,$proxy,} unless $line =~ m/,\s*-proxy\s*,/;
-        $line =~ s{-section,,}{-config,../$test_config,-section,$name $aspect,};
+        $line =~ s{-section,,}{-config,../$test_config,-section,$server_name $aspect,};
         my @fields = grep /\S/, split ",", $line;
         s/^<EMPTY>$// for (@fields); # used for proxy=""
         s/^\s+// for (@fields); # remove leading  whitepace from elements
         s/\s+$// for (@fields); # remove trailing whitepace from elements
         s/^\"(\".*?\")\"$/$1/ for (@fields); # remove escaping from quotation marks from elements
         my $expected_exit = $fields[$column];
-        my $title = $fields[2];
-        next LOOP if (!defined($expected_exit) or ($expected_exit ne 0 and $expected_exit ne 1));
-        @fields = grep {$_ ne 'BLANK'} @fields[3..@fields-1];
+        my $description = 2;
+        my $title = $fields[$description];
+        next LOOP if (!defined($expected_exit)
+                      || ($expected_exit ne 0 && $expected_exit ne 1));
+        @fields = grep {$_ ne 'BLANK'} @fields[$description + 1 .. @fields - 1];
         push @result, [$title, \@fields, $expected_exit];
     }
     close($data);
     return \@result;
+}
+
+sub mock_server_pid {
+    return `lsof -iTCP:$localport -sTCP:LISTEN | tail -n 1 | awk '{ print \$2 }'`;
+}
+
+sub start_mock_server {
+    return 0 if mock_server_pid(); # already running
+    my $args = $_[0]; # optional further CLI arguments
+    my $dir = bldtop_dir("");
+    $dir = bldtop_dir("cmpossl");
+    my $app = "cmpossl/apps/openssl cmp";
+    return system("LD_LIBRARY_PATH=$dir DYLD_LIBRARY_PATH=$dir " .
+                  bldtop_dir($app) . " -config server.cnf " .
+                  "$args &") == 0; # start in background, check for success
+}
+
+sub stop_mock_server {
+    my $pid = mock_server_pid();
+    system("kill $pid") if $pid;
 }

@@ -901,7 +901,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         LOG_warn("Ignoring -crls_timeout since -use_cdp and -cdps options are not given");
     }
     if (opt_ocsp_timeout >= 0 && !ocsp_check) {
-        LOG_warn("Ingoring -ocsp_timeout since -use_aia and -ocsp options are not given");
+        LOG_warn("Ignoring -ocsp_timeout since -use_aia and -ocsp options are not given");
     }
     if ((crl_check || ocsp_check) && opt_trusted == NULL) {
         LOG_warn("Certificate status checks are enabled without providing the -trusted option");

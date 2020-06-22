@@ -577,6 +577,72 @@ int setup_cert_template(CMP_CTX *ctx)
 }
 
 
+static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
+{
+    long value;
+    ASN1_OBJECT *type;
+    ASN1_INTEGER *aint;
+    ASN1_TYPE *val;
+    OSSL_CMP_ITAV *itav;
+    char *endstr;
+    char *valptr = strchr(opt_geninfo, ':');
+
+    if (valptr == NULL) {
+        LOG_err("Missing ':' in -geninfo option");
+        return CMP_R_INVALID_ARGS;
+    }
+    valptr[0] = '\0';
+    valptr++;
+
+    if (strncmp(valptr, "int:", 4) != 0) {
+        LOG_err("Missing 'int:' in -geninfo option");
+        return CMP_R_INVALID_ARGS;
+    }
+    valptr += 4;
+
+    value = strtol(valptr, &endstr, 10);
+    if (endstr == valptr || *endstr != '\0') {
+        LOG_err("Cannot parse int in -geninfo option");
+        return CMP_R_INVALID_ARGS;
+    }
+
+    type = OBJ_txt2obj(opt_geninfo, 1);
+    if (type == NULL) {
+        LOG_err("Cannot parse OID in -geninfo option");
+        return CMP_R_INVALID_ARGS;
+    }
+
+    if ((aint = ASN1_INTEGER_new()) == NULL) {
+        LOG_err("Out of memory");
+        goto oom;
+    }
+
+    val = ASN1_TYPE_new();
+    if (!ASN1_INTEGER_set(aint, value) || val == NULL) {
+        LOG_err("Cannot set ASN1 integer or create new ASN1 type");
+        ASN1_INTEGER_free(aint);
+        goto oom;
+    }
+    ASN1_TYPE_set(val, V_ASN1_INTEGER, aint);
+    itav = OSSL_CMP_ITAV_gen(type, val);
+    if (itav == NULL) {
+        LOG_err("Unable to create 'OSSL_CMP_ITAV' structure");
+        ASN1_TYPE_free(val);
+        goto oom;
+    }
+
+    if (!OSSL_CMP_CTX_push0_geninfo_ITAV(ctx, itav)) {
+        LOG_err("Failed to add an ITAV for geninfo of the PKI message header");
+        OSSL_CMP_ITAV_free(itav);
+        return 14;
+    }
+    return CMP_OK;
+
+ oom:
+    ASN1_OBJECT_free(type);
+    return 11; /* return values 12 and 13 unused */
+}
+
 int setup_ctx(CMP_CTX *ctx)
 {
     CMP_err err = set_name(opt_expect_sender, OSSL_CMP_CTX_set1_expected_sender,
@@ -625,71 +691,8 @@ int setup_ctx(CMP_CTX *ctx)
         goto err;
     }
 
-    if (opt_geninfo != NULL) {
-        long value;
-        ASN1_OBJECT *type;
-        ASN1_INTEGER *aint;
-        ASN1_TYPE *val;
-        OSSL_CMP_ITAV *itav;
-        char *endstr;
-        char *valptr = strchr(opt_geninfo, ':');
-
-        if (valptr == NULL) {
-            LOG_err("Missing ':' in -geninfo option");
-            goto err;
-        }
-        valptr[0] = '\0';
-        valptr++;
-
-        if (strncmp(valptr, "int:", 4) != 0) {
-            LOG_err("Missing 'int:' in -geninfo option");
-            goto err;
-        }
-        valptr += 4;
-
-        value = strtol(valptr, &endstr, 10);
-        if (endstr == valptr || *endstr != '\0') {
-            LOG_err("Cannot parse int in -geninfo option");
-            goto err;
-        }
-
-        type = OBJ_txt2obj(opt_geninfo, 1);
-        if (type == NULL) {
-            LOG_err("Cannot parse OID in -geninfo option");
-            goto err;
-        }
-
-        aint = ASN1_INTEGER_new();
-        if (aint == NULL || !ASN1_INTEGER_set(aint, value)) {
-            LOG_err("Cannot set ASN1 integer");
-            err = 11;
-            goto err;
-        }
-
-        val = ASN1_TYPE_new();
-        if (val == NULL) {
-            LOG_err("Cannot create new ASN1 type");
-            err = 12;
-            ASN1_INTEGER_free(aint);
-            goto err;
-        }
-        ASN1_TYPE_set(val, V_ASN1_INTEGER, aint);
-        itav = OSSL_CMP_ITAV_gen(type, val);
-        if (itav == NULL) {
-            LOG_err("Unable to create 'OSSL_CMP_ITAV' structure");
-            err = 13;
-            ASN1_TYPE_free(val);
-            goto err;
-        }
-
-        if (!OSSL_CMP_CTX_push0_geninfo_ITAV(ctx, itav)) {
-            LOG_err("Failed to add an ITAV for geninfo of the PKI message header");
-            err = 14;
-            OSSL_CMP_ITAV_free(itav);
-            goto err;
-        }
-    }
-
+    if (opt_geninfo != NULL && (err = handle_opt_geninfo(ctx)) != CMP_OK)
+        goto err;
     err = CMP_OK;
 
  err:

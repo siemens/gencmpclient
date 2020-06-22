@@ -19,6 +19,7 @@ use File::Compare qw/compare_text/;
 use OpenSSL::Test qw/:DEFAULT with data_file data_dir bldtop_dir/;
 use OpenSSL::Test::Utils;
 use Data::Dumper; # for debugging purposes only
+# use Proc::Background;
 
 setup("test_cmp_cli");
 
@@ -192,10 +193,15 @@ indir "../cmpossl/test/recipes/81-test_cmp_cli_data" => sub {
         $server_name = chop_dblquot($server_name);
         load_config($server_name, $server_name);
         my $launch_mock = $server_name eq "Mock" && !$ENV{CMP_CONFIG};
+#       my $proc;
         if ($launch_mock) {
             indir "Mock" => sub {
                 stop_mock_server(); # in case a previous run did not exit properly
                 start_mock_server("") || die "Cannot start CMP mock server";
+#               my $args = ""; # optional further CLI arguments
+#               $proc = Proc::Background->new({'die_upon_destroy' => 1},
+#                                              bldtop_dir($app) . " -config server.cnf $args");
+#               $proc || die "Cannot start CMP mock server";
             }
         }
         foreach my $aspect (@all_aspects) {
@@ -210,6 +216,7 @@ indir "../cmpossl/test/recipes/81-test_cmp_cli_data" => sub {
             };
         };
         stop_mock_server() if $launch_mock;
+#       $proc = undef if $launch_mock;
     };
 };
 

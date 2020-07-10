@@ -210,6 +210,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
     The argument must be formatted as _/type0=value0/type1=value1/type2=..._,
     characters may be escaped by `\` (backslash), no spaces are skipped.
+    The empty name (NULL-DN) can be explicitly given as a single slash: '_/_'.
 
     The recipient field in the header of a CMP message is mandatory.
     If not given explicitly the recipient is determined in the following order:

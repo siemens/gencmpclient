@@ -206,7 +206,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 - **-recipient** _name_
 
     Distinguished Name (DN) to use in the recipient field of CMP request messages,
-    i.e., the CMP server (usually a CA or RA entity).
+    i.e., the CMP server (usually the addressed CA).
 
     The argument must be formatted as _/type0=value0/type1=value1/type2=..._,
     characters may be escaped by `\` (backslash), no spaces are skipped.
@@ -217,6 +217,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     if present, the **-issuer** option if present,
     the issuer of the certificate given with the **-oldcert** option if present,
     the issuer of the CMP client certificate (**-cert** option) if present,
+    the subject of the first certificate given with the **-untrusted** option,
     or else the NULL-DN as last resort.
 
 - **-expect\_sender** _name_

@@ -228,7 +228,7 @@ and as default value for the expected sender of CMP responses.
 =item B<-recipient> I<name>
 
 Distinguished Name (DN) to use in the recipient field of CMP request messages,
-i.e., the CMP server (usually a CA or RA entity).
+i.e., the CMP server (usually the addressed CA).
 
 The argument must be formatted as I</type0=value0/type1=value1/type2=...>,
 characters may be escaped by C<\>E<nbsp>(backslash), no spaces are skipped.
@@ -239,6 +239,7 @@ the subject of the CMP server certificate given with the B<-srvcert> option
 if present, the B<-issuer> option if present,
 the issuer of the certificate given with the B<-oldcert> option if present,
 the issuer of the CMP client certificate (B<-cert> option) if present,
+the subject of the first certificate given with the B<-untrusted> option,
 or else the NULL-DN as last resort.
 
 =item B<-expect_sender> I<name>

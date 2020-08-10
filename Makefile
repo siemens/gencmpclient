@@ -162,7 +162,7 @@ clean_test:
 	rm -rf creds/crls
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/*/test.*cert*.pem
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Simple
-
+	rm -f test/faillog_*.txt
 clean: clean_test
 	$(MAKE) -f Makefile_src clean
 
@@ -211,7 +211,7 @@ get_Insta_crls: | creds/crls
 	@ # | fgrep "301 Moved Permanently" -q
 	@ # || (echo $(unreachable); exit 1)
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
-	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8080/crl-as-der/currentcrl-633.crl"
+	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl"
 
 ifndef INSTA
 demo: build get_PPKI_crls
@@ -240,28 +240,28 @@ demo_Insta:
 	INSTA=1 $(MAKE) demo
 
 test_cli: build
-	@echo -e "\n#### running CLI-based tests #### with CMP_TESTS=$$CMP_SERVER"
+	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER"
 	@ :
 	( HARNESS_ACTIVE=1 \
 	  HARNESS_VERBOSE=$(V) \
-          HARNESS_FAILLOG=faillog_$$CMP_SERVER.txt \
+          HARNESS_FAILLOG=faillog_$$OPENSSL_CMP_SERVER.txt \
 	  SRCTOP=cmpossl \
 	  BLDTOP=. \
 	  BIN_D=. \
 	  EXE_EXT= \
 	  LD_LIBRARY_PATH=$(BIN_D) \
-          CMP_CONFIG=test_config.cnf \
+          OPENSSL_CMP_CONFIG=test_config.cnf \
 	  $(PERL) test/cmpossl/recipes/81-test_cmp_cli.t )
 	@ :
 
 test_Simple: get_PPKI_crls cmpossl/test/recipes/81-test_cmp_cli_data/Simple
-	make test_cli CMP_SERVER=Simple
+	make test_cli OPENSSL_CMP_SERVER=Simple
 
 test_Mock:
-	make test_cli CMP_SERVER=Mock
+	make test_cli OPENSSL_CMP_SERVER=Mock
 
 test_Insta: get_Insta_crls
-	$(PROXY) make test_cli CMP_SERVER=Insta
+	$(PROXY) make test_cli OPENSSL_CMP_SERVER=Insta
 
 test_profile: build
 	@/bin/echo -e "\n##### Request a certificate from a PKI with MAC protection (RECOMMENDED) #####"

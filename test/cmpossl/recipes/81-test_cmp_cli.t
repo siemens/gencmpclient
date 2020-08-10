@@ -9,7 +9,7 @@
 # https://www.openssl.org/source/license.html
 
 use lib "cmpossl/util/perl";
-
+#use Proc::Background;
 use strict;
 use warnings;
 
@@ -19,16 +19,15 @@ use File::Compare qw/compare_text/;
 use OpenSSL::Test qw/:DEFAULT with data_file data_dir bldtop_dir/;
 use OpenSSL::Test::Utils;
 use Data::Dumper; # for debugging purposes only
-# use Proc::Background;
 
 setup("test_cmp_cli");
 
-plan skip_all => "This test is not supported in a no-cmp build"
+plan skip_all => "These tests are not supported in a no-cmp build"
     if disabled("cmp");
-plan skip_all => "This test is not supported in a no-ec build"
+plan skip_all => "These tests are not supported in a no-ec build"
     if disabled("ec");
-plan skip_all => "Tests involving launching a server not available on Windows"
-    if $^O eq "MSWin32";
+plan skip_all => "Tests involving server not available on Windows or VMS"
+    if $^O =~ /^(VMS|MSWin32)$/;
 
 sub chop_dblquot { # chop any leading & trailing '"' (needed for Windows)
     my $str = shift;
@@ -56,7 +55,6 @@ my @cmp_basic_tests = (
 my $rsp_cert = "signer_only.crt";
 my $outfile = "test.cert.pem";
 my $secret = "pass:test";
-my $localport = 1700;
 
 # this uses the mock server directly in the cmp app, without TCP
 sub use_mock_srv_internally
@@ -65,11 +63,9 @@ sub use_mock_srv_internally
 }
 
 # the CMP server configuration consists of:
-#  $server_name # The server name (implies dir with certs etc. and CA-specific config section)
 my $ca_dn;      # The CA's Distinguished Name
 my $server_dn;  # The server's Distinguished Name
-my $server_cn;  # The server's domain name
-my $server_ip;  # The server's IP address
+my $server_host;# The server's host name or IP address
 my $server_port;# The server's port
 my $server_tls; # The server's TLS port, if any, or 0
 my $server_path;# The server's CMP alias
@@ -80,11 +76,13 @@ my $pbm_ref;    # The reference for PBM
 my $pbm_secret; # The secret for PBM
 my $column;     # The column number of the expected result
 my $sleep = 0;  # The time to sleep between two requests
+# The local $server_name variables below are among others taken as the name of a
+# sub-directory with server-specific certs etc. and CA-specific config section.
 
 sub load_config {
     my $server_name = shift;
     my $section = shift;
-    my $test_config = $ENV{CMP_CONFIG} // "test_$server_name.cnf";
+    my $test_config = $ENV{OPENSSL_CMP_CONFIG} // "$server_name/test.cnf";
     open (CH, $test_config) or die "Cannot open $test_config: $!";
     my $active = 0;
     while (<CH>) {
@@ -95,8 +93,7 @@ sub load_config {
         } elsif ($active) {
             $ca_dn       = $1 eq "" ? '""""' : $1 if m/^\s*ca_dn\s*=\s*(.*)?\s*$/;
             $server_dn   = $1 eq "" ? '""""' : $1 if m/^\s*server_dn\s*=\s*(.*)?\s*$/;
-            $server_cn   = $1 eq "" ? '""""' : $1 if m/^\s*server_cn\s*=\s*(.*)?\s*$/;
-            $server_ip   = $1 eq "" ? '""""' : $1 if m/^\s*server_ip\s*=\s*(.*)?\s*$/;
+            $server_host = $1 eq "" ? '""""' : $1 if m/^\s*server_host\s*=\s*(\S*)?\s*(\#.*)?$/;
             $server_port = $1 eq "" ? '""""' : $1 if m/^\s*server_port\s*=\s*(.*)?\s*$/;
             $server_tls  = $1 eq "" ? '""""' : $1 if m/^\s*server_tls\s*=\s*(.*)?\s*$/;
             $server_path = $1 eq "" ? '""""' : $1 if m/^\s*server_path\s*=\s*(.*)?\s*$/;
@@ -111,8 +108,8 @@ sub load_config {
     }
     close CH;
     die "Cannot find all CMP server config values in $test_config section [$section]\n"
-        if !defined $ca_dn || !defined $server_dn
-        || !defined $server_cn || !defined $server_ip
+        if !defined $ca_dn
+        || !defined $server_dn || !defined $server_host
         || !defined $server_port || !defined $server_tls
         || !defined $server_path || !defined $server_cert
         || !defined $kur_port || !defined $pbm_port
@@ -122,12 +119,12 @@ sub load_config {
 }
 
 my @server_configurations = (); # ("Mock", "EJBCA", "Insta", "Simple");
-@server_configurations = split /\s+/, $ENV{CMP_SERVER} if $ENV{CMP_SERVER};
-# set env variable, e.g., CMP_SERVER="Mock Insta" to include further CMP servers
+@server_configurations = split /\s+/, $ENV{OPENSSL_CMP_SERVER} if $ENV{OPENSSL_CMP_SERVER};
+# set env variable, e.g., OPENSSL_CMP_SERVER="Mock Insta" to include further CMP servers
 
 my @all_aspects = ("connection", "verification", "credentials", "commands", "enrollment", "certstatus");
-@all_aspects = split /\s+/, $ENV{CMP_ASPECTS} if $ENV{CMP_ASPECTS};
-# set env variable, e.g., CMP_ASPECTS="commands enrollment" to select specific aspects
+@all_aspects = split /\s+/, $ENV{OPENSSL_CMP_ASPECTS} if $ENV{OPENSSL_CMP_ASPECTS};
+# set env variable, e.g., OPENSSL_CMP_ASPECTS="commands enrollment" to select specific aspects
 
 my $faillog;
 if ($ENV{HARNESS_FAILLOG}) {
@@ -148,8 +145,8 @@ sub test_cmp_cli {
         my $actual_exit = shift;
         my $OK = $actual_exit == $expected_exit;
         if ($faillog && !$OK) {
-            sub quote_spc_empty(_) { $_ eq "" ? '""' : $_ =~ m/ / ? '"'.$_.'"' : $_ };
-            my $invocation = ("$path_app ").join(' ', map quote_spc_empty @$params);
+            my $quote_spc_empty = sub { $_ eq "" ? '""' : $_ =~ m/ / ? '"'.$_.'"' : $_ };
+            my $invocation = "$path_app ".join(' ', map $quote_spc_empty->($_), @$params);
             print $faillog "$server_name $aspect \"$title\" ($i/$n)".
                 " expected=$expected_exit actual=$actual_exit\n";
             print $faillog "$invocation\n\n";
@@ -192,16 +189,11 @@ indir "../cmpossl/test/recipes/81-test_cmp_cli_data" => sub {
     foreach my $server_name (@server_configurations) {
         $server_name = chop_dblquot($server_name);
         load_config($server_name, $server_name);
-        my $launch_mock = $server_name eq "Mock" && !$ENV{CMP_CONFIG};
-#       my $proc;
-        if ($launch_mock) {
+        my $pid;
+        if ($server_name eq "Mock") {
             indir "Mock" => sub {
-                stop_mock_server(); # in case a previous run did not exit properly
-                start_mock_server("") || die "Cannot start CMP mock server";
-#               my $args = ""; # optional further CLI arguments
-#               $proc = Proc::Background->new({'die_upon_destroy' => 1},
-#                                              bldtop_dir($app) . " -config server.cnf $args");
-#               $proc || die "Cannot start CMP mock server";
+                $pid = start_mock_server("");
+                die "Cannot start CMP mock server" unless $pid;
             }
         }
         foreach my $aspect (@all_aspects) {
@@ -215,8 +207,7 @@ indir "../cmpossl/test/recipes/81-test_cmp_cli_data" => sub {
                 test_cmp_cli_aspect($server_name, $aspect, $tests);
             };
         };
-        stop_mock_server() if $launch_mock;
-#       $proc = undef if $launch_mock;
+        stop_mock_server($pid) if $pid;
     };
 };
 
@@ -225,7 +216,7 @@ close($faillog) if $faillog;
 sub load_tests {
     my $server_name = shift;
     my $aspect = shift;
-    my $test_config = $ENV{CMP_CONFIG} // "test_$server_name.cnf";
+    my $test_config = $ENV{OPENSSL_CMP_CONFIG} // "$server_name/test.cnf";
     my $file = data_file("test_$aspect.csv");
     my @result;
 
@@ -236,8 +227,7 @@ sub load_tests {
         $line =~ s{\r\n}{\n}g; # adjust line endings
         $line =~ s{_CA_DN}{$ca_dn}g;
         $line =~ s{_SERVER_DN}{$server_dn}g;
-        $line =~ s{_SERVER_CN}{$server_cn}g;
-        $line =~ s{_SERVER_IP}{$server_ip}g;
+        $line =~ s{_SERVER_HOST}{$server_host}g;
         $line =~ s{_SERVER_PORT}{$server_port}g;
         $line =~ s{_SERVER_TLS}{$server_tls}g;
         $line =~ s{_SERVER_PATH}{$server_path}g;
@@ -246,16 +236,25 @@ sub load_tests {
         $line =~ s{_PBM_PORT}{$pbm_port}g;
         $line =~ s{_PBM_REF}{$pbm_ref}g;
         $line =~ s{_PBM_SECRET}{$pbm_secret}g;
-        my $noproxy = $line =~ m/,\s*-no_proxy\s*,(.*?)(,|$)/ ? $1 : $no_proxy;
-        next LOOP if $no_proxy && ($noproxy =~ $server_cn || $noproxy =~ $server_ip)
-            && $line =~ m/,\s*-proxy\s*,/;
         next LOOP if $server_tls == 0 && $line =~ m/,\s*-tls_used\s*,/;
-        $line =~ s{-section,,}{-section,,-proxy,$proxy,} unless $line =~ m/,\s*-proxy\s*,/;
+        my $noproxy = $no_proxy;
+        if ($line =~ m/,\s*-no_proxy\s*,(.*?)(,|$)/) {
+            $noproxy = $1;
+        } elsif ($server_host eq "127.0.0.1") {
+            # do connections to localhost (e.g., Mock server) without proxy
+            $line =~ s{-section,,}{-section,,-no_proxy,127.0.0.1,} ;
+        }
+        if ($line =~ m/,\s*-proxy\s*,/) {
+            next LOOP if $no_proxy && ($noproxy =~ $server_host);
+        } else {
+            $line =~ s{-section,,}{-section,,-proxy,$proxy,};
+        }
         $line =~ s{-section,,}{-config,../$test_config,-section,$server_name $aspect,};
+
         my @fields = grep /\S/, split ",", $line;
         s/^<EMPTY>$// for (@fields); # used for proxy=""
-        s/^\s+// for (@fields); # remove leading  whitepace from elements
-        s/\s+$// for (@fields); # remove trailing whitepace from elements
+        s/^\s+// for (@fields); # remove leading whitespace from elements
+        s/\s+$// for (@fields); # remove trailing whitespace from elements
         s/^\"(\".*?\")\"$/$1/ for (@fields); # remove escaping from quotation marks from elements
         my $expected_exit = $fields[$column];
         my $description = 2;
@@ -270,21 +269,25 @@ sub load_tests {
 }
 
 sub mock_server_pid {
-    return `lsof -iTCP:$localport -sTCP:LISTEN | tail -n 1 | awk '{ print \$2 }'`;
+    return `lsof -iTCP:$server_port -sTCP:LISTEN | tail -n 1 | awk '{ print \$2 }'`;
 }
 
 sub start_mock_server {
-    return 0 if mock_server_pid(); # already running
     my $args = $_[0]; # optional further CLI arguments
     my $dir = bldtop_dir("");
     $dir = bldtop_dir("cmpossl");
     my $app = "cmpossl/apps/openssl cmp";
-    return system("LD_LIBRARY_PATH=$dir DYLD_LIBRARY_PATH=$dir " .
-                  bldtop_dir($app) . " -config server.cnf " .
-                  "$args &") == 0; # start in background, check for success
+    my $cmd = "LD_LIBRARY_PATH=$dir DYLD_LIBRARY_PATH=$dir " .
+        bldtop_dir($app) . " -config server.cnf $args";
+#    my $pid = Proc::Background->new({'die_upon_destroy' => 1}, $cmd); sleep(1); return $pid;
+    my $pid = mock_server_pid();
+    return $pid if $pid; # already running
+    return system("$cmd &") == 0 # start in background, check for success
+        ? (sleep 1, mock_server_pid()) : 0;
 }
 
 sub stop_mock_server {
-    my $pid = mock_server_pid();
+    my $pid = $_[0];
+#    $pid->die; return; # for some reason the process still runs
     system("kill $pid") if $pid;
 }

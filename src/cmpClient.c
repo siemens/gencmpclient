@@ -1111,7 +1111,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
     X509_free(oldcert);
     if (err != CMP_OK) {
-        LOG_err("Failed to perform CMP request");
+        LOG_err("Failed to perform CMP transaction");
         goto err;
     }
 

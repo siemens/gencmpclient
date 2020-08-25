@@ -244,6 +244,7 @@ static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
     if (detail == 1) { /* connecting */
         SSL *ssl;
 
+        LOG_debug("connecting to TLS server");
         if ((ctx->proxyName != NULL && ctx->proxyPort != 0
              && !OSSL_CMP_proxy_connect(hbio, ctx, bio_err, "CMP client"))
             || (sbio = BIO_new(BIO_f_ssl())) == NULL) {
@@ -270,6 +271,8 @@ static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
         hbio = BIO_push(sbio, hbio);
     } else { /* disconnecting */
         const char *hint = tls_error_hint(detail);
+
+        LOG_debug("disconnecting from TLS server");
         if (hint != NULL)
             ERR_add_error_data(1, hint);
         /*

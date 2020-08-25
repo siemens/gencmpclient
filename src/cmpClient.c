@@ -110,6 +110,10 @@ const char *opt_tls_trusted;
 const char *opt_tls_host;
 
 long opt_verbosity;
+static char *opt_reqin = NULL;
+static char *opt_reqout = NULL;
+static char *opt_rspin = NULL;
+static char *opt_rspout = NULL;
 
 /* TODO further extend verification options and align with cmpossl/apps/cmp.c */
 bool opt_check_all;
@@ -274,6 +278,14 @@ opt_t cmp_opts[] = {
     OPT_HEADER("Debugging"),
     { "verbosity", OPT_NUM, {.num = LOG_INFO}, { (const char **) &opt_verbosity},
       "Logging level; 3=ERR, 4=WARN, 6=INFO, 7=DEBUG, 8=TRACE. Default 6 = INFO"},
+    {"reqin", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqin},
+     "Take sequence of CMP requests from file(s)"},
+    {"reqout", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqout},
+     "Save sequence of CMP requests to file(s)"},
+    {"rspin", OPT_TXT, {.txt = NULL}, { (const char **) &opt_rspin},
+     "Process sequence of CMP responses provided in file(s), skipping server"},
+    {"rspout", OPT_TXT, {.txt = NULL}, { (const char **) &opt_rspout},
+     "Save sequence of CMP responses to file(s)"},
 
     OPT_HEADER("CMP and TLS certificate status checking"),
     /* TODO extend verification options and align with cmpossl/apps/cmp.c */
@@ -530,6 +542,124 @@ X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
     return NULL;
 }
 
+/* write OSSL_CMP_MSG DER-encoded to the specified file name item */
+static int write_PKIMESSAGE(const OSSL_CMP_MSG *msg, char **filenames)
+{
+    char *file;
+
+    if (msg == NULL || filenames == NULL) {
+        LOG_err("NULL arg to write_PKIMESSAGE");
+        return 0;
+    }
+    if (*filenames == NULL) {
+        LOG_err("Not enough file names provided for writing PKIMessage");
+        return 0;
+    }
+
+    file = *filenames;
+    *filenames = UTIL_next_item(file);
+    if (OSSL_CMP_MSG_write(file, msg) < 0) {
+        LOG(FL_ERR, "Cannot write PKIMessage to file '%s'", file);
+        return 0;
+    }
+    return 1;
+}
+
+/* read DER-encoded OSSL_CMP_MSG from the specified file name item */
+static OSSL_CMP_MSG *read_PKIMESSAGE(char **filenames)
+{
+    char *file;
+    OSSL_CMP_MSG *ret;
+
+    if (filenames == NULL) {
+        LOG_err("NULL arg to read_PKIMESSAGE");
+        return NULL;
+    }
+    if (*filenames == NULL) {
+        LOG_err("Not enough file names provided for reading PKIMessage");
+        return NULL;
+    }
+
+    file = *filenames;
+    *filenames = UTIL_next_item(file);
+
+    ret = OSSL_CMP_MSG_read(file);
+    if (ret == NULL)
+        LOG(FL_ERR, "Cannot read PKIMessage from file '%s'", file);
+    return ret;
+}
+
+/*-
+ * Sends the PKIMessage req and on success place the response in *res
+ * basically like OSSL_CMP_MSG_http_perform(), but in addition allows
+ * to dump the sequence of requests and responses to files and/or
+ * to take the sequence of requests and responses from files.
+ */
+static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
+                                         const OSSL_CMP_MSG *req)
+{
+    OSSL_CMP_MSG *req_new = NULL;
+    OSSL_CMP_MSG *res = NULL;
+    OSSL_CMP_PKIHEADER *hdr;
+
+    if (req != NULL && opt_reqout != NULL
+            && !write_PKIMESSAGE(req, &opt_reqout))
+        goto err;
+    if (opt_reqin != NULL && opt_rspin == NULL) {
+        if ((req_new = read_PKIMESSAGE(&opt_reqin)) == NULL)
+            goto err;
+#if 0
+        /*-
+         * The transaction ID in req_new read from opt_reqin may not be fresh.
+         * In this case the server may complain "Transaction id already in use."
+         * The following workaround unfortunately requires re-protection.
+         */
+        if (opt_reqin_new_tid
+                && !OSSL_CMP_MSG_update_transactionID(ctx, req_new))
+            goto err;
+#endif
+    }
+
+    if (opt_rspin != NULL) {
+        res = read_PKIMESSAGE(&opt_rspin);
+    } else {
+        const OSSL_CMP_MSG *actual_req = opt_reqin != NULL ? req_new : req;
+
+        res =
+#if 0
+            opt_use_mock_srv ? OSSL_CMP_CTX_server_perform(ctx, actual_req) :
+#endif
+            OSSL_CMP_MSG_http_perform(ctx, actual_req);
+    }
+    if (res == NULL)
+        goto err;
+
+    if (opt_reqin != NULL || opt_rspin != NULL) {
+        /* need to satisfy nonce and transactionID checks */
+        ASN1_OCTET_STRING *nonce;
+        ASN1_OCTET_STRING *tid;
+
+        hdr = OSSL_CMP_MSG_get0_header(res);
+        nonce = OSSL_CMP_HDR_get0_recipNonce(hdr);
+        tid = OSSL_CMP_HDR_get0_transactionID(hdr);
+        if (!OSSL_CMP_CTX_set1_senderNonce(ctx, nonce)
+                || !OSSL_CMP_CTX_set1_transactionID(ctx, tid)) {
+            OSSL_CMP_MSG_free(res);
+            res = NULL;
+            goto err;
+        }
+    }
+
+    if (opt_rspout != NULL && !write_PKIMESSAGE(res, &opt_rspout)) {
+        OSSL_CMP_MSG_free(res);
+        res = NULL;
+    }
+
+ err:
+    OSSL_CMP_MSG_free(req_new);
+    return res;
+}
+
 static int set_name(const char *str,
                     int (*set_fn) (OSSL_CMP_CTX *ctx, const X509_NAME *name),
                     OSSL_CMP_CTX *ctx, const char *desc)
@@ -756,6 +886,16 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
         goto err;
 
     OSSL_CMP_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
+    if (opt_reqin != NULL && opt_rspin != NULL)
+        LOG_warn("-reqin is ignored since -rspin is present");
+#if 0
+    if (opt_reqin_new_tid && opt_reqin == NULL)
+        LOG_warn("-reqin_new_tid is ignored since -reqin is not present");
+#endif
+    if (opt_reqin != NULL || opt_reqout != NULL
+            || opt_rspin != NULL || opt_rspout != NULL)
+        transfer_fn = read_write_req_resp;
+
     const bool implicit_confirm = opt_implicit_confirm;
 
     if ((int)opt_total_timeout < -1) {

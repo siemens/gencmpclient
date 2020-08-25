@@ -79,6 +79,10 @@ B<cmpClient> I<options>
 [B<-tls_host> I<name>]
 
 [B<-verbosity> I<level>]
+[B<-reqin>] I<filenames>
+[B<-reqout>] I<filenames>
+[B<-rspin>] I<filenames>
+[B<-rspout>] I<filenames>
 
 [B<-check_all>]
 [B<-check_any>]
@@ -693,6 +697,31 @@ Level of verbosity for logging, error output, etc.
 6 = INFO, 7 = DEBUG, 8 = TRACE.
 Defaults to 6 = INFO.
 The levels DEBUG and TRACE are most useful for certificate status check issues.
+
+=item B<-reqin> I<filenames>
+
+Take sequence of CMP requests from file(s).
+Multiple filenames may be given, separated by commas and/or whitespace
+(where in the latter case the whole argument must be enclosed in "...").
+As many files are read as needed for a complete transaction.
+
+=item B<-reqout> I<filenames>
+
+Save sequence of CMP requests to file(s).
+Multiple filenames may be given, separated by commas and/or whitespace.
+As many files are written as needed to store the complete transaction.
+
+=item B<-rspin> I<filenames>
+
+Process sequence of CMP responses provided in file(s), skipping server.
+Multiple filenames may be given, separated by commas and/or whitespace.
+As many files are read as needed for the complete transaction.
+
+=item B<-rspout> I<filenames>
+
+Save sequence of CMP responses to file(s).
+Multiple filenames may be given, separated by commas and/or whitespace.
+As many files are written as needed to store the complete transaction.
 
 =back
 

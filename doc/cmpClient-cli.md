@@ -77,6 +77,10 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-tls\_host** _name_\]
 
 \[**-verbosity** _level_\]
+\[**-reqin**\] _filenames_
+\[**-reqout**\] _filenames_
+\[**-rspin**\] _filenames_
+\[**-rspout**\] _filenames_
 
 \[**-check\_all**\]
 \[**-check\_any**\]
@@ -620,6 +624,31 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     6 = INFO, 7 = DEBUG, 8 = TRACE.
     Defaults to 6 = INFO.
     The levels DEBUG and TRACE are most useful for certificate status check issues.
+
+- **-reqin** _filenames_
+
+    Take sequence of CMP requests from file(s).
+    Multiple filenames may be given, separated by commas and/or whitespace
+    (where in the latter case the whole argument must be enclosed in "...").
+    As many files are read as needed for a complete transaction.
+
+- **-reqout** _filenames_
+
+    Save sequence of CMP requests to file(s).
+    Multiple filenames may be given, separated by commas and/or whitespace.
+    As many files are written as needed to store the complete transaction.
+
+- **-rspin** _filenames_
+
+    Process sequence of CMP responses provided in file(s), skipping server.
+    Multiple filenames may be given, separated by commas and/or whitespace.
+    As many files are read as needed for the complete transaction.
+
+- **-rspout** _filenames_
+
+    Save sequence of CMP responses to file(s).
+    Multiple filenames may be given, separated by commas and/or whitespace.
+    As many files are written as needed to store the complete transaction.
 
 ## Certificate status checking options, for both CMP and TLS
 

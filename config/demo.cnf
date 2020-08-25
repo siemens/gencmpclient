@@ -36,8 +36,11 @@ server = pki.certificate.fi:8700
 path = pkix/
 secret = pass:insta
 ref = 3078
-cert = creds/insta_client.p12
-key = $cert
+#would need to be updated every 3 months:
+#cert = creds/insta_client.p12
+#key = $cert
+cert = creds/manufacturer.crt
+key = creds/manufacturer.pem
 keypass = pass:12345
 recipient = "/C=FI/O=Insta Demo/CN=Insta Demo CA"
 subject = "/CN=test-genCMPClientDemo"

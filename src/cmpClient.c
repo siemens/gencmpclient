@@ -1342,13 +1342,14 @@ int print_help(const char *prog)
     return EXIT_SUCCESS;
 }
 
-bool set_verbosity(void)
+bool set_verbosity(long level)
 {
-    if (opt_verbosity < LOG_EMERG || opt_verbosity > LOG_TRACE) {
-        LOG(FL_ERR, "Logging verbosity level %d out of range (0 .. 8)", opt_verbosity);
+    if (level < LOG_EMERG || level > LOG_TRACE) {
+        LOG(FL_ERR, "Logging verbosity level %d out of range (0 .. 8)", level);
         return false;
     }
-    LOG_set_verbosity((severity)opt_verbosity);
+    opt_verbosity = level;
+    LOG_set_verbosity((severity)level);
     return true;
 }
 
@@ -1405,11 +1406,9 @@ int main(int argc, char *argv[])
                     opt_config = argv[++i];
                 else if (strcmp(argv[i] + 1, "section") == 0)
                     opt_section = argv[++i];
-                else if (strcmp(argv[i] + 1, "verbosity") == 0) {
-                    opt_verbosity = UTIL_atoint(argv[++i]); /* == INT_MIN on parse error */
-                    if (!set_verbosity())
-                        goto end;
-                }
+                else if (strcmp(argv[i] + 1, "verbosity") == 0
+                         && !set_verbosity(UTIL_atoint(argv[++i])))
+                    goto end; /* INT_MIN on parse error */
             }
         }
     }
@@ -1444,7 +1443,7 @@ int main(int argc, char *argv[])
         return print_help(prog);
     if (rv <= 0)
         goto end;
-    if (!set_verbosity())
+    if (!set_verbosity(opt_verbosity))
         goto end;
 
     /* handle here to start correct demo use case */

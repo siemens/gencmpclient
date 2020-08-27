@@ -119,8 +119,9 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
             goto err;
         }
         if (chain != NULL) {
-            if ((untrusted == NULL && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, chain)) ||
-                (untrusted != NULL && chain != NULL &&
+            if ((untrusted == NULL &&
+                 !OSSL_CMP_CTX_set1_untrusted_certs(ctx, chain)) ||
+                (untrusted != NULL &&
                  !UTIL_sk_X509_add1_certs(OSSL_CMP_CTX_get0_untrusted_certs(ctx), chain, 0, 1)))
             goto err;
         }
@@ -502,15 +503,25 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
         goto err;
     }
 
+    LOG_debug("Trying to build chain for newly enrolled cert");
     EVP_PKEY *new_key = OSSL_CMP_CTX_get0_newPkey(ctx, 1 /* priv */); /* NULL in case P10CR */
+    X509_STORE *new_cert_truststore = OSSL_CMP_CTX_get_certConf_cb_arg(ctx);
     STACK_OF(X509) *untrusted = OSSL_CMP_CTX_get0_untrusted_certs(ctx); /* includes extraCerts */
-    STACK_OF(X509) *chain = OSSL_CMP_build_cert_chain(untrusted, newcert);
-    if (chain != NULL) {
-        X509 *new_cert = sk_X509_shift(chain);
-        X509_free(new_cert);
+    STACK_OF(X509) *chain = ossl_cmp_build_cert_chain(new_cert_truststore  /* may be NULL */,
+                                                      untrusted, newcert);
+    if (sk_X509_num(chain) > 0)
+        X509_free(sk_X509_shift(chain)); /* remove leaf (EE) cert */
+    if (new_cert_truststore != NULL) {
+        if (chain == NULL) {
+            LOG_err("Failed building chain for newly enrolled cert");
+            goto err;
+        }
+        LOG_debug("Succeeded building proper chain for newly enrolled cert");
+    } else if (chain == NULL) {
+        LOG_warn("Could not build approximate chain for newly enrolled cert, resorting to received extraCerts");
+        chain = OSSL_CMP_CTX_get1_extraCertsIn(ctx);
     } else {
-        LOG(FL_WARN, "Could not build proper chain for newly enrolled cert, resorting to all untrusted certs");
-        chain = X509_chain_up_ref(untrusted);
+        LOG_debug("Succeeded building approximate chain for newly enrolled cert");
     }
 
     CREDENTIALS *creds = CREDENTIALS_new(new_key, newcert, chain, NULL, NULL);

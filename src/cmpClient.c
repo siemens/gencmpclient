@@ -160,7 +160,7 @@ opt_t cmp_opts[] = {
     { "trusted", OPT_TXT, {.txt = NULL}, { &opt_trusted },
       "Certificates to trust as chain roots when verifying signed CMP responses"},
     { "untrusted", OPT_TXT, {.txt = NULL}, { &opt_untrusted },
-      "File(s) with intermediate certs for TLS, CMP, and CA chain construction"},
+      "Intermediate CA certs for chain construction for CMP/TLS/enrolled certs"},
     { "srvcert", OPT_TXT, {.txt = NULL}, { &opt_srvcert },
       "Server cert to pin and trust directly when verifying signed CMP responses"},
     { "recipient", OPT_TXT, {.txt = NULL}, { &opt_recipient },
@@ -185,7 +185,8 @@ opt_t cmp_opts[] = {
       "Secret value for authentication with a pre-shared key (PBM). Prepend 'pass:'"},
     { "cert", OPT_TXT, {.txt = NULL}, { &opt_cert },
       "Client cert (plus any extra one), needed unless using -secret for PBM."},
-    OPT_MORE("This also used as default reference for subject DN and SANs"),
+    OPT_MORE("This also used as default reference for subject DN and SANs."),
+    OPT_MORE("Any further certs included are appended to the untrusted certs"),
     { "key", OPT_TXT, {.txt = NULL}, { &opt_key },
       "Key for the client certificate"},
     { "keypass", OPT_TXT, {.txt = NULL}, { &opt_keypass },
@@ -195,7 +196,8 @@ opt_t cmp_opts[] = {
     { "mac", OPT_TXT, {.txt = NULL}, { &opt_mac},
       "MAC algorithm to use in PBM-based message protection. Default \"hmac-sha1\""},
     { "extracerts", OPT_TXT, {.txt = NULL}, { &opt_extracerts },
-      "File(s) with certificates to append in extraCerts field of outgoing messages"},
+      "File(s) with certificates to append in extraCerts field of outgoing messages."},
+    OPT_MORE("This can be used as the default CMP signer cert chain to include"),
     { "unprotected_requests", OPT_BOOL, {.bit = false}, { (const char **) &opt_unprotected_requests },
       "Send messages without CMP-level protection"},
 
@@ -1145,8 +1147,8 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     } else {
         if (opt_subject != NULL) {
             if (opt_ref == NULL && opt_cert == NULL) {
-                /* use subject as default sender */
-                err = set_name(opt_issuer, OSSL_CMP_CTX_set1_subjectName, ctx, "subject");
+                /* use subject as default sender unless oldcert subject is used */
+                err = set_name(opt_subject, OSSL_CMP_CTX_set1_subjectName, ctx, "subject");
                 if (err != CMP_OK)
                     goto err;
             } else {

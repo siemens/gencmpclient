@@ -78,6 +78,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
                           OPTIONAL const char *recipient,
                           OPTIONAL const STACK_OF(X509) *untrusted,
                           OPTIONAL const CREDENTIALS *creds,
+                          OPTIONAL X509_STORE *creds_truststore,
                           OPTIONAL const char *digest,
                           OPTIONAL const char *mac,
                           OPTIONAL OSSL_CMP_transfer_cb_t transfer_fn, int total_timeout,
@@ -118,13 +119,10 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
             (cert != NULL && !OSSL_CMP_CTX_set1_clCert(ctx, cert))) {
             goto err;
         }
-        if (chain != NULL) {
-            if ((untrusted == NULL &&
-                 !OSSL_CMP_CTX_set1_untrusted_certs(ctx, chain)) ||
-                (untrusted != NULL &&
-                 !UTIL_sk_X509_add1_certs(OSSL_CMP_CTX_get0_untrusted_certs(ctx), chain, 0, 1)))
+
+        if (cert != NULL &&
+            !OSSL_CMP_CTX_build_cert_chain(ctx, creds_truststore, chain))
             goto err;
-        }
     } else {
         if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, 1)) {
             goto err;

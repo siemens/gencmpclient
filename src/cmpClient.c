@@ -63,6 +63,7 @@ const char *opt_ref;
 const char *opt_secret;
 /* TODO re-add creds */
 const char *opt_cert;
+const char *opt_own_trusted;
 const char *opt_key;
 const char *opt_keypass;
 const char *opt_digest;
@@ -93,6 +94,7 @@ const char *opt_out_trusted;
 bool opt_implicit_confirm;
 bool opt_disable_confirm;
 const char *opt_certout;
+const char *opt_chainout;
 
 const char *opt_oldcert;
 long opt_revreason;
@@ -187,6 +189,8 @@ opt_t cmp_opts[] = {
       "Client cert (plus any extra one), needed unless using -secret for PBM."},
     OPT_MORE("This also used as default reference for subject DN and SANs."),
     OPT_MORE("Any further certs included are appended to the untrusted certs"),
+    { "own_trusted", OPT_TXT, {.txt = NULL},  { &opt_own_trusted },
+      "Optional certs to verify chain building for own CMP signer cert"},
     { "key", OPT_TXT, {.txt = NULL}, { &opt_key },
       "Key for the client certificate"},
     { "keypass", OPT_TXT, {.txt = NULL}, { &opt_keypass },
@@ -248,7 +252,9 @@ opt_t cmp_opts[] = {
     { "disable_confirm", OPT_BOOL, {.bit = false}, { (const char **) &opt_disable_confirm },
       "Do not confirm newly enrolled certificates w/o requesting implicit confirm"},
     { "certout", OPT_TXT, {.txt = NULL}, { &opt_certout },
-      "File to save newly enrolled certificate"},
+      "File to save newly enrolled certificate, possibly with chain and key"},
+    { "chainout", OPT_TXT, {.txt = NULL}, { &opt_certout },
+      "File to save the chain of the newly enrolled certificate"},
 
     OPT_HEADER("Certificate update and revocation"),
     { "oldcert", OPT_TXT, {.txt = NULL}, { &opt_oldcert },
@@ -834,15 +840,15 @@ int setup_ctx(CMP_CTX *ctx)
 
 CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 {
+    X509_STORE *own_truststore = NULL;
     X509_STORE *cmp_truststore = NULL;
     CREDENTIALS *cmp_creds = NULL;
     CMP_err err = 1;
 
-    err = 3;
     X509_STORE *new_cert_truststore = NULL;
     const char *new_cert_trusted = opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
     if (new_cert_trusted != NULL) {
-        LOG(FL_TRACE, "Using '%s' as cert trust store for verifying new cert", new_cert_trusted);
+        LOG(FL_TRACE, "Using '%s' as trust store for verifying new cert", new_cert_trusted);
         new_cert_truststore = STORE_load(new_cert_trusted, "trusted certs for verifying new cert");
         if (new_cert_truststore == NULL)
             goto err;
@@ -868,13 +874,32 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
             char *secret = FILES_get_pass(opt_secret, "PBM-based message protection");
             cmp_creds = CREDENTIALS_new(NULL, NULL, NULL, secret, opt_ref);
             UTIL_cleanse_free(secret);
+            if (opt_own_trusted != NULL)
+                LOG_warn("-own_trusted option is ignored since -secret is used");
         } else {
             cmp_creds = CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
+            if (opt_own_trusted != NULL) {
+                LOG(FL_TRACE, "Using '%s' as trust store for verifying own CMP signer cert", opt_own_trusted);
+                own_truststore = STORE_load(opt_own_trusted, "trusted certs for verifying own CMP signer cert");
+                err = 4;
+                if (own_truststore == NULL)
+                    goto err;
+                err = 5;
+                /* no cert status/revocation checks done for here */
+                if (!STORE_set_parameters(own_truststore, NULL /* vpm */,
+                                          false, false, NULL,
+                                          false, NULL, -1,
+                                          false, NULL, -1))
+                    goto err;
+            }
         }
         if (cmp_creds == NULL) {
             LOG(FL_ERR, "Unable to set up %s", creds_desc);
             goto err;
         }
+    } else {
+        if (opt_own_trusted != NULL)
+            LOG_warn("-own_trusted option is ignored since -cert and -key are not used");
     }
 
     err = 2;
@@ -907,7 +932,8 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
     err = CMPclient_prepare(pctx, log_fn,
                             cmp_truststore, opt_recipient,
                             untrusted_certs,
-                            cmp_creds, opt_digest, opt_mac,
+                            cmp_creds, own_truststore,
+                            opt_digest, opt_mac,
                             transfer_fn, (int)opt_total_timeout,
                             new_cert_truststore, implicit_confirm);
     CERTS_free(untrusted_certs);
@@ -918,13 +944,14 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
     if (opt_srvcert != NULL) {
         X509 *srvcert = CERT_load(opt_srvcert, NULL /* pass */, "directly trusted CMP server certificate");
         if (srvcert == NULL || !OSSL_CMP_CTX_set1_srvCert(*pctx, srvcert))
-            err = 4;
+            err = 3;
         X509_free(srvcert);
     }
 
  err:
     CREDENTIALS_free(cmp_creds);
     STORE_free(cmp_truststore);
+    STORE_free(own_truststore);
     return err;
 }
 
@@ -1180,6 +1207,8 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             LOG_warn("-disable_confirm option is ignored for 'rr' commands");
         if (opt_certout != NULL)
             LOG_warn("-certout option is ignored for 'rr' commands");
+        if (opt_chainout != NULL)
+            LOG_warn("-chainout option is ignored for 'rr' commands");
     } else {
         if (opt_revreason != CRL_REASON_NONE)
             LOG_warn("-revreason option given for commands other than 'rr'");
@@ -1283,6 +1312,9 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 
     if (use_case != revocation && use_case != genm) {
         if (use_case != pkcs10 && opt_newkey != NULL && opt_newkeytype != NULL) {
+            if (opt_chainout != NULL)
+                LOG_warn("-chainout option is ignored");
+
             const char *new_desc = "newly enrolled certificate and related chain and key";
             if (!CREDENTIALS_save(new_creds, opt_certout, opt_newkey, opt_newkeypass, new_desc)) {
                 LOG_err("Failed to save newly enrolled credentials");
@@ -1294,22 +1326,24 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             X509 *cert = CREDENTIALS_get_cert(new_creds);
             STACK_OF(X509)* certs = CREDENTIALS_get_chain(new_creds);
 
-            if (certs == NULL) {
+            if (certs == NULL || opt_chainout != NULL) {
                 if (!CERT_save(cert, opt_certout, new_desc)) {
                     err = 27;
                     goto err;
                 }
-            }
-
-            if (sk_X509_unshift(certs, cert) == 0) { /* prepend cert */
-                LOG(FL_ERR, "Out of memory writing certs to file '%s'", opt_certout);
-                err = 28;
-                goto err;
-            }
-
-            if (certs != NULL) {
-                if (CERTS_save(certs, opt_certout, new_desc) < 0) {
+                if (opt_chainout != NULL &&
+                    CERTS_save(certs, opt_chainout, new_desc) < 0) {
+                    err = 28;
+                    goto err;
+                }
+            } else {
+                if (sk_X509_unshift(certs, cert) == 0) { /* prepend cert */
+                    LOG(FL_ERR, "Out of memory writing certs to file '%s'", opt_certout);
                     err = 29;
+                    goto err;
+                }
+                if (CERTS_save(certs, opt_certout, new_desc) < 0) {
+                    err = 30;
                     goto err;
                 }
             }

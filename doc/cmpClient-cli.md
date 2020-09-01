@@ -32,6 +32,7 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-ref** _value_\]
 \[**-secret** _arg_\]
 \[**-cert** _filename_\]
+\[**-own\_trusted** _filenames_\]
 \[**-key** _filename_\]
 \[**-keypass** _arg_\]
 \[**-digest** _name_\]
@@ -64,6 +65,7 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-implicit\_confirm**\]
 \[**-disable\_confirm**\]
 \[**-certout** _filename_\]
+\[**-chainout** _filename_\]
 
 \[**-oldcert** _filename_\]
 \[**-revreason** _number_\]
@@ -181,20 +183,24 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     protection certificate is not pinned but may be any certificate
     for which a chain to one of the given trusted certificates can be constructed.
 
-    Multiple filenames may be given, separated by commas and/or whitespace.
+    Multiple filenames may be given, separated by commas and/or whitespace
+    (where in the latter case the whole argument must be enclosed in "...").
     Each source may contain multiple certificates.
 
 - **-untrusted** _sources_
 
-    Non-trusted intermediate certificate(s) that may be useful
-    for constructing the TLS client cert chain (if TLS is enabled) and
-    for building certificate chains while verifying the CMP server certificate
-    (when checking signature-based CMP message protection),
-    stapled OCSP responses (when establishing TLS connections),
-    and/or the newly enrolled certificate.
-    These may get added to the extraCerts field sent in requests as far as needed.
+    Non-trusted intermediate certificate(s).
+    Any extra certificates given with the **-cert** option are appended to it.
+    All these certificates may be useful for cert path construction
+    for the CMP client certificate (to include in the extraCerts field of outgoing
+    messages) and for the TLS client certificate (if TLS is enabled)
+    as well as for chain building when verifying
+    the CMP server certificate (checking signature-based CMP message protection),
+    when verifying stapled OCSP responses (while establishing TLS connections), and
+    when verifying the newly enrolled certificate.
 
-    Multiple filenames may be given, separated by commas and/or whitespace.
+    Multiple filenames or URLs may be given, separated by commas and/or whitespace
+    (where in the latter case the whole argument must be enclosed in "...").
     Each file may contain multiple certificates.
 
 - **-srvcert** _filename_
@@ -218,12 +224,12 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
     The recipient field in the header of a CMP message is mandatory.
     If not given explicitly the recipient is determined in the following order:
-    the subject of the CMP server certificate given with the **-srvcert** option
-    if present, the **-issuer** option if present,
-    the issuer of the certificate given with the **-oldcert** option if present,
-    the issuer of the CMP client certificate (**-cert** option) if present,
+    the subject of the CMP server certificate given with the **-srvcert** option,
+    the **-issuer** option,
+    the issuer of the certificate given with the **-oldcert** option,
+    the issuer of the CMP client certificate (**-cert** option),
     the subject of the first certificate given with the **-untrusted** option,
-    or else the NULL-DN as last resort.
+    as far as any of those is present, else the NULL-DN as last resort.
 
 - **-expect\_sender** _name_
 
@@ -289,28 +295,41 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
 - **-secret** _arg_
 
-    Source of secret value to use for creating PBM-based protection of outgoing
-    messages and for verifying any PBM-based protection of incoming messages.
+    Prefer PBM-based message protection with given source of a secret value.
+    The secret is used for creating PBM-based protection of outgoing messages
+    and (as far as needed) for verifying PBM-based protection of incoming messages.
     PBM stands for Password-Based Message Authentication Code.
-    This takes precedence over the **-cert** option.
+    This takes precedence over the **-cert** and **-key** options.
 
     Currently only plain passwords are supported,
     which should be preceded by "pass:".
 
 - **-cert** _filename_
 
-    The client's current certificate.
+    The client's current CMP signer certificate.
     Requires for the corresponding key to be given with **-key**.
-    The subject of this certificate will be used as the "sender" field
-    of outgoing CMP messages, while **-subjectName** may provide a fallback value.
+    The subject of this certificate will be used as sender of outgoing CMP messages,
+    while the subject of **-oldcert** or **-subjectName** may provide fallback values.
+    The issuer of this certificate is used as one of the recipient fallback values.
     When using signature-based message protection, this "protection certificate"
-    will be included first in the extraCerts field of outgoing messages.
-    For IR this can be used for authenticating a request message
+    will be included first in the extraCerts field of outgoing messages
+    and the signature is done with the corresponding key.
+    In Initialization Request (IR) messages this can be used for authenticating
     using an external entity certificate as defined in appendix E.7 of RFC 4210.
-    For KUR this is also used as certificate to be updated if the **-oldcert**
-    option is not given.
-    If the file includes further certs, they are appended to the untrusted certs.
-    These may get added to the extraCerts field sent in requests as far as needed.
+    For Key Update Request (KUR) messages this is also used as
+    the certificate to be updated if the **-oldcert** option is not given.
+    If the file includes further certs, they are appended to the untrusted certs
+    because they typically constitute the chain of the client certificate, which
+    is included in the extraCerts field in signature-protected request messages.
+
+- **-own\_trusted** _filenames_
+
+    If this list of certificates are provided they are used as trust anchors
+    to verify the chain building for the own CMP signer certificate.
+
+    Multiple filenames may be given, separated by commas and/or whitespace
+    (where in the latter case the whole argument must be enclosed in "...").
+    Each source may contain multiple certificates.
 
 - **-key** _filename_
 
@@ -348,8 +367,10 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 - **-extracerts** _sources_
 
     Certificates to append in the extraCerts field when sending messages.
+    They can be used as the default CMP signer certificate chain to include.
 
-    Multiple filenames or URLs may be given, separated by commas and/or whitespace.
+    Multiple filenames or URLs may be given, separated by commas and/or whitespace
+    (where in the latter case the whole argument must be enclosed in "...").
     Each source may contain multiple certificates.
 
 - **-unprotected\_requests**
@@ -499,7 +520,8 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
     Trusted certificate(s) to use for verifying the newly enrolled certificate.
 
-    Multiple filenames may be given, separated by commas and/or whitespace.
+    Multiple filenames may be given, separated by commas and/or whitespace
+    (where in the latter case the whole argument must be enclosed in "...").
     Each source may contain multiple certificates.
 
 - **-verify\_hostname** _name_
@@ -534,6 +556,15 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 - **-certout** _filename_
 
     The file where the newly enrolled certificate should be saved.
+    If **-newkey** and **-newkeytype** are given and **-cmd** is not _p10cr_
+    then the related chain and key are stored in this file as well,
+    else if **-chainout** is not given the the related chain is stored here as well.
+
+- **-chainout** _filename_
+
+    The file where the chain of the newly enrolled certificate should be saved.
+    If **-newkey** and **-newkeytype** are given and **-cmd** is not _p10cr_
+    this option is ignored.
 
 ## Certificate update and revocation options
 
@@ -606,7 +637,8 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     Trusted certificate(s) to use for verifying the TLS server certificate.
     This implies hostname validation.
 
-    Multiple filenames may be given, separated by commas and/or whitespace.
+    Multiple filenames may be given, separated by commas and/or whitespace
+    (where in the latter case the whole argument must be enclosed in "...").
     Each source may contain multiple certificates.
 
 - **-tls\_host** _name_

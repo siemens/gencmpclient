@@ -34,6 +34,7 @@ B<cmpClient> I<options>
 [B<-ref> I<value>]
 [B<-secret> I<arg>]
 [B<-cert> I<filename>]
+[B<-own_trusted> I<filenames>]
 [B<-key> I<filename>]
 [B<-keypass> I<arg>]
 [B<-digest> I<name>]
@@ -66,6 +67,7 @@ B<cmpClient> I<options>
 [B<-implicit_confirm>]
 [B<-disable_confirm>]
 [B<-certout> I<filename>]
+[B<-chainout> I<filename>]
 
 [B<-oldcert> I<filename>]
 [B<-revreason> I<number>]
@@ -203,7 +205,8 @@ This option gives more flexibility than the B<-srvcert> option because the
 protection certificate is not pinned but may be any certificate
 for which a chain to one of the given trusted certificates can be constructed.
 
-Multiple filenames may be given, separated by commas and/or whitespace.
+Multiple filenames may be given, separated by commas and/or whitespace
+(where in the latter case the whole argument must be enclosed in "...").
 Each source may contain multiple certificates.
 
 =item B<-untrusted> I<sources>
@@ -218,7 +221,8 @@ the CMP server certificate (checking signature-based CMP message protection),
 when verifying stapled OCSP responses (while establishing TLS connections), and
 when verifying the newly enrolled certificate.
 
-Multiple filenames may be given, separated by commas and/or whitespace.
+Multiple filenames or URLs may be given, separated by commas and/or whitespace
+(where in the latter case the whole argument must be enclosed in "...").
 Each file may contain multiple certificates.
 
 =item B<-srvcert> I<filename>
@@ -331,10 +335,11 @@ is typically used when authenticating with pre-shared key (password-based MAC).
 
 =item B<-secret> I<arg>
 
-Source of secret value to use for creating PBM-based protection of outgoing
-messages and for verifying any PBM-based protection of incoming messages.
+Prefer PBM-based message protection with given source of a secret value.
+The secret is used for creating PBM-based protection of outgoing messages
+and (as far as needed) for verifying PBM-based protection of incoming messages.
 PBM stands for Password-Based Message Authentication Code.
-This takes precedence over the B<-cert> option.
+This takes precedence over the B<-cert> and B<-key> options.
 
 Currently only plain passwords are supported,
 which should be preceded by "pass:".
@@ -356,6 +361,15 @@ the certificate to be updated if the B<-oldcert> option is not given.
 If the file includes further certs, they are appended to the untrusted certs
 because they typically constitute the chain of the client certificate, which
 is included in the extraCerts field in signature-protected request messages.
+
+=item B<-own_trusted> I<filenames>
+
+If this list of certificates are provided they are used as trust anchors
+to verify the chain building for the own CMP signer certificate.
+
+Multiple filenames may be given, separated by commas and/or whitespace
+(where in the latter case the whole argument must be enclosed in "...").
+Each source may contain multiple certificates.
 
 =item B<-key> I<filename>
 
@@ -395,7 +409,8 @@ Defaults to C<hmac-sha1> as per RFC 4210.
 Certificates to append in the extraCerts field when sending messages.
 They can be used as the default CMP signer certificate chain to include.
 
-Multiple filenames or URLs may be given, separated by commas and/or whitespace.
+Multiple filenames or URLs may be given, separated by commas and/or whitespace
+(where in the latter case the whole argument must be enclosed in "...").
 Each source may contain multiple certificates.
 
 =item B<-unprotected_requests>
@@ -563,7 +578,8 @@ This is for supporting legacy clients.
 
 Trusted certificate(s) to use for verifying the newly enrolled certificate.
 
-Multiple filenames may be given, separated by commas and/or whitespace.
+Multiple filenames may be given, separated by commas and/or whitespace
+(where in the latter case the whole argument must be enclosed in "...").
 Each source may contain multiple certificates.
 
 =item B<-verify_hostname> I<name>
@@ -598,6 +614,15 @@ B<WARNING:> This leads to behavior violating RFC 4210.
 =item B<-certout> I<filename>
 
 The file where the newly enrolled certificate should be saved.
+If B<-newkey> and B<-newkeytype> are given and B<-cmd> is not I<p10cr>
+then the related chain and key are stored in this file as well,
+else if B<-chainout> is not given the the related chain is stored here as well.
+
+=item B<-chainout> I<filename>
+
+The file where the chain of the newly enrolled certificate should be saved.
+If B<-newkey> and B<-newkeytype> are given and B<-cmd> is not I<p10cr>
+this option is ignored.
 
 =back
 
@@ -680,7 +705,8 @@ Extra certificates to provide to TLS server during TLS handshake
 Trusted certificate(s) to use for verifying the TLS server certificate.
 This implies hostname validation.
 
-Multiple filenames may be given, separated by commas and/or whitespace.
+Multiple filenames may be given, separated by commas and/or whitespace
+(where in the latter case the whole argument must be enclosed in "...").
 Each source may contain multiple certificates.
 
 =item B<-tls_host> I<name>

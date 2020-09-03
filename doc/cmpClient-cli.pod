@@ -14,7 +14,7 @@ B<cmpClient> I<options>
 [B<-config> I<filename>]
 [B<-section> I<names>]
 
-[B<-server> I<address[:port]>]
+[B<-server> I<[http://]address[:port]>][/path]
 [B<-proxy> I<[http://]address[:port][/path]>]
 [B<-no_proxy> I<addresses>]
 [B<-path> I<remote_path>]
@@ -154,28 +154,31 @@ section (as far as present) can provide per-option fallback values.
 
 =over 4
 
-=item B<-server> I<address[:port]>
+=item B<-server> I<[http[s]://]address[:port][/path]>
 
-The IP address or DNS hostname and optionally port (defaulting to 80)
-of the CMP server to connect to using HTTP/S transport.
+The IP address or DNS hostname and optionally port (defaulting to 80 or 443)
+of the CMP server to connect to using HTTP(S) transport.
+The optional I<http://> or I<https://> prefix is ignored.
+If a path is included it provides the default value for the B<-path> option.
 
-=item B<-proxy> I<[http://]address[:port][/path]>
+=item B<-proxy> I<[http[s]://]address[:port][/path]>
 
 The HTTP(S) proxy server to use for reaching the CMP server unless B<no_proxy>
 applies, see below.
-The optional "http://" prefix and any trailing path are ignored.
+The optional I<http://> or I<https://>prefix and any trailing path are ignored.
 Defaults to the environment variable C<http_proxy> if set, else C<HTTP_PROXY>
 in case no TLS is used, otherwise C<https_proxy> if set, else C<HTTPS_PROXY>.
 
 =item B<-no_proxy> I<addresses>
-List of IP addresses and/or DNS names of servers not use an HTTP(S) proxy for,
-separated by commas and/or whitespace.
+List of IP addresses and/or DNS names of servers
+not to use an HTTP(S) proxy for, separated by commas and/or whitespace
+(where in the latter case the whole argument must be enclosed in "...").
 Default is from the environment variable C<no_proxy> if set, else C<NO_PROXY>.
 
 =item B<-path> I<remote_path>
 
 HTTP path at the CMP server (aka CMP alias) to use for POST requests.
-Defaults to "/".
+Defaults to any path given with B<-server>, else C<"/">.
 
 =item B<-msg_timeout> I<seconds>
 

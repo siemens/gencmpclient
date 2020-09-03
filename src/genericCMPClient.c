@@ -27,6 +27,7 @@ STACK_OF(X509_EXTENSION) *(*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTE
 # include <SecUtils/storage/files.h>
 # include <SecUtils/credentials/verify.h>
 # include <SecUtils/credentials/store.h>
+# include <SecUtils/connections/conn.h>
 # ifndef SEC_NO_TLS
 #  include <SecUtils/connections/tls.h>
 # endif
@@ -322,10 +323,11 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy)
 {
-    char addr[80 + 1];
+    char uri[255 + 1], *addr = uri;
     int port;
+    char proxy_uri[255 + 1];
 
-    if (ctx == NULL || server == NULL || path == NULL) {
+    if (ctx == NULL || server == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 #ifdef SEC_NO_TLS
@@ -335,9 +337,9 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     }
 #endif
 
-    snprintf(addr, sizeof(addr), "%s", server);
-    port = UTIL_parse_server_and_port(addr);
-    if (port < 0) {
+    snprintf(uri, sizeof(uri), "%s", server);
+    port = CONN_parse_uri(&addr, 0, &path, "server");
+    if (port <= 0) {
         return CMP_R_INVALID_PARAMETERS;
     }
     if (!OSSL_CMP_CTX_set1_server(ctx, addr) ||
@@ -363,8 +365,8 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
             proxy += strlen(URL_HTTP_PREFIX);
         else if (strncmp(proxy, URL_HTTPS_PREFIX, strlen(URL_HTTPS_PREFIX)) == 0)
             proxy += strlen(URL_HTTPS_PREFIX);
-        snprintf(addr, sizeof(addr), "%s", proxy);
-        port = UTIL_parse_server_and_port(addr);
+        snprintf(proxy_uri, sizeof(proxy_uri), "%s", proxy);
+        port = UTIL_parse_server_and_port(addr = proxy_uri);
         if (port < 0) {
             return CMP_R_INVALID_PARAMETERS;
         }

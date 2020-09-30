@@ -14,6 +14,8 @@
 #include <SecUtils/config/config.h>
 //#include <SecUtils/util/log.h>
 #include <SecUtils/certstatus/crls.h> /* just for use in test_load_crl_cb() */
+#include <SecUtils/certstatus/crl_mgmt.h>
+#include <SecUtils/util/cdp_util.h> /* TODO integrate with util.h */
 
 #include <genericCMPClient.h>
 
@@ -22,13 +24,23 @@
 /* needed for OSSL_CMP_ITAV_gen() in function CMPclient(), TODO remove */
 #include "../cmpossl/crypto/cmp/cmp_local.h"
 
+
 #ifdef LOCAL_DEFS
 # include "genericCMPClient_use.h"
 #endif
 
+/* Usecases are split between CMP usecases and local usecases.
+ * Local usecases do not communicate with CMP and therefore don't
+ * need its complex setup.
+ */
 enum use_case { no_use_case,
-                imprint, bootstrap, pkcs10, update,
-                revocation /* 'revoke' already defined in unistd.h */, genm
+                /* start with cmp use cases */
+                imprint, bootstrap, check_originality, pkcs10, update,
+                revocation /* 'revoke' already defined in unistd.h */, genm,
+                default_case,
+                /* continue with local use cases cmp_usecases for comparison */
+                cmp_usecases = default_case,
+                check_revocation_status
 };
 
 #define RSA_SPEC "RSA:2048"
@@ -45,6 +57,8 @@ long opt_verbosity;
 const char *opt_server;
 const char *opt_proxy;
 const char *opt_no_proxy;
+const char *opt_cdp_proxy;
+const char *opt_crl_cache_dir;
 
 const char *opt_path;
 long opt_msg_timeout;
@@ -58,7 +72,11 @@ const char *opt_expect_sender;
 bool opt_ignore_keyusage;
 bool opt_unprotected_errors;
 const char *opt_extracertsout;
+const char *opt_extracerts_dir;
+const char *opt_extracerts_dir_format;
 const char *opt_cacertsout;
+const char *opt_cacerts_dir;
+const char *opt_cacerts_dir_format;
 
 const char *opt_ref;
 const char *opt_secret;
@@ -124,6 +142,7 @@ const char *opt_crls;
 bool opt_use_cdp;
 const char *opt_cdps;
 long opt_crls_timeout;
+size_t opt_crl_maxdownload_size;
 bool opt_use_aia;
 const char *opt_ocsp;
 long opt_ocsp_timeout;
@@ -131,6 +150,8 @@ bool opt_ocsp_last;
 bool opt_stapling;
 
 X509_VERIFY_PARAM *vpm = NULL;
+CRLMGMT_DATA *cmdat_tls = NULL;
+CRLMGMT_DATA *cmdat_new = NULL;
 STACK_OF(X509_CRL) *crls = NULL;
 
 opt_t cmp_opts[] = {
@@ -153,6 +174,11 @@ opt_t cmp_opts[] = {
     { "no_proxy", OPT_TXT, {.txt = NULL}, { &opt_no_proxy },
       "List of addresses of servers not use HTTP(S) proxy for."},
     OPT_MORE("Default from environment variable 'no_proxy', else 'NO_PROXY', else none"),
+    { "cdp_proxy", OPT_TXT, {.txt = NULL}, { &opt_cdp_proxy },
+      "Address of the proxy server to use for getting CRLs."},
+    OPT_MORE("Default from environment variable 'cdp_proxy', else 'CDP_PROXY', else none"),
+    { "crl_cache_dir", OPT_TXT, {.txt = NULL}, { &opt_crl_cache_dir },
+      "Directory of the CRL cache when downloaded during verification."},
     { "path", OPT_TXT, {.txt = NULL}, { &opt_path },
       "HTTP path (aka CMP alias) at the CMP server.  Default from -server, else \"/\""},
     { "msg_timeout", OPT_NUM, {.num = 120}, { (const char **)&opt_msg_timeout },
@@ -179,8 +205,16 @@ opt_t cmp_opts[] = {
     OPT_MORE("certificate responses (ip/cp/kup), revocation responses (rp), and PKIConf"),
     { "extracertsout", OPT_TXT, {.txt = NULL}, { &opt_extracertsout },
       "File to save extra certificates received in the extraCerts field"},
+    { "extracerts_dir", OPT_TXT, {.txt = NULL}, { &opt_extracerts_dir },
+      "Filepath to save extra certificates received in the extraCerts field"},
+    { "extracerts_dir_format", OPT_TXT, {.txt = NULL}, { &opt_extracerts_dir_format },
+      "Format to save extra certificates received in the extraCerts field"},
     { "cacertsout", OPT_TXT, {.txt = NULL}, { &opt_cacertsout },
       "File to save CA certificates received in the caPubs field of 'ip' messages"},
+    { "cacerts_dir", OPT_TXT, {.txt = NULL}, { &opt_cacerts_dir },
+      "Filepath to save CA certificates received in the caPubs field of 'ip' messages"},
+    { "cacerts_dir_format", OPT_TXT, {.txt = NULL}, { &opt_cacerts_dir_format },
+      "Format to save CA certificates received in the caPubs field of 'ip' messages"},
 
     OPT_HEADER("Client authentication"),
     { "ref", OPT_TXT, {.txt = NULL}, { &opt_ref },
@@ -309,6 +343,8 @@ opt_t cmp_opts[] = {
       "Enable CRL-based status checking and use given URL(s) as fallback CDP"},
     { "crls_timeout", OPT_NUM, {.num = -1}, { (const char **)&opt_crls_timeout },
       "Timeout for CRL fetching, or 0 for none, -1 for default: 10 seconds"},
+    { "crl_maxdownload_size", OPT_NUM, {.num = 0}, { (const char **)&opt_crl_maxdownload_size},
+      "Maximum size of a CRL to be downloaded. Default: 0 = OpenSSL default = 100 kiB"},
     { "use_aia", OPT_BOOL, {.bit = false}, { (const char **) &opt_use_aia },
       "Enable OCSP-based status checking and enable using any AIA entries in certs"},
     { "ocsp", OPT_TXT, {.txt = NULL}, {&opt_ocsp},
@@ -377,6 +413,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
     return 1;
 }
 
+#if 0
 static X509_CRL *test_load_crl_cb(OPTIONAL void *arg, const char *url, int timeout,
                                   OPTIONAL const X509 *cert, OPTIONAL const char *desc)
 {
@@ -386,6 +423,7 @@ static X509_CRL *test_load_crl_cb(OPTIONAL void *arg, const char *url, int timeo
     LOG_cert(FL_DEBUG, "could have used information from", cert);
     return NULL;
 }
+#endif
 
 SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 {
@@ -406,7 +444,7 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
                                   opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
                                   opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout))
             goto err;
-        if (!STORE_set_crl_callback(tls_truststore, test_load_crl_cb, "test_load_crl_cb() called on TLS level"))
+        if (!STORE_set_crl_callback(tls_truststore, CRLMGMT_load_crl_cb, cmdat_tls))
             goto err;
     } else {
         LOG_warn("-tls_used given without -tls_trusted; will not authenticate the server");
@@ -467,7 +505,7 @@ X509_STORE *setup_CMP_truststore(void)
                               opt_check_all, false /* stapling */, crls,
                               opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
                               opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout) ||
-        !STORE_set_crl_callback(cmp_truststore, test_load_crl_cb, "test_load_crl_cb() called on CMP level") ||
+        !STORE_set_crl_callback(cmp_truststore, CRLMGMT_load_crl_cb, cmdat_tls) ||
         /* clear any expected host/ip/email address; opt_expect_sender is used instead: */
         !STORE_set1_host_ip(cmp_truststore, NULL, NULL)) {
         STORE_free(cmp_truststore);
@@ -852,12 +890,15 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
         new_cert_truststore = STORE_load(new_cert_trusted, "trusted certs for verifying new cert");
         if (new_cert_truststore == NULL)
             goto err;
+        /* use separated flag for checking any cert, for new certificate store */
         /* any -verify_hostname, -verify_ip, and -verify_email apply here */
         /* no cert status/revocation checks done for newly enrolled cert */
         if (!STORE_set_parameters(new_cert_truststore, vpm,
-                                  false, false, NULL,
-                                  false, NULL, -1,
-                                  false, NULL, -1))
+                                  opt_check_all, false /* stapling */, crls,
+                                  opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
+                                  opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout))
+            goto err;
+        if (!STORE_set_crl_callback(new_cert_truststore, CRLMGMT_load_crl_cb, cmdat_new))
             goto err;
     }
     /* cannot set these vpm options before STORE_set_parameters(new_cert_truststore, ...) */
@@ -1002,6 +1043,95 @@ int setup_transfer(CMP_CTX *ctx)
     return err;
 }
 
+size_t get_cert_filename(
+    X509            *cert,
+    const char      *prefix,
+    const char      *suffix,
+    char            *name_utf8_buf,
+    size_t          name_utf8_buf_len,
+    unsigned long   flags)
+{
+    (void)flags;
+    size_t len = safe_string_copy(prefix, name_utf8_buf, name_utf8_buf_len, NULL);
+
+    char subject[256];
+    X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName, subject, sizeof(subject));
+    len += safe_string_copy(subject, name_utf8_buf+len, name_utf8_buf_len-len, NULL);
+    len += safe_string_copy(" [", name_utf8_buf+len, name_utf8_buf_len-len, NULL);
+
+	unsigned char sha1[EVP_MAX_MD_SIZE];
+    unsigned int size = 0;
+    X509_digest(cert, EVP_sha1(), sha1, &size);
+    len += bintohex(sha1, size, false, '-', 4, name_utf8_buf+len, name_utf8_buf_len-len, NULL);
+    len += safe_string_copy("].", name_utf8_buf+len, name_utf8_buf_len-len, NULL);
+    len += safe_string_copy(suffix, name_utf8_buf+len, name_utf8_buf_len-len, NULL);
+    return len;
+}
+
+static int client_check_revocation_status(const char * certificate_path)
+{
+    LOG(FL_INFO, "start usecase: check_revocation_status");
+    LOG(FL_INFO, "verify certificate in file  %s", certificate_path);
+    LOG(FL_DEBUG, "trusted certs: %s", opt_tls_trusted);
+
+    FILE *fp = fopen(certificate_path, "r");
+    if (!fp) {
+        LOG(FL_ERR, "unable to open input certfile: %s", certificate_path);
+        return 1;
+    }
+
+    X509 *cert = PEM_read_X509(fp, NULL, NULL, NULL);
+    if (!cert) {
+        LOG(FL_ERR, "unable to parse certificate in: %s", certificate_path);
+        fclose(fp);
+        return 1;
+    }
+    fclose(fp);
+
+    /* cert this is a valid cert pointer from here on */
+    LOG(FL_DEBUG, "certificate read successfully:");
+    CDP_log_cert(FL_DEBUG, cert);
+
+    LOG(FL_DEBUG, "create and init certificate truststore");
+    X509_STORE *store = STORE_load(opt_tls_trusted, NULL);
+    if (store == NULL)
+        goto err;
+
+    if (!STORE_set_parameters(store, vpm,
+                                opt_check_all, opt_stapling, crls,
+                                opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
+                                opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout))
+        goto err;
+
+    if (!STORE_set_crl_callback(store, CRLMGMT_load_crl_cb, cmdat_tls))
+        goto err;
+
+    LOG(FL_DEBUG, "create and init store context");
+    X509_STORE_CTX *ctx = X509_STORE_CTX_new();
+    X509_STORE_CTX_init(ctx, store, cert, NULL);
+
+    LOG(FL_INFO, "start certificate verification now");
+    int ret = X509_verify_cert(ctx);
+
+    /* check for errors and clean up */
+    if (ret > 0) {
+        LOG(FL_INFO, "certificate verification finished successfully");
+    }
+    else {
+        int err = X509_STORE_CTX_get_error(ctx);
+        int depth = X509_STORE_CTX_get_error_depth(ctx);
+        LOG(FL_ERR, "certificate verification failed: (%d) [%d] %s", depth,
+            err, X509_verify_cert_error_string(err));
+    }
+
+err:
+    /* done with store, context and x509 cert */
+    X509_STORE_CTX_free(ctx);
+    X509_STORE_free(store);
+    X509_free(cert);
+    return 0;
+}
+
 static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 {
     CMP_err err = 1;
@@ -1009,6 +1139,20 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
     CREDENTIALS *new_creds = NULL;
+
+    if ((opt_cacerts_dir_format != NULL && opt_cacerts_dir == NULL)
+            || (opt_cacerts_dir_format == NULL && opt_cacerts_dir != NULL)) {
+        LOG_warn("-cacerts_dir_format and -cacerts_dir has to be set both to store certs from caPubs");
+        opt_cacerts_dir_format = NULL;
+        opt_cacerts_dir = NULL;
+    }
+
+    if ((opt_extracerts_dir_format != NULL && opt_extracerts_dir == NULL)
+            || (opt_extracerts_dir_format == NULL && opt_extracerts_dir != NULL)) {
+        LOG_warn("-extracerts_dir_format and -extracerts_dir have both to be set to store certs from extracerts");
+        opt_extracerts_dir_format = NULL;
+        opt_extracerts_dir = NULL;
+    }
 
     if (opt_infotype != NULL) {
         char id_buf[100] = "id-it-";
@@ -1063,6 +1207,18 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
     if (use_case == revocation && opt_oldcert == NULL) {
         LOG_err("-oldcert option is missing for command 'rr' (revocation)");
+        goto err;
+    }
+
+    if (opt_cacerts_dir_format != NULL && FILES_get_format(opt_cacerts_dir_format) == FORMAT_UNDEF) {
+        err = 22;
+        LOG_err("-cacerts_dir_format is not of type 'PEM', 'DER', or 'P12'/'PKCS12'");
+        goto err;
+    }
+
+    if (opt_extracerts_dir_format != NULL && FILES_get_format(opt_extracerts_dir_format) == FORMAT_UNDEF) {
+        err = 24;
+        LOG_err("-extracerts_format is not of type 'PEM', 'DER', or 'P12'/'PKCS12'");
         goto err;
     }
 
@@ -1156,7 +1312,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         }
     }
 
-    if (use_case == imprint || use_case == bootstrap) {
+    if (use_case == imprint || use_case == bootstrap || use_case == check_originality) {
         if (reqExtensions_have_SAN(exts) && opt_sans != NULL) {
             LOG_err("Cannot have Subject Alternative Names both via -reqexts and via -sans");
             err = CMP_R_MULTIPLE_SAN_SOURCES;
@@ -1195,6 +1351,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             LOG_warn("-policy_oids option is ignored for commands other than 'ir' and 'cr'");
     }
 
+// TODO handle check_revocation_status option conflicts
     if (use_case != pkcs10 && opt_csr != NULL)
         LOG_warn("-csr option is ignored for commands other than 'p10cr'");
     if (use_case != update && use_case != revocation && opt_oldcert != NULL)
@@ -1244,6 +1401,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     case imprint:
         err = CMPclient_imprint(ctx, &new_creds, new_pkey, opt_subject, exts);
         break;
+    case check_originality:
     case bootstrap:
         err = CMPclient_bootstrap(ctx, &new_creds, new_pkey, opt_subject, exts);
         break;
@@ -1297,6 +1455,31 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         CERTS_free(certs);
     }
 
+    if (opt_cacerts_dir != NULL) {
+        LOG_info("Extracting certs from caPubs:");
+        STACK_OF(X509) *caPubs_certs = OSSL_CMP_CTX_get1_caPubs(ctx);
+        if (sk_X509_num(caPubs_certs) == 0)
+            LOG(FL_WARN, "No certificate was presented in caPubs to store under %s", opt_cacerts_dir);
+        else if (sk_X509_num(caPubs_certs) > 1)
+            LOG_err("More than 1 certificate was presented in caPubs so they are ignored");
+
+        X509 *cert = sk_X509_value(caPubs_certs, 0);
+        if (cert != NULL) {
+            if (X509_check_issued(cert, cert) != 0) {
+                LOG_err("Certificate in caPubs is not self signed and thus is not stored");
+            }
+            else {
+                char cacert_path[FILENAME_MAX];
+                get_cert_filename(cert, opt_cacerts_dir, opt_cacerts_dir_format, cacert_path, sizeof(cacert_path), 0);
+                if (!FILES_store_cert(cert, cacert_path, FILES_get_format(opt_cacerts_dir_format), "CA")) {
+                    LOG(FL_ERR, "Failed to store cert from caPubs under '%s'", opt_cacerts_dir);
+                }
+            }
+            X509_free(cert);
+        }
+        sk_X509_pop_free(caPubs_certs, X509_free);
+    }
+
     if (opt_extracertsout != NULL) {
         STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_extraCertsIn(ctx);
         if (sk_X509_num(certs) > 0
@@ -1309,7 +1492,33 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         CERTS_free(certs);
     }
 
-    if (use_case != revocation && use_case != genm) {
+    if (opt_extracerts_dir != NULL) {
+        LOG_info("Extracting certs from extracerts:");
+        STACK_OF(X509) *extra_certs = OSSL_CMP_CTX_get1_extraCertsIn(ctx);
+        if (sk_X509_num(extra_certs) <= 0) {
+            LOG(FL_WARN, "No certificates were presented in extracerts to store under %s", opt_extracerts_dir);
+        }
+        else {
+            LOG(FL_DEBUG, "%d certificates in extracerts given", sk_X509_num(extra_certs));
+            int i;
+            for (i = 0; i < sk_X509_num(extra_certs); ++i) {
+                X509 *cert = sk_X509_value(extra_certs, i);
+                if (X509_check_issued(cert, cert) == 0)
+                    LOG(FL_WARN, "Certificate number %d in extracerts is self signed and thus is not stored", i);
+                else {
+                    char extracert_path[FILENAME_MAX];
+                    get_cert_filename(cert, opt_extracerts_dir, opt_extracerts_dir_format, extracert_path, sizeof(extracert_path), 0);
+                    if (!FILES_store_cert(cert, extracert_path, FILES_get_format(opt_extracerts_dir_format), "store extra cert")) {
+                        LOG(FL_ERR, "Failed to store cert number %d from extracerts in dir '%s'", i, opt_extracerts_dir);
+                    }
+                }
+                X509_free(cert);
+            }
+        }
+        sk_X509_pop_free(extra_certs, X509_free);
+    }
+
+    if (use_case != revocation && use_case != genm && use_case != check_revocation_status) {
         if (use_case != pkcs10 && opt_newkey != NULL && opt_newkeytype != NULL) {
             if (opt_chainout != NULL)
                 LOG_warn("-chainout option is ignored");
@@ -1324,7 +1533,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             const char *new_desc = "newly enrolled certificate";
             X509 *cert = CREDENTIALS_get_cert(new_creds);
             STACK_OF(X509)* certs = CREDENTIALS_get_chain(new_creds);
-
             if (certs == NULL || opt_chainout != NULL) {
                 if (!CERT_save(cert, opt_certout, new_desc)) {
                     err = 27;
@@ -1368,7 +1576,7 @@ int print_help(const char *prog)
     BIO *bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
 
     BIO_printf(bio_stdout, "Usage:\n"
-               "%s (imprint | bootstrap | update | revoke) [-section <CA>]\n"
+               "%s (imprint | bootstrap | check_originality | update | revoke) [-section <CA>]\n"
                "%s options\n\n"
                "Available options are:\n",
                prog, prog);
@@ -1386,6 +1594,24 @@ bool set_verbosity(long level)
     opt_verbosity = level;
     LOG_set_verbosity((severity)level);
     return true;
+}
+
+static int client_demo(enum use_case use_case)
+{
+    CMP_err err = CMP_OK;
+
+    switch (use_case) {
+    case check_revocation_status:
+        client_check_revocation_status(opt_cert);
+        break;
+    default:
+        LOG(FL_ERR, "Unknown use case '%d' used", use_case);
+        err = 19;
+    }
+    if (err != CMP_OK) {
+        LOG(FL_ERR, "CMPclient error %d\n", err);
+    }
+    return err;
 }
 
 int main(int argc, char *argv[])
@@ -1417,10 +1643,14 @@ int main(int argc, char *argv[])
             use_case = imprint;
         } else if (strcmp(argv[1], "bootstrap") == 0) {
             use_case = bootstrap;
+        } else if (strcmp(argv[1], "check_originality") == 0) {
+            use_case = check_originality;
         } else if (strcmp(argv[1], "update") == 0) {
             use_case = update;
         } else if (strcmp(argv[1], "revoke") == 0) {
             use_case = revocation;
+        } else if (strcmp(argv[1], "check_revocation_status") == 0) {
+            use_case = check_revocation_status;
         }
     }
 
@@ -1468,6 +1698,16 @@ int main(int argc, char *argv[])
         LOG_err("Out of memory");
         goto end;
     }
+    cmdat_tls = CRLMGMT_DATA_new();
+    if (cmdat_tls == 0) {
+        LOG_err("Out of memory");
+        goto end;
+    }
+    cmdat_new = CRLMGMT_DATA_new();
+    if (cmdat_new == 0) {
+        LOG_err("Out of memory");
+        goto end;
+    }
     if (config != NULL && !CONF_update_vpm(config, opt_section, vpm))
         goto end;
     argv++;
@@ -1481,7 +1721,17 @@ int main(int argc, char *argv[])
     if (!set_verbosity(opt_verbosity))
         goto end;
 
-    /* handle here to start correct demo use case */
+    CRLMGMT_DATA_set_proxy_url(cmdat_tls, opt_cdp_proxy);
+    CRLMGMT_DATA_set_crl_max_download_size(cmdat_tls, opt_crl_maxdownload_size);
+    CRLMGMT_DATA_set_crl_cache_dir(cmdat_tls, opt_crl_cache_dir);
+    CRLMGMT_DATA_set_note(cmdat_tls, "tls connection");
+
+    CRLMGMT_DATA_set_proxy_url(cmdat_new, opt_cdp_proxy);
+    CRLMGMT_DATA_set_crl_max_download_size(cmdat_new, opt_crl_maxdownload_size);
+    CRLMGMT_DATA_set_crl_cache_dir(cmdat_new, opt_crl_cache_dir);
+    CRLMGMT_DATA_set_note(cmdat_new, "new certificates");
+
+    // handle here to start correct demo use case
     if (opt_cmd != NULL) {
         if (strcmp(opt_cmd, "ir") == 0) {
             use_case = imprint;
@@ -1504,13 +1754,23 @@ int main(int argc, char *argv[])
         goto end;
     }
 
-    if ((CMPclient(use_case, log_fn)) == CMP_OK)
-        rc = EXIT_SUCCESS;
+    if (use_case < cmp_usecases) {
+        if ((CMPclient(use_case, log_fn)) == CMP_OK)
+            rc = EXIT_SUCCESS;
+    }
+    else {
+        if ((client_demo(use_case)) == CMP_OK)
+            rc = EXIT_SUCCESS;
+    }
 
  end:
+    CRLMGMT_DATA_free(cmdat_new);
+    CRLMGMT_DATA_free(cmdat_tls);
     X509_VERIFY_PARAM_free(vpm);
     // TODO fix potential memory leaks; find out why this potentially crashes:
     NCONF_free(config);
+    // free possibly created OID NIDs
+    OBJ_cleanup();
 
     if (sec_ctx != NULL && sec_deinit(sec_ctx) == -1)
         rc = EXIT_FAILURE;

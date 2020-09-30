@@ -178,7 +178,7 @@ ifdef INSTA
     unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
     OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
-    EXTRA_OPTS=-path pkix/
+    override EXTRA_OPTS += -path pkix/
 else
     unreachable="cannot reach ppki-playground.ct.siemens.com"
     CA_SECTION=EJBCA
@@ -186,7 +186,7 @@ else
                -CAfile creds/trusted/PPKIPlaygroundECCRootCAv10.crt -issuer creds/PPKIPlaygroundECCIssuingCAv10.crt \
                -cert creds/operational.crt
 #              -CAfile creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -issuer creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt \
-    EXTRA_OPTS=
+    override EXTRA_OPTS +=
 endif
 
 creds/crls:

@@ -894,9 +894,9 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
         /* any -verify_hostname, -verify_ip, and -verify_email apply here */
         /* no cert status/revocation checks done for newly enrolled cert */
         if (!STORE_set_parameters(new_cert_truststore, vpm,
-                                  opt_check_all, false /* stapling */, crls,
-                                  opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
-                                  opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout))
+                                  false, false, NULL,
+                                  false, NULL, -1,
+                                  false, NULL, -1))
             goto err;
         if (!STORE_set_crl_callback(new_cert_truststore, CRLMGMT_load_crl_cb, cmdat_new))
             goto err;

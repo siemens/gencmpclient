@@ -11,7 +11,7 @@ no_proxy = ppki-playground.ct.siemens.com
 server = ppki-playground.ct.siemens.com:443
 path = /ejbca/publicweb/cmp/PlaygroundECC
 secret = pass:SecretCmp
-cert = creds/ppki_playground_cmp_signer.p12
+cert = creds/ppki_playground_cmp.p12
 key = $cert
 keypass = pass:12345
 recipient = "/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"

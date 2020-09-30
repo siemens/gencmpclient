@@ -40,6 +40,7 @@ CONF *config = NULL; /* OpenSSL configuration structure */
 char *opt_section = "EJBCA"; /* name(s) of config file section(s) to use */
 #define DEFAULT_SECTION "default"
 char demo_sections[80];
+long opt_verbosity;
 
 const char *opt_server;
 const char *opt_proxy;
@@ -111,7 +112,6 @@ const char *opt_tls_extra;
 const char *opt_tls_trusted;
 const char *opt_tls_host;
 
-long opt_verbosity;
 static char *opt_reqin = NULL;
 static char *opt_reqout = NULL;
 static char *opt_rspin = NULL;
@@ -140,6 +140,8 @@ opt_t cmp_opts[] = {
       "Configuration file to use. \"\" means none. Default 'config/demo.cnf'"},
     { "section", OPT_TXT, {.txt = NULL}, { NULL },
       "Section(s) in config file to use. \"\" means 'default'. Default 'EJBCA'"},
+    { "verbosity", OPT_NUM, {.num = LOG_INFO}, { (const char **) &opt_verbosity},
+      "Logging level; 3=ERR, 4=WARN, 6=INFO, 7=DEBUG, 8=TRACE. Default 6 = INFO"},
 
     OPT_HEADER("Message transfer"),
     { "server", OPT_TXT, {.txt = NULL}, { &opt_server },
@@ -256,7 +258,7 @@ opt_t cmp_opts[] = {
     { "chainout", OPT_TXT, {.txt = NULL}, { &opt_certout },
       "File to save the chain of the newly enrolled certificate"},
 
-    OPT_HEADER("Certificate update and revocation"),
+    OPT_HEADER("Certificate enrollment and revocation"),
     { "oldcert", OPT_TXT, {.txt = NULL}, { &opt_oldcert },
       "Certificate to be updated (defaulting to -cert) or to be revoked in rr;"},
     OPT_MORE("Its issuer is used as recipient unless -srvcert, -recipient or -issuer given"),
@@ -284,8 +286,6 @@ opt_t cmp_opts[] = {
       "Address (rather than -server) to be checked during TLS host name validation"},
 
     OPT_HEADER("Debugging"),
-    { "verbosity", OPT_NUM, {.num = LOG_INFO}, { (const char **) &opt_verbosity},
-      "Logging level; 3=ERR, 4=WARN, 6=INFO, 7=DEBUG, 8=TRACE. Default 6 = INFO"},
     {"reqin", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqin},
      "Take sequence of CMP requests from file(s)"},
     {"reqout", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqout},

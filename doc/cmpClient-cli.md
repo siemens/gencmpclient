@@ -11,6 +11,9 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-help**\]
 \[**-config** _filename_\]
 \[**-section** _names_\]
+\[**-verbosity** _level_\]
+
+Message transfer options:
 
 \[**-server** _\[http://\]address\[:port\]_\]\[/path\]
 \[**-proxy** _\[http://\]address\[:port\]\[/path\]_\]
@@ -18,6 +21,8 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-path** _remote\_path_\]
 \[**-msg\_timeout** _seconds_\]
 \[**-total\_timeout** _seconds_\]
+
+Server authentication options:
 
 \[**-trusted** _filenames_\]
 \[**-untrusted** _sources_\]
@@ -28,6 +33,8 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-unprotected\_errors**\]
 \[**-extracertsout** _filename_\]
 \[**-cacertsout** _filename_\]
+
+Client authentication options:
 
 \[**-ref** _value_\]
 \[**-secret** _arg_\]
@@ -40,9 +47,13 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-extracerts** _sources_\]
 \[**-unprotected\_requests**\]
 
+Generic message options:
+
 \[**-cmd** _ir|cr|kur|p10cr|rr_\]
 \[**-infotype** _name_\]
 \[**-geninfo** _OID_:int:_N_\]
+
+Certificate enrollment options:
 
 \[**-newkeytype** EC:_curve_|RSA-_len_\]
 \[**-newkey** _filename_\]
@@ -67,8 +78,12 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-certout** _filename_\]
 \[**-chainout** _filename_\]
 
+Certificate enrollment and revocation options:
+
 \[**-oldcert** _filename_\]
 \[**-revreason** _number_\]
+
+TLS connection options:
 
 \[**-tls\_used**\]
 \[**-tls\_cert** _filename_\]
@@ -78,11 +93,14 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-tls\_trusted** _filenames_\]
 \[**-tls\_host** _name_\]
 
-\[**-verbosity** _level_\]
+Debugging options:
+
 \[**-reqin**\] _filenames_
 \[**-reqout**\] _filenames_
 \[**-rspin**\] _filenames_
 \[**-rspout**\] _filenames_
+
+Certificate status checking options, for both CMP and TLS:
 
 \[**-check\_all**\]
 \[**-check\_any**\]
@@ -95,6 +113,34 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-ocsp\_timeout** _seconds_\]
 \[**-ocsp\_last**\]
 \[**-stapling**\]
+
+Certificate verification options, for both CMP and TLS:
+
+\[**-policy** _arg_\]
+\[**-purpose** _purpose_\]
+\[**-verify\_name** _name_\]
+\[**-verify\_depth** _num_\]
+\[**-auth\_level** _level_\]
+\[**-attime** _timestamp_\]
+\[**-ignore\_critical**\]
+\[**-issuer\_checks**\]
+\[**-policy\_check**\]
+\[**-explicit\_policy**\]
+\[**-inhibit\_any**\]
+\[**-inhibit\_map**\]
+\[**-x509\_strict**\]
+\[**-extended\_crl**\]
+\[**-use\_deltas**\]
+\[**-policy\_print**\]
+\[**-check\_ss\_sig**\]
+\[**-trusted\_first**\]
+\[**-suiteB\_128\_only**\]
+\[**-suiteB\_128**\]
+\[**-suiteB\_192**\]
+\[**-partial\_chain**\]
+\[**-no\_alt\_chains**\]
+\[**-no\_check\_time**\]
+\[**-allow\_proxy\_certs**\]
 
 # DESCRIPTION
 
@@ -135,6 +181,14 @@ request certificates to be revoked, and perform other CMP requests.
     Contents of sections named later may override contents of sections named before.
     In any case, as usual, the `[default]` section and finally the unnamed
     section (as far as present) can provide per-option fallback values.
+
+- **-verbosity** _level_
+
+    Level of verbosity for logging, error output, etc.
+    0 = EMERG, 1 = ALERT, 2 = CRIT, 3 = ERR, 4 = WARN, 5 = NOTE,
+    6 = INFO, 7 = DEBUG, 8 = TRACE.
+    Defaults to 6 = INFO.
+    The levels DEBUG and TRACE are most useful for certificate status check issues.
 
 ## Message transfer options
 
@@ -569,7 +623,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     If **-newkey** and **-newkeytype** are given and **-cmd** is not _p10cr_
     this option is ignored.
 
-## Certificate update and revocation options
+## Certificate enrollment and revocation options
 
 - **-oldcert** _filename_
 
@@ -651,14 +705,6 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     This may be a Common Name, a DNS name, or an IP address.
 
 ## Debugging options
-
-- **-verbosity** _level_
-
-    Level of verbosity for logging, error output, etc.
-    0 = EMERG, 1 = ALERT, 2 = CRIT, 3 = ERR, 4 = WARN, 5 = NOTE,
-    6 = INFO, 7 = DEBUG, 8 = TRACE.
-    Defaults to 6 = INFO.
-    The levels DEBUG and TRACE are most useful for certificate status check issues.
 
 - **-reqin** _filenames_
 
@@ -776,19 +822,21 @@ or the status indicates that the certificate has been revoked.
     so status information can be obtained in this way only for the leaf certificate
     (i.e., the TLS server certificate).
 
-## Certificate validation options, for both CMP and TLS
+## Certificate verification options, for both CMP and TLS
 
 - **-policy**, **-purpose**, **-verify\_name**, **-verify\_depth**,
+**-auth\_level**,
 **-attime**,
 **-ignore\_critical**,
+**-issuer\_checks**\],
 **-policy\_check**,
 **-explicit\_policy**, **-inhibit\_any**, **-inhibit\_map**,
 **-x509\_strict**, **-extended\_crl**, **-use\_deltas**,
-**-policy\_print**, **-check\_ss\_sig**, **-trusted\_first**,
+**-policy\_print**, **-check\_ss\_sig**,
+**-trusted\_first**,
 **-suiteB\_128\_only**, **-suiteB\_128**, **-suiteB\_192**,
 **-partial\_chain**,
 **-no\_check\_time**,
-**-auth\_level**,
 **-allow\_proxy\_certs**
 
     Set various options of certificate chain verification.

@@ -17,6 +17,9 @@ B<cmpClient> I<options>
 [B<-help>]
 [B<-config> I<filename>]
 [B<-section> I<names>]
+[B<-verbosity> I<level>]
+
+Message transfer options:
 
 [B<-server> I<[http://]address[:port]>][/path]
 [B<-proxy> I<[http://]address[:port][/path]>]
@@ -24,6 +27,8 @@ B<cmpClient> I<options>
 [B<-path> I<remote_path>]
 [B<-msg_timeout> I<seconds>]
 [B<-total_timeout> I<seconds>]
+
+Server authentication options:
 
 [B<-trusted> I<filenames>]
 [B<-untrusted> I<sources>]
@@ -34,6 +39,8 @@ B<cmpClient> I<options>
 [B<-unprotected_errors>]
 [B<-extracertsout> I<filename>]
 [B<-cacertsout> I<filename>]
+
+Client authentication options:
 
 [B<-ref> I<value>]
 [B<-secret> I<arg>]
@@ -46,9 +53,13 @@ B<cmpClient> I<options>
 [B<-extracerts> I<sources>]
 [B<-unprotected_requests>]
 
+Generic message options:
+
 [B<-cmd> I<ir|cr|kur|p10cr|rr>]
 [B<-infotype> I<name>]
 [B<-geninfo> I<OID>:int:I<N>]
+
+Certificate enrollment options:
 
 [B<-newkeytype> EC:I<curve>|RSA-I<len>]
 [B<-newkey> I<filename>]
@@ -73,8 +84,12 @@ B<cmpClient> I<options>
 [B<-certout> I<filename>]
 [B<-chainout> I<filename>]
 
+Certificate enrollment and revocation options:
+
 [B<-oldcert> I<filename>]
 [B<-revreason> I<number>]
+
+TLS connection options:
 
 [B<-tls_used>]
 [B<-tls_cert> I<filename>]
@@ -84,11 +99,14 @@ B<cmpClient> I<options>
 [B<-tls_trusted> I<filenames>]
 [B<-tls_host> I<name>]
 
-[B<-verbosity> I<level>]
+Debugging options:
+
 [B<-reqin>] I<filenames>
 [B<-reqout>] I<filenames>
 [B<-rspin>] I<filenames>
 [B<-rspout>] I<filenames>
+
+Certificate status checking options, for both CMP and TLS:
 
 [B<-check_all>]
 [B<-check_any>]
@@ -102,6 +120,33 @@ B<cmpClient> I<options>
 [B<-ocsp_last>]
 [B<-stapling>]
 
+Certificate verification options, for both CMP and TLS:
+
+[B<-policy> I<arg>]
+[B<-purpose> I<purpose>]
+[B<-verify_name> I<name>]
+[B<-verify_depth> I<num>]
+[B<-auth_level> I<level>]
+[B<-attime> I<timestamp>]
+[B<-ignore_critical>]
+[B<-issuer_checks>]
+[B<-policy_check>]
+[B<-explicit_policy>]
+[B<-inhibit_any>]
+[B<-inhibit_map>]
+[B<-x509_strict>]
+[B<-extended_crl>]
+[B<-use_deltas>]
+[B<-policy_print>]
+[B<-check_ss_sig>]
+[B<-trusted_first>]
+[B<-suiteB_128_only>]
+[B<-suiteB_128>]
+[B<-suiteB_192>]
+[B<-partial_chain>]
+[B<-no_alt_chains>]
+[B<-no_check_time>]
+[B<-allow_proxy_certs>]
 
 =head1 DESCRIPTION
 
@@ -150,6 +195,14 @@ Multiple section names may be given, separated by commas and/or whitespace.
 Contents of sections named later may override contents of sections named before.
 In any case, as usual, the C<[default]> section and finally the unnamed
 section (as far as present) can provide per-option fallback values.
+
+=item B<-verbosity> I<level>
+
+Level of verbosity for logging, error output, etc.
+0 = EMERG, 1 = ALERT, 2 = CRIT, 3 = ERR, 4 = WARN, 5 = NOTE,
+6 = INFO, 7 = DEBUG, 8 = TRACE.
+Defaults to 6 = INFO.
+The levels DEBUG and TRACE are most useful for certificate status check issues.
 
 =back
 
@@ -634,7 +687,7 @@ this option is ignored.
 =back
 
 
-=head2 Certificate update and revocation options
+=head2 Certificate enrollment and revocation options
 
 =over 4
 
@@ -728,14 +781,6 @@ This may be a Common Name, a DNS name, or an IP address.
 =head2 Debugging options
 
 =over 4
-
-=item B<-verbosity> I<level>
-
-Level of verbosity for logging, error output, etc.
-0 = EMERG, 1 = ALERT, 2 = CRIT, 3 = ERR, 4 = WARN, 5 = NOTE,
-6 = INFO, 7 = DEBUG, 8 = TRACE.
-Defaults to 6 = INFO.
-The levels DEBUG and TRACE are most useful for certificate status check issues.
 
 =item B<-reqin> I<filenames>
 
@@ -861,21 +906,23 @@ so status information can be obtained in this way only for the leaf certificate
 =back
 
 
-=head2 Certificate validation options, for both CMP and TLS
+=head2 Certificate verification options, for both CMP and TLS
 
 =over 4
 
 =item B<-policy>, B<-purpose>, B<-verify_name>, B<-verify_depth>,
+B<-auth_level>,
 B<-attime>,
 B<-ignore_critical>,
+B<-issuer_checks>],
 B<-policy_check>,
 B<-explicit_policy>, B<-inhibit_any>, B<-inhibit_map>,
 B<-x509_strict>, B<-extended_crl>, B<-use_deltas>,
-B<-policy_print>, B<-check_ss_sig>, B<-trusted_first>,
+B<-policy_print>, B<-check_ss_sig>,
+B<-trusted_first>,
 B<-suiteB_128_only>, B<-suiteB_128>, B<-suiteB_192>,
 B<-partial_chain>,
 B<-no_check_time>,
-B<-auth_level>,
 B<-allow_proxy_certs>
 
 Set various options of certificate chain verification.

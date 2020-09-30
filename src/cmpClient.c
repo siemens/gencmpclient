@@ -1053,8 +1053,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
 
     if (opt_check_all && opt_check_any) {
-        LOG_err("Cannot use both -check_all and -check_any options");
-        goto err;
+        LOG_warn("-check_all overrides -check_any");
     }
 
     err = 21;

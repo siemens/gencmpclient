@@ -798,6 +798,7 @@ but for all certificates (except root, i.e., self-issued certificates).
 
 Check certificate status for those certificates (except root certificates)
 that contain a CDP or AIA entry (or for which OCSP stapling for TLS is enabled).
+This option is overridden by B<-check_all> if set.
 
 =item B<-crls> I<URLs>
 

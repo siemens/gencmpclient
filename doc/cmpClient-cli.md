@@ -12,7 +12,7 @@ cmpClient - client for the Certificate Management Protocol (RFC4210)
 \[**-config** _filename_\]
 \[**-section** _names_\]
 
-\[**-server** _address\[:port\]_\]
+\[**-server** _\[http://\]address\[:port\]_\]\[/path\]
 \[**-proxy** _\[http://\]address\[:port\]\[/path\]_\]
 \[**-no\_proxy** _addresses_\]
 \[**-path** _remote\_path_\]
@@ -138,27 +138,30 @@ request certificates to be revoked, and perform other CMP requests.
 
 ## Message transfer options
 
-- **-server** _address\[:port\]_
+- **-server** _\[http\[s\]://\]address\[:port\]\[/path\]_
 
-    The IP address or DNS hostname and optionally port (defaulting to 80)
-    of the CMP server to connect to using HTTP/S transport.
+    The IP address or DNS hostname and optionally port (defaulting to 80 or 443)
+    of the CMP server to connect to using HTTP(S) transport.
+    The optional _http://_ or _https://_ prefix is ignored.
+    If a path is included it provides the default value for the **-path** option.
 
-- **-proxy** _\[http://\]address\[:port\]\[/path\]_
+- **-proxy** _\[http\[s\]://\]address\[:port\]\[/path\]_
 
     The HTTP(S) proxy server to use for reaching the CMP server unless **no\_proxy**
     applies, see below.
-    The optional "http://" prefix and any trailing path are ignored.
+    The optional _http://_ or _https://_prefix and any trailing path are ignored.
     Defaults to the environment variable `http_proxy` if set, else `HTTP_PROXY`
     in case no TLS is used, otherwise `https_proxy` if set, else `HTTPS_PROXY`.
 
 - **-no\_proxy** _addresses_
-List of IP addresses and/or DNS names of servers not use an HTTP(S) proxy for,
-separated by commas and/or whitespace.
+List of IP addresses and/or DNS names of servers
+not to use an HTTP(S) proxy for, separated by commas and/or whitespace
+(where in the latter case the whole argument must be enclosed in "...").
 Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 - **-path** _remote\_path_
 
     HTTP path at the CMP server (aka CMP alias) to use for POST requests.
-    Defaults to "/".
+    Defaults to any path given with **-server**, else `"/"`.
 
 - **-msg\_timeout** _seconds_
 
@@ -717,6 +720,7 @@ or the status indicates that the certificate has been revoked.
 
     Check certificate status for those certificates (except root certificates)
     that contain a CDP or AIA entry (or for which OCSP stapling for TLS is enabled).
+    This option is overridden by **-check\_all** if set.
 
 - **-crls** _URLs_
 
@@ -797,3 +801,11 @@ Copyright (c) 2020 Siemens AG.
 
 Licensed under the Apache License, Version 2.0
 SPDX-License-Identifier: Apache-2.0
+
+# POD ERRORS
+
+Hey! **The above document had some coding errors, which are explained below:**
+
+- Around line 1:
+
+    &#x3d;pod directives shouldn't be over one line long!  Ignoring all 5 lines of content

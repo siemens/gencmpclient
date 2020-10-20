@@ -8,10 +8,10 @@ with associated CLI-based demo/test client and documentation.
 
 * All features agreed with the participating Siemens business units
 have been implemented and documented in FY 2019.
-* Several hundreds of test cases have been compiled and executed successfully.
+* Several hundreds of test cases have been compiled and executed successfully in FY 2020.
 * [Open-source clearing has been finished](https://sw360.siemens.com/group/guest/projects/-/project/detail/a85b052efc1c3d42ebd3ef217fd600a4#/tab-ClearingStatus) in Feb 2020.
 * Maintenance (i.e., minor updates and fixes, also to the documentation)
-is ongoing, at least for FY 2020.
+is ongoing, at least in FY 2021.
 
 
 ## Prerequisites
@@ -25,13 +25,13 @@ The following network and development tools are required.
 * Git (tested with versions 2.7.2, 2.11.0, and 2.20)
 * GNU make (tested with versions 4.1 and 4.2.1)
 * GNU C compiler (tested with versions 5.4.0, 7.3.0, 8.3.0, and 10.0.1)
-* OpenSSL (version >= 1.1.0) with header files
+* OpenSSL development edition (tested with versions 1.1.0, 1.1.1, and 3.0.0-beta)
 
 For instance, on a Debian system these may be installed as follows:
 ```
 sudo apt install libssl-dev
 ```
-while `apt install ssh wget git make gcc` usually is not needed because these tools are pre-installed.
+while `apt install ssh wget git make gcc` usually is not needed as far as these tools are pre-installed.
 
 Using the [CPP-VM](https://ccp.siemens.com/docs/meta-siemens/docs/getting-started/), all prerequisites are available out of the box.
 
@@ -105,7 +105,7 @@ This also builds all required dependencies (such as `./libcmp.so` and `./libSecU
 **Important Note:** by default, the Security Utilities make use of the
 [Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library
 for secure device-level storage of key material for confidentiality and integrity protection of files.
-Since the URA library is not yet generally available Siemens-wide the SecUtils are so far integrated in a way that the use of the UTA lib is disabled (via `SEC_NO_UTA=1`).
+Since the UTA library is not yet generally available Siemens-wide the SecUtils are so far integrated in a way that the use of the UTA lib is disabled (via `SEC_NO_UTA=1`).
 This means that secure storage of protection credentials for private keys and trusted certificates needs to be solved by other means.
 
 

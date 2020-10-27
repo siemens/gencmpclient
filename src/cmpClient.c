@@ -1312,7 +1312,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         }
     }
 
-    if (use_case == imprint || use_case == bootstrap || use_case == check_originality) {
+    if (use_case == imprint || use_case == bootstrap || use_case == update || use_case == check_originality) {
         if (reqExtensions_have_SAN(exts) && opt_sans != NULL) {
             LOG_err("Cannot have Subject Alternative Names both via -reqexts and via -sans");
             err = CMP_R_MULTIPLE_SAN_SOURCES;
@@ -1327,6 +1327,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             goto err;
         }
     } else {
+        const char *msg = "option is ignored for commands other than 'ir', 'cr', and 'kur'";
         if (opt_subject != NULL) {
             if (opt_ref == NULL && opt_cert == NULL) {
                 /* use subject as default sender unless oldcert subject is used */
@@ -1334,21 +1335,21 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
                 if (err != CMP_OK)
                     goto err;
             } else {
-                LOG_warn("-subject option is ignored for commands other than 'ir' and 'cr'");
+                LOG(FL_WARN, "-subject %s since -ref or -cert is given", msg);
             }
         }
         if (opt_issuer != NULL)
-            LOG_warn("-issuer option is ignored for commands other than 'ir' and 'cr'");
+            LOG(FL_WARN, "-issuer %s", msg);
         if (opt_reqexts != NULL)
-            LOG_warn("-reqexts option is ignored for commands other than 'ir' and 'cr'");
+            LOG(FL_WARN, "-reqexts %s", msg);
         if (opt_san_nodefault)
-            LOG_warn("-san_nodefault option is ignored for commands other than 'ir' and 'cr'");
+            LOG(FL_WARN, "-san_nodefault %s", msg);
         if (opt_sans != NULL)
-            LOG_warn("-sans option is ignored for commands other than 'ir' and 'cr'");
+            LOG(FL_WARN, "-sans %s", msg);
         if (opt_policies != NULL)
-            LOG_warn("-policies option is ignored for commands other than 'ir' and 'cr'");
+            LOG(FL_WARN, "-policies %s", msg);
         if (opt_policy_oids != NULL)
-            LOG_warn("-policy_oids option is ignored for commands other than 'ir' and 'cr'");
+            LOG(FL_WARN, "-policy_oids %s", msg);
     }
 
 // TODO handle check_revocation_status option conflicts

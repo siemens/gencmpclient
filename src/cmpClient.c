@@ -1312,7 +1312,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         }
     }
 
-    if (use_case == imprint || use_case == bootstrap || use_case == update || use_case == check_originality) {
+    if (use_case == imprint || use_case == bootstrap || use_case == check_originality || use_case == update) {
         if (reqExtensions_have_SAN(exts) && opt_sans != NULL) {
             LOG_err("Cannot have Subject Alternative Names both via -reqexts and via -sans");
             err = CMP_R_MULTIPLE_SAN_SOURCES;
@@ -1577,7 +1577,7 @@ int print_help(const char *prog)
     BIO *bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
 
     BIO_printf(bio_stdout, "Usage:\n"
-               "%s (imprint | bootstrap | check_originality | update | revoke) [-section <CA>]\n"
+               "%s (imprint | bootstrap | check_originality | pkcs10 | update | revoke) [-section <CA>]\n"
                "%s options\n\n"
                "Available options are:\n",
                prog, prog);
@@ -1646,6 +1646,8 @@ int main(int argc, char *argv[])
             use_case = bootstrap;
         } else if (strcmp(argv[1], "check_originality") == 0) {
             use_case = check_originality;
+        } else if (strcmp(argv[1], "pkcs10") == 0) {
+            use_case = pkcs10;
         } else if (strcmp(argv[1], "update") == 0) {
             use_case = update;
         } else if (strcmp(argv[1], "revoke") == 0) {

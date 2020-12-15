@@ -3,13 +3,12 @@ digest = sha256
 msg_timeout = 10
 total_timeout = 100
 ignore_keyusage = 1
-unprotectederrors = 1
+unprotected_errors = 1
 #proxy = http://de.coia.siemens.net:9400
 no_proxy = ppki-playground.ct.siemens.com
 
 [EJBCA]
-server = ppki-playground.ct.siemens.com:443
-path = /ejbca/publicweb/cmp/PlaygroundECC
+server = ppki-playground.ct.siemens.com:443/ejbca/publicweb/cmp/PlaygroundECC
 secret = pass:SecretCmp
 cert = creds/ppki_playground_cmp.p12
 key = $cert
@@ -32,8 +31,7 @@ use_aia = 1
 ocsp = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp"
 
 [Insta]
-server = pki.certificate.fi:8700
-path = pkix/
+server = pki.certificate.fi:8700/pkix/
 secret = pass:insta
 ref = 3078
 #would need to be updated every 3 months:
@@ -105,8 +103,9 @@ subject =
 [pkcs10]
 cmd = p10cr
 # Insta will respond with CMP body popdecc POPODecKeyChallContent, --pop Challenge
+secret =
 ref = dummy # in EJBCA case there is no ref - fallback for sender as no cert and subject is given
-csr = creds/test.csr.pem
+csr = creds/operational.csr # generated, e.g., by transforming operational.crt
 subject =
 certout = $bootstrap::certout
 

@@ -323,8 +323,9 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy)
 {
-    char uri[255 + 1], *addr = uri;
-    int port;
+    char uri[255 + 1], *addr = uri, *proxy_addr;
+    const char *parsed_path;
+    int port, proxy_port;
     char proxy_uri[255 + 1];
 
     if (ctx == NULL || server == NULL) {
@@ -338,14 +339,16 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 #endif
 
     snprintf(uri, sizeof(uri), "%s", server);
-    port = CONN_parse_uri(&addr, 0, &path, "server");
+    port = CONN_parse_uri(&addr, 0, &parsed_path, "server");
     if (port <= 0) {
         return CMP_R_INVALID_PARAMETERS;
     }
     if (!OSSL_CMP_CTX_set1_server(ctx, addr) ||
-        (port > 0 && !OSSL_CMP_CTX_set_serverPort(ctx, port))) {
+        (!OSSL_CMP_CTX_set_serverPort(ctx, port))) {
         goto err;
     }
+    if (path == NULL)
+        path = parsed_path;
     if (!OSSL_CMP_CTX_set1_serverPath(ctx, path) ||
         (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT, timeout))) {
         goto err;
@@ -360,18 +363,19 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (proxy != NULL && !use_proxy(no_proxy, /* server */ addr))
         proxy = NULL;
     /* TODO use !OSSL_CMP_CTX_set1_no_proxy() when available */
+    proxy_addr = addr;
     if (proxy != NULL) {
         if (strncmp(proxy, URL_HTTP_PREFIX, strlen(URL_HTTP_PREFIX)) == 0)
             proxy += strlen(URL_HTTP_PREFIX);
         else if (strncmp(proxy, URL_HTTPS_PREFIX, strlen(URL_HTTPS_PREFIX)) == 0)
             proxy += strlen(URL_HTTPS_PREFIX);
         snprintf(proxy_uri, sizeof(proxy_uri), "%s", proxy);
-        port = UTIL_parse_server_and_port(addr = proxy_uri);
-        if (port < 0) {
+        proxy_port = UTIL_parse_server_and_port(proxy_addr = proxy_uri);
+        if (proxy_port < 0) {
             return CMP_R_INVALID_PARAMETERS;
         }
-        if (!OSSL_CMP_CTX_set1_proxy(ctx, addr) ||
-            (port > 0 && !OSSL_CMP_CTX_set_proxyPort(ctx, port))) {
+        if (!OSSL_CMP_CTX_set1_proxy(ctx, proxy_addr) ||
+            (proxy_port > 0 && !OSSL_CMP_CTX_set_proxyPort(ctx, proxy_port))) {
             goto err;
         }
     }
@@ -382,13 +386,13 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 
         /* If server is localhost, we will will proceed without "host verification".
         This will enable Bootstrapping of LRA (by itself) using only SMC which doesn't contain host. */
-        if (is_localhost(addr)) {
+        if (is_localhost(proxy_addr /* == addr if no proxy */)) {
             LOG(FL_WARN, "skiping host verification on localhost");
         }
         else {
               /* set expected host if not already done by caller */
             if (STORE_get0_host(ts) == NULL &&
-                !STORE_set1_host_ip(ts, server, server)) {
+                !STORE_set1_host_ip(ts, proxy_addr, proxy_addr)) {
                 goto err;
             }
         }
@@ -404,8 +408,10 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     }
 #endif
 
-    LOG(FL_INFO, "will contact http%s://%s%s%s%s%s", tls != NULL ? "s" : "",
-        server, path[0] == '/' ? "" : "/", path,
+    if (path == NULL)
+        path = "";
+    LOG(FL_INFO, "will contact http%s://%s:%d%s%s%s%s", tls != NULL ? "s" : "",
+        addr, port, path[0] == '/' ? "" : "/", path,
         proxy != NULL ? " via proxy " : "", proxy != NULL ? proxy : "");
     return CMP_OK;
 

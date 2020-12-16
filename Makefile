@@ -257,7 +257,7 @@ test_cli: build
 	  $(PERL) test/cmpossl/recipes/81-test_cmp_cli.t )
 	@ :
 
-test_conformance: # requires LightweightCmpRa running with ConformanceTestConfig.xml and the corresponding CA
+test_conformance: build # requires LightweightCmpRa running with ConformanceTestConfig.xml and the corresponding CA
 	./cmpClient imprint -section CmpRa -server localhost:6002/lrawithmacprotection
 	./cmpClient bootstrap -section CmpRa
 	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
@@ -265,6 +265,16 @@ test_conformance: # requires LightweightCmpRa running with ConformanceTestConfig
 	./cmpClient update -section CmpRa -server localhost:6001 -path /rrkur
 	./cmpClient revoke -section CmpRa -server localhost:6001 -path /rrkur
 	./cmpClient bootstrap -section CmpRa -server localhost:6003 -path /delayedlra
+
+CMPOSSL=./openssl cmp -config config/demo.cnf -section CmpRa,
+test_cmpossl_conformance: build # requires LightweightCmpRa running with ConformanceTestConfig.xml and the corresponding CA
+	$(CMPOSSL)imprint -server localhost:6002 -path /lrawithmacprotection
+	$(CMPOSSL)bootstrap -path /onlinelra # -path is workaround for cmpossl
+	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
+	$(CMPOSSL)pkcs10 -path /onlinelra # -path is workaround for cmpossl
+	$(CMPOSSL)update -server localhost:6001 -path /rrkur
+	$(CMPOSSL)revoke -server localhost:6001 -path /rrkur
+	$(CMPOSSL)bootstrap -server localhost:6003 -path /delayedlra
 
 test_Simple: get_PPKI_crls cmpossl/test/recipes/81-test_cmp_cli_data/Simple
 	make test_cli OPENSSL_CMP_SERVER=Simple

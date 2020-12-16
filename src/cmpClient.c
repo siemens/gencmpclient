@@ -1577,7 +1577,7 @@ int print_help(const char *prog)
     BIO *bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
 
     BIO_printf(bio_stdout, "Usage:\n"
-               "%s (imprint | bootstrap | check_originality | pkcs10 | update | revoke) [-section <CA>]\n"
+               "%s (imprint | bootstrap | check_originality | pkcs10 | update | revoke) [-section <server>]\n"
                "%s options\n\n"
                "Available options are:\n",
                prog, prog);

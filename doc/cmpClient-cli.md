@@ -1,10 +1,15 @@
 # NAME
 
-cmpClient - client for the Certificate Management Protocol (RFC4210)
+cmpClient - genCMPClient CLI for the Certificate Management Protocol (RFC4210)
 
 # SYNOPSIS
 
-**cmpClient** (**imprint|bootstrap|update|revoke|pkcs10**) \[**-section** _CA_\]
+**cmpClient** (**imprint|bootstrap|update|revoke|pkcs10**) \[**-section** _server_\]
+
+In this simple style of invocation, the first argument of the application,
+e.g., `bootstrap`, is mapped to using a section in `config/demo.cnf`.
+The optional server argument may be used to reference a CMP server to be used,
+where the default is `EJBCA`. This is also used as config section name.
 
 **cmpClient** _options_
 
@@ -146,13 +151,13 @@ Certificate verification options, for both CMP and TLS:
 
 The **cmpClient** command is a demo and test client implementation for the Certificate
 Management Protocol (CMP) as defined in RFC 4210.
-It can be used to request certificates from a CA server,
-update their certificates,
+It can be used to request certificates from a CA via a CMP server,
+update certificates,
 request certificates to be revoked, and perform other CMP requests.
 
 # USAGE
 
-- **imprint|bootstrap|update|revoke|pkcs10**
+- **imprint|bootstrap|pkcs10|update|revoke**
 
     Select demo `use_case` of the cmpClient application. The corresponding CMP request
     will be executed with default settings. These settings could be adapt via the
@@ -367,7 +372,8 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     Requires for the corresponding key to be given with **-key**.
     The subject of this certificate will be used as sender of outgoing CMP messages,
     while the subject of **-oldcert** or **-subjectName** may provide fallback values.
-    The issuer of this certificate is used as one of the recipient fallback values.
+    The issuer of this certificate is used as one of the recipient fallback values
+    and as fallback issuer entry in the cerificate template of IR, CR, and KUR.
     When using signature-based message protection, this "protection certificate"
     will be included first in the extraCerts field of outgoing messages
     and the signature is done with the corresponding key.
@@ -632,7 +638,8 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     It must be given for RR, else it defaults to **-cert**.
 
     The reference certificate determined in this way, if any, is also used for
-    deriving default subject DN and Subject Alternative Names for IR, CR, and KUR.
+    deriving default subject DN and Subject Alternative Names and the
+    default issuer entry in the requested certificate template of IR/CR/KUR.
     Its subject is used as sender in CMP message headers if **-cert** is not given.
     Its issuer is used as default recipient in CMP message headers
     if neither **-recipient**, **-srvcert**, nor **-issuer** is given.

@@ -55,12 +55,12 @@ char demo_sections[80];
 long opt_verbosity;
 
 const char *opt_server;
+const char *opt_path;
 const char *opt_proxy;
 const char *opt_no_proxy;
 const char *opt_cdp_proxy;
 const char *opt_crl_cache_dir;
 
-const char *opt_path;
 long opt_msg_timeout;
 long opt_total_timeout;
 
@@ -168,6 +168,8 @@ opt_t cmp_opts[] = {
     { "server", OPT_TXT, {.txt = NULL}, { &opt_server },
       "[http[s]://]address[:port][/path] of CMP server. Default port 80 or 443."},
     OPT_MORE("address may be a DNS name or an IP address; path can be overridden by -path"),
+    { "path", OPT_TXT, {.txt = NULL}, { &opt_path },
+      "HTTP path (aka CMP alias) at the CMP server.  Default from -server, else \"/\""},
     { "proxy", OPT_TXT, {.txt = NULL}, { &opt_proxy },
       "[http[s]://]address[:port][/path] of HTTP(S) proxy. Default port 80; path is ignored."},
     OPT_MORE("Default from environment variable 'http_proxy', else 'HTTP_PROXY'"),
@@ -179,8 +181,6 @@ opt_t cmp_opts[] = {
     OPT_MORE("Default from environment variable 'cdp_proxy', else 'CDP_PROXY', else none"),
     { "crl_cache_dir", OPT_TXT, {.txt = NULL}, { &opt_crl_cache_dir },
       "Directory of the CRL cache when downloaded during verification."},
-    { "path", OPT_TXT, {.txt = NULL}, { &opt_path },
-      "HTTP path (aka CMP alias) at the CMP server.  Default from -server, else \"/\""},
     { "msg_timeout", OPT_NUM, {.num = 120}, { (const char **)&opt_msg_timeout },
       "Timeout per CMP message round trip (or 0 for none). Default 120 seconds"},
     { "total_timeout", OPT_NUM, {.num = 0}, { (const char **)&opt_total_timeout},
@@ -1007,8 +1007,8 @@ int setup_transfer(CMP_CTX *ctx)
 {
     CMP_err err;
 
-    const char *path = opt_path;
     const char *server = opt_server;
+    const char *path = opt_path;
 
     if ((int)opt_msg_timeout < -1) {
         LOG_err("Only non-negative values allowed for -msg_timeout");
@@ -1371,14 +1371,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             LOG_warn("-revreason option given for commands other than 'rr'");
     }
 
-    if (opt_tls_cert != NULL || opt_tls_key != NULL || opt_tls_keypass != NULL
-        || opt_tls_extra != NULL || opt_tls_trusted != NULL
-        || opt_tls_host != NULL)
-        if (!opt_tls_used)
-            LOG_warn("TLS options(s) are ignored since -tls_used is not given");
-    if ((err = setup_transfer(ctx)) != CMP_OK)
-        goto err;
-
     X509 *oldcert = NULL;
     if (opt_oldcert != NULL) {
         oldcert = CERT_load(opt_oldcert, opt_keypass,
@@ -1397,6 +1389,14 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         err = 20;
         goto err;
     }
+
+    if (opt_tls_cert != NULL || opt_tls_key != NULL || opt_tls_keypass != NULL
+        || opt_tls_extra != NULL || opt_tls_trusted != NULL
+        || opt_tls_host != NULL)
+        if (!opt_tls_used)
+            LOG_warn("TLS options(s) are ignored since -tls_used is not given");
+    if ((err = setup_transfer(ctx)) != CMP_OK)
+        goto err;
 
     switch (use_case) {
     case imprint:

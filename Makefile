@@ -197,7 +197,7 @@ cmpossl/test/recipes/81-test_cmp_cli_data/Simple:
 	ln -s ../../../../test/cmpossl/recipes/81-test_cmp_cli_data/Simple
 
 get_PPKI_crls: | creds/crls
-	ping >/dev/null $(PINGCOUNTOPT) 1 ppki-playground.ct.siemens.com
+	@ # ping >/dev/null $(PINGCOUNTOPT) 1 ppki-playground.ct.siemens.com
 	@ # || echo $(unreachable); exit 1
 	@for CA in 'Infrastructure+Root+CA+v1.0' 'Infrastructure+Issuing+CA+v1.0' 'ECC+Root+CA+v1.0' 'RSA+Root+CA+v1.0'; \
 	do \
@@ -264,17 +264,17 @@ test_conformance: build # requires LightweightCmpRa running with ConformanceTest
 	./cmpClient pkcs10 -section CmpRa
 	./cmpClient update -section CmpRa -server localhost:6001 -path /rrkur
 	./cmpClient revoke -section CmpRa -server localhost:6001 -path /rrkur
-	./cmpClient bootstrap -section CmpRa -server localhost:6003 -path /delayedlra
+	./cmpClient bootstrap -section CmpRa -server localhost:6003/delayedlra
 
 CMPOSSL=./openssl cmp -config config/demo.cnf -section CmpRa,
 test_cmpossl_conformance: build # requires LightweightCmpRa running with ConformanceTestConfig.xml and the corresponding CA
-	$(CMPOSSL)imprint -server localhost:6002 -path /lrawithmacprotection
+	$(CMPOSSL)imprint -server localhost:6002 -path /lrawithmacprotection # separate -path is workaround for cmpossl
 	$(CMPOSSL)bootstrap -path /onlinelra # -path is workaround for cmpossl
 	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
 	$(CMPOSSL)pkcs10 -path /onlinelra # -path is workaround for cmpossl
 	$(CMPOSSL)update -server localhost:6001 -path /rrkur
 	$(CMPOSSL)revoke -server localhost:6001 -path /rrkur
-	$(CMPOSSL)bootstrap -server localhost:6003 -path /delayedlra
+	$(CMPOSSL)bootstrap -server localhost:6003 -path /delayedlra # separate -path is workaround for cmpossl
 
 test_Simple: get_PPKI_crls cmpossl/test/recipes/81-test_cmp_cli_data/Simple
 	make test_cli OPENSSL_CMP_SERVER=Simple

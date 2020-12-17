@@ -163,6 +163,8 @@ clean_test:
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/*/test.*cert*.pem
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Simple
 	rm -f test/faillog_*.txt
+	rm -f test/{Upstream,Downstream}
+
 clean: clean_test
 	$(MAKE) -f Makefile_src clean
 
@@ -257,7 +259,13 @@ test_cli: build
 	  $(PERL) test/cmpossl/recipes/81-test_cmp_cli.t )
 	@ :
 
-test_conformance: build # requires LightweightCmpRa running with ConformanceTestConfig.xml and the corresponding CA
+.phony: start_LightweightCmpRA test_conformance test_cmpossl_conformance
+start_LightweightCmpRA:
+	java -jar CmpCaMock.jar . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12  2>/dev/null &
+	mkdir test/Upstream test/Downstream 2>/dev/null || true
+	java -jar ./LightweightCmpRa.jar config/ConformanceTest.xml >/dev/null 2>/dev/null & # -Dorg.slf4j.simpleLogger.log.com.siemens=debug
+
+test_conformance: build start_LightweightCmpRA
 	./cmpClient imprint -section CmpRa -server localhost:6002/lrawithmacprotection
 	./cmpClient bootstrap -section CmpRa
 	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
@@ -267,7 +275,7 @@ test_conformance: build # requires LightweightCmpRa running with ConformanceTest
 	./cmpClient bootstrap -section CmpRa -server localhost:6003/delayedlra
 
 CMPOSSL=./openssl cmp -config config/demo.cnf -section CmpRa,
-test_cmpossl_conformance: build # requires LightweightCmpRa running with ConformanceTestConfig.xml and the corresponding CA
+test_cmpossl_conformance: build start_LightweightCmpRA
 	$(CMPOSSL)imprint -server localhost:6002 -path /lrawithmacprotection # separate -path is workaround for cmpossl
 	$(CMPOSSL)bootstrap -path /onlinelra # -path is workaround for cmpossl
 	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345

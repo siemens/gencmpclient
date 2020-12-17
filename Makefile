@@ -264,6 +264,7 @@ start_LightweightCmpRA:
 	java -jar CmpCaMock.jar . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12  2>/dev/null &
 	mkdir test/Upstream test/Downstream 2>/dev/null || true
 	java -jar ./LightweightCmpRa.jar config/ConformanceTest.xml >/dev/null 2>/dev/null & # -Dorg.slf4j.simpleLogger.log.com.siemens=debug
+	sleep 1
 
 test_conformance: build start_LightweightCmpRA
 	./cmpClient imprint -section CmpRa -server localhost:6002/lrawithmacprotection

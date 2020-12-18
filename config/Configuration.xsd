@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- edited with XMLSpy v2010 rel. 3 sp1 (x64) (http://www.altova.com) by Kretschmer (Siemens AG) -->
-<!-- Copyright (c) 2020 Siemens AG Licensed under the Apache License, Version
+<!-- Copyright (c) 2020 Siemens AG Licensed under the Apache License, Version 
 	2.0 SPDX-License-Identifier: Apache-2.0 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
 	<xs:element name="Configuration">
@@ -563,11 +563,31 @@ storage of enrolled certificates</xs:documentation>
 	</xs:complexType>
 	<xs:complexType name="OFFLINE_FILE_CLIENT_CONFIGURATION">
 		<xs:attribute name="InputDirectory" type="xs:string" use="required"/>
+		<xs:attribute name="InputDirectoryPollcycle" default="10">
+			<xs:annotation>
+				<xs:documentation>time in seconds between two input directory scans</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:int">
+					<xs:minInclusive value="1"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
 		<xs:attribute name="OutputDirectory" type="xs:string" use="required"/>
 		<xs:attribute name="checkAfterTime" type="xs:integer" use="required"/>
 	</xs:complexType>
 	<xs:complexType name="OFFLINE_FILE_SERVER_CONFIGURATION">
 		<xs:attribute name="InputDirectory" type="xs:string" use="required"/>
+		<xs:attribute name="InputDirectoryPollcycle" default="10">
+			<xs:annotation>
+				<xs:documentation>time in seconds between two input directory scans</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:int">
+					<xs:minInclusive value="1"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
 		<xs:attribute name="OutputDirectory" type="xs:string" use="required"/>
 	</xs:complexType>
 	<xs:complexType name="DOWNSTREAM_CONFIGURATION">

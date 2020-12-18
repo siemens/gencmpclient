@@ -284,13 +284,13 @@ test_conformance: build start_LightweightCmpRA
 
 CMPOSSL=./openssl cmp -config config/demo.cnf -section CmpRa,
 test_cmpossl_conformance: build start_LightweightCmpRA
-	$(CMPOSSL)imprint -server localhost:6002 -path /lrawithmacprotection # separate -path is workaround for cmpossl
-	$(CMPOSSL)bootstrap -path /onlinelra # -path is workaround for cmpossl
+	$(CMPOSSL)imprint -server localhost:6002/lrawithmacprotection
+	$(CMPOSSL)bootstrap
 	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
-	$(CMPOSSL)pkcs10 -path /onlinelra # -path is workaround for cmpossl
+	$(CMPOSSL)pkcs10
 	$(CMPOSSL)update -server localhost:6001 -path /rrkur
 	$(CMPOSSL)revoke -server localhost:6001 -path /rrkur
-	$(CMPOSSL)bootstrap -server localhost:6003 -path /delayedlra # separate -path is workaround for cmpossl
+	$(CMPOSSL)bootstrap -server localhost:6003/delayedlra
 	make kill_LightweightCmpRA
 
 test_Simple: get_PPKI_crls cmpossl/test/recipes/81-test_cmp_cli_data/Simple

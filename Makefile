@@ -259,13 +259,19 @@ test_cli: build
 	  $(PERL) test/cmpossl/recipes/81-test_cmp_cli.t )
 	@ :
 
-.phony: start_LightweightCmpRA test_conformance test_cmpossl_conformance
+.phony: start_LightweightCmpRA kill_LightweightCmpRA
 start_LightweightCmpRA:
-	java -jar CmpCaMock.jar . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12  2>/dev/null &
+	java -jar CmpCaMock.jar . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 &
 	mkdir test/Upstream test/Downstream 2>/dev/null || true
-	java -jar ./LightweightCmpRa.jar config/ConformanceTest.xml >/dev/null 2>/dev/null & # -Dorg.slf4j.simpleLogger.log.com.siemens=debug
-	sleep 1
+	java -jar LightweightCmpRa.jar config/ConformanceTest.xml >/dev/null &
+	@ # -Dorg.slf4j.simpleLogger.log.com.siemens=debug
+	sleep 2
 
+kill_LightweightCmpRA:
+	kill `ps aux|grep "java -jar CmpCaMock.jar" | head -n 1 | awk '{ print $$2 }'`
+	kill `ps aux|grep "java -jar LightweightCmpRa.jar" | head -n 1 | awk '{ print $$2 }'`
+
+.phony: test_conformance test_cmpossl_conformance
 test_conformance: build start_LightweightCmpRA
 	./cmpClient imprint -section CmpRa -server localhost:6002/lrawithmacprotection
 	./cmpClient bootstrap -section CmpRa
@@ -274,6 +280,7 @@ test_conformance: build start_LightweightCmpRA
 	./cmpClient update -section CmpRa -server localhost:6001 -path /rrkur
 	./cmpClient revoke -section CmpRa -server localhost:6001 -path /rrkur
 	./cmpClient bootstrap -section CmpRa -server localhost:6003/delayedlra
+	make kill_LightweightCmpRA
 
 CMPOSSL=./openssl cmp -config config/demo.cnf -section CmpRa,
 test_cmpossl_conformance: build start_LightweightCmpRA
@@ -284,6 +291,7 @@ test_cmpossl_conformance: build start_LightweightCmpRA
 	$(CMPOSSL)update -server localhost:6001 -path /rrkur
 	$(CMPOSSL)revoke -server localhost:6001 -path /rrkur
 	$(CMPOSSL)bootstrap -server localhost:6003 -path /delayedlra # separate -path is workaround for cmpossl
+	make kill_LightweightCmpRA
 
 test_Simple: get_PPKI_crls cmpossl/test/recipes/81-test_cmp_cli_data/Simple
 	make test_cli OPENSSL_CMP_SERVER=Simple

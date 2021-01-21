@@ -73,6 +73,14 @@ CMP_err CMPclient_init(OPTIONAL LOG_cb_t log_fn)
     return CMP_OK;
 }
 
+X509_NAME *parse_DN(const char *str, const char *desc)
+{
+    X509_NAME *name = UTIL_parse_name(str, MBSTRING_ASC, false);
+    if (name == NULL)
+        LOG(FL_ERR, "Unable to parse %s DN '%s'", desc, str);
+    return name;
+}
+
 CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
                           OPTIONAL X509_STORE *cmp_truststore,
                           OPTIONAL const char *recipient,
@@ -132,9 +140,8 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
     /* need recipient for unprotected and PBM-protected messages */
     X509_NAME *rcp = NULL;
     if (recipient != NULL) {
-        rcp = UTIL_parse_name(recipient, MBSTRING_ASC, false);
+        rcp = parse_DN(recipient, "recipient");
         if (rcp == NULL) {
-            LOG(FL_ERR, "Unable to parse recipient DN '%s'", recipient);
             OSSL_CMP_CTX_free(ctx);
             return CMP_R_INVALID_PARAMETERS;
         }
@@ -423,7 +430,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                 OPTIONAL const EVP_PKEY *new_key,
                                 OPTIONAL const X509 *old_cert,
-                                OPTIONAL const char *subject,
+                                OPTIONAL const X509_NAME *subject,
                                 OPTIONAL const X509_EXTENSIONS *exts,
                                 OPTIONAL const X509_REQ *csr)
 {
@@ -442,18 +449,8 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
         }
     }
 
-    if (subject != NULL) {
-        X509_NAME *n = UTIL_parse_name(subject, MBSTRING_ASC, false);
-        if (n == NULL) {
-            LOG(FL_ERR, "Unable to parse subject DN '%s'", subject);
-            return CMP_R_INVALID_PARAMETERS;
-        }
-        if (!OSSL_CMP_CTX_set1_subjectName(ctx, n)) {
-            X509_NAME_free(n);
-            goto err;
-        }
-        X509_NAME_free(n);
-    }
+    if (subject != NULL && !OSSL_CMP_CTX_set1_subjectName(ctx, subject))
+        goto err;
 
     if (exts != NULL) {
         X509_EXTENSIONS *exts_copy =
@@ -553,11 +550,15 @@ CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
         LOG(FL_ERR, "No parameter for either -newkey or -subject option");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
+    X509_NAME *name = parse_DN(subject, "subject");
+    if (name == NULL)
+        return CMP_R_INVALID_PARAMETERS;
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
-                                          subject, exts, NULL /* csr */);
+                                          name, exts, NULL /* csr */);
     if (err == CMP_OK) {
         err = CMPclient_enroll(ctx, new_creds, CMP_IR);
     }
+    X509_NAME_free(name);
     return err;
 }
 
@@ -570,11 +571,15 @@ CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
         LOG(FL_ERR, "No parameter for either -newkey or -subject option");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
+    X509_NAME *name = parse_DN(subject, "subject");
+    if (name == NULL)
+        return CMP_R_INVALID_PARAMETERS;
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
-                                          subject, exts, NULL /* csr */);
+                                          name, exts, NULL /* csr */);
     if (err == CMP_OK) {
         err = CMPclient_enroll(ctx, new_creds, CMP_CR);
     }
+    X509_NAME_free(name);
     return err;
 }
 

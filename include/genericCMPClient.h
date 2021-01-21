@@ -83,7 +83,7 @@ CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
 CMP_err CMPclient_setup_certreq(CMP_CTX *ctx,
                                 OPTIONAL const EVP_PKEY *new_key,
                                 OPTIONAL const X509 *old_cert,
-                                OPTIONAL const char *subject,
+                                OPTIONAL const X509_NAME *subject,
                                 OPTIONAL const X509_EXTENSIONS *exts,
                                 OPTIONAL const X509_REQ *p10csr);
 

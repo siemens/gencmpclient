@@ -9,10 +9,9 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
-
 #include <securityUtilities.h>
 #include <SecUtils/config/config.h>
-//#include <SecUtils/util/log.h>
+/* #include <SecUtils/util/log.h> */
 #include <SecUtils/certstatus/crls.h> /* just for use in test_load_crl_cb() */
 #include <SecUtils/certstatus/crl_mgmt.h>
 #include <SecUtils/util/cdp_util.h> /* TODO integrate with util.h */
@@ -24,12 +23,12 @@
 /* needed for OSSL_CMP_ITAV_gen() in function CMPclient(), TODO remove */
 #include "../cmpossl/crypto/cmp/cmp_local.h"
 
-
 #ifdef LOCAL_DEFS
 # include "genericCMPClient_use.h"
 #endif
 
-/* Usecases are split between CMP usecases and local usecases.
+/*
+ * Usecases are split between CMP usecases and local usecases.
  * Local usecases do not communicate with CMP and therefore don't
  * need its complex setup.
  */
@@ -225,12 +224,12 @@ opt_t cmp_opts[] = {
       "Client cert (plus any extra one), needed unless using -secret for PBM."},
     OPT_MORE("This also used as default reference for subject DN and SANs."),
     OPT_MORE("Any further certs included are appended to the untrusted certs"),
-    { "own_trusted", OPT_TXT, {.txt = NULL},  { &opt_own_trusted },
+    { "own_trusted", OPT_TXT, {.txt = NULL}, { &opt_own_trusted },
       "Optional certs to verify chain building for own CMP signer cert"},
     { "key", OPT_TXT, {.txt = NULL}, { &opt_key },
       "Key for the client certificate"},
     { "keypass", OPT_TXT, {.txt = NULL}, { &opt_keypass },
-      "Password for the client's key"},
+      "Pass phrase source for the client -key, -cert, and -oldcert"},
     { "digest", OPT_TXT, {.txt = NULL}, { &opt_digest },
       "Digest alg to use in msg protection and POPO signatures. Default \"sha256\""},
     { "mac", OPT_TXT, {.txt = NULL}, { &opt_mac},
@@ -257,15 +256,17 @@ opt_t cmp_opts[] = {
       "Key to use for ir/cr/kur (defaulting to -key) if no -newkeytype is given."},
     OPT_MORE("File to save new generated key if -newkeytype is given"),
     { "newkeypass", OPT_TXT, {.txt = NULL}, { &opt_newkeypass },
-      "Password for the file given for -newkey"},
+      "Pass phrase source for -newkey"},
     { "subject", OPT_TXT, {.txt = NULL}, { &opt_subject },
       "Distinguished Name (DN) of subject to use in the requested cert template"},
+    OPT_MORE("For kur, default is subject of -csr arg or else of reference cert (see -oldcert)"),
     { "issuer", OPT_TXT, {.txt = NULL}, { &opt_issuer },
       "DN of the issuer to place in the requested certificate template"},
     { "days", OPT_NUM, {.num = 0}, { (const char **) &opt_days },
       "Requested validity time of new cert in number of days"},
     { "reqexts", OPT_TXT, {.txt = NULL}, { &opt_reqexts },
       "Name of config file section defining certificate request extensions"},
+    OPT_MORE("Augments or replaces any extensions contained CSR given with -csr"),
     { "sans", OPT_TXT, {.txt = NULL}, { (const char **) &opt_sans },
       "Subject Alt Names (IPADDR/DNS/URI) to add as (critical) cert req extension"},
     { "san_nodefault", OPT_BOOL, {.bit = false}, { (const char **) &opt_san_nodefault},
@@ -280,7 +281,7 @@ opt_t cmp_opts[] = {
       "Proof-of-Possession (POPO) method to use for ir/cr/kur where"},
     OPT_MORE("-1 = NONE, 0 = RAVERIFIED, 1 = SIGNATURE (default), 2 = KEYENC"),
     { "csr", OPT_TXT, {.txt = NULL}, { &opt_csr },
-      "CSR file in PKCS#10 format to use in p10cr for legacy support"},
+      "CSR file in PKCS#10 format to convert or to use in p10cr"},
     { "out_trusted", OPT_TXT, {.txt = NULL}, { &opt_out_trusted },
       "Certs to trust when verifying newly enrolled certs; defaults to -srvcert"},
     { "implicit_confirm", OPT_BOOL, {.bit = false}, { (const char **) &opt_implicit_confirm },
@@ -295,9 +296,10 @@ opt_t cmp_opts[] = {
     OPT_HEADER("Certificate enrollment and revocation"),
     { "oldcert", OPT_TXT, {.txt = NULL}, { &opt_oldcert },
       "Certificate to be updated (defaulting to -cert) or to be revoked in rr;"},
+    OPT_MORE("also used as reference (defaulting to -cert) for subject DN and SANs."),
     OPT_MORE("Its issuer is used as recipient unless -srvcert, -recipient or -issuer given"),
     { "revreason", OPT_NUM, {.num = CRL_REASON_NONE}, { (const char **) &opt_revreason },
-      "Reason code to include in revocation request (RR)."},
+      "Reason code to include in revocation request (rr)."},
     OPT_MORE("Values: 0..6, 8..10 (see RFC5280, 5.3.1) or -1. Default -1 = none included"),
 
     /* TODO? OPT_HEADER("Credentials format"), */
@@ -311,7 +313,7 @@ opt_t cmp_opts[] = {
     { "tls_key", OPT_TXT, {.txt = NULL}, { &opt_tls_key },
       "Client private key for TLS connection"},
     { "tls_keypass", OPT_TXT, {.txt = NULL}, { &opt_tls_keypass },
-      "Client key password for TLS connection"},
+      "Client key and cert pass phrase source for TLS connection"},
     { "tls_extra", OPT_TXT, {.txt = NULL}, { &opt_tls_extra },
       "Extra certificates to provide to TLS server during TLS handshake"},
     { "tls_trusted", OPT_TXT, {.txt = NULL}, { &opt_tls_trusted },
@@ -360,7 +362,6 @@ opt_t cmp_opts[] = {
 
     OPT_END
 };
-
 
 static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
 {
@@ -753,7 +754,6 @@ int setup_cert_template(CMP_CTX *ctx)
     return err;
 }
 
-
 static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
 {
     long value;
@@ -1017,8 +1017,8 @@ int setup_transfer(CMP_CTX *ctx)
     }
 
     if (opt_tls_cert == NULL && opt_tls_key == NULL && opt_tls_keypass == NULL
-          && opt_tls_extra == NULL && opt_tls_trusted == NULL
-          && opt_tls_host == NULL && opt_tls_used == true) {
+        && opt_tls_extra == NULL && opt_tls_trusted == NULL
+        && opt_tls_host == NULL && opt_tls_used == true) {
         LOG_warn("-tls_used will be ignored. No other tls options set");
         opt_tls_used = false;
     }
@@ -1043,28 +1043,27 @@ int setup_transfer(CMP_CTX *ctx)
     return err;
 }
 
-size_t get_cert_filename(
-    X509            *cert,
-    const char      *prefix,
-    const char      *suffix,
-    char            *name_utf8_buf,
-    size_t          name_utf8_buf_len,
-    unsigned long   flags)
+size_t get_cert_filename(X509            *cert,
+                         const char      *prefix,
+                         const char      *suffix,
+                         char            *name_utf8_buf,
+                         size_t          name_utf8_buf_len,
+                         unsigned long   flags)
 {
     (void)flags;
     size_t len = safe_string_copy(prefix, name_utf8_buf, name_utf8_buf_len, NULL);
 
     char subject[256];
     X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName, subject, sizeof(subject));
-    len += safe_string_copy(subject, name_utf8_buf+len, name_utf8_buf_len-len, NULL);
-    len += safe_string_copy(" [", name_utf8_buf+len, name_utf8_buf_len-len, NULL);
+    len += safe_string_copy(subject, name_utf8_buf + len, name_utf8_buf_len - len, NULL);
+    len += safe_string_copy(" [", name_utf8_buf + len, name_utf8_buf_len - len, NULL);
 
-	unsigned char sha1[EVP_MAX_MD_SIZE];
+    unsigned char sha1[EVP_MAX_MD_SIZE];
     unsigned int size = 0;
     X509_digest(cert, EVP_sha1(), sha1, &size);
-    len += bintohex(sha1, size, false, '-', 4, name_utf8_buf+len, name_utf8_buf_len-len, NULL);
-    len += safe_string_copy("].", name_utf8_buf+len, name_utf8_buf_len-len, NULL);
-    len += safe_string_copy(suffix, name_utf8_buf+len, name_utf8_buf_len-len, NULL);
+    len += bintohex(sha1, size, false, '-', 4, name_utf8_buf + len, name_utf8_buf_len - len, NULL);
+    len += safe_string_copy("].", name_utf8_buf + len, name_utf8_buf_len - len, NULL);
+    len += safe_string_copy(suffix, name_utf8_buf + len, name_utf8_buf_len - len, NULL);
     return len;
 }
 
@@ -1098,9 +1097,9 @@ static int client_check_revocation_status(const char * certificate_path)
         goto err;
 
     if (!STORE_set_parameters(store, vpm,
-                                opt_check_all, opt_stapling, crls,
-                                opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
-                                opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout))
+                              opt_check_all, opt_stapling, crls,
+                              opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
+                              opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout))
         goto err;
 
     if (!STORE_set_crl_callback(store, CRLMGMT_load_crl_cb, cmdat_tls))
@@ -1116,8 +1115,7 @@ static int client_check_revocation_status(const char * certificate_path)
     /* check for errors and clean up */
     if (ret > 0) {
         LOG(FL_INFO, "certificate verification finished successfully");
-    }
-    else {
+    } else {
         int err = X509_STORE_CTX_get_error(ctx);
         int depth = X509_STORE_CTX_get_error_depth(ctx);
         LOG(FL_ERR, "certificate verification failed: (%d) [%d] %s", depth,
@@ -1171,11 +1169,19 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         goto err;
     }
     if (use_case == update) {
-        if (opt_oldcert == NULL && opt_cert != NULL) {
-            LOG(FL_INFO, "-oldcert is defaulting to -cert for 'kur' command");
-            opt_oldcert = opt_cert;
+        if (opt_oldcert == NULL && opt_csr == NULL) {
+            if (opt_cert != NULL) {
+                LOG(FL_INFO, "-oldcert is defaulting to -cert for 'kur'");
+                opt_oldcert = opt_cert;
+            } else {
+                LOG_err("Missing -oldcert for certificate to be updated and no fallback -csr nor -cert given");
+                goto err;
+            }
         }
-        if (opt_key == NULL && opt_keypass == NULL) {
+        if (opt_subject != NULL)
+            LOG(FL_INFO, "Given -subject '%s' overrides the subject of '%s' for 'kur'",
+                opt_subject, opt_oldcert != NULL ? opt_oldcert : opt_csr);
+        if (opt_key == NULL && opt_csr == NULL && opt_keypass == NULL) {
             LOG(FL_INFO, "-newkey and -newkeypass are defaulting to -key and -keypass");
             opt_key = opt_newkey;
             opt_keypass = opt_newkeypass;
@@ -1205,9 +1211,13 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         LOG_err("-csr option is missing for command 'p10cr'");
         goto err;
     }
-    if (use_case == revocation && opt_oldcert == NULL) {
-        LOG_err("-oldcert option is missing for command 'rr' (revocation)");
-        goto err;
+    if (use_case == revocation) {
+        if (opt_oldcert == NULL && opt_csr == NULL) {
+            LOG_err("Missing -oldcert for certificate to be revoked and no fallback -csr given");
+            goto err;
+        }
+        if (opt_oldcert != NULL && opt_csr != NULL)
+            LOG_err("Ignoring -csr since -oldcert is given for command 'rr' (revocation)");
     }
 
     if (opt_cacerts_dir_format != NULL && FILES_get_format(opt_cacerts_dir_format) == FORMAT_UNDEF) {
@@ -1275,14 +1285,16 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
 
     if (use_case == pkcs10 || use_case == revocation) {
+        const char *msg = "option is ignored for 'p10cr' and 'rr' commands";
+
         if (opt_newkeytype != 0)
-            LOG_warn("-newkeytype option is ignored for 'p10cr' and 'rr' commands");
-        if (opt_newkey != 0)
-            LOG_warn("-newkey option is ignored for 'p10cr' and 'rr' commands");
+            LOG(FL_WARN, "-newkeytype %s", msg);
+        if (opt_newkey != NULL)
+            LOG(FL_WARN, "-newkey %s", msg);
         if (opt_days != 0)
-            LOG_warn("-days option is ignored for 'p10cr' and 'rr' commands");
+            LOG(FL_WARN, "-days %s", msg);
         if (opt_popo != OSSL_CRMF_POPO_NONE - 1)
-            LOG_warn("-popo option is ignored for commands other than 'ir', 'cr', and 'p10cr'");
+            LOG(FL_WARN, "-popo %s", msg);
     } else {
         err = 18;
         if (opt_newkeytype != NULL) {
@@ -1304,7 +1316,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             }
             if (opt_newkey != NULL) {
                 new_pkey = KEY_load(opt_newkey, opt_newkeypass, NULL /* engine */,
-                                                  "private key to use for certificate request");
+                                    "private key to use for certificate request");
                 if (new_pkey == NULL) {
                     goto err;
                 }
@@ -1313,6 +1325,9 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
 
     if (use_case == imprint || use_case == bootstrap || use_case == check_originality || use_case == update) {
+        if (opt_subject == NULL
+            && opt_csr == NULL && opt_oldcert == NULL && opt_cert == NULL)
+            LOG_warn("no -subject given for enrollment; no -csr or -oldcert or -cert available for fallback");
         if (reqExtensions_have_SAN(exts) && opt_sans != NULL) {
             LOG_err("Cannot have Subject Alternative Names both via -reqexts and via -sans");
             err = CMP_R_MULTIPLE_SAN_SOURCES;
@@ -1350,36 +1365,47 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             LOG(FL_WARN, "-policies %s", msg);
         if (opt_policy_oids != NULL)
             LOG(FL_WARN, "-policy_oids %s", msg);
-    }
 
-// TODO handle check_revocation_status option conflicts
-    if (use_case != pkcs10 && opt_csr != NULL)
-        LOG_warn("-csr option is ignored for commands other than 'p10cr'");
+        /* TODO handle check_revocation_status option conflicts */
+        if (use_case == genm && opt_csr != NULL)
+            LOG_warn("-csr option is ignored for 'genm' command");
+        if (use_case != pkcs10) {
+            if (opt_implicit_confirm)
+                LOG(FL_WARN, "-implicit_confirm %s, and 'p10cr'", msg);
+            if (opt_disable_confirm)
+                LOG(FL_WARN, "-disable_confirm %s, and 'p10cr'", msg);
+        }
+        if (opt_certout != NULL)
+            LOG(FL_WARN, "-certout %s", msg);
+        if (opt_chainout != NULL)
+            LOG(FL_WARN, "-chainout %s", msg);
+    }
+    if (use_case != revocation && opt_revreason != CRL_REASON_NONE)
+        LOG_warn("-revreason option is ignored for commands other than 'rr'");
     if (use_case != update && use_case != revocation && opt_oldcert != NULL)
         LOG_warn("-oldcert option used only as reference cert for commands other than 'kur' and 'rr'");
-    if (use_case == revocation) {
-        if (opt_implicit_confirm)
-            LOG_warn("-implicit_confirm option is ignored for 'rr' commands");
-        if (opt_disable_confirm)
-            LOG_warn("-disable_confirm option is ignored for 'rr' commands");
-        if (opt_certout != NULL)
-            LOG_warn("-certout option is ignored for 'rr' commands");
-        if (opt_chainout != NULL)
-            LOG_warn("-chainout option is ignored for 'rr' commands");
-    } else {
-        if (opt_revreason != CRL_REASON_NONE)
-            LOG_warn("-revreason option given for commands other than 'rr'");
-    }
 
     X509 *oldcert = NULL;
     if (opt_oldcert != NULL) {
-        oldcert = CERT_load(opt_oldcert, opt_keypass,
-                            use_case == update ? "certificate to be updated" :
-                            use_case == revocation ? "certificate to be revoked" :
-                            "reference certificate (oldcert)");
-        err = 19;
-        if (oldcert == NULL || !OSSL_CMP_CTX_set1_oldCert(ctx, oldcert))
-        goto err;
+        if (use_case == genm) {
+            LOG_warn("-csr option is ignored for 'genm' command");
+        } else {
+            oldcert = CERT_load(opt_oldcert, opt_keypass,
+                                use_case == update ? "certificate to be updated" :
+                                use_case == revocation ? "certificate to be revoked" :
+                                "reference certificate (oldcert)");
+            err = 19;
+            if (oldcert == NULL || !OSSL_CMP_CTX_set1_oldCert(ctx, oldcert))
+                goto err;
+        }
+    }
+    X509_REQ *csr = NULL;
+    if (opt_csr != NULL) {
+        if ((csr = CSR_load(opt_csr, "PKCS#10 CSR")) == NULL
+                || !OSSL_CMP_CTX_set1_p10CSR(ctx, csr)) {
+            err = 15;
+            goto err;
+        }
     }
 
     if ((int)opt_revreason < CRL_REASON_NONE
@@ -1407,15 +1433,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         err = CMPclient_bootstrap(ctx, &new_creds, new_pkey, opt_subject, exts);
         break;
     case pkcs10:
-        {
-            X509_REQ *csr = CSR_load(opt_csr, "PKCS#10 CSR for p10cr");
-            if (csr == NULL) {
-                err = 15;
-                goto err;
-            }
-            err = CMPclient_pkcs10(ctx, &new_creds, csr);
-            X509_REQ_free(csr);
-        }
+        err = CMPclient_pkcs10(ctx, &new_creds, csr);
         break;
     case update:
         if (opt_oldcert == NULL)
@@ -1439,6 +1457,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         err = 21;
     }
     X509_free(oldcert);
+    X509_REQ_free(csr);
     if (err != CMP_OK) {
         LOG_err("Failed to perform CMP transaction");
         goto err;
@@ -1468,8 +1487,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         if (cert != NULL) {
             if (X509_check_issued(cert, cert) != 0) {
                 LOG_err("Certificate in caPubs is not self signed and thus is not stored");
-            }
-            else {
+            } else {
                 char cacert_path[FILENAME_MAX];
                 get_cert_filename(cert, opt_cacerts_dir, opt_cacerts_dir_format, cacert_path, sizeof(cacert_path), 0);
                 if (!FILES_store_cert(cert, cacert_path, FILES_get_format(opt_cacerts_dir_format), "CA")) {
@@ -1498,15 +1516,14 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         STACK_OF(X509) *extra_certs = OSSL_CMP_CTX_get1_extraCertsIn(ctx);
         if (sk_X509_num(extra_certs) <= 0) {
             LOG(FL_WARN, "No certificates were presented in extracerts to store under %s", opt_extracerts_dir);
-        }
-        else {
+        } else {
             LOG(FL_DEBUG, "%d certificates in extracerts given", sk_X509_num(extra_certs));
             int i;
             for (i = 0; i < sk_X509_num(extra_certs); ++i) {
                 X509 *cert = sk_X509_value(extra_certs, i);
-                if (X509_check_issued(cert, cert) == 0)
+                if (X509_check_issued(cert, cert) == 0) {
                     LOG(FL_WARN, "Certificate number %d in extracerts is self signed and thus is not stored", i);
-                else {
+                } else {
                     char extracert_path[FILENAME_MAX];
                     get_cert_filename(cert, opt_extracerts_dir, opt_extracerts_dir_format, extracert_path, sizeof(extracert_path), 0);
                     if (!FILES_store_cert(cert, extracert_path, FILES_get_format(opt_extracerts_dir_format), "store extra cert")) {
@@ -1567,7 +1584,8 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 
     LOG_close(); /* not really needed since done also in sec_deinit() */
     if (err != CMP_OK) {
-        LOG(FL_ERR, "CMPclient error %d", err);
+        LOG(FL_ERR, "CMPclient error %d: %s", err,
+            ERR_reason_error_string(ERR_PACK(ERR_LIB_CMP, 0, err)));
     }
     return err;
 }
@@ -1734,7 +1752,7 @@ int main(int argc, char *argv[])
     CRLMGMT_DATA_set_crl_cache_dir(cmdat_new, opt_crl_cache_dir);
     CRLMGMT_DATA_set_note(cmdat_new, "new certificates");
 
-    // handle here to start correct demo use case
+    /* handle here to start correct demo use case */
     if (opt_cmd != NULL) {
         if (strcmp(opt_cmd, "ir") == 0) {
             use_case = imprint;
@@ -1760,8 +1778,7 @@ int main(int argc, char *argv[])
     if (use_case < cmp_usecases) {
         if ((CMPclient(use_case, log_fn)) == CMP_OK)
             rc = EXIT_SUCCESS;
-    }
-    else {
+    } else {
         if ((client_demo(use_case)) == CMP_OK)
             rc = EXIT_SUCCESS;
     }
@@ -1770,9 +1787,9 @@ int main(int argc, char *argv[])
     CRLMGMT_DATA_free(cmdat_new);
     CRLMGMT_DATA_free(cmdat_tls);
     X509_VERIFY_PARAM_free(vpm);
-    // TODO fix potential memory leaks; find out why this potentially crashes:
+    /* TODO fix potential memory leaks; find out why this potentially crashes: */
     NCONF_free(config);
-    // free possibly created OID NIDs
+    /* free possibly created OID NIDs */
     OBJ_cleanup();
 
     if (sec_ctx != NULL && sec_deinit(sec_ctx) == -1)

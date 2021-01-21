@@ -76,7 +76,7 @@ CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
  *        this default is is not used for IR and CR if the exts arg contains SANs
  *        Subject DN is of the form "/<type0>=<value0>/<type1>=<value1>..."
  * @param exts X509 extensions to use; SANs default to SANs in the reference cert
- * @param p10csr PKCS#10 request to use for P10CR; this ignores any other args given
+ * @param csr PKCS#10 request to directly use for P10CR, else with data to transform
  * @note all const parameters are copied (and need to be freed by the caller)
  * @return CMP_OK on success, else CMP error code
  */
@@ -116,7 +116,7 @@ CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                                  const X509 *old_cert, const EVP_PKEY *new_key);
 
 /* reason codes are defined in openssl/x509v3.h */
-CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, int reason);
+CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr, */ int reason);
 
 /* must be called after any of the above activities */
 void CMPclient_finish(CMP_CTX *ctx);
@@ -131,8 +131,8 @@ void CMPclient_finish(CMP_CTX *ctx);
 /* X509_STORE helpers */
 EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
                    OPTIONAL const char *engine, OPTIONAL const char *desc);
-X509* CERT_load(const char *file, OPTIONAL const char *pass, OPTIONAL const char *desc);
-bool CERT_save(const X509* cert, const char *file, OPTIONAL const char *desc);
+X509 *CERT_load(const char *file, OPTIONAL const char *pass, OPTIONAL const char *desc);
+bool CERT_save(const X509 *cert, const char *file, OPTIONAL const char *desc);
 STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc);
 void CERTS_free(OPTIONAL STACK_OF(X509) *certs);
 int CERTS_save(const STACK_OF(X509) *certs, const char *file, OPTIONAL const char *desc);

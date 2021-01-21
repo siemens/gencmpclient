@@ -282,6 +282,7 @@ sub start_mock_server {
 #    my $pid = Proc::Background->new({'die_upon_destroy' => 1}, $cmd); sleep(1); return $pid;
     my $pid = mock_server_pid();
     return $pid if $pid; # already running
+    print "starting server: $cmd\n";
     return system("$cmd &") == 0 # start in background, check for success
         ? (sleep 1, mock_server_pid()) : 0;
 }
@@ -289,5 +290,6 @@ sub start_mock_server {
 sub stop_mock_server {
     my $pid = $_[0];
 #    $pid->die; return; # for some reason the process still runs
+    print "stopping server with pid: $pid\n";
     system("kill $pid") if $pid;
 }

@@ -49,7 +49,6 @@ static int CMPOSSL_error()
     return err;
 }
 
-
 /*
  * Core functionality
  */
@@ -215,18 +214,18 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
 static const char *tls_error_hint(unsigned long err)
 {
     switch (ERR_GET_REASON(err)) {
-/*  case 0x1408F10B: */ /* xSL_F_SSL3_GET_RECORD */
+    /* case 0x1408F10B: */ /* xSL_F_SSL3_GET_RECORD */
     case SSL_R_WRONG_VERSION_NUMBER:
-/*  case 0x140770FC: */ /* xSL_F_SSL23_GET_SERVER_HELLO */
+    /* case 0x140770FC: */ /* xSL_F_SSL23_GET_SERVER_HELLO */
     case SSL_R_UNKNOWN_PROTOCOL:
         return "The server does not support (a recent version of) TLS";
-/*  case 0x1407E086: */ /* xSL_F_SSL3_GET_SERVER_HELLO */
-/*  case 0x1409F086: */ /* xSL_F_SSL3_WRITE_PENDING */
-/*  case 0x14090086: */ /* xSL_F_SSL3_GET_SERVER_CERTIFICATE */
-/*  case 0x1416F086: */ /* xSL_F_TLS_PROCESS_SERVER_CERTIFICATE */
+    /* case 0x1407E086: */ /* xSL_F_SSL3_GET_SERVER_HELLO */
+    /* case 0x1409F086: */ /* xSL_F_SSL3_WRITE_PENDING */
+    /* case 0x14090086: */ /* xSL_F_SSL3_GET_SERVER_CERTIFICATE */
+    /* case 0x1416F086: */ /* xSL_F_TLS_PROCESS_SERVER_CERTIFICATE */
     case SSL_R_CERTIFICATE_VERIFY_FAILED:
         return "Cannot authenticate server via its TLS certificate, likely due to mismatch with our trusted TLS certs or missing revocation status";
-/*  case 0x14094418: */ /* xSL_F_SSL3_READ_BYTES */
+    /* case 0x14094418: */ /* xSL_F_SSL3_READ_BYTES */
     case SSL_AD_REASON_OFFSET + TLS1_AD_UNKNOWN_CA:
         return "Server did not accept our TLS certificate, likely due to mismatch with server's trust anchor or missing revocation status";
     case SSL_AD_REASON_OFFSET + SSL3_AD_HANDSHAKE_FAILURE:
@@ -310,7 +309,7 @@ static bool use_proxy(const char *no_proxy, const char *server)
     return found == NULL;
 }
 
-static int is_localhost(const char* host)
+static int is_localhost(const char *host)
 {
     return strcmp(host, "localhost") == 0
         || strcmp(host, "127.0.0.1") == 0
@@ -384,13 +383,15 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (tls != NULL) {
         X509_STORE *ts = SSL_CTX_get_cert_store(tls);
 
-        /* If server is localhost, we will will proceed without "host verification".
-        This will enable Bootstrapping of LRA (by itself) using only SMC which doesn't contain host. */
+        /*
+         * If server is localhost, we will will proceed without "host verification".
+         * This will enable Bootstrapping of LRA (by itself)
+         * using only SMC which doesn't contain host.
+         */
         if (is_localhost(proxy_addr /* == addr if no proxy */)) {
             LOG(FL_WARN, "skiping host verification on localhost");
-        }
-        else {
-              /* set expected host if not already done by caller */
+        } else {
+            /* set expected host if not already done by caller */
             if (STORE_get0_host(ts) == NULL &&
                 !STORE_set1_host_ip(ts, proxy_addr, proxy_addr)) {
                 goto err;
@@ -424,7 +425,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                 OPTIONAL const X509 *old_cert,
                                 OPTIONAL const char *subject,
                                 OPTIONAL const X509_EXTENSIONS *exts,
-                                OPTIONAL const X509_REQ *p10csr)
+                                OPTIONAL const X509_REQ *csr)
 {
     if (ctx == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
@@ -464,7 +465,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
         }
     }
 
-    if (p10csr != NULL && !OSSL_CMP_CTX_set1_p10CSR(ctx, p10csr)) {
+    if (csr != NULL && !OSSL_CMP_CTX_set1_p10CSR(ctx, csr)) {
         goto err;
     }
 
@@ -513,7 +514,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
     EVP_PKEY *new_key = OSSL_CMP_CTX_get0_newPkey(ctx, 1 /* priv */); /* NULL in case P10CR */
     X509_STORE *new_cert_truststore = OSSL_CMP_CTX_get_certConf_cb_arg(ctx);
     STACK_OF(X509) *untrusted = OSSL_CMP_CTX_get0_untrusted_certs(ctx); /* includes extraCerts */
-    STACK_OF(X509) *chain = ossl_cmp_build_cert_chain(new_cert_truststore  /* may be NULL */,
+    STACK_OF(X509) *chain = ossl_cmp_build_cert_chain(new_cert_truststore /* may be NULL */,
                                                       untrusted, newcert);
     if (sk_X509_num(chain) > 0)
         X509_free(sk_X509_shift(chain)); /* remove leaf (EE) cert */
@@ -612,15 +613,23 @@ CMP_err CMPclient_update(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
     return CMPclient_update_anycert(ctx, new_creds, NULL, new_key);
 }
 
-CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, int reason)
+CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr, */ int reason)
 {
-    if (ctx == NULL || cert == NULL) {
+    if (ctx == NULL /* allow also csr, so not checking: || cert == NULL */) {
         return ERR_R_PASSED_NULL_PARAMETER;
+    }
+    if (cert != NULL) {
+        if (!OSSL_CMP_CTX_set1_oldCert(ctx, (X509 *)cert))
+            goto err;
+    } else {
+#if 0 /* TODO */
+        if (!OSSL_CMP_CTX_set1_p10CSR(ctx, csr))
+            goto err;
+#endif
     }
 
     if ((reason >= CRL_REASON_UNSPECIFIED &&
          !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_REVOCATION_REASON, reason)) ||
-        !OSSL_CMP_CTX_set1_oldCert(ctx, (X509 *)cert) ||
         !OSSL_CMP_exec_RR_ses(ctx)) {
         goto err;
     }
@@ -641,7 +650,6 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
     OSSL_CMP_CTX_free(ctx);
 }
 
-
 /*
  * Support functionality
  */
@@ -657,7 +665,7 @@ EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
 }
 
 inline
-X509* CERT_load(const char *file, OPTIONAL const char *source, OPTIONAL const char *desc)
+X509 *CERT_load(const char *file, OPTIONAL const char *source, OPTIONAL const char *desc)
 {
     return FILES_load_cert(file, FILES_get_format(file), source, desc);
 }

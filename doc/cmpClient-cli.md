@@ -149,11 +149,10 @@ Certificate verification options, for both CMP and TLS:
 
 # DESCRIPTION
 
-The **cmpClient** command is a demo and test client implementation for the Certificate
-Management Protocol (CMP) as defined in RFC 4210.
+The **cmpClient** command is a demo and test client implementation
+of the Certificate Management Protocol (CMP) as defined in RFC 4210.
 It can be used to request certificates from a CA via a CMP server,
-update certificates,
-request certificates to be revoked, and perform other CMP requests.
+to update or revoke them, and to perform possibly other CMP requests.
 
 # USAGE
 
@@ -453,18 +452,18 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     - kur   - Key Update Request
     - rr    - Revocation Request
 
-    **ir** requests initialization of an End Entity into a PKI hierarchy by means of
-    issuance of a first certificate.
+    **ir** requests initialization of an end entity into a PKI hierarchy
+    by issuing a first certificate.
 
-    **cr** requests issuance of an additional certificate for an End Entity already
+    **cr** requests issuing an additional certificate for an end entity already
     initialized to the PKI hierarchy.
 
-    **p10cr** requests issuance of an additional certificate similarly to **cr**
-    but uses PKCS#10 CSR format.
+    **p10cr** requests issuing an additional certificate similarly to **cr**
+    but using legacy PKCS#10 CSR format.
 
-    **kur** requests (key) update for an existing, given certificate.
+    **kur** requests a (key) update for an existing certificate.
 
-    **rr** requests revocation of an existing, given certificate.
+    **rr** requests revocation of an existing certificate.
 
 - **-infotype** _name_
 
@@ -485,6 +484,9 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     The _spec_ may be of the form "EC:_curve_" or "RSA-_length_".
     The key will be saved in the file specified with the **-newkey** option.
 
+    Default is the public key in the PKCS#10 CSR given with the **-csr** option,
+    if any, or else the current client key, if given.
+
 - **-newkey** _filename_
 
     The file to save the newly generated key (in case  **-newkeytype** is given).
@@ -504,15 +506,16 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
     X509 Distinguished Name (DN) of subject to use in the requested certificate
     template.
-    For KUR, it defaults to the subject DN of the reference certificate
-    (see **-oldcert**).
+    For KUR, it defaults to the public key
+    in the PKCS#10 CSR given with the **-csr** option, if provided,
+    or of the reference certificate (see **-oldcert**) if provided.
     This default is used for IR and CR only if no SANs are set.
+
+    The provided subject DN is also used as fallback sender of outgoing CMP messages
+    if no **-cert** and no **-oldcert** are given.
 
     The argument must be formatted as _/type0=value0/type1=value1/type2=..._,
     characters may be escaped by `\` (backslash), no spaces are skipped.
-
-    In case **-cert** is not set, for instance when using MSG\_MAC\_ALG,
-    the subject DN is also used as sender of the PKI message.
 
 - **-issuer** _name_
 
@@ -576,8 +579,12 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
 - **-csr** _filename_
 
-    CSR in PKCS#10 format to use in P10CR.
-    This is for supporting legacy clients.
+    PKCS#10 CSR in PEM or DER format containing a certificate request.
+    With **-cmd** _p10cr_ it is used directly in a legacy P10CR message.
+    When used with **-cmd** _ir_, _cr_, or _kur_, it is transformed into the
+    respective regular CMP request.
+    It may also be used with **-cmd** _rr_ to specify the certificate to be revoked
+    via the included subject and public key.
 
 - **-out\_trusted** _filenames_
 
@@ -633,13 +640,14 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
 - **-oldcert** _filename_
 
-    The certificate to be updated (i.e., renewed or re-keyed) in KUR
-    or to be revoked in RR.
-    It must be given for RR, else it defaults to **-cert**.
+    The certificate to be updated (i.e., renewed or re-keyed) in Key Update Request
+    (KUR) messages or to be revoked in Revocation Request (RR) messages.
+    For KUR the certificate to be updated defaults to **-cert**,
+    and the resulting certificate is called _reference certificate_.
 
-    The reference certificate determined in this way, if any, is also used for
+    The reference certificate, if any, is also used for
     deriving default subject DN and Subject Alternative Names and the
-    default issuer entry in the requested certificate template of IR/CR/KUR.
+    default issuer entry in the requested certificate template of an IR/CR/KUR.
     Its subject is used as sender in CMP message headers if **-cert** is not given.
     Its issuer is used as default recipient in CMP message headers
     if neither **-recipient**, **-srvcert**, nor **-issuer** is given.

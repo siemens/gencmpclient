@@ -507,18 +507,18 @@ Currently implemented commands are:
 
 =back
 
-B<ir> requests initialization of an End Entity into a PKI hierarchy by means of
-issuance of a first certificate.
+B<ir> requests initialization of an end entity into a PKI hierarchy
+by issuing a first certificate.
 
-B<cr> requests issuance of an additional certificate for an End Entity already
+B<cr> requests issuing an additional certificate for an end entity already
 initialized to the PKI hierarchy.
 
-B<p10cr> requests issuance of an additional certificate similarly to B<cr>
-but uses PKCS#10 CSR format.
+B<p10cr> requests issuing an additional certificate similarly to B<cr>
+but using legacy PKCS#10 CSR format.
 
-B<kur> requests (key) update for an existing, given certificate.
+B<kur> requests a (key) update for an existing certificate.
 
-B<rr> requests revocation of an existing, given certificate.
+B<rr> requests revocation of an existing certificate.
 
 =item B<-infotype> I<name>
 
@@ -544,6 +544,9 @@ generate a new key of the given type for the requested certifiate.
 The I<spec> may be of the form "EC:I<curve>" or "RSA-I<length>".
 The key will be saved in the file specified with the B<-newkey> option.
 
+Default is the public key in the PKCS#10 CSR given with the B<-csr> option,
+if any, or else the current client key, if given.
+
 =item B<-newkey> I<filename>
 
 The file to save the newly generated key (in case  B<-newkeytype> is given).
@@ -563,15 +566,16 @@ which should be preceded by "pass:".
 
 X509 Distinguished Name (DN) of subject to use in the requested certificate
 template.
-For KUR, it defaults to the subject DN of the reference certificate
-(see B<-oldcert>).
+For KUR, it defaults to the public key
+in the PKCS#10 CSR given with the B<-csr> option, if provided,
+or of the reference certificate (see B<-oldcert>) if provided.
 This default is used for IR and CR only if no SANs are set.
+
+The provided subject DN is also used as fallback sender of outgoing CMP messages
+if no B<-cert> and no B<-oldcert> are given.
 
 The argument must be formatted as I</type0=value0/type1=value1/type2=...>,
 characters may be escaped by C<\>E<nbsp>(backslash), no spaces are skipped.
-
-In case B<-cert> is not set, for instance when using MSG_MAC_ALG,
-the subject DN is also used as sender of the PKI message.
 
 =item B<-issuer> I<name>
 
@@ -635,8 +639,12 @@ is provided via the B<-newkey> or B<-key> options.
 
 =item B<-csr> I<filename>
 
-CSR in PKCS#10 format to use in P10CR.
-This is for supporting legacy clients.
+PKCS#10 CSR in PEM or DER format containing a certificate request.
+With B<-cmd> I<p10cr> it is used directly in a legacy P10CR message.
+When used with B<-cmd> I<ir>, I<cr>, or I<kur>, it is transformed into the
+respective regular CMP request.
+It may also be used with B<-cmd> I<rr> to specify the certificate to be revoked
+via the included subject and public key.
 
 =item B<-out_trusted> I<filenames>
 
@@ -697,13 +705,14 @@ this option is ignored.
 
 =item B<-oldcert> I<filename>
 
-The certificate to be updated (i.e., renewed or re-keyed) in KUR
-or to be revoked in RR.
-It must be given for RR, else it defaults to B<-cert>.
+The certificate to be updated (i.e., renewed or re-keyed) in Key Update Request
+(KUR) messages or to be revoked in Revocation Request (RR) messages.
+For KUR the certificate to be updated defaults to B<-cert>,
+and the resulting certificate is called I<reference certificate>.
 
-The reference certificate determined in this way, if any, is also used for
+The reference certificate, if any, is also used for
 deriving default subject DN and Subject Alternative Names and the
-default issuer entry in the requested certificate template of IR/CR/KUR.
+default issuer entry in the requested certificate template of an IR/CR/KUR.
 Its subject is used as sender in CMP message headers if B<-cert> is not given.
 Its issuer is used as default recipient in CMP message headers
 if neither B<-recipient>, B<-srvcert>, nor B<-issuer> is given.

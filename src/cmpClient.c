@@ -715,12 +715,12 @@ static int set_name(const char *str,
         X509_NAME *n = UTIL_parse_name(str, MBSTRING_ASC, false);
         if (n == NULL) {
             LOG(FL_ERR, "cannot parse %s DN '%s'", desc, str);
-            return 4;
+            return -4;
         }
         if (!(*set_fn) (ctx, n)) {
             X509_NAME_free(n);
             LOG_err("Out of memory");
-            return 5;
+            return -5;
         }
         X509_NAME_free(n);
     }
@@ -746,7 +746,7 @@ int setup_cert_template(CMP_CTX *ctx)
 
     if (!set_gennames(ctx, opt_sans, "Subject Alternative Name")) {
         LOG_err("Failed to set 'Subject Alternative Name' of CMP context");
-        err = 10;
+        err = -33;
         goto err;
     }
 
@@ -811,13 +811,13 @@ static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
     if (!OSSL_CMP_CTX_push0_geninfo_ITAV(ctx, itav)) {
         LOG_err("Failed to add an ITAV for geninfo of the PKI message header");
         OSSL_CMP_ITAV_free(itav);
-        return 14;
+        return -14;
     }
     return CMP_OK;
 
  oom:
     ASN1_OBJECT_free(type);
-    return 11; /* return values 12 and 13 unused */
+    return -32;
 }
 
 int setup_ctx(CMP_CTX *ctx)
@@ -832,13 +832,13 @@ int setup_ctx(CMP_CTX *ctx)
         STACK_OF(X509) *certs = CERTS_load(opt_extracerts, "extra certificates for CMP");
         if (certs == NULL) {
             LOG(FL_ERR, "Unable to load '%s' extra certificates for CMP", opt_extracerts);
-            err = 8;
+            err = -8;
             goto err;
         } else {
             if (!OSSL_CMP_CTX_set1_extraCertsOut(ctx, certs)) {
                 LOG_err("Failed to set 'extraCerts' field of CMP context");
                 CERTS_free(certs);
-                err = 9;
+                err = -9;
                 goto err;
             }
             CERTS_free(certs);
@@ -847,13 +847,13 @@ int setup_ctx(CMP_CTX *ctx)
 
     if (opt_popo < OSSL_CRMF_POPO_NONE - 1 || opt_popo > OSSL_CRMF_POPO_KEYENC) {
         LOG(FL_ERR, "Invalid value '%d' for popo method (must be between -1 and 2)", opt_popo);
-        err = 10;
+        err = -10;
         goto err;
     }
 
     if (opt_days < 0) {
         LOG(FL_ERR, "Invalid value '%d' for -days option (must be a positive number)", opt_days);
-        err = 10;
+        err = -12;
         goto err;
     }
     /* set option flags directly via CMP API */
@@ -881,7 +881,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
     X509_STORE *own_truststore = NULL;
     X509_STORE *cmp_truststore = NULL;
     CREDENTIALS *cmp_creds = NULL;
-    CMP_err err = 1;
+    CMP_err err = -6;
 
     X509_STORE *new_cert_truststore = NULL;
     const char *new_cert_trusted = opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
@@ -922,10 +922,10 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
             if (opt_own_trusted != NULL) {
                 LOG(FL_TRACE, "Using '%s' as trust store for verifying own CMP signer cert", opt_own_trusted);
                 own_truststore = STORE_load(opt_own_trusted, "trusted certs for verifying own CMP signer cert");
-                err = 4;
+                err = -7;
                 if (own_truststore == NULL)
                     goto err;
-                err = 5;
+                err = -5;
                 /* no cert status/revocation checks done for here */
                 if (!STORE_set_parameters(own_truststore, NULL /* vpm */,
                                           false, false, NULL,
@@ -943,7 +943,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
             LOG_warn("-own_trusted option is ignored since -cert and -key are not used");
     }
 
-    err = 2;
+    err = -2;
     if (opt_srvcert != NULL && opt_trusted != NULL)
         LOG_warn("-trusted option is ignored since -srvcert option is present");
     cmp_truststore = opt_trusted == NULL ? NULL : setup_CMP_truststore();
@@ -985,7 +985,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
     if (opt_srvcert != NULL) {
         X509 *srvcert = CERT_load(opt_srvcert, NULL /* pass */, "directly trusted CMP server certificate");
         if (srvcert == NULL || !OSSL_CMP_CTX_set1_srvCert(*pctx, srvcert))
-            err = 3;
+            err = -3;
         X509_free(srvcert);
     }
 
@@ -1012,7 +1012,7 @@ int setup_transfer(CMP_CTX *ctx)
 
     if ((int)opt_msg_timeout < -1) {
         LOG_err("Only non-negative values allowed for -msg_timeout");
-        err = 16;
+        err = -16;
         goto err;
     }
 
@@ -1026,7 +1026,7 @@ int setup_transfer(CMP_CTX *ctx)
     SSL_CTX *tls = NULL;
     if (opt_tls_used && (tls = setup_TLS(OSSL_CMP_CTX_get0_untrusted_certs(ctx))) == NULL) {
         LOG_err("Unable to setup TLS for CMP client");
-        err = 17;
+        err = -17;
         goto err;
     }
 
@@ -1132,7 +1132,7 @@ err:
 
 static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 {
-    CMP_err err = 1;
+    CMP_err err = -1;
     CMP_CTX *ctx = NULL;
     EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
@@ -1206,7 +1206,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         LOG_warn("-check_all overrides -check_any");
     }
 
-    err = 21;
+    err = -34;
     if (use_case == pkcs10 && opt_csr == NULL) {
         LOG_err("-csr option is missing for command 'p10cr'");
         goto err;
@@ -1221,18 +1221,18 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
 
     if (opt_cacerts_dir_format != NULL && FILES_get_format(opt_cacerts_dir_format) == FORMAT_UNDEF) {
-        err = 22;
+        err = -35;
         LOG_err("-cacerts_dir_format is not of type 'PEM', 'DER', or 'P12'/'PKCS12'");
         goto err;
     }
 
     if (opt_extracerts_dir_format != NULL && FILES_get_format(opt_extracerts_dir_format) == FORMAT_UNDEF) {
-        err = 24;
+        err = -24;
         LOG_err("-extracerts_format is not of type 'PEM', 'DER', or 'P12'/'PKCS12'");
         goto err;
     }
 
-    err = 30;
+    err = -30;
     bool crl_check = opt_crls != NULL || opt_use_cdp || opt_cdps != NULL;
     bool ocsp_check = opt_use_aia || opt_ocsp != NULL;
     if (opt_crls_timeout >= 0 && !opt_use_cdp && opt_cdps == NULL) {
@@ -1266,7 +1266,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     if (opt_stapling)
         LOG_warn("OCSP stapling may be not supported by the OpenSSL build used by the SecUtils");
 #endif
-    err = 31;
+    err = -31;
     if (opt_crls != NULL) {
         crls = CRLs_load(opt_crls, (int)opt_crls_timeout, "pre-loaded CRLs");
         if (crls == NULL)
@@ -1296,7 +1296,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         if (opt_popo != OSSL_CRMF_POPO_NONE - 1)
             LOG(FL_WARN, "-popo %s", msg);
     } else {
-        err = 18;
+        err = -18;
         if (opt_newkeytype != NULL) {
             if (opt_newkey == NULL) {
                 LOG_err("Missing -newkey option specifying the file to save the new key");
@@ -1340,12 +1340,12 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             goto err;
         if ((exts = setup_X509_extensions(ctx)) == NULL) {
             LOG_err("Unable to set up X509 extensions for CMP client");
-            err = 19;
+            err = -13;
             goto err;
         }
         if (opt_certout == NULL) {
             LOG_err("-certout not given, nowhere to save certificate");
-            err = 11;
+            err = -11;
             goto err;
         }
     } else {
@@ -1401,7 +1401,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
                                 use_case == update ? "certificate to be updated" :
                                 use_case == revocation ? "certificate to be revoked" :
                                 "reference certificate (oldcert)");
-            err = 19;
+            err = -19;
             if (oldcert == NULL || !OSSL_CMP_CTX_set1_oldCert(ctx, oldcert))
                 goto err;
         }
@@ -1410,7 +1410,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     if (opt_csr != NULL) {
         if ((csr = CSR_load(opt_csr, "PKCS#10 CSR")) == NULL
                 || !OSSL_CMP_CTX_set1_p10CSR(ctx, csr)) {
-            err = 15;
+            err = -15;
             goto err;
         }
     }
@@ -1419,7 +1419,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         || (int)opt_revreason > CRL_REASON_AA_COMPROMISE
         || (int)opt_revreason == 7) {
         LOG_err("Invalid revreason given. Valid values are -1..6, 8..10");
-        err = 20;
+        err = -20;
         goto err;
     }
 
@@ -1455,13 +1455,13 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     case genm:
         /* TODO? implement genm and remove next 4 lines when done */
         LOG(FL_ERR, "CMP request type 'genm' is not supported");
-        err = 22;
+        err = -22;
         if (strstr(opt_config, "test_config.cnf") != NULL)
             err = CMP_OK;
         break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);
-        err = 21;
+        err = -21;
     }
     X509_free(oldcert);
     X509_REQ_free(csr);
@@ -1476,7 +1476,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
                 && CERTS_save(certs, opt_cacertsout, "CA") < 0) {
             LOG(FL_ERR, "Failed to store %s certs in '%s'", opt_cacertsout);
             CERTS_free(certs);
-            err = 23;
+            err = -23;
             goto err;
         }
         CERTS_free(certs);
@@ -1512,7 +1512,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
                 && CERTS_save(certs, opt_extracertsout, "extra") < 0) {
             LOG(FL_ERR, "Failed to store '%s'", opt_extracertsout);
             CERTS_free(certs);
-            err = 25;
+            err = -25;
             goto err;
         }
         CERTS_free(certs);
@@ -1551,7 +1551,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             const char *new_desc = "newly enrolled certificate and related chain and key";
             if (!CREDENTIALS_save(new_creds, opt_certout, opt_newkey, opt_newkeypass, new_desc)) {
                 LOG_err("Failed to save newly enrolled credentials");
-                err = 26;
+                err = -26;
                 goto err;
             }
         } else {
@@ -1560,18 +1560,18 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             STACK_OF(X509)* certs = CREDENTIALS_get_chain(new_creds);
             if (certs == NULL || opt_chainout != NULL) {
                 if (!CERT_save(cert, opt_certout, new_desc)) {
-                    err = 27;
+                    err = -27;
                     goto err;
                 }
                 if (opt_chainout != NULL &&
                     CERTS_save(certs, opt_chainout, new_desc) < 0) {
-                    err = 28;
+                    err = -28;
                     goto err;
                 }
             } else {
                 if (sk_X509_unshift(certs, cert) == 0) { /* prepend cert */
                     LOG(FL_ERR, "Out of memory writing certs to file '%s'", opt_certout);
-                    err = 29;
+                    err = -29;
                     goto err;
                 }
                 if (CERTS_save(certs, opt_certout, new_desc) < 0) {
@@ -1635,7 +1635,7 @@ static int client_demo(enum use_case use_case)
         break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);
-        err = 19;
+        err = -9;
     }
     if (err != CMP_OK) {
         LOG(FL_ERR, "CMPclient error %d\n", err);

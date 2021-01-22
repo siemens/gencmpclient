@@ -66,18 +66,19 @@ CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy);
 
-/*
+/*-
  * @brief fill the cert template used for certificate requests (ir/cr/p10cr/kur)
  *
- * @param ctx CMP context to read default values from and to be updated
- * @param new_key key pait to be certified; defaults to creds->key
- * @param old_cert reference cert to be updated (kur), defaults to creds->cert
- * @param subject to use; defaults to subject of reference cert for KUR, while
- *        this default is is not used for IR and CR if the exts arg contains SANs
- *        Subject DN is of the form "/<type0>=<value0>/<type1>=<value1>..."
- * @param exts X509 extensions to use; SANs default to SANs in the reference cert
- * @param csr PKCS#10 request to directly use for P10CR, else with data to transform
- * @note all const parameters are copied (and need to be freed by the caller)
+ * @param |ctx| CMP context to be used for implicit parameters, may get updated
+ * @param |new_key| key pair to be certified; defaults to key in |csr| or |creds->key|
+ * @param |old_cert| reference cert to be updated (kur), defaults to data in |csr| or |creds->cert|
+ * @param |subject| to use; defaults to subject of |csr| or of reference cert for KUR,
+ *        while this default is is not used for IR and CR if the |exts| or |csr| contain SANs.
+ * @param |exts| X.509v3 extensions to use.
+ *        Extensions provided via the |csr| parameter are augmented or overridden individually.
+ *        SANs default to SANs contained in the reference cert |old_cert|.
+ * @param |csr| PKCS#10 structure directly used for P10CR command, else its contents are transformed.
+ * @note All 'const' parameters are copied (and need to be freed by the caller).
  * @return CMP_OK on success, else CMP error code
  */
 CMP_err CMPclient_setup_certreq(CMP_CTX *ctx,
@@ -85,10 +86,10 @@ CMP_err CMPclient_setup_certreq(CMP_CTX *ctx,
                                 OPTIONAL const X509 *old_cert,
                                 OPTIONAL const X509_NAME *subject,
                                 OPTIONAL const X509_EXTENSIONS *exts,
-                                OPTIONAL const X509_REQ *p10csr);
+                                OPTIONAL const X509_REQ *csr);
 
-/*
- * either the internal CMPclient_enroll() or the specific CMPclient_imprint(),
+/*-
+ * Either the internal CMPclient_enroll() or the specific CMPclient_imprint(),
  * CMPclient_bootstrap(), CMPclient_pkcs10(), or CMPclient_update[_anycert]())
  * or CMPclient_revoke() can be called next, only once for the given ctx
  */
@@ -96,12 +97,12 @@ CMP_err CMPclient_setup_certreq(CMP_CTX *ctx,
 /*
  * @brief perform the given type of certificate request (ir/cr/p10cr/kur)
  *
- * @param ctx CMP context to be read and updated
- * @param new_creds pointer to variable where to store newly enrolled credentials
- * @param type the request to be performed: CMP_IR, CMP_CR, CMP_P10CR, or CMP_KUR
+ * @param |ctx| CMP context to be used for implicit parameters, xmay get updated
+ * @param |new_creds| pointer to variable where to store new credentials including enrolled certificate
+ * @param |cmd| the type of request to be performed: CMP_IR, CMP_CR, CMP_P10CR, or CMP_KUR
  * @return CMP_OK on success, else CMP error code
  */
-CMP_err CMPclient_enroll(CMP_CTX *ctx, CREDENTIALS **new_creds, int type);
+CMP_err CMPclient_enroll(CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd);
 CMP_err CMPclient_imprint(CMP_CTX *ctx, CREDENTIALS **new_creds,
                           const EVP_PKEY *new_key, const char *subject,
                           OPTIONAL const X509_EXTENSIONS *exts);

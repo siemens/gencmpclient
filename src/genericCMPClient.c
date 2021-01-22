@@ -473,7 +473,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
     return CMPOSSL_error();
 }
 
-CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
+CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
 {
     X509 *newcert = NULL;
 
@@ -491,7 +491,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
         return CMP_R_INVALID_CONTEXT;
     }
 
-    switch (type) {
+    switch (cmd) {
     case CMP_IR:
         newcert = OSSL_CMP_exec_IR_ses(ctx);
         break;

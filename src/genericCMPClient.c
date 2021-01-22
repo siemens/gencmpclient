@@ -435,6 +435,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                 OPTIONAL const X509_REQ *csr)
 {
     if (ctx == NULL) {
+        LOG(FL_ERR, "No ctx parameter given");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 
@@ -476,7 +477,12 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int type)
 {
     X509 *newcert = NULL;
 
-    if (ctx == NULL || new_creds == NULL) {
+    if (ctx == NULL) {
+        LOG(FL_ERR, "No ctx parameter given");
+        return ERR_R_PASSED_NULL_PARAMETER;
+    }
+    if (new_creds == NULL) {
+        LOG(FL_ERR, "No new_creds parameter given");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 
@@ -546,19 +552,25 @@ CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                           const char *subject,
                           OPTIONAL const X509_EXTENSIONS *exts)
 {
-    if (new_key == NULL || subject == NULL) {
-        LOG(FL_ERR, "No parameter for either -newkey or -subject option");
+    X509_NAME *subj = NULL;
+#if 0
+    if (new_key == NULL) {
+        LOG(FL_ERR, "No new_key parameter given");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
-    X509_NAME *name = parse_DN(subject, "subject");
-    if (name == NULL)
+    if (subject == NULL) {
+        LOG(FL_ERR, "No subject parameter given");
+        return ERR_R_PASSED_NULL_PARAMETER;
+    }
+#endif
+    if (subject != NULL && (subj = parse_DN(subject, "subject")) == NULL)
         return CMP_R_INVALID_PARAMETERS;
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
-                                          name, exts, NULL /* csr */);
+                                          subj, exts, NULL /* csr */);
     if (err == CMP_OK) {
         err = CMPclient_enroll(ctx, new_creds, CMP_IR);
     }
-    X509_NAME_free(name);
+    X509_NAME_free(subj);
     return err;
 }
 
@@ -567,19 +579,25 @@ CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                             const char *subject,
                             OPTIONAL const X509_EXTENSIONS *exts)
 {
-    if (new_key == NULL || subject == NULL) {
-        LOG(FL_ERR, "No parameter for either -newkey or -subject option");
+    X509_NAME *subj = NULL;
+#if 0
+    if (new_key == NULL) {
+        LOG(FL_ERR, "No new_key parameter given");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
-    X509_NAME *name = parse_DN(subject, "subject");
-    if (name == NULL)
+    if (subject == NULL) {
+        LOG(FL_ERR, "No subject parameter given");
+        return ERR_R_PASSED_NULL_PARAMETER;
+    }
+#endif
+    if (subject != NULL && (subj = parse_DN(subject, "subject")) == NULL)
         return CMP_R_INVALID_PARAMETERS;
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
-                                          name, exts, NULL /* csr */);
+                                          subj, exts, NULL /* csr */);
     if (err == CMP_OK) {
         err = CMPclient_enroll(ctx, new_creds, CMP_CR);
     }
-    X509_NAME_free(name);
+    X509_NAME_free(subj);
     return err;
 }
 
@@ -587,7 +605,7 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                          const X509_REQ *csr)
 {
     if (csr == NULL) {
-        LOG(FL_ERR, "No parameter for -csr option");
+        LOG(FL_ERR, "No csr parameter given");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
 
@@ -601,8 +619,14 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 }
 
 CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
-                                 const X509 *old_cert, const EVP_PKEY *new_key)
+                                 OPTIONAL const X509 *old_cert, const EVP_PKEY *new_key)
 {
+#if 0
+    if (new_key == NULL) {
+        LOG(FL_ERR, "No new_key parameter given");
+        return ERR_R_PASSED_NULL_PARAMETER;
+    }
+#endif
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, old_cert,
                                           NULL /* subject */, NULL /* exts */,
                                           NULL /* csr */);
@@ -620,9 +644,16 @@ CMP_err CMPclient_update(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 
 CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr, */ int reason)
 {
-    if (ctx == NULL /* allow also csr, so not checking: || cert == NULL */) {
+    if (ctx == NULL) {
+        LOG(FL_ERR, "No ctx parameter given");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
+#if 0
+    if (cert == NULL) {
+        LOG(FL_ERR, "No cert parameter given");
+        return ERR_R_PASSED_NULL_PARAMETER;
+    }
+#endif
     if (cert != NULL) {
         if (!OSSL_CMP_CTX_set1_oldCert(ctx, (X509 *)cert))
             goto err;

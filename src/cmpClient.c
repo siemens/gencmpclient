@@ -1326,8 +1326,10 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 
     if (use_case == imprint || use_case == bootstrap || use_case == check_originality || use_case == update) {
         if (opt_subject == NULL
-            && opt_csr == NULL && opt_oldcert == NULL && opt_cert == NULL)
-            LOG_warn("no -subject given for enrollment; no -csr or -oldcert or -cert available for fallback");
+            && opt_csr == NULL && opt_oldcert == NULL && opt_cert == NULL){
+            LOG_err("no -subject given for enrollment; no -csr or -oldcert or -cert available for fallback");
+            goto err;
+        }
         if (reqExtensions_have_SAN(exts) && opt_sans != NULL) {
             LOG_err("Cannot have Subject Alternative Names both via -reqexts and via -sans");
             err = CMP_R_MULTIPLE_SAN_SOURCES;
@@ -1343,6 +1345,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         }
         if (opt_certout == NULL) {
             LOG_err("-certout not given, nowhere to save certificate");
+            err = 11;
             goto err;
         }
     } else {

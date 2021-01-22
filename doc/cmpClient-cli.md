@@ -279,10 +279,6 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     Distinguished Name (DN) to use in the recipient field of CMP request messages,
     i.e., the CMP server (usually the addressed CA).
 
-    The argument must be formatted as _/type0=value0/type1=value1/type2=..._,
-    characters may be escaped by `\` (backslash), no spaces are skipped.
-    The empty name (NULL-DN) can be explicitly given as a single slash: '_/_'.
-
     The recipient field in the header of a CMP message is mandatory.
     If not given explicitly the recipient is determined in the following order:
     the subject of the CMP server certificate given with the **-srvcert** option,
@@ -292,13 +288,20 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     the subject of the first certificate given with the **-untrusted** option,
     as far as any of those is present, else the NULL-DN as last resort.
 
+    The argument must be formatted as _/type0=value0/type1=value1/type2=..._.
+    Characters may be escaped by `\` (backslash); whitespace is retained.
+    Empty values are permitted, but the corresponding type will not be included.
+    Giving a single `/` will lead to an empty sequence of RDNs (a NULL-DN).
+    Multi-valued RDNs can be formed by placing a `+` character instead of a `/`
+    between the AttributeValueAssertions (AVAs) that specify the members of the set.
+    Example:
+
+    `/DC=org/DC=OpenSSL/DC=users/UID=123456+CN=John Doe`
+
 - **-expect\_sender** _name_
 
     Distinguished Name (DN) expected in the sender field of response messages.
     Defaults to the subject DN of the pinned **-srvcert**, if any.
-
-    The argument must be formatted as _/type0=value0/type1=value1/type2=..._,
-    characters may be escaped by `\` (backslash), no spaces are skipped.
 
     This can be used to make sure that only a particular entity is accepted as
     CMP message signer, and attackers are not able to use arbitrary certificates
@@ -306,6 +309,9 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     Note that this option gives slightly more freedom than setting the **-srvcert**,
     which pins the server to the holder of a particular certificate, while the
     expected sender name will continue to match after updates of the server cert.
+
+    The argument must be formatted as _/type0=value0/type1=value1/type2=..._.
+    For details see the description of the **-recipient** option.
 
 - **-ignore\_keyusage**
 
@@ -510,23 +516,25 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     in the PKCS#10 CSR given with the **-csr** option, if provided,
     or of the reference certificate (see **-oldcert**) if provided.
     This default is used for IR and CR only if no SANs are set.
+    If the NULL-DN (`/`) is given then no subject is placed in the template.
 
-    The provided subject DN is also used as fallback sender of outgoing CMP messages
-    if no **-cert** and no **-oldcert** are given.
+    If provided and neither **-cert** nor **-oldcert** is given,
+    the subject DN is used as fallback sender of outgoing CMP messages.
 
-    The argument must be formatted as _/type0=value0/type1=value1/type2=..._,
-    characters may be escaped by `\` (backslash), no spaces are skipped.
+    The argument must be formatted as _/type0=value0/type1=value1/type2=..._.
+    For details see the description of the **-recipient** option.
 
 - **-issuer** _name_
 
     X509 issuer Distinguished Name (DN) of the CA server
     to place in the requested certificate template in IR/CR/KUR.
+    If the NULL-DN (`/`) is given then no issuer is placed in the template.
 
-    The argument must be formatted as _/type0=value0/type1=value1/type2=..._,
-    characters may be escaped by `\` (backslash), no spaces are skipped.
+    If provided and neither **-recipient** nor **-srvcert** is given,
+    the issuer DN is used as fallback recipient of outgoing CMP messages.
 
-    If neither **-srvcert** nor **-recipient** is available,
-    the name given in this option is also set as the recipient of the CMP message.
+    The argument must be formatted as _/type0=value0/type1=value1/type2=..._.
+    For details see the description of the **-recipient** option.
 
 - **-days** _number_
 

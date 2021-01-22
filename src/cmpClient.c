@@ -1341,6 +1341,10 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             err = 19;
             goto err;
         }
+        if (opt_certout == NULL) {
+            LOG_err("-certout not given, nowhere to save certificate");
+            goto err;
+        }
     } else {
         const char *msg = "option is ignored for commands other than 'ir', 'cr', and 'kur'";
         if (opt_subject != NULL) {
@@ -1584,8 +1588,11 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 
     LOG_close(); /* not really needed since done also in sec_deinit() */
     if (err != CMP_OK) {
-        LOG(FL_ERR, "CMPclient error %d: %s", err,
-            ERR_reason_error_string(ERR_PACK(ERR_LIB_CMP, 0, err)));
+        if (err < 100)
+            LOG(FL_ERR, "CMPclient error %d", err);
+        else
+            LOG(FL_ERR, "CMPclient error %d: %s", err,
+                ERR_reason_error_string(ERR_PACK(ERR_LIB_CMP, 0, err)));
     }
     return err;
 }
@@ -1652,7 +1659,7 @@ int main(int argc, char *argv[])
     if (sec_ctx == NULL)
         goto end;
 
-    LOG_cb_t log_fn = NULL;
+    LOG_cb_t log_fn = LOG_console;
     if (CMPclient_init(log_fn) != CMP_OK)
         goto end;
 

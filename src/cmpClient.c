@@ -1221,7 +1221,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
 
     if (opt_cacerts_dir_format != NULL && FILES_get_format(opt_cacerts_dir_format) == FORMAT_UNDEF) {
-        err = -35;
+        err = -9;
         LOG_err("-cacerts_dir_format is not of type 'PEM', 'DER', or 'P12'/'PKCS12'");
         goto err;
     }
@@ -1465,6 +1465,22 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
     X509_free(oldcert);
     X509_REQ_free(csr);
+
+    int status = OSSL_CMP_CTX_get_status(ctx);
+    if (status >= 0) {
+        /* we got some response, print PKIStatusInfo */
+        char buf[OSSL_CMP_PKISI_BUFLEN];
+        char *string = CMPclient_snprint_PKIStatus(ctx, buf, sizeof(buf));
+
+        LOG(LOG_FUNC_FILE_LINE,
+            status == OSSL_CMP_PKISTATUS_accepted
+            ? LOG_INFO :
+            status == OSSL_CMP_PKISTATUS_rejection
+            || status == OSSL_CMP_PKISTATUS_waiting
+            ? LOG_ERR : LOG_WARNING,
+            "received %s", string != NULL ? string : "<unknown PKIStatus>");
+    }
+
     if (err != CMP_OK) {
         LOG_err("Failed to perform CMP transaction");
         goto err;
@@ -1635,10 +1651,10 @@ static int client_demo(enum use_case use_case)
         break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);
-        err = -9;
+        err = -99;
     }
     if (err != CMP_OK) {
-        LOG(FL_ERR, "CMPclient error %d\n", err);
+        LOG(FL_ERR, "CMPclient check_revocation_status error %d\n", err);
     }
     return err;
 }

@@ -119,6 +119,9 @@ CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 /* reason codes are defined in openssl/x509v3.h */
 CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr, */ int reason);
 
+/* get error information sent by the server */
+char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx, char *buf, size_t bufsize);
+
 /* must be called after any of the above activities */
 void CMPclient_finish(CMP_CTX *ctx);
 

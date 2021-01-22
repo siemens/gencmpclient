@@ -676,6 +676,11 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
     return CMPOSSL_error();
 }
 
+char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx, char *buf, size_t bufsize)
+{
+    return OSSL_CMP_CTX_snprint_PKIStatus(ctx, buf, bufsize);
+}
+
 void CMPclient_finish(OSSL_CMP_CTX *ctx)
 {
     OSSL_CMP_CTX_print_errors(ctx);

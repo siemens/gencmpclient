@@ -159,11 +159,11 @@ endif
 
 clean_test:
 	rm -f creds/{manufacturer,operational*}.*
-	rm -rf creds/crls
+	rm -fr creds/crls
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/*/test.*cert*.pem
 	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Simple
 	rm -f test/faillog_*.txt
-	rm -f test/{Upstream,Downstream}
+	rm -fr test/{Upstream,Downstream}
 
 clean: clean_test
 	$(MAKE) -f Makefile_src clean
@@ -261,15 +261,17 @@ test_cli: build
 
 .phony: start_LightweightCmpRA kill_LightweightCmpRA
 start_LightweightCmpRA:
-	java -jar CmpCaMock.jar . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 &
+	java -jar CmpCaMock.jar . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 2>/dev/null &
 	mkdir test/Upstream test/Downstream 2>/dev/null || true
-	java -jar LightweightCmpRa.jar config/ConformanceTest.xml >/dev/null &
+	java -jar LightweightCmpRa.jar config/ConformanceTest.xml 2>/dev/null &
 	@ # -Dorg.slf4j.simpleLogger.log.com.siemens=debug
 	sleep 2
 
 kill_LightweightCmpRA:
-	kill `ps aux|grep "java -jar CmpCaMock.jar" | head -n 1 | awk '{ print $$2 }'`
-	kill `ps aux|grep "java -jar LightweightCmpRa.jar" | head -n 1 | awk '{ print $$2 }'`
+	PID=`ps aux|grep "java -jar CmpCaMock.jar"        | grep -v grep | awk '{ print $$2 }'` && \
+	if [ -n "$$PID" ]; then kill $$PID; fi
+	PID=`ps aux|grep "java -jar LightweightCmpRa.jar" | grep -v grep | awk '{ print $$2 }'` && \
+	if [ -n "$$PID" ]; then kill $$PID; fi
 
 .phony: test_conformance test_cmpossl_conformance
 test_conformance: build start_LightweightCmpRA

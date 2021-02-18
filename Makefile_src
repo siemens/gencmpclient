@@ -2,7 +2,7 @@
 # optional LPATH defines absolute path where to find pre-installed libraries, e.g., /usr/lib
 # optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
 # optional LIBCMP_INC defines absolute or relative path of the libcmp header files
-# optional LIBCMP_OUT defines absolute or relative path of libcmp, libgencmpcl, and libSecUtils
+# optional LIBCMP_OUT defines absolute or relative path of libcmp, libgencmpcl, and libsecutils
 
 PREFIX=
 
@@ -36,8 +36,8 @@ else
 endif
 
 ARCHIVE=$(PREFIX)bin # for Jenkins
-LIBSECUTILS=$(PREFIX)$(LIBCMP_OUT)/libSecUtils$(DLL)
-SECUTILS_DIR_=securityUtilities
+LIBSECUTILS=$(PREFIX)$(LIBCMP_OUT)/libsecutils$(DLL)
+SECUTILS_DIR_=libsecutils
 SECUTILS_DIR=$(PREFIX)$(SECUTILS_DIR_)
 LIBCMP_INC ?= include_cmp
 LIBCMP_OUT ?= .
@@ -64,7 +64,7 @@ ifdef SEC_NO_TLS
 else
     override LIBS += -lssl
 endif
-override LIBS += -lcmp -lSecUtils -lcrypto
+override LIBS += -lcmp -lsecutils -lcrypto
 
 override LDFLAGS += $(CFLAGS) # needed for -fsanitize=...
 ifeq ($(LPATH),)

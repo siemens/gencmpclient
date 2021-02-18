@@ -1,4 +1,4 @@
-# optional LIBCMP_OUT defines absolute or relative path where libcmp, libgencmpcl, and libSecUtils shall be produced
+# optional LIBCMP_OUT defines absolute or relative path where libcmp, libgencmpcl, and libsecutils shall be produced
 # optional LPATH defines absolute path where to find pre-installed libraries, e.g., /usr/lib
 # optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
 # optional INSTA variable can be set (e.g., to 1) for demo/tests with the Insta Demo CA
@@ -29,8 +29,8 @@ ifeq ($(LPATH),)
 #   else
         OPENSSL_DIR ?= $(ROOTFS)/usr
 #   endif
-    SECUTILS=securityUtilities
-    SECUTILS_LIB=$(SECUTILS)/libSecUtils$(DLL)
+    SECUTILS=libsecutils
+    SECUTILS_LIB=$(SECUTILS)/libsecutils$(DLL)
     LIBCMP_DIR=cmpossl
     LIBCMP_OUT ?= .
     LIBCMP_INC=$(LIBCMP_DIR)/include_cmp
@@ -86,8 +86,8 @@ default: build
 
 .phony: test all zip
 
-ifndef USE_UTA
-    export SEC_NO_UTA=1
+ifdef USE_UTA
+    export SEC_USE_UTA=1
 endif
 ifdef NO_TLS
     export SEC_NO_TLS=1
@@ -100,27 +100,24 @@ else
 .phony: get_submodules build_submodules clean_submodules
 submodules: build_submodules
 
-build_submodules: get_submodules build_cmpossl build_secUtils # $(LIBCMP_INC) $(LIBCMP_LIB) $(SECUTILS_LIB)
+build_submodules: get_submodules build_cmpossl build_secutils # $(LIBCMP_INC) $(LIBCMP_LIB) $(SECUTILS_LIB)
 
-get_submodules: $(SECUTILS)/include $(SECUTILS)/libs/interfaces/include/operators.h $(LIBCMP_DIR)/include
+get_submodules: $(SECUTILS)/include $(LIBCMP_DIR)/include
 
-update: update_secUtils update_cmpossl
+update: update_secutils update_cmpossl
 	git pull
 
-$(SECUTILS)/libs/interfaces/include/operators.h:
-	cd $(SECUTILS) && git submodule update --init libs/interfaces
-
-$(SECUTILS)/include: # not: update_SecUtils
+$(SECUTILS)/include: # not: update_secutils
 	git submodule update $(GIT_PROGRESS) --init $(SECUTILS)
 
 $(SECUTILS_LIB):
-	build_secUtils
+	build_secutils
 
-.phony: update_secUtils build_secUtils
-update_secUtils:
+.phony: update_secutils build_secutils
+update_secutils:
 	git submodule update $(GIT_PROGRESS) --init $(SECUTILS)
-build_secUtils: # not: update_secUtils
-	$(MAKE) -C $(SECUTILS) build_only CFLAGS="$(CFLAGS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIBCMP_OUT_REVERSE_DIR)"
+build_secutils: # not: update_secutils
+	$(MAKE) -C $(SECUTILS) build CFLAGS="$(CFLAGS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIBCMP_OUT_REVERSE_DIR)"
 
 $(LIBCMP_DIR)/include: # not: update_cmpossl
 	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
@@ -170,7 +167,7 @@ clean: clean_test
 
 clean_all: clean
 ifeq ($(LPATH),)
-	$(MAKE) -C $(SECUTILS)  OUT_DIR="$(LIBCMP_OUT_REVERSE_DIR)" clean || true
+	$(MAKE) -C $(SECUTILS) OUT_DIR="$(LIBCMP_OUT_REVERSE_DIR)" clean || true
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="$(LIBCMP_OUT_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 

@@ -9,12 +9,10 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
-#include <securityUtilities.h>
 #include <SecUtils/config/config.h>
 /* #include <SecUtils/util/log.h> */
 #include <SecUtils/certstatus/crls.h> /* just for use in test_load_crl_cb() */
 #include <SecUtils/certstatus/crl_mgmt.h>
-#include <SecUtils/util/cdp_util.h> /* TODO integrate with util.h */
 
 #include <genericCMPClient.h>
 
@@ -1050,19 +1048,19 @@ size_t get_cert_filename(X509            *cert,
                          unsigned long   flags)
 {
     (void)flags;
-    size_t len = safe_string_copy(prefix, name_utf8_buf, name_utf8_buf_len, NULL);
+    size_t len = UTIL_safe_string_copy(prefix, name_utf8_buf, name_utf8_buf_len, NULL);
 
     char subject[256];
     X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName, subject, sizeof(subject));
-    len += safe_string_copy(subject, name_utf8_buf + len, name_utf8_buf_len - len, NULL);
-    len += safe_string_copy(" [", name_utf8_buf + len, name_utf8_buf_len - len, NULL);
+    len += UTIL_safe_string_copy(subject, name_utf8_buf + len, name_utf8_buf_len - len, NULL);
+    len += UTIL_safe_string_copy(" [", name_utf8_buf + len, name_utf8_buf_len - len, NULL);
 
     unsigned char sha1[EVP_MAX_MD_SIZE];
     unsigned int size = 0;
     X509_digest(cert, EVP_sha1(), sha1, &size);
-    len += bintohex(sha1, size, false, '-', 4, name_utf8_buf + len, name_utf8_buf_len - len, NULL);
-    len += safe_string_copy("].", name_utf8_buf + len, name_utf8_buf_len - len, NULL);
-    len += safe_string_copy(suffix, name_utf8_buf + len, name_utf8_buf_len - len, NULL);
+    len += UTIL_bintohex(sha1, size, false, '-', 4, name_utf8_buf + len, name_utf8_buf_len - len, NULL);
+    len += UTIL_safe_string_copy("].", name_utf8_buf + len, name_utf8_buf_len - len, NULL);
+    len += UTIL_safe_string_copy(suffix, name_utf8_buf + len, name_utf8_buf_len - len, NULL);
     return len;
 }
 
@@ -1097,9 +1095,8 @@ static int validate_revocation_status(void)
     X509 *target = CERT_load(opt_cert, opt_keypass, "target cert");
     if (target == NULL)
         return 0;
-
     LOG(FL_DEBUG, "Target certificate read successfully:");
-    CDP_log_cert(FL_DEBUG, target);
+    LOG_cert_CDP(FL_DEBUG, target);
 
     STACK_OF(X509) *untrusted = NULL;;
     X509_STORE_CTX *ctx = X509_STORE_CTX_new();
@@ -1620,7 +1617,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     CREDENTIALS_free(new_creds);
     CRLs_free(crls);
 
-    LOG_close(); /* not really needed since done also in sec_deinit() */
+    LOG_close();
     if (err != CMP_OK) {
         if (err < 100)
             LOG(FL_ERR, "CMPclient error %d", err);
@@ -1671,10 +1668,6 @@ int main(int argc, char *argv[])
 #endif
 
     LOG_set_name("cmpClient");
-    sec_ctx *sec_ctx = sec_init(); /* this also initializes logging to default */
-    if (sec_ctx == NULL)
-        goto end;
-
     LOG_cb_t log_fn = LOG_console;
     if (CMPclient_init(log_fn) != CMP_OK)
         goto end;
@@ -1817,9 +1810,6 @@ int main(int argc, char *argv[])
     NCONF_free(config);
     /* free possibly created OID NIDs */
     OBJ_cleanup();
-
-    if (sec_ctx != NULL && sec_deinit(sec_ctx) == -1)
-        rc = EXIT_FAILURE;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100002L /* TODO remove: */ && 0
 # ifndef OPENSSL_NO_CRYPTO_MDEBUG

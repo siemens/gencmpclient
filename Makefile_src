@@ -46,26 +46,27 @@ CC ?= gcc
 ifdef NDEBUG
     override CFLAGS += -DNDEBUG=1 -O2
 else
-    override CFLAGS += -g# # not every compiler(version) supports -Og
+    override CFLAGS += -g -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -O0 # not every compiler(version) supports -Og
 endif
-override CFLAGS += -std=gnu90 -fstack-protector -fno-omit-frame-pointer -D_FORTIFY_SOURCE=2# # -fsanitize=address
-override CFLAGS += -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter $(OSSL_VERSION_QUIRKS) #-DPEDANTIC -pedantic -Wno-declaration-after-statement # -Werror
+override CFLAGS += -std=gnu90 -fstack-protector -fno-omit-frame-pointer -D_FORTIFY_SOURCE=2
+override CFLAGS += -Werror -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter $(OSSL_VERSION_QUIRKS) #-DPEDANTIC -pedantic -Wno-declaration-after-statement # -Werror
 ifeq ($(LPATH),)
    override CFLAGS += -I$(SECUTILS_DIR)/include -I$(PREFIX)$(LIBCMP_INC)
 endif
 override CFLAGS += -I$(PREFIX)include
-override CFLAGS += -isystem $(OPENSSL)/include# # use of -isystem is critical for selecting wanted OpenSSL version
+override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
 
 ifdef USE_UTA
-    LIBS += -luta
+    override LIBS += -luta
 endif
 ifdef SEC_NO_TLS
     override CFLAGS += -DSEC_NO_TLS=1
 else
-    LIBS += -lssl
+    override LIBS += -lssl
 endif
-LIBS += -lcmp -lSecUtils -lcrypto
+override LIBS += -lcmp -lSecUtils -lcrypto
 
+override LDFLAGS += $(CFLAGS) # needed for -fsanitize=...
 ifeq ($(LPATH),)
     override LDFLAGS += -L$(PREFIX)$(LIBCMP_OUT) -Wl,-rpath=$(LIBCMP_OUT)
     override LDFLAGS += -L$(SECUTILS_DIR) -Wl,-rpath=$(SECUTILS_DIR_)
@@ -73,7 +74,6 @@ ifeq ($(LPATH),)
 else
     override LDFLAGS += -L$(LPATH)
 endif
-
 
 LIBGENCMPCL=$(LIBCMP_OUT)/libgencmpcl$(DLL)
 
@@ -115,7 +115,7 @@ $(LIBGENCMPCL): src/genericCMPClient$(OBJ)
 	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@
 
 $(PREFIX)cmpClient$(EXE): src/cmpClient$(OBJ) | $(LIBGENCMPCL)
-	$(CC) $(LDFLAGS) $< -lgencmpcl $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $< $(LIBS) -lgencmpcl -o $@
 
 .PHONY: all archive
 all: build archive

@@ -28,18 +28,16 @@
 #endif
 
 /*
- * Usecases are split between CMP usecases and local usecases.
- * Local usecases do not communicate with CMP and therefore don't
- * need its complex setup.
+ * Use cases are split between CMP use cases and others,
+ * which do not use CMP and therefore do not need its complex setup.
  */
 enum use_case { no_use_case,
-                /* start with cmp use cases */
+                /* CMP use cases: */
                 imprint, bootstrap, check_originality, pkcs10, update,
                 revocation /* 'revoke' already defined in unistd.h */, genm,
                 default_case,
-                /* continue with local use cases cmp_usecases for comparison */
-                cmp_usecases = default_case,
-                check_revocation_status
+                /* Non-CMP use cases: */
+                validate
 };
 
 #define RSA_SPEC "RSA:2048"
@@ -187,11 +185,11 @@ opt_t cmp_opts[] = {
 
     OPT_HEADER("Server authentication"),
     { "trusted", OPT_TXT, {.txt = NULL}, { &opt_trusted },
-      "Certificates to trust as chain roots when verifying signed CMP responses"},
+      "Certificates to trust as chain roots when validating signed CMP responses"},
     { "untrusted", OPT_TXT, {.txt = NULL}, { &opt_untrusted },
       "Intermediate CA certs for chain construction for CMP/TLS/enrolled certs"},
     { "srvcert", OPT_TXT, {.txt = NULL}, { &opt_srvcert },
-      "Server cert to pin and trust directly when verifying signed CMP responses"},
+      "Server cert to pin and trust directly when validating signed CMP responses"},
     { "recipient", OPT_TXT, {.txt = NULL}, { &opt_recipient },
       "DN of CA. Default: -srvcert subject, -issuer, issuer of -oldcert or -cert,"},
     OPT_MORE("subject of the first -untrusted cert if any, or else the NULL-DN"),
@@ -225,7 +223,7 @@ opt_t cmp_opts[] = {
     OPT_MORE("This also used as default reference for subject DN and SANs."),
     OPT_MORE("Any further certs included are appended to the untrusted certs"),
     { "own_trusted", OPT_TXT, {.txt = NULL}, { &opt_own_trusted },
-      "Optional certs to verify chain building for own CMP signer cert"},
+      "Optional certs to validate chain building for own CMP signer cert"},
     { "key", OPT_TXT, {.txt = NULL}, { &opt_key },
       "Key for the client certificate"},
     { "keypass", OPT_TXT, {.txt = NULL}, { &opt_keypass },
@@ -283,7 +281,7 @@ opt_t cmp_opts[] = {
     { "csr", OPT_TXT, {.txt = NULL}, { &opt_csr },
       "CSR file in PKCS#10 format to convert or to use in p10cr"},
     { "out_trusted", OPT_TXT, {.txt = NULL}, { &opt_out_trusted },
-      "Certs to trust when verifying newly enrolled certs; defaults to -srvcert"},
+      "Certs to trust when validating newly enrolled certs; defaults to -srvcert"},
     { "implicit_confirm", OPT_BOOL, {.bit = false}, { (const char **) &opt_implicit_confirm },
       "Request implicit confirmation of newly enrolled certificates"},
     { "disable_confirm", OPT_BOOL, {.bit = false}, { (const char **) &opt_disable_confirm },
@@ -886,8 +884,8 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
     X509_STORE *new_cert_truststore = NULL;
     const char *new_cert_trusted = opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
     if (new_cert_trusted != NULL) {
-        LOG(FL_TRACE, "Using '%s' as trust store for verifying new cert", new_cert_trusted);
-        new_cert_truststore = STORE_load(new_cert_trusted, "trusted certs for verifying new cert");
+        LOG(FL_TRACE, "Using '%s' as trust store for validating new cert", new_cert_trusted);
+        new_cert_truststore = STORE_load(new_cert_trusted, "trusted certs for validating new cert");
         if (new_cert_truststore == NULL)
             goto err;
         /* use separated flag for checking any cert, for new certificate store */
@@ -920,8 +918,8 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
         } else {
             cmp_creds = CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
             if (opt_own_trusted != NULL) {
-                LOG(FL_TRACE, "Using '%s' as trust store for verifying own CMP signer cert", opt_own_trusted);
-                own_truststore = STORE_load(opt_own_trusted, "trusted certs for verifying own CMP signer cert");
+                LOG(FL_TRACE, "Using '%s' as trust store for validating own CMP signer cert", opt_own_trusted);
+                own_truststore = STORE_load(opt_own_trusted, "trusted certs for validating own CMP signer cert");
                 err = -7;
                 if (own_truststore == NULL)
                     goto err;
@@ -1067,34 +1065,50 @@ size_t get_cert_filename(X509            *cert,
     return len;
 }
 
-static int client_check_revocation_status(const char * certificate_path)
+static int validate_revocation_status(void)
 {
-    LOG(FL_INFO, "start usecase: check_revocation_status");
-    LOG(FL_INFO, "verify certificate in file  %s", certificate_path);
-    LOG(FL_DEBUG, "trusted certs: %s", opt_tls_trusted);
+    int ret = 0;
 
-    FILE *fp = fopen(certificate_path, "r");
-    if (!fp) {
-        LOG(FL_ERR, "unable to open input certfile: %s", certificate_path);
-        return 1;
+    if (opt_tls_cert != NULL) {
+        if (opt_tls_trusted == NULL) {
+            LOG_err("Missing -tls_trusted option for target certificate given by -tls_cert");
+            return 0;
+        }
+        opt_keypass = opt_tls_keypass;
+        opt_cert = opt_tls_cert;
+        opt_trusted = opt_tls_trusted;
+    } else if (opt_cert == NULL) {
+        LOG_err("Missing -cert option for target certificate");
+        return 0;
+    } else {
+        if (opt_own_trusted == NULL) {
+            LOG_err("Missing -own_trusted option for target certificate given by -cert");
+            return 0;
+        }
+        opt_trusted = opt_own_trusted;
     }
 
-    X509 *cert = PEM_read_X509(fp, NULL, NULL, NULL);
-    if (!cert) {
-        LOG(FL_ERR, "unable to parse certificate in: %s", certificate_path);
-        fclose(fp);
-        return 1;
-    }
-    fclose(fp);
+    LOG(FL_INFO, "Validating certificate, optionally including revocation status ");
+    LOG(FL_INFO, "Target certificate: %s", opt_cert);
+    LOG(FL_DEBUG, "Trusted certs: %s", opt_trusted);
+    LOG(FL_DEBUG, "Untrusted certs: %s", opt_untrusted);
 
-    /* cert this is a valid cert pointer from here on */
-    LOG(FL_DEBUG, "certificate read successfully:");
-    CDP_log_cert(FL_DEBUG, cert);
+    X509 *target = CERT_load(opt_cert, opt_keypass, "target cert");
+    if (target == NULL)
+        return 0;
 
-    LOG(FL_DEBUG, "create and init certificate truststore");
-    X509_STORE *store = STORE_load(opt_tls_trusted, NULL);
-    if (store == NULL)
+    LOG(FL_DEBUG, "Target certificate read successfully:");
+    CDP_log_cert(FL_DEBUG, target);
+
+    STACK_OF(X509) *untrusted = NULL;;
+    X509_STORE_CTX *ctx = X509_STORE_CTX_new();
+    X509_STORE *store = STORE_load(opt_trusted, "trusted certs");
+    if (ctx == NULL || store == NULL)
         goto err;
+    if (opt_untrusted != NULL) {
+        if ((untrusted = CERTS_load(opt_untrusted, "untrusted certs")) == NULL)
+            goto err;
+    }
 
     if (!STORE_set_parameters(store, vpm,
                               opt_check_all, opt_stapling, crls,
@@ -1105,29 +1119,28 @@ static int client_check_revocation_status(const char * certificate_path)
     if (!STORE_set_crl_callback(store, CRLMGMT_load_crl_cb, cmdat_tls))
         goto err;
 
-    LOG(FL_DEBUG, "create and init store context");
-    X509_STORE_CTX *ctx = X509_STORE_CTX_new();
-    X509_STORE_CTX_init(ctx, store, cert, NULL);
+    LOG(FL_DEBUG, "Initializing store context");
+    X509_STORE_CTX_init(ctx, store, target, untrusted);
 
-    LOG(FL_INFO, "start certificate verification now");
-    int ret = X509_verify_cert(ctx);
+    LOG(FL_DEBUG, "Starting certificate verification");
+    ret = X509_verify_cert(ctx) > 0;
 
     /* check for errors and clean up */
-    if (ret > 0) {
-        LOG(FL_INFO, "certificate verification finished successfully");
+    if (ret) {
+        LOG(FL_INFO, "Certificate verification finished successfully");
     } else {
         int err = X509_STORE_CTX_get_error(ctx);
         int depth = X509_STORE_CTX_get_error_depth(ctx);
-        LOG(FL_ERR, "certificate verification failed: (%d) [%d] %s", depth,
+        LOG(FL_ERR, "Certificate verification failed at depth=%d err=%d: %s", depth,
             err, X509_verify_cert_error_string(err));
     }
 
 err:
-    /* done with store, context and x509 cert */
     X509_STORE_CTX_free(ctx);
     X509_STORE_free(store);
-    X509_free(cert);
-    return 0;
+    CERTS_free(untrusted);
+    X509_free(target);
+    return ret;
 }
 
 static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
@@ -1373,7 +1386,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         if (opt_policy_oids != NULL)
             LOG(FL_WARN, "-policy_oids %s", msg);
 
-        /* TODO handle check_revocation_status option conflicts */
+        /* TODO handle validate use case option conflicts */
         if (use_case == genm && opt_csr != NULL)
             LOG_warn("-csr option is ignored for 'genm' command");
         if (use_case != pkcs10) {
@@ -1559,7 +1572,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         sk_X509_pop_free(extra_certs, X509_free);
     }
 
-    if (use_case != revocation && use_case != genm && use_case != check_revocation_status) {
+    if (use_case != revocation && use_case != genm && use_case != validate) {
         if (use_case != pkcs10 && opt_newkey != NULL && opt_newkeytype != NULL) {
             if (opt_chainout != NULL)
                 LOG_warn("-chainout option is ignored");
@@ -1621,7 +1634,7 @@ int print_help(const char *prog)
     BIO *bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
 
     BIO_printf(bio_stdout, "Usage:\n"
-               "%s (imprint | bootstrap | check_originality | pkcs10 | update | revoke) [-section <server>]\n"
+               "%s (imprint | bootstrap | check_originality | pkcs10 | update | revoke | validate) [-section <server>]\n"
                "%s options\n\n"
                "Available options are:\n",
                prog, prog);
@@ -1639,24 +1652,6 @@ bool set_verbosity(long level)
     opt_verbosity = level;
     LOG_set_verbosity((severity)level);
     return true;
-}
-
-static int client_demo(enum use_case use_case)
-{
-    CMP_err err = CMP_OK;
-
-    switch (use_case) {
-    case check_revocation_status:
-        client_check_revocation_status(opt_cert);
-        break;
-    default:
-        LOG(FL_ERR, "Unknown use case '%d' used", use_case);
-        err = -99;
-    }
-    if (err != CMP_OK) {
-        LOG(FL_ERR, "CMPclient check_revocation_status error %d\n", err);
-    }
-    return err;
 }
 
 int main(int argc, char *argv[])
@@ -1696,8 +1691,8 @@ int main(int argc, char *argv[])
             use_case = update;
         } else if (strcmp(argv[1], "revoke") == 0) {
             use_case = revocation;
-        } else if (strcmp(argv[1], "check_revocation_status") == 0) {
-            use_case = check_revocation_status;
+        } else if (strcmp(argv[1], "validate") == 0) {
+            use_case = validate;
         }
     }
 
@@ -1801,11 +1796,11 @@ int main(int argc, char *argv[])
         goto end;
     }
 
-    if (use_case < cmp_usecases) {
-        if ((CMPclient(use_case, log_fn)) == CMP_OK)
+    if (use_case == validate) {
+        if (validate_revocation_status())
             rc = EXIT_SUCCESS;
     } else {
-        if ((client_demo(use_case)) == CMP_OK)
+        if ((CMPclient(use_case, log_fn)) == CMP_OK)
             rc = EXIT_SUCCESS;
     }
 

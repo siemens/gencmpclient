@@ -221,6 +221,15 @@ else
 demo: build get_Insta_crls
 endif
 	@/bin/echo -e "\n##### running cmpClient demo #####"
+	@/bin/echo -e "\nValidating own CMP client cert"
+ifndef INSTA
+	./cmpClient validate -cert creds/ppki_playground_cmp.p12 -tls_cert "" -own_trusted creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -untrusted creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt
+	@/bin/echo -e "\nValidating own TLS client cert"
+	./cmpClient validate -cert creds/ppki_playground_tls.p12 -tls_trusted creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -untrusted creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt
+else
+	./cmpClient validate -section Insta -no_check_time -tls_cert "" -cert creds/insta_client.pem -own_trusted creds/trusted/InstaDemoCA.crt
+endif
+	@/bin/echo -e ""
 	$(PROXY) ./cmpClient$(EXE) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo
 	$(PROXY) ./cmpClient$(EXE) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS)

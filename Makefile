@@ -255,7 +255,7 @@ demo_Insta:
 	INSTA=1 $(MAKE) demo
 
 test_cli: build
-	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER"
+	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER in cmpossl/test/recipes/81-test_cmp_cli_data/$OPENSSL_CMP_SERVER"
 	@ :
 	( HARNESS_ACTIVE=1 \
 	  HARNESS_VERBOSE=$(V) \

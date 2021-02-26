@@ -1709,7 +1709,8 @@ int main(int argc, char *argv[])
             if (argv[i][1] == '-')
                 argv[i]++;
             if (strcmp(argv[i] + 1, "help") == 0) {
-                return print_help(prog);
+                rc = print_help(prog);
+                goto end;
             } else if (i + 1 < argc) {
                 if (strcmp(argv[i] + 1, "config") == 0)
                     opt_config = argv[++i];
@@ -1758,8 +1759,10 @@ int main(int argc, char *argv[])
     if (use_case != no_use_case)
         argv++; /* skip first option since use_case is given */
     rv = OPT_read(cmp_opts, argv, vpm);
-    if (rv == -1) /* can only happen for ---help since [-]-help has already been handled */
-        return print_help(prog);
+    if (rv == -1) { /* can only happen for ---help since [-]-help has already been handled */
+        rc = print_help(prog);
+        goto end;
+    }
     if (rv <= 0)
         goto end;
     if (!set_verbosity(opt_verbosity))

@@ -92,7 +92,7 @@ certout = creds/manufacturer.crt
 [bootstrap]
 cmd = cr
 secret =
-newkeytype = EC:prime256v1 # ECC implies EC:secp256r1
+newkeytype = EC:prime256v1 # an alias of EC:secp256r1
 newkey = creds/operational.pem # fallback for cmpossl
 newkeypass = pass:12345
 reqexts = reqexts

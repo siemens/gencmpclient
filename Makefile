@@ -180,7 +180,7 @@ ifdef INSTA
     unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
     OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
-    override EXTRA_OPTS += -path pkix/
+    override EXTRA_OPTS += -path pkix/ -newkeytype rsa:1024
 else
     unreachable="cannot reach ppki-playground.ct.siemens.com"
     CA_SECTION=EJBCA

@@ -876,12 +876,13 @@ int setup_ctx(CMP_CTX *ctx)
 
 CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 {
+    X509_STORE *new_cert_truststore = NULL;
     X509_STORE *own_truststore = NULL;
     X509_STORE *cmp_truststore = NULL;
+    STACK_OF(X509) *untrusted_certs = NULL;
     CREDENTIALS *cmp_creds = NULL;
     CMP_err err = -6;
 
-    X509_STORE *new_cert_truststore = NULL;
     const char *new_cert_trusted = opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
     if (new_cert_trusted != NULL) {
         LOG(FL_TRACE, "Using '%s' as trust store for validating new cert", new_cert_trusted);
@@ -945,7 +946,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
     if (opt_srvcert != NULL && opt_trusted != NULL)
         LOG_warn("-trusted option is ignored since -srvcert option is present");
     cmp_truststore = opt_trusted == NULL ? NULL : setup_CMP_truststore();
-    STACK_OF(X509) *untrusted_certs = opt_untrusted == NULL ? NULL :
+    untrusted_certs = opt_untrusted == NULL ? NULL :
         CERTS_load(opt_untrusted, "untrusted certs for CMP");
     if ((cmp_truststore == NULL && opt_trusted != NULL)
             || (untrusted_certs == NULL && opt_untrusted != NULL))
@@ -975,8 +976,6 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
                             opt_digest, opt_mac,
                             transfer_fn, (int)opt_total_timeout,
                             new_cert_truststore, implicit_confirm);
-    CERTS_free(untrusted_certs);
-    STORE_free(new_cert_truststore);
     if (err != CMP_OK)
         goto err;
 
@@ -989,6 +988,8 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
 
  err:
     CREDENTIALS_free(cmp_creds);
+    CERTS_free(untrusted_certs);
+    STORE_free(new_cert_truststore);
     STORE_free(cmp_truststore);
     STORE_free(own_truststore);
     return err;
@@ -1603,6 +1604,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
                     err = -29;
                     goto err;
                 }
+                CREDENTIALS_set_cert(new_creds, NULL);
                 if (CERTS_save(certs, opt_certout, new_desc) < 0) {
                     err = 30;
                     goto err;

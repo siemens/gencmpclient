@@ -233,11 +233,12 @@ endif
 	$(PROXY) ./cmpClient$(EXE) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo
 	$(PROXY) ./cmpClient$(EXE) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS)
-	openssl x509 -x509toreq -in creds/operational.crt -passin pass:12345 \
-	  -signkey creds/operational.pem -out creds/operational.csr
+	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
 	openssl x509 -noout -text -in creds/operational.crt
 	@echo :
 	openssl x509 -noout -text -in creds/operational.crt | sed '/^         [0-9a-f].*/d'
+	# @echo
+	# ./cmpClient pkcs10 -section $(CA_SECTION)
 	@echo
 	$(PROXY) ./cmpClient$(EXE) update -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :

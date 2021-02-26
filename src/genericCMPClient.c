@@ -119,7 +119,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
         const char *pwd = CREDENTIALS_get_pwd(creds);
         const char *pwdref = CREDENTIALS_get_pwdref(creds);
         if ((pwd != NULL
-             && !OSSL_CMP_CTX_set1_secretValue(ctx, (unsigned char *) pwd, (int)strlen(pwd))) ||
+             && !OSSL_CMP_CTX_set1_secretValue(ctx, (unsigned char *)pwd, (int)strlen(pwd))) ||
             (pwdref != NULL
              && !OSSL_CMP_CTX_set1_referenceValue(ctx, (unsigned char *)pwdref,
                                                   (int)strlen(pwdref))) ||

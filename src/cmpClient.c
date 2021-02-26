@@ -1586,7 +1586,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         } else {
             const char *new_desc = "newly enrolled certificate";
             X509 *cert = CREDENTIALS_get_cert(new_creds);
-            STACK_OF(X509)* certs = CREDENTIALS_get_chain(new_creds);
+            STACK_OF(X509) *certs = CREDENTIALS_get_chain(new_creds);
             if (certs == NULL || opt_chainout != NULL) {
                 if (!CERT_save(cert, opt_certout, new_desc)) {
                     err = -27;

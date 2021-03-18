@@ -117,7 +117,7 @@ $(SECUTILS_LIB):
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init $(SECUTILS)
 build_secutils: # not: update_secutils
-	$(MAKE) -C $(SECUTILS) build CFLAGS="$(CFLAGS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIBCMP_OUT_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS) build CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIBCMP_OUT_REVERSE_DIR)"
 
 $(LIBCMP_DIR)/include: # not: update_cmpossl
 	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
@@ -145,7 +145,7 @@ build_lib: submodules
 	$(MAKE) -f Makefile_src $(OUTBIN) OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" CFLAGS="$(CFLAGS)"
 
 build: build_lib
-	$(MAKE) -f Makefile_src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" CFLAGS="$(CFLAGS)"
+	$(MAKE) -f Makefile_src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" CFLAGS="$(CFLAGS)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
 .phony: clean_test clean clean_uta clean_all
 
@@ -218,16 +218,16 @@ else
 demo: build get_Insta_crls
 endif
 	@/bin/echo -e "\n##### running cmpClient demo #####"
+	@/bin/echo -e ""
+	$(PROXY) ./cmpClient$(EXE) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
 ifndef INSTA
 	./cmpClient validate -cert creds/ppki_playground_cmp.p12 -tls_cert "" -own_trusted creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -untrusted creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt
 	@/bin/echo -e "\nValidating own TLS client cert"
 	./cmpClient validate -cert creds/ppki_playground_tls.p12 -tls_trusted creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -untrusted creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt
 else
-	./cmpClient validate -section Insta -no_check_time -tls_cert "" -cert creds/insta_client.pem -own_trusted creds/trusted/InstaDemoCA.crt
+	./cmpClient validate -section Insta -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/InstaDemoCA.crt # -no_check_time
 endif
-	@/bin/echo -e ""
-	$(PROXY) ./cmpClient$(EXE) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo
 	$(PROXY) ./cmpClient$(EXE) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS)
 	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345

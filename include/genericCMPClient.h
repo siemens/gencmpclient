@@ -38,8 +38,8 @@ typedef int CMP_err;
 # ifdef LOCAL_DEFS
 #  include "genericCMPClient_imports.h"
 # else
-#  include <SecUtils/credentials/credentials.h>
-#  include <SecUtils/util/log.h>
+#  include <secutils/credentials/credentials.h>
+#  include <secutils/util/log.h>
 # endif
 
 /* CMP client core functions */
@@ -132,7 +132,7 @@ void CMPclient_finish(CMP_CTX *ctx);
 # ifdef LOCAL_DEFS
 #  include "genericCMPClient_imports.h"
 # else
-#  include <SecUtils/credentials/key.h>
+#  include <secutils/credentials/key.h>
 # endif
 
 /* X509_STORE helpers */
@@ -151,7 +151,7 @@ X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
 # ifdef LOCAL_DEFS
 #  include "genericCMPClient_imports.h"
 # else
-#  include <SecUtils/credentials/store.h>
+#  include <secutils/credentials/store.h>
 # endif
 
 /* SSL_CTX helpers for HTTPS */
@@ -159,7 +159,7 @@ X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
 #  ifdef LOCAL_DEFS
 #   include "genericCMPClient_imports.h"
 #  else
-#   include <SecUtils/connections/tls.h>
+#   include <secutils/connections/tls.h>
 #  endif
 SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
                  OPTIONAL const STACK_OF(X509) *untrusted,
@@ -172,7 +172,7 @@ void TLS_free(OPTIONAL SSL_CTX *tls);
 # ifdef LOCAL_DEFS
 #  include "genericCMPClient_imports.h"
 # else
-#  include <SecUtils/util/extensions.h>
+#  include <secutils/util/extensions.h>
 # endif
 
 #endif /* GENERIC_CMP_CLIENT_H */

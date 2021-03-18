@@ -9,10 +9,10 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
-#include <SecUtils/config/config.h>
-/* #include <SecUtils/util/log.h> */
-#include <SecUtils/certstatus/crls.h> /* just for use in test_load_crl_cb() */
-#include <SecUtils/certstatus/crl_mgmt.h>
+#include <secutils/config/config.h>
+/* #include <secutils/util/log.h> */
+#include <secutils/certstatus/crls.h> /* just for use in test_load_crl_cb() */
+#include <secutils/certstatus/crl_mgmt.h>
 
 #include <genericCMPClient.h>
 

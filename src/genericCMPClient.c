@@ -24,12 +24,12 @@ STACK_OF(X509_EXTENSION) *(*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTE
 #ifdef LOCAL_DEFS /* internal helper functions not documented in API spec */
 # include "genericCMPClient_use.h"
 #else
-# include <SecUtils/storage/files.h>
-# include <SecUtils/credentials/verify.h>
-# include <SecUtils/credentials/store.h>
-# include <SecUtils/connections/conn.h>
+# include <secutils/storage/files.h>
+# include <secutils/credentials/verify.h>
+# include <secutils/credentials/store.h>
+# include <secutils/connections/conn.h>
 # ifndef SEC_NO_TLS
-#  include <SecUtils/connections/tls.h>
+#  include <secutils/connections/tls.h>
 # endif
 #endif
 

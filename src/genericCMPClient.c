@@ -62,7 +62,7 @@ CMP_err CMPclient_init(OPTIONAL LOG_cb_t log_fn)
         return ERR_R_INIT_FAIL;
     }
 
-    if (!OSSL_CMP_log_init()
+    if (!OSSL_CMP_log_open()
 #ifndef SEC_NO_TLS
         || !TLS_init()
 #endif
@@ -97,9 +97,9 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
     if (pctx == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
-    if ((ctx = OSSL_CMP_CTX_new()) == NULL ||
+    if ((ctx = OSSL_CMP_CTX_new(/* TODO libctx */NULL, NULL)) == NULL ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn != NULL ? (OSSL_CMP_log_cb_t)log_fn :
-                                 /* difference is in 'int' vs. 'bool' and additinal TRACE value */
+                                 /* difference is in 'int' vs. 'bool' and additional TRACE value */
                                  (OSSL_CMP_log_cb_t)LOG_default)) {
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
     }
@@ -108,7 +108,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
             !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)))
         goto err;
     if (untrusted != NULL
-        && !OSSL_CMP_CTX_set1_untrusted_certs(ctx, (STACK_OF(X509) *)untrusted))
+        && !OSSL_CMP_CTX_set1_untrusted(ctx, (STACK_OF(X509) *)untrusted))
         goto err;
 
     X509 *cert = NULL;
@@ -124,7 +124,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
              && !OSSL_CMP_CTX_set1_referenceValue(ctx, (unsigned char *)pwdref,
                                                   (int)strlen(pwdref))) ||
             (pkey != NULL && !OSSL_CMP_CTX_set1_pkey(ctx, pkey)) ||
-            (cert != NULL && !OSSL_CMP_CTX_set1_clCert(ctx, cert))) {
+            (cert != NULL && !OSSL_CMP_CTX_set1_cert(ctx, cert))) {
             goto err;
         }
 
@@ -251,7 +251,7 @@ static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
         SSL *ssl;
 
         LOG_debug("connecting to TLS server");
-        if ((ctx->proxyName != NULL && ctx->proxyPort != 0
+        if ((ctx->proxy != NULL
              && !OSSL_CMP_proxy_connect(hbio, ctx, bio_err, "CMP client"))
             || (sbio = BIO_new(BIO_f_ssl())) == NULL) {
             hbio = NULL;
@@ -264,7 +264,7 @@ static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
         }
 
         /* set the server name indication ClientHello extension */
-        char *host = ctx->serverName;
+        char *host = ctx->server;
         if (host != NULL && *host < '0' && *host > '9' /* not IPv4 address */
             && SSL_set_tlsext_host_name(ssl, host)) {
             hbio = NULL;
@@ -331,8 +331,6 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 {
     char uri[255 + 1], *addr = uri, *proxy_addr;
     const char *parsed_path;
-    int port, proxy_port;
-    char proxy_uri[255 + 1];
 
     if (ctx == NULL || server == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
@@ -345,7 +343,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 #endif
 
     snprintf(uri, sizeof(uri), "%s", server);
-    port = CONN_parse_uri(&addr, 0, &parsed_path, "server");
+    int port = CONN_parse_uri(&addr, 0, &parsed_path, "server");
     if (port <= 0) {
         return CMP_R_INVALID_PARAMETERS;
     }
@@ -371,6 +369,9 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     /* TODO use !OSSL_CMP_CTX_set1_no_proxy() when available */
     proxy_addr = addr;
     if (proxy != NULL) {
+#ifdef OLD_HTTP_API
+        int proxy_port;
+        char proxy_uri[255 + 1];
         if (strncmp(proxy, URL_HTTP_PREFIX, strlen(URL_HTTP_PREFIX)) == 0)
             proxy += strlen(URL_HTTP_PREFIX);
         else if (strncmp(proxy, URL_HTTPS_PREFIX, strlen(URL_HTTPS_PREFIX)) == 0)
@@ -384,6 +385,10 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
             (proxy_port > 0 && !OSSL_CMP_CTX_set_proxyPort(ctx, proxy_port))) {
             goto err;
         }
+#else
+        if (!OSSL_CMP_CTX_set1_proxy(ctx, proxy))
+            goto err;
+#endif
     }
 
 #ifndef SEC_NO_TLS
@@ -487,7 +492,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
     }
 
     /* check if any enrollment function has already been called before on ctx */
-    if (OSSL_CMP_CTX_get0_transactionID(ctx) != NULL) {
+    if (OSSL_CMP_CTX_get_status(ctx) != -1) {
         return CMP_R_INVALID_CONTEXT;
     }
 
@@ -516,8 +521,9 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
     LOG_debug("Trying to build chain for newly enrolled cert");
     EVP_PKEY *new_key = OSSL_CMP_CTX_get0_newPkey(ctx, 1 /* priv */); /* NULL in case P10CR */
     X509_STORE *new_cert_truststore = OSSL_CMP_CTX_get_certConf_cb_arg(ctx);
-    STACK_OF(X509) *untrusted = OSSL_CMP_CTX_get0_untrusted_certs(ctx); /* includes extraCerts */
-    STACK_OF(X509) *chain = ossl_cmp_build_cert_chain(new_cert_truststore /* may be NULL */,
+    STACK_OF(X509) *untrusted = OSSL_CMP_CTX_get0_untrusted(ctx); /* includes extraCerts */
+    STACK_OF(X509) *chain = ossl_cmp_build_cert_chain(/* TODO libctx */NULL, NULL,
+                                                      new_cert_truststore /* may be NULL */,
                                                       untrusted, newcert);
     if (sk_X509_num(chain) > 0)
         X509_free(sk_X509_shift(chain)); /* remove leaf (EE) cert */

@@ -18,9 +18,6 @@
 
 #include <openssl/ssl.h>
 
-/* needed for OSSL_CMP_ITAV_gen() in function CMPclient(), TODO remove */
-#include "../cmpossl/crypto/cmp/cmp_local.h"
-
 #ifdef LOCAL_DEFS
 # include "genericCMPClient_use.h"
 #endif
@@ -126,6 +123,7 @@ const char *opt_tls_trusted;
 const char *opt_tls_host;
 
 static char *opt_reqin = NULL;
+static bool opt_reqin_new_tid = 0;
 static char *opt_reqout = NULL;
 static char *opt_rspin = NULL;
 static char *opt_rspout = NULL;
@@ -320,6 +318,8 @@ opt_t cmp_opts[] = {
     OPT_HEADER("Debugging"),
     {"reqin", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqin},
      "Take sequence of CMP requests from file(s)"},
+    {"reqin_new_tid", OPT_BOOL, {.bit = false}, { (const char **) &opt_reqin_new_tid},
+     "Use fresh transactionID for CMP requests read from -reqin"},
     {"reqout", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqout},
      "Save sequence of CMP requests to file(s)"},
     {"rspin", OPT_TXT, {.txt = NULL}, { (const char **) &opt_rspin},
@@ -651,7 +651,6 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
     if (opt_reqin != NULL && opt_rspin == NULL) {
         if ((req_new = read_PKIMESSAGE(&opt_reqin)) == NULL)
             goto err;
-#if 0
         /*-
          * The transaction ID in req_new read from opt_reqin may not be fresh.
          * In this case the server may complain "Transaction id already in use."
@@ -660,7 +659,6 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
         if (opt_reqin_new_tid
                 && !OSSL_CMP_MSG_update_transactionID(ctx, req_new))
             goto err;
-#endif
     }
 
     if (opt_rspin != NULL) {
@@ -797,7 +795,7 @@ static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
         goto oom;
     }
     ASN1_TYPE_set(val, V_ASN1_INTEGER, aint);
-    itav = OSSL_CMP_ITAV_gen(type, val);
+    itav = OSSL_CMP_ITAV_create(type, val);
     if (itav == NULL) {
         LOG_err("Unable to create 'OSSL_CMP_ITAV' structure");
         ASN1_TYPE_free(val);
@@ -953,10 +951,8 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
     OSSL_CMP_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     if (opt_reqin != NULL && opt_rspin != NULL)
         LOG_warn("-reqin is ignored since -rspin is present");
-#if 0
     if (opt_reqin_new_tid && opt_reqin == NULL)
         LOG_warn("-reqin_new_tid is ignored since -reqin is not present");
-#endif
     if (opt_reqin != NULL || opt_reqout != NULL
             || opt_rspin != NULL || opt_rspout != NULL)
         transfer_fn = read_write_req_resp;
@@ -1021,7 +1017,7 @@ int setup_transfer(CMP_CTX *ctx)
     }
 
     SSL_CTX *tls = NULL;
-    if (opt_tls_used && (tls = setup_TLS(OSSL_CMP_CTX_get0_untrusted_certs(ctx))) == NULL) {
+    if (opt_tls_used && (tls = setup_TLS(OSSL_CMP_CTX_get0_untrusted(ctx))) == NULL) {
         LOG_err("Unable to setup TLS for CMP client");
         err = -17;
         goto err;

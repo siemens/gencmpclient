@@ -8,7 +8,8 @@ unprotected_errors = 1
 no_proxy = ppki-playground.ct.siemens.com
 
 [EJBCA]
-server = ppki-playground.ct.siemens.com:443/ejbca/publicweb/cmp/PlaygroundECC
+server = ppki-playground.ct.siemens.com:443
+path = ejbca/publicweb/cmp/PlaygroundECC
 secret = pass:SecretCmp
 cert = creds/ppki_playground_cmp.p12
 key = $cert

@@ -1,4 +1,4 @@
-# optional LIBCMP_OUT defines absolute or relative path where libcmp, libgencmpcl, and libsecutils shall be produced
+# optional LIB_OUT defines absolute or relative path where libcmp, libgencmpcl, and libsecutils shall be produced
 # optional LPATH defines absolute path where to find pre-installed libraries, e.g., /usr/lib
 # optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
 # optional INSTA variable can be set (e.g., to 1) for demo/tests with the Insta Demo CA
@@ -31,16 +31,12 @@ ifeq ($(LPATH),)
 #   endif
     SECUTILS=libsecutils
     SECUTILS_LIB=$(SECUTILS)/libsecutils$(DLL)
-    LIBCMP_DIR=cmpossl
-    LIBCMP_OUT ?= .
-    LIBCMP_INC=$(LIBCMP_DIR)/include_cmp
+    LIB_OUT ?= .
 else
     OPENSSL_DIR ?= $(LPATH)/..
-    LIBCMP_DIR=cmpossl # TODO correct?
-    LIBCMP_OUT ?= $(LPATH)
-    LIBCMP_INC=$(LPATH)/../include
+    LIB_OUT ?= $(LPATH)
 endif
-LIBCMP_LIB=$(LIBCMP_OUT)/libcmp$(DLL)
+LIBCMP_LIB=$(LIB_OUT)/libcmp$(DLL)
 
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 # $(OPENSSL_DIR) is relative path, assumed relative to ./
@@ -50,15 +46,18 @@ else
     OPENSSL_REVERSE_DIR=$(OPENSSL_DIR)
 endif
 
-ifeq ($(shell echo $(LIBCMP_OUT) | grep "^/"),)
-# $(LIBCMP_OUT) is relative path, assumed relative to ./
-    LIBCMP_OUT_REVERSE_DIR=../$(LIBCMP_OUT)
+ifeq ($(shell echo $(LIB_OUT) | grep "^/"),)
+# $(LIB_OUT) is relative path, assumed relative to ./
+    LIB_OUT_REVERSE_DIR=../$(LIB_OUT)
 else
-# $(LIBCMP_OUT) is absolute path
-    LIBCMP_OUT_REVERSE_DIR=$(LIBCMP_OUT)
+# $(LIB_OUT) is absolute path
+    LIB_OUT_REVERSE_DIR=$(LIB_OUT)
 endif
 
-ifeq ($(findstring clean,$(MAKECMDGOALS)),)
+#ifeq ($(findstring clean,$(MAKECMDGOALS)),)
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),clean_all)
+ifneq ($(MAKECMDGOALS),clean_test)
 OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=h OPENSSL_DIR="$(OPENSSL_DIR)")
 ifeq ($(OPENSSL_VERSION),)
     $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
@@ -69,6 +68,23 @@ ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # same as comparing == 1.0
     $(info enabling compilation quirks for OpenSSL 1.0.2)
     OSSL_VERSION_QUIRKS+=-Wno-discarded-qualifiers -Wno-unused-parameter
 endif
+ifeq ($(shell expr $(OPENSSL_VERSION) \< 3.0),1)
+	CMP_STANDALONE=1
+endif
+endif
+endif
+endif
+
+ifeq ($(LPATH),)
+    LIBCMP_DIR=cmpossl
+    ifdef CMP_STANDALONE
+        LIBCMP_INC=$(LIBCMP_DIR)/include_cmp
+    endif
+else
+    LIBCMP_DIR=cmpossl # TODO correct?
+    ifdef CMP_STANDALONE
+        LIBCMP_INC=$(LPATH)/../include
+    endif
 endif
 
 ifeq ($(shell git help submodule | grep progress),)
@@ -81,7 +97,7 @@ endif
 # generic CMP Client lib and client
 ################################################################
 
-.phony: default build build_lib
+.phony: default build build_prereq
 default: build
 
 .phony: test all zip
@@ -117,35 +133,44 @@ $(SECUTILS_LIB):
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init $(SECUTILS)
 build_secutils: # not: update_secutils
-	$(MAKE) -C $(SECUTILS) build CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIBCMP_OUT_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS) build CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIB_OUT_REVERSE_DIR)"
 
 $(LIBCMP_DIR)/include: # not: update_cmpossl
+ifdef CMP_STANDALONE
 	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
+else
+	mkdir -p $(LIBCMP_DIR)/include
+endif
 
+ifdef CMP_STANDALONE
 $(LIBCMP_LIB): $(LIBCMP_INC)
 	build_cmpossl
+endif
 
 .phony: update_cmpossl build_cmpossl
 update_cmpossl:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
 build_cmpossl: # not: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+ifdef CMP_STANDALONE
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_DIR="$(LIB_OUT_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+endif
 
 clean_submodules:
 	rm -rf $(SECUTILS) cmpossl $(LIBCMP_LIB) $(SECUTILS_LIB)
 
 endif # eq ($(SECUTILS),)
 
-build_lib: submodules
+build_prereq: submodules
+ifdef CMP_STANDALONE
 	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="$(LIBCMP_LIB)"` && \
 	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
 	    (echo "WARNING: OpenSSL version $$LIBCMP_OPENSSL_VERSION used for building libcmp does not match $(OPENSSL_VERSION) to be used for building client"; true); \
 	fi
-	$(MAKE) -f Makefile_src $(OUTBIN) OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" CFLAGS="$(CFLAGS)"
+endif
 
-build: build_lib
-	$(MAKE) -f Makefile_src build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIBCMP_OUT="$(LIBCMP_OUT)" CFLAGS="$(CFLAGS)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+build: build_prereq
+	$(MAKE) -f Makefile_src $(OUTBIN) build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIB_DIR="$(LIB_OUT)" CFLAGS="$(CFLAGS)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
 .phony: clean_test clean clean_uta clean_all
 
@@ -167,8 +192,10 @@ clean: clean_test
 
 clean_all: clean
 ifeq ($(LPATH),)
-	$(MAKE) -C $(SECUTILS) OUT_DIR="$(LIBCMP_OUT_REVERSE_DIR)" clean || true
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_INC)"  LIBCMP_OUT="$(LIBCMP_OUT_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS) OUT_DIR="$(LIB_OUT_REVERSE_DIR)" clean || true
+ifneq ("$(wildcard $(LIBCMP_DIR))","")
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_DIR)/include_cmp" LIBCMP_DIR="$(LIB_OUT_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+endif
 endif
 
 PROXY ?= http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy no_proxy=ppki-playground.ct.siemens.com # or, e.g., tsy1.coia.siemens.net = 194.145.60.1:9400
@@ -280,7 +307,7 @@ kill_LightweightCmpRA:
 	PID=`ps aux|grep "java -jar LightweightCmpRa.jar" | grep -v grep | awk '{ print $$2 }'` && \
 	if [ -n "$$PID" ]; then kill $$PID; fi
 
-.phony: test_conformance test_cmpossl_conformance
+.phony: test_conformance test_conformance_cmpossl
 test_conformance: build start_LightweightCmpRA
 	./cmpClient imprint -section CmpRa -server localhost:6002/lrawithmacprotection
 	./cmpClient bootstrap -section CmpRa
@@ -292,10 +319,12 @@ test_conformance: build start_LightweightCmpRA
 	make kill_LightweightCmpRA
 
 CMPOSSL=./openssl cmp -config config/demo.cnf -section CmpRa,
-test_cmpossl_conformance: build start_LightweightCmpRA
+test_conformance_cmpossl: build start_LightweightCmpRA
+	./openssl ecparam -genkey -name secp521r1 -out creds/manufacturer.pem
 	$(CMPOSSL)imprint -server localhost:6002/lrawithmacprotection
+	./openssl ecparam -genkey -name prime256v1 -out creds/operational.pem
 	$(CMPOSSL)bootstrap
-	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
+	./openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
 	$(CMPOSSL)pkcs10
 	$(CMPOSSL)update -server localhost:6001 -path /rrkur
 	$(CMPOSSL)revoke -server localhost:6001 -path /rrkur
@@ -394,7 +423,7 @@ buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 
 
 # Target for debian packaging
-OUTBIN=$(LIBCMP_OUT)/libgencmpcl$(DLL)
+OUTBIN=$(LIB_OUT)/libgencmpcl$(DLL)
 
 #SRCS=Makefile include/genericCMPClient.h src/genericCMPClient.c src/cmpClient.c
 #SRCS_TAR=libgencmpcl_0.1.0.orig.tar.gz

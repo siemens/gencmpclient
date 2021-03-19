@@ -14,6 +14,9 @@
 
 /* for low-level CMP API, in particular, type OSSL_CMP_CTX */
 # include <openssl/cmp.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L /* TODO enable TLS support for OpenSSL 3.0 */
+# define SEC_NO_TLS
+#endif
 typedef OSSL_CMP_CTX CMP_CTX; /* for abbreviation and backward compatibility */
 
 typedef int CMP_err;
@@ -28,11 +31,11 @@ typedef int CMP_err;
 
 /* further error codes are defined in ../cmpossl/include/openssl/cmperr.h */
 
-# define CMP_IR    OSSL_CMP_PKIBODY_IR
-# define CMP_CR    OSSL_CMP_PKIBODY_CR
-# define CMP_P10CR OSSL_CMP_PKIBODY_P10CR
-# define CMP_KUR   OSSL_CMP_PKIBODY_KUR
-# define CMP_RR    OSSL_CMP_PKIBODY_RR
+# define CMP_IR    0 /* OSSL_CMP_PKIBODY_IR */
+# define CMP_CR    2 /* OSSL_CMP_PKIBODY_CR */
+# define CMP_P10CR 4 /* OSSL_CMP_PKIBODY_P10CR */
+# define CMP_KUR   7 /* OSSL_CMP_PKIBODY_KUR */
+# define CMP_RR   11 /* OSSL_CMP_PKIBODY_RR */
 
 /* # define LOCAL_DEFS */
 # ifdef LOCAL_DEFS

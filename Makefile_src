@@ -1,8 +1,9 @@
 #!/bin/make
 # optional LPATH defines absolute path where to find pre-installed libraries, e.g., /usr/lib
 # optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
-# optional LIBCMP_INC defines absolute or relative path of the libcmp header files
-# optional LIBCMP_OUT defines absolute or relative path of libcmp, libgencmpcl, and libsecutils
+# optional LIBCMP_INC defines absolute or relative path of the libcmp header files, must be defined if and only if libcmp is used (CMP_STANDLONE)
+# optional LIB_DIR defines absolute or relative path of libcmp, libgencmpcl, and libsecutils
+#  OSSL_VERSION_QUIRKS maybe be needed to provide for setting OpenSSL compilation version quirks
 
 PREFIX=
 
@@ -36,25 +37,31 @@ else
 endif
 
 ARCHIVE=$(PREFIX)bin # for Jenkins
-LIBSECUTILS=$(PREFIX)$(LIBCMP_OUT)/libsecutils$(DLL)
+LIBSECUTILS=$(PREFIX)$(LIB_DIR)/libsecutils$(DLL)
 SECUTILS_DIR_=libsecutils
 SECUTILS_DIR=$(PREFIX)$(SECUTILS_DIR_)
-LIBCMP_INC ?= include_cmp
-LIBCMP_OUT ?= .
+LIB_DIR ?= .
 
 CC ?= gcc
 ifdef NDEBUG
-    override CFLAGS += -DNDEBUG=1 -O2
+    override DEBUG_FLAGS += -DNDEBUG=1 -O2
 else
-    override CFLAGS += -g -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -O0 # not every compiler(version) supports -Og
+    override DEBUG_FLAGS += -g -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -O0 # not every compiler(version) supports -Og
 endif
-override CFLAGS += -std=gnu90 -fstack-protector -fno-omit-frame-pointer -D_FORTIFY_SOURCE=2
-override CFLAGS += -Werror -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter $(OSSL_VERSION_QUIRKS) #-DPEDANTIC -pedantic -Wno-declaration-after-statement # -Werror
+override CFLAGS += $(DEBUG_FLAGS) -std=gnu90 -fstack-protector -fno-omit-frame-pointer -D_FORTIFY_SOURCE=2
+override CFLAGS += -Werror -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter #-DPEDANTIC -pedantic -Wno-declaration-after-statement # -Werror
 ifeq ($(LPATH),)
-   override CFLAGS += -I$(SECUTILS_DIR)/include -I$(PREFIX)$(LIBCMP_INC)
+   override CFLAGS += -I$(SECUTILS_DIR)/include
+   ifdef LIBCMP_INC
+       override CFLAGS += -I$(PREFIX)$(LIBCMP_INC)
+   endif
 endif
 override CFLAGS += -I$(PREFIX)include
+ifdef LIBCMP_INC
+   override CFLAGS += -include $(PREFIX)$(LIBCMP_INC)/openssl/openssl_backport.h
+endif
 override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
+override CFLAGS += $(OSSL_VERSION_QUIRKS)
 
 ifdef USE_UTA
     override LIBS += -luta
@@ -64,18 +71,21 @@ ifdef SEC_NO_TLS
 else
     override LIBS += -lssl
 endif
-override LIBS += -lcmp -lsecutils -lcrypto
+ifdef LIBCMP_INC
+    override LIBS += -lcmp
+endif
+override LIBS += -lsecutils -lcrypto
 
-override LDFLAGS += $(CFLAGS) # needed for -fsanitize=...
+override LDFLAGS += $(DEBUG_FLAGS) # needed for -fsanitize=...
 ifeq ($(LPATH),)
-    override LDFLAGS += -L$(PREFIX)$(LIBCMP_OUT) -Wl,-rpath=$(LIBCMP_OUT)
+    override LDFLAGS += -L$(PREFIX)$(LIB_DIR) -Wl,-rpath=$(LIB_DIR)
     override LDFLAGS += -L$(SECUTILS_DIR) -Wl,-rpath=$(SECUTILS_DIR_)
     override LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
 else
     override LDFLAGS += -L$(LPATH)
 endif
 
-LIBGENCMPCL=$(LIBCMP_OUT)/libgencmpcl$(DLL)
+LIBGENCMPCL=$(LIB_DIR)/libgencmpcl$(DLL)
 
 OBJS = src/genericCMPClient$(OBJ) src/cmpClient$(OBJ)
 
@@ -104,7 +114,7 @@ ifeq ($(findstring clean,$(MAKECMDGOALS)),)
 -include $(DEPS)
 endif
 
-$(OBJS): %$(OBJ): %.c | $(LIBSECUTILS) $(PREFIX)$(LIBCMP_OUT)/libcmp$(DLL)
+$(OBJS): %$(OBJ): %.c | $(LIBSECUTILS) # $(PREFIX)$(LIB_DIR)/libcmp$(DLL)
 	 $(CC) $(CFLAGS) -c -fPIC $< -o $@
 	@$(CC) $(CFLAGS) -MM $< -MT $@ -MF $*.d
 

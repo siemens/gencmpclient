@@ -359,6 +359,7 @@ opt_t cmp_opts[] = {
     OPT_END
 };
 
+#ifndef SEC_NO_TLS
 static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
 {
     int i;
@@ -373,6 +374,7 @@ static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
         LOG_err("Unable to use TLS extra certs");
     return res;
 }
+#endif
 
 static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
 {
@@ -425,6 +427,7 @@ static X509_CRL *test_load_crl_cb(OPTIONAL void *arg, const char *url, int timeo
 SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 {
 #ifdef SEC_NO_TLS
+    (void)untrusted_certs;
     LOG_err("TLS is not enabled in this build");
     return NULL;
 #else
@@ -1012,13 +1015,13 @@ int setup_transfer(CMP_CTX *ctx)
     if (opt_tls_cert == NULL && opt_tls_key == NULL && opt_tls_keypass == NULL
         && opt_tls_extra == NULL && opt_tls_trusted == NULL
         && opt_tls_host == NULL && opt_tls_used == true) {
-        LOG_warn("-tls_used will be ignored. No other tls options set");
+        LOG_warn("-tls_used will be ignored. No other TLS options set");
         opt_tls_used = false;
     }
 
     SSL_CTX *tls = NULL;
     if (opt_tls_used && (tls = setup_TLS(OSSL_CMP_CTX_get0_untrusted(ctx))) == NULL) {
-        LOG_err("Unable to setup TLS for CMP client");
+        LOG_err("Unable to set up TLS for CMP client");
         err = -17;
         goto err;
     }
@@ -1029,7 +1032,7 @@ int setup_transfer(CMP_CTX *ctx)
     TLS_free(tls);
 #endif
     if (err != CMP_OK) {
-        LOG_err("Unable to setup HTTP for CMP client");
+        LOG_err("Unable to set up HTTP for CMP client");
         goto err;
     }
  err:
@@ -1611,7 +1614,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     KEY_free(new_pkey);
     EXTENSIONS_free(exts);
     CREDENTIALS_free(new_creds);
-    CRLs_free(crls);
+    CRLs_free(crls); /* TODO for some reason, this is not sufficient for OpenSSL 3.0: in demo, 45328 byte(s) leaked in 6 allocation(s). */
 
     LOG_close();
     if (err != CMP_OK) {
@@ -1799,6 +1802,8 @@ int main(int argc, char *argv[])
     }
 
  end:
+    if (rc != EXIT_SUCCESS)
+        OSSL_CMP_CTX_print_errors(NULL);
     CRLMGMT_DATA_free(cmdat_new);
     CRLMGMT_DATA_free(cmdat_tls);
     X509_VERIFY_PARAM_free(vpm);

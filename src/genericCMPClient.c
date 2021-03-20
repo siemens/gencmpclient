@@ -9,14 +9,14 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
+#include <openssl/cmperr.h>
+#include <openssl/ssl.h>
+#include <string.h>
+
 #include "genericCMPClient.h"
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 # include "../cmpossl/crypto/cmp/cmp_local.h" /* needed to access ctx->proxy; TODO remove when OSSL_CMP_proxy_connect and ossl_cmp_build_cert_chain are available and used */
 #endif
-
-#include <openssl/cmperr.h>
-#include <openssl/ssl.h>
-#include <string.h>
 
 #if OPENSSL_VERSION_NUMBER < 0x10100006L
 typedef

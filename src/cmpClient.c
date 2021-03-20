@@ -9,14 +9,14 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
+#include <openssl/ssl.h>
+
 #include <secutils/config/config.h>
 /* #include <secutils/util/log.h> */
 #include <secutils/certstatus/crls.h> /* just for use in test_load_crl_cb() */
 #include <secutils/certstatus/crl_mgmt.h>
 
 #include <genericCMPClient.h>
-
-#include <openssl/ssl.h>
 
 #ifdef LOCAL_DEFS
 # include "genericCMPClient_use.h"
@@ -946,7 +946,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
         LOG_warn("-trusted option is ignored since -srvcert option is present");
     cmp_truststore = opt_trusted == NULL ? NULL : setup_CMP_truststore();
     untrusted_certs = opt_untrusted == NULL ? NULL :
-        CERTS_load(opt_untrusted, "untrusted certs for CMP");
+        CERTS_load(opt_untrusted, "untrusted certs");
     if ((cmp_truststore == NULL && opt_trusted != NULL)
             || (untrusted_certs == NULL && opt_untrusted != NULL))
         goto err;

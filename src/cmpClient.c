@@ -1614,7 +1614,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     KEY_free(new_pkey);
     EXTENSIONS_free(exts);
     CREDENTIALS_free(new_creds);
-    CRLs_free(crls); /* TODO for some reason, this is not sufficient for OpenSSL 3.0: in demo, 45328 byte(s) leaked in 6 allocation(s). */
+    CRLs_free(crls);
 
     LOG_close();
     if (err != CMP_OK) {

@@ -66,9 +66,7 @@ CMP_err CMPclient_init(OPTIONAL LOG_cb_t log_fn)
 
     if (!OSSL_CMP_log_open()) {
         LOG(FL_ERR, "failed to initialize logging of genCMPClient\n");
-#if OPENSSL_VERSION_NUMBER != 0x30000000L /* TODO remove when OpenSSL 3.0-alpha bug is fixed */
         return ERR_R_INIT_FAIL;
-#endif
     }
 #ifndef SEC_NO_TLS
     if (!TLS_init()) {

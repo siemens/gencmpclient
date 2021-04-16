@@ -102,11 +102,14 @@ default: build
 
 .phony: test all zip
 
+ifndef USE_ICV
+    export SECUTILS_CONFIG_NO_ICV=-DSECUTILS_CONFIG_NO_ICV
+endif
 ifdef USE_UTA
-    export SEC_USE_UTA=1
+    export SECUTILS_USE_UTA=1
 endif
 ifdef NO_TLS
-    export SEC_NO_TLS=1
+    export SECUTILS_NO_TLS=1
 endif
 
 .phony: submodules
@@ -133,7 +136,7 @@ $(SECUTILS_LIB):
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init $(SECUTILS)
 build_secutils: # not: update_secutils
-	$(MAKE) -C $(SECUTILS) build CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) -DSEC_CONFIG_NO_ICV" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIB_OUT_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS) build CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIB_OUT_REVERSE_DIR)"
 
 $(LIBCMP_DIR)/include: # not: update_cmpossl
 ifdef CMP_STANDALONE

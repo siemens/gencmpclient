@@ -359,7 +359,7 @@ opt_t cmp_opts[] = {
     OPT_END
 };
 
-#ifndef SEC_NO_TLS
+#ifndef SECUTILS_NO_TLS
 static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
 {
     int i;
@@ -426,7 +426,7 @@ static X509_CRL *test_load_crl_cb(OPTIONAL void *arg, const char *url, int timeo
 
 SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 {
-#ifdef SEC_NO_TLS
+#ifdef SECUTILS_NO_TLS
     (void)untrusted_certs;
     LOG_err("TLS is not enabled in this build");
     return NULL;
@@ -1028,7 +1028,7 @@ int setup_transfer(CMP_CTX *ctx)
 
     err = CMPclient_setup_HTTP(ctx, server, path, (int)opt_msg_timeout,
                                tls, opt_proxy, opt_no_proxy);
-#ifndef SEC_NO_TLS
+#ifndef SECUTILS_NO_TLS
     TLS_free(tls);
 #endif
     if (err != CMP_OK) {

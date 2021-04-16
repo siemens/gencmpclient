@@ -63,11 +63,11 @@ endif
 override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
 override CFLAGS += $(OSSL_VERSION_QUIRKS)
 
-ifdef USE_UTA
+ifdef SECUTILS_USE_UTA
     override LIBS += -luta
 endif
-ifdef SEC_NO_TLS
-    override CFLAGS += -DSEC_NO_TLS=1
+ifdef SECUTILS_NO_TLS
+    override CFLAGS += -DSECUTILS_NO_TLS=1
 else
     override LIBS += -lssl
 endif

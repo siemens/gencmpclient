@@ -30,7 +30,7 @@ STACK_OF(X509_EXTENSION) *(*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTE
 # include <secutils/credentials/verify.h>
 # include <secutils/credentials/store.h>
 # include <secutils/connections/conn.h>
-# ifndef SEC_NO_TLS
+# ifndef SECUTILS_NO_TLS
 #  include <secutils/connections/tls.h>
 # endif
 #endif
@@ -68,7 +68,7 @@ CMP_err CMPclient_init(OPTIONAL LOG_cb_t log_fn)
         LOG(FL_ERR, "failed to initialize logging of genCMPClient\n");
         return ERR_R_INIT_FAIL;
     }
-#ifndef SEC_NO_TLS
+#ifndef SECUTILS_NO_TLS
     if (!TLS_init()) {
         LOG(FL_ERR, "failed to initialize TLS library of genCMPClient\n");
         return ERR_R_INIT_FAIL;
@@ -221,7 +221,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
     return CMPOSSL_error();
 }
 
-#ifndef SEC_NO_TLS
+#ifndef SECUTILS_NO_TLS
 static const char *tls_error_hint(unsigned long err)
 {
     switch (ERR_GET_REASON(err)) {
@@ -320,7 +320,7 @@ static bool use_proxy(const char *no_proxy, const char *server)
     return found == NULL;
 }
 
-#ifndef SEC_NO_TLS
+#ifndef SECUTILS_NO_TLS
 static int is_localhost(const char *host)
 {
     return strcmp(host, "localhost") == 0
@@ -341,7 +341,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (ctx == NULL || server == NULL) {
         return ERR_R_PASSED_NULL_PARAMETER;
     }
-#ifdef SEC_NO_TLS
+#ifdef SECUTILS_NO_TLS
     if (tls != NULL) {
         LOG(FL_ERR, "TLS is not supported in this build");
         return CMP_R_INVALID_PARAMETERS;
@@ -397,7 +397,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 #endif
     }
 
-#ifndef SEC_NO_TLS
+#ifndef SECUTILS_NO_TLS
     if (tls != NULL) {
         X509_STORE *ts = SSL_CTX_get_cert_store(tls);
 
@@ -807,7 +807,7 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 {
     OSSL_CMP_CTX_print_errors(ctx);
     if (ctx != NULL) {
-#ifndef SEC_NO_TLS
+#ifndef SECUTILS_NO_TLS
         SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
 #endif
         X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
@@ -895,7 +895,7 @@ void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls)
     sk_X509_CRL_pop_free(crls, X509_CRL_free);
 }
 
-#ifndef SEC_NO_TLS
+#ifndef SECUTILS_NO_TLS
 /* SSL_CTX helpers for HTTPS */
 
 inline

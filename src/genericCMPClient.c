@@ -541,7 +541,7 @@ int ossl_cmp_X509_STORE_add1_certs(X509_STORE *store, STACK_OF(X509) *certs,
  * NOTE: In case there is more than one possibility for the chain,
  * OpenSSL seems to take the first one; check X509_verify_cert() for details.
  */
-/* TODO this should be of more general interest and thus be exported. */
+/* TODO use instead X509_build_chain() when OpenSSL 3.0 is being used */
 STACK_OF(X509)
     *ossl_cmp_build_cert_chain(OSSL_LIB_CTX *libctx, const char *propq,
                                X509_STORE *store,

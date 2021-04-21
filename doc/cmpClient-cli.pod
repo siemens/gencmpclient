@@ -217,16 +217,17 @@ The levels DEBUG and TRACE are most useful for certificate status check issues.
 
 =item B<-server> I<[http[s]://]address[:port][/path]>
 
-The IP address or DNS hostname and optionally port (defaulting to 80 or 443)
+The IP address or DNS hostname and optionally port
 of the CMP server to connect to using HTTP(S) transport.
-The optional I<http://> or I<https://> prefix is ignored.
+The port defaults to 80 or 443 if the scheme is C<https>.
 If a path is included it provides the default value for the B<-path> option.
 
 =item B<-proxy> I<[http[s]://]address[:port][/path]>
 
-The HTTP(S) proxy server to use for reaching the CMP server unless B<no_proxy>
+The HTTP(S) proxy server to use for reaching the CMP server unless B<-no_proxy>
 applies, see below.
-The optional I<http://> or I<https://>prefix and any trailing path are ignored.
+The proxy port defaults to 80 or 443 if the scheme is C<https>; apart from that
+the optional C<http://> or C<https://>prefix and any trailing path are ignored.
 Defaults to the environment variable C<http_proxy> if set, else C<HTTP_PROXY>
 in case no TLS is used, otherwise C<https_proxy> if set, else C<HTTPS_PROXY>.
 
@@ -667,7 +668,7 @@ Each source may contain multiple certificates.
 
 When verification of the newly enrolled certificate is enabled (with the
 B<-out_trusted> option), check if any DNS Subject Alternative Name (or if no
-DNS SAN is included, the Common Name in the subject) equals the given B<name>.
+DNS SAN is included, the Common Name in the subject) equals the given I<name>.
 
 =item B<-verify_ip> I<ip>
 
@@ -772,7 +773,7 @@ Private key for the client's TLS certificate.
 
 =item B<-tls_keypass> I<arg>
 
-Pass phrase source for client's private TLS key B<tls_key>.
+Pass phrase source for client's private TLS key B<-tls_key>.
 Also used for B<-tls_cert> in case it is an encrypted PKCS#12 file.
 If not given here, the password will be prompted for if needed.
 

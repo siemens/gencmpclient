@@ -164,7 +164,7 @@ opt_t cmp_opts[] = {
     { "path", OPT_TXT, {.txt = NULL}, { &opt_path },
       "HTTP path (aka CMP alias) at the CMP server.  Default from -server, else \"/\""},
     { "proxy", OPT_TXT, {.txt = NULL}, { &opt_proxy },
-      "[http[s]://]address[:port][/path] of HTTP(S) proxy. Default port 80; path is ignored."},
+      "[http[s]://]address[:port][/path] of HTTP(S) proxy. Default port 80 or 443; path is ignored."},
     OPT_MORE("Default from environment variable 'http_proxy', else 'HTTP_PROXY'"),
     { "no_proxy", OPT_TXT, {.txt = NULL}, { &opt_no_proxy },
       "List of addresses of servers not use HTTP(S) proxy for."},
@@ -1003,9 +1003,6 @@ int setup_transfer(CMP_CTX *ctx)
 {
     CMP_err err;
 
-    const char *server = opt_server;
-    const char *path = opt_path;
-
     if ((int)opt_msg_timeout < -1) {
         LOG_err("Only non-negative values allowed for -msg_timeout");
         err = -16;
@@ -1026,7 +1023,7 @@ int setup_transfer(CMP_CTX *ctx)
         goto err;
     }
 
-    err = CMPclient_setup_HTTP(ctx, server, path, (int)opt_msg_timeout,
+    err = CMPclient_setup_HTTP(ctx, opt_server, opt_path, (int)opt_msg_timeout,
                                tls, opt_proxy, opt_no_proxy);
 #ifndef SECUTILS_NO_TLS
     TLS_free(tls);
@@ -1147,6 +1144,8 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
     CREDENTIALS *new_creds = NULL;
+    X509 *oldcert = NULL;
+    X509_REQ *csr = NULL;
 
     if ((opt_cacerts_dir_format != NULL && opt_cacerts_dir == NULL)
             || (opt_cacerts_dir_format == NULL && opt_cacerts_dir != NULL)) {
@@ -1402,7 +1401,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     if (use_case != update && use_case != revocation && opt_oldcert != NULL)
         LOG_warn("-oldcert option used only as reference cert for commands other than 'kur' and 'rr'");
 
-    X509 *oldcert = NULL;
     if (opt_oldcert != NULL) {
         if (use_case == genm) {
             LOG_warn("-csr option is ignored for 'genm' command");
@@ -1416,7 +1414,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
                 goto err;
         }
     }
-    X509_REQ *csr = NULL;
     if (opt_csr != NULL) {
         if ((csr = CSR_load(opt_csr, "PKCS#10 CSR")) == NULL
                 || !OSSL_CMP_CTX_set1_p10CSR(ctx, csr)) {
@@ -1473,8 +1470,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);
         err = -21;
     }
-    X509_free(oldcert);
-    X509_REQ_free(csr);
 
     int status = OSSL_CMP_CTX_get_status(ctx);
     if (status >= 0) {
@@ -1615,6 +1610,8 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     EXTENSIONS_free(exts);
     CREDENTIALS_free(new_creds);
     CRLs_free(crls);
+    X509_free(oldcert);
+    X509_REQ_free(csr);
 
     LOG_close();
     if (err != CMP_OK) {

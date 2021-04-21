@@ -372,23 +372,18 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         proxy = NULL;
     if (proxy != NULL && !use_proxy(no_proxy, /* server */ host))
         proxy = NULL;
-    /* TODO use !OSSL_CMP_CTX_set1_no_proxy() when available */
+    /* TODO use instead: OSSL_CMP_CTX_set1_no_proxy() when switching to new http_client.c */
     char *proxy_host = host;
     if (proxy != NULL) {
-#ifdef OLD_HTTP_API
-        int proxy_port;
+#ifdef OLD_HTTP_API /* TODO remove */
         char proxy_uri[255 + 1];
-        if (strncmp(proxy, URL_HTTP_PREFIX, strlen(URL_HTTP_PREFIX)) == 0)
-            proxy += strlen(URL_HTTP_PREFIX);
-        else if (strncmp(proxy, URL_HTTPS_PREFIX, strlen(URL_HTTPS_PREFIX)) == 0)
-            proxy += strlen(URL_HTTPS_PREFIX);
-        snprintf(proxy_uri, sizeof(proxy_uri), "%s", proxy);
-        proxy_port = UTIL_parse_server_and_port(proxy_host = proxy_uri);
-        if (proxy_port < 0) {
+        snprintf(proxy_host = proxy_uri, sizeof(proxy_uri), "%s", proxy);
+        int proxy_port = CONN_parse_uri(&proxy_host, 0, NULL /* p_path */, "proxy");
+        if (proxy_port <= 0) {
             return CMP_R_INVALID_PARAMETERS;
         }
         if (!OSSL_CMP_CTX_set1_proxy(ctx, proxy_host) ||
-            (proxy_port > 0 && !OSSL_CMP_CTX_set_proxyPort(ctx, proxy_port))) {
+            !OSSL_CMP_CTX_set_proxyPort(ctx, proxy_port)) {
             goto err;
         }
 #else

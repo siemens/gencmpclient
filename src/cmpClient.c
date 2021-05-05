@@ -85,7 +85,7 @@ bool opt_unprotected_requests;
 const char *opt_cmd; /* TODO? add genm */
 const char *opt_infotype;
 static int infotype = NID_undef;
-const char *opt_geninfo;
+char *opt_geninfo;
 
 const char *opt_newkeytype;
 const char *opt_newkey;
@@ -159,12 +159,12 @@ opt_t cmp_opts[] = {
 
     OPT_HEADER("Message transfer"),
     { "server", OPT_TXT, {.txt = NULL}, { &opt_server },
-      "[http[s]://]address[:port][/path] of CMP server. Default port 80 or 443."},
-    OPT_MORE("address may be a DNS name or an IP address; path can be overridden by -path"),
+      "[http[s]://]host[:port][/path] of CMP server. Default port 80 or 443."},
+    OPT_MORE("host may be a DNS name or an IP address; path can be overridden by -path"),
     { "path", OPT_TXT, {.txt = NULL}, { &opt_path },
       "HTTP path (aka CMP alias) at the CMP server.  Default from -server, else \"/\""},
     { "proxy", OPT_TXT, {.txt = NULL}, { &opt_proxy },
-      "[http[s]://]address[:port][/path] of HTTP(S) proxy. Default port 80 or 443; path is ignored."},
+      "[http[s]://]host[:port][/p] of proxy. Default port 80 or 443; p ignored."},
     OPT_MORE("Default from environment variable 'http_proxy', else 'HTTP_PROXY'"),
     { "no_proxy", OPT_TXT, {.txt = NULL}, { &opt_no_proxy },
       "List of addresses of servers not use HTTP(S) proxy for."},
@@ -239,9 +239,9 @@ opt_t cmp_opts[] = {
       "CMP request to send: ir/cr/p10cr/kur/rr. Overrides 'use_case' if given"}, /* TODO? add genm */
     { "infotype", OPT_TXT, {.txt = NULL}, { &opt_infotype },
       "InfoType name for requesting specific info in genm, currently ignored"},
-    { "geninfo", OPT_TXT, {.txt = NULL}, { &opt_geninfo },
-      "generalInfo to place in request PKIHeader with type and integer value"},
-    OPT_MORE("given in the form <OID>:int:<n>, e.g. \"1.2.3:int:987\""),
+    { "geninfo", OPT_TXT, {.txt = NULL}, { (const char **)&opt_geninfo },
+      "Comma-separated list of OID and value to place in generalInfo PKIHeader"},
+    OPT_MORE("of form <OID>:int:<n> or <OID>:str:<s>, e.g. \'1.2.3:int:987, id-kp:str:name'"),
 
     OPT_HEADER("Certificate enrollment"),
     { "newkeytype", OPT_TXT, {.txt = NULL}, { &opt_newkeytype },
@@ -253,7 +253,7 @@ opt_t cmp_opts[] = {
       "Pass phrase source for -newkey"},
     { "subject", OPT_TXT, {.txt = NULL}, { &opt_subject },
       "Distinguished Name (DN) of subject to use in the requested cert template"},
-    OPT_MORE("For kur, default is subject of -csr arg or else of reference cert (see -oldcert)"),
+    OPT_MORE("For kur, default is subject of -csr arg, else of reference cert (see -oldcert)"),
     { "issuer", OPT_TXT, {.txt = NULL}, { &opt_issuer },
       "DN of the issuer to place in the requested certificate template"},
     { "days", OPT_NUM, {.num = 0}, { (const char **) &opt_days },
@@ -561,7 +561,7 @@ X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
         POLICYINFO *pinfo;
         char *next = UTIL_next_item(opt_policy_oids);
 
-        if ((policy = OBJ_txt2obj(opt_policy_oids, 1)) == NULL) {
+        if ((policy = OBJ_txt2obj(opt_policy_oids, 0)) == NULL) {
             LOG(FL_ERR, "unknown policy OID '%s'", opt_policy_oids);
             goto err;
         }
@@ -753,68 +753,100 @@ int setup_cert_template(CMP_CTX *ctx)
 
 static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
 {
+    ASN1_OBJECT *obj = NULL;
+    ASN1_TYPE *type = NULL;
     long value;
-    ASN1_OBJECT *type;
-    ASN1_INTEGER *aint;
-    ASN1_TYPE *val;
+    ASN1_INTEGER *aint = NULL;
+    ASN1_UTF8STRING *text = NULL;
     OSSL_CMP_ITAV *itav;
-    char *endstr;
-    char *valptr = strchr(opt_geninfo, ':');
+    char *ptr = opt_geninfo, *oid, *end;
+    int ret = -32;
 
-    if (valptr == NULL) {
-        LOG_err("Missing ':' in -geninfo option");
-        return CMP_R_INVALID_ARGS;
-    }
-    valptr[0] = '\0';
-    valptr++;
+    do {
+        while (*ptr == ' ')
+            ptr++;
+        oid = ptr;
+        if ((ptr = strchr(oid, ':')) == NULL) {
+            LOG(FL_ERR, "Missing ':' in -geninfo arg %.40s", oid);
+            return CMP_R_INVALID_ARGS;
+        }
+        *ptr++ = '\0';
+        if ((obj = OBJ_txt2obj(oid, 0)) == NULL) {
+            LOG(FL_ERR, "Cannot parse OID in -geninfo arg %.40s", oid);
+            return CMP_R_INVALID_ARGS;
+        }
+        if ((type = ASN1_TYPE_new()) == NULL) {
+            LOG_err("Out of memory");
+            goto err;
+        }
 
-    if (strncmp(valptr, "int:", 4) != 0) {
-        LOG_err("Missing 'int:' in -geninfo option");
-        return CMP_R_INVALID_ARGS;
-    }
-    valptr += 4;
+        if (strncmp(ptr, "int:", 4) == 0) {
+            value = strtol(ptr += 4, &end, 10);
+            if (end == ptr) {
+                LOG(FL_ERR, "Cannot parse int in -geninfo arg %.40s", ptr);
+                ret = CMP_R_INVALID_ARGS;
+                goto err;
+            }
+            ptr = end;
+            if (*ptr != '\0') {
+                if (*ptr != ',') {
+                    LOG(FL_ERR, "Missing ',' or end of -geninfo arg after int at %.40s", ptr);
+                    ret = CMP_R_INVALID_ARGS;
+                    goto err;
+                }
+                ptr++;
+            }
 
-    value = strtol(valptr, &endstr, 10);
-    if (endstr == valptr || *endstr != '\0') {
-        LOG_err("Cannot parse int in -geninfo option");
-        return CMP_R_INVALID_ARGS;
-    }
+            if ((aint = ASN1_INTEGER_new()) == NULL
+                    || !ASN1_INTEGER_set(aint, value)) {
+                LOG_err("Out of memory");
+                goto err;
+            }
+            ASN1_TYPE_set(type, V_ASN1_INTEGER, aint);
+            aint = NULL;
 
-    type = OBJ_txt2obj(opt_geninfo, 1);
-    if (type == NULL) {
-        LOG_err("Cannot parse OID in -geninfo option");
-        return CMP_R_INVALID_ARGS;
-    }
+        } else if (strncmp(ptr, "str:", 4) == 0) {
+            end = strchr(ptr += 4, ',');
+            if (end == NULL)
+                end = ptr + strlen(ptr);
+            else
+                *end++ = '\0';
+            if ((text = ASN1_UTF8STRING_new()) == NULL
+                    || !ASN1_STRING_set(text, ptr, -1)) {
+                LOG_err("Out of memory");
+                goto err;
+            }
+            ptr = end;
+            ASN1_TYPE_set(type, V_ASN1_UTF8STRING, text);
+            text = NULL;
 
-    if ((aint = ASN1_INTEGER_new()) == NULL) {
-        LOG_err("Out of memory");
-        goto oom;
-    }
+        } else {
+            LOG(FL_ERR, "Missing 'int:' or 'str:' in -geninfo arg %.40s", ptr);
+            ret = CMP_R_INVALID_ARGS;
+            goto err;
+        }
 
-    val = ASN1_TYPE_new();
-    if (!ASN1_INTEGER_set(aint, value) || val == NULL) {
-        LOG_err("Cannot set ASN1 integer or create new ASN1 type");
-        ASN1_INTEGER_free(aint);
-        goto oom;
-    }
-    ASN1_TYPE_set(val, V_ASN1_INTEGER, aint);
-    itav = OSSL_CMP_ITAV_create(type, val);
-    if (itav == NULL) {
-        LOG_err("Unable to create 'OSSL_CMP_ITAV' structure");
-        ASN1_TYPE_free(val);
-        goto oom;
-    }
+        if ((itav = OSSL_CMP_ITAV_create(obj, type)) == NULL) {
+            LOG_err("Unable to create 'OSSL_CMP_ITAV' structure");
+            goto err;
+        }
+        obj = NULL;
+        type = NULL;
 
-    if (!OSSL_CMP_CTX_push0_geninfo_ITAV(ctx, itav)) {
-        LOG_err("Failed to add an ITAV for geninfo of the PKI message header");
-        OSSL_CMP_ITAV_free(itav);
-        return -14;
-    }
+        if (!OSSL_CMP_CTX_push0_geninfo_ITAV(ctx, itav)) {
+            LOG_err("Failed to add ITAV for geninfo of the PKI message header");
+            OSSL_CMP_ITAV_free(itav);
+            return -14;
+        }
+    } while (*ptr != '\0');
     return CMP_OK;
 
- oom:
-    ASN1_OBJECT_free(type);
-    return -32;
+ err:
+    ASN1_OBJECT_free(obj);
+    ASN1_TYPE_free(type);
+    ASN1_INTEGER_free(aint);
+    ASN1_UTF8STRING_free(text);
+    return ret;
 }
 
 int setup_ctx(CMP_CTX *ctx)

@@ -62,7 +62,7 @@ Generic message options:
 
 [B<-cmd> I<ir|cr|kur|p10cr|rr>]
 [B<-infotype> I<name>]
-[B<-geninfo> I<OID>:int:I<N>]
+[B<-geninfo> I<values>]
 
 Certificate enrollment options:
 
@@ -533,10 +533,13 @@ B<rr> requests revocation of an existing certificate.
 Set InfoType name to use for requesting specific info in B<genm>,
 e.g., C<signKeyPairTypes>.
 
-=item B<-geninfo> I<OID>:int:I<N>
+=item B<-geninfo> I<values>
 
-generalInfo integer values to place in request PKIHeader with given OID,
-e.g., C<1.2.3:int:987>.
+A comma-separated list of InfoTypeAndValue to place in the generalInfo field of
+the PKIHeader of requests messages.
+Each InfoTypeAndValue gives an OID and an integer or string value of the form
+I<OID>:int:I<number> or I<OID>:str:I<text>,
+e.g., C<'1.2.3:int:987, id-kp:str:name'>.
 
 =back
 

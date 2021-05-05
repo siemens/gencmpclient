@@ -56,7 +56,7 @@ Generic message options:
 
 \[**-cmd** _ir|cr|kur|p10cr|rr_\]
 \[**-infotype** _name_\]
-\[**-geninfo** _OID_:int:_N_\]
+\[**-geninfo** _values_\]
 
 Certificate enrollment options:
 
@@ -101,6 +101,7 @@ TLS connection options:
 Debugging options:
 
 \[**-reqin**\] _filenames_
+\[**-reqin\_new\_tid**\]
 \[**-reqout**\] _filenames_
 \[**-rspin**\] _filenames_
 \[**-rspout**\] _filenames_
@@ -198,16 +199,17 @@ to update or revoke them, and to perform possibly other CMP requests.
 
 - **-server** _\[http\[s\]://\]address\[:port\]\[/path\]_
 
-    The IP address or DNS hostname and optionally port (defaulting to 80 or 443)
+    The IP address or DNS hostname and optionally port
     of the CMP server to connect to using HTTP(S) transport.
-    The optional _http://_ or _https://_ prefix is ignored.
+    The port defaults to 80 or 443 if the scheme is `https`.
     If a path is included it provides the default value for the **-path** option.
 
 - **-proxy** _\[http\[s\]://\]address\[:port\]\[/path\]_
 
-    The HTTP(S) proxy server to use for reaching the CMP server unless **no\_proxy**
+    The HTTP(S) proxy server to use for reaching the CMP server unless **-no\_proxy**
     applies, see below.
-    The optional _http://_ or _https://_prefix and any trailing path are ignored.
+    The proxy port defaults to 80 or 443 if the scheme is `https`; apart from that
+    the optional `http://` or `https://`prefix and any trailing path are ignored.
     Defaults to the environment variable `http_proxy` if set, else `HTTP_PROXY`
     in case no TLS is used, otherwise `https_proxy` if set, else `HTTPS_PROXY`.
 
@@ -476,10 +478,13 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     Set InfoType name to use for requesting specific info in **genm**,
     e.g., `signKeyPairTypes`.
 
-- **-geninfo** _OID_:int:_N_
+- **-geninfo** _values_
 
-    generalInfo integer values to place in request PKIHeader with given OID,
-    e.g., `1.2.3:int:987`.
+    A comma-separated list of InfoTypeAndValue to place in the generalInfo field of
+    the PKIHeader of requests messages.
+    Each InfoTypeAndValue gives an OID and an integer or string value of the form
+    _OID_:int:_number_ or _OID_:str:_text_,
+    e.g., `'1.2.3:int:987, id-kp:str:name'`.
 
 ## Certificate enrollment options
 
@@ -606,7 +611,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
     When verification of the newly enrolled certificate is enabled (with the
     **-out\_trusted** option), check if any DNS Subject Alternative Name (or if no
-    DNS SAN is included, the Common Name in the subject) equals the given **name**.
+    DNS SAN is included, the Common Name in the subject) equals the given _name_.
 
 - **-verify\_ip** _ip_
 
@@ -701,7 +706,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
 - **-tls\_keypass** _arg_
 
-    Pass phrase source for client's private TLS key **tls\_key**.
+    Pass phrase source for client's private TLS key **-tls\_key**.
     Also used for **-tls\_cert** in case it is an encrypted PKCS#12 file.
     If not given here, the password will be prompted for if needed.
 
@@ -735,6 +740,13 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     Multiple filenames may be given, separated by commas and/or whitespace
     (where in the latter case the whole argument must be enclosed in "...").
     As many files are read as needed for a complete transaction.
+
+- **-reqin\_new\_tid**
+
+    Use a fresh transactionID for CMP request messages read using **-reqin**,
+    which requires re-protecting them as far as they were protected before.
+    This may be needed in case the sequence of requests is reused
+    and the CMP server complains that the transaction ID has already been used.
 
 - **-reqout** _filenames_
 

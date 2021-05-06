@@ -61,6 +61,9 @@ else # $(LIB)
 
 
 OPENSSL_VERSION=$(shell strings "$(LIB)" | grep -E 'OpenSSL [0-9]+\.[0-9]+\.' | head -n 1 | sed -r 's/.*?OpenSSL //' | awk -v FS="." '{print $$1"."$$2}')
+ifeq ($(OPENSSL_VERSION),)
+	OPENSSL_VERSION=$(shell strings "$(LIB)" | grep -E 'libcrypto\.' | head -n 1 | sed -r 's/.*?libcrypto(.[a-z]+)?\.//')
+endif
 
 
 endif # $(LIB)

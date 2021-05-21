@@ -31,6 +31,17 @@ cdps = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?c
 use_aia = 1
 ocsp = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp"
 
+[no-tls]
+server = ppki-playground.ct.siemens.com:80
+tls_used = 0
+
+[no-certstatus]
+crls =
+use_cdp = 0
+cdps =
+use_aia = 0
+ocsp =
+
 [CmpRa] # LightweightCmpRa
 server = http://localhost:6000/onlinelra
 secret = pass:myPresharedSecret

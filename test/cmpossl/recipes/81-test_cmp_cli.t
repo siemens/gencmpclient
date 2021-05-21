@@ -43,13 +43,13 @@ my $no_proxy = $ENV{no_proxy} // $ENV{NO_PROXY};
 my $app = "cmpClient";
 
 my @cmp_basic_tests = (
-    [ "show help",                        [ "-config", '""', "-help"               ], 0 ],
-    [ "CLI option not starting with '-'", [ "-config", '""',  "days", "1"          ], 1 ],
-    [ "unknown CLI option",               [ "-config", '""', "-dayss"              ], 1 ],
-    [ "bad int syntax: non-digit",        [ "-config", '""', "-days", "a/"         ], 1 ],
-    [ "bad int syntax: float",            [ "-config", '""', "-days", "3.14"       ], 1 ],
-    [ "bad int syntax: trailing garbage", [ "-config", '""', "-days", "314_+"      ], 1 ],
-    [ "bad int: out of range",            [ "-config", '""', "-days", "2147483648" ], 1 ],
+    [ "show help",                        [ "-config", '""', "-help"               ], 1 ],
+    [ "CLI option not starting with '-'", [ "-config", '""',  "days", "1"          ], 0 ],
+    [ "unknown CLI option",               [ "-config", '""', "-dayss"              ], 0 ],
+    [ "bad int syntax: non-digit",        [ "-config", '""', "-days", "a/"         ], 0 ],
+    [ "bad int syntax: float",            [ "-config", '""', "-days", "3.14"       ], 0 ],
+    [ "bad int syntax: trailing garbage", [ "-config", '""', "-days", "314_+"      ], 0 ],
+    [ "bad int: out of range",            [ "-config", '""', "-days", "2147483648" ], 0 ],
 );
 
 my $rsp_cert = "signer_only.crt";
@@ -139,16 +139,16 @@ sub test_cmp_cli {
     my $i = shift;
     my $title = shift;
     my $params = shift;
-    my $expected_exit = shift;
+    my $expected_result = shift;
     my $path_app = bldtop_dir($app);
     with({ exit_checker => sub {
-        my $actual_exit = shift;
-        my $OK = $actual_exit == $expected_exit;
+        my $actual_result = shift == 0;
+        my $OK = $actual_result == $expected_result;
         if ($faillog && !$OK) {
             my $quote_spc_empty = sub { $_ eq "" ? '""' : $_ =~ m/ / ? '"'.$_.'"' : $_ };
             my $invocation = "$path_app ".join(' ', map $quote_spc_empty->($_), @$params);
             print $faillog "$server_name $aspect \"$title\" ($i/$n)".
-                " expected=$expected_exit actual=$actual_exit\n";
+                " expected=$expected_result actual=$actual_result\n";
             print $faillog "$invocation\n\n";
         }
         return $OK; } },

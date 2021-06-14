@@ -833,7 +833,7 @@ X509 *CERT_load(const char *file, OPTIONAL const char *source, OPTIONAL const ch
 inline
 bool CERT_save(const X509 *cert, const char *file, OPTIONAL const char *desc)
 {
-    sec_file_format format = FILES_get_format(file);
+    file_format_t format = FILES_get_format(file);
     if (format == FORMAT_UNDEF) {
         LOG(FL_ERR, "Failed to determine format from file name ending of '%s'", file);
         return false;
@@ -858,7 +858,7 @@ STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc)
 inline
 int CERTS_save(const STACK_OF(X509) *certs, const char *file, OPTIONAL const char *desc)
 {
-    sec_file_format format = FILES_get_format(file);
+    file_format_t format = FILES_get_format(file);
     if (format == FORMAT_UNDEF) {
         LOG(FL_ERR, "Failed to determine format from file name ending of '%s'", file);
         return -1;

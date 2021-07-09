@@ -14,9 +14,7 @@
 #include <string.h>
 
 #include "genericCMPClient.h"
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-# include "../cmpossl/crypto/cmp/cmp_local.h" /* needed to access ctx->server and ctx->proxy; TODO remove when OSSL_CMP_proxy_connect and ossl_cmp_build_cert_chain are available and used */
-#endif
+#include "../cmpossl/crypto/cmp/cmp_local.h" /* needed to access ctx->server and ctx->proxy; TODO remove when OSSL_CMP_proxy_connect and ossl_cmp_build_cert_chain are available and used */
 
 #if OPENSSL_VERSION_NUMBER < 0x10100006L
 typedef
@@ -222,85 +220,93 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
 }
 
 #ifndef SECUTILS_NO_TLS
-static const char *tls_error_hint(unsigned long err)
+static char *opt_getprog(void)
 {
+    return "CMP client";
+}
+
+typedef struct app_http_tls_info_st {
+    const char *server;
+    const char *port;
+    int use_proxy;
+    int timeout;
+    SSL_CTX *ssl_ctx;
+} APP_HTTP_TLS_INFO;
+
+static const char *tls_error_hint(void)
+{
+    unsigned long err = ERR_peek_error();
+
+    if (ERR_GET_LIB(err) != ERR_LIB_SSL)
+        err = ERR_peek_last_error();
+    if (ERR_GET_LIB(err) != ERR_LIB_SSL)
+        return NULL;
+
     switch (ERR_GET_REASON(err)) {
-    /* case 0x1408F10B: */ /* xSL_F_SSL3_GET_RECORD */
     case SSL_R_WRONG_VERSION_NUMBER:
-    /* case 0x140770FC: */ /* xSL_F_SSL23_GET_SERVER_HELLO */
+        return "The server does not support (a suitable version of) TLS";
     case SSL_R_UNKNOWN_PROTOCOL:
-        return "The server does not support (a recent version of) TLS";
-    /* case 0x1407E086: */ /* xSL_F_SSL3_GET_SERVER_HELLO */
-    /* case 0x1409F086: */ /* xSL_F_SSL3_WRITE_PENDING */
-    /* case 0x14090086: */ /* xSL_F_SSL3_GET_SERVER_CERTIFICATE */
-    /* case 0x1416F086: */ /* xSL_F_TLS_PROCESS_SERVER_CERTIFICATE */
+        return "The server does not support HTTPS";
     case SSL_R_CERTIFICATE_VERIFY_FAILED:
         return "Cannot authenticate server via its TLS certificate, likely due to mismatch with our trusted TLS certs or missing revocation status";
-    /* case 0x14094418: */ /* xSL_F_SSL3_READ_BYTES */
     case SSL_AD_REASON_OFFSET + TLS1_AD_UNKNOWN_CA:
         return "Server did not accept our TLS certificate, likely due to mismatch with server's trust anchor or missing revocation status";
     case SSL_AD_REASON_OFFSET + SSL3_AD_HANDSHAKE_FAILURE:
-        return "Server requires our TLS certificate but did not receive one";
+        return "TLS handshake failure. Possibly the server requires our TLS certificate but did not receive it";
     default: /* no error or no hint available for error */
         return NULL;
     }
 }
 
-static BIO *tls_http_cb(OSSL_CMP_CTX *ctx, BIO *hbio, unsigned long detail)
+/* HTTP callback function that supports TLS connection also via HTTPS proxy */
+static BIO *app_http_tls_cb(BIO *hbio, void *arg, int connect, int detail)
 {
-    SSL_CTX *ssl_ctx = OSSL_CMP_CTX_get_http_cb_arg(ctx);
-    BIO *sbio = NULL;
-
-    if (detail == 1) { /* connecting */
+    if (connect && detail) { /* connecting with TLS */
+        APP_HTTP_TLS_INFO *info = (APP_HTTP_TLS_INFO *)arg;
+        SSL_CTX *ssl_ctx = info->ssl_ctx;
         SSL *ssl;
+        BIO *sbio = NULL;
 
-        LOG_debug("connecting to TLS server");
-        if ((ctx->proxy != NULL
-             && !OSSL_CMP_proxy_connect(hbio, ctx, bio_err, "CMP client"))
-            || (sbio = BIO_new(BIO_f_ssl())) == NULL) {
-            hbio = NULL;
-            goto end;
+        if ((info->use_proxy
+             && !OSSL_HTTP_proxy_connect(hbio, info->server, info->port,
+                                         NULL, NULL, /* no proxy credentials */
+                                         info->timeout, bio_err, opt_getprog()))
+                || (sbio = BIO_new(BIO_f_ssl())) == NULL) {
+            return NULL;
         }
-        if ((ssl = SSL_new(ssl_ctx)) == NULL) {
+        if (ssl_ctx == NULL || (ssl = SSL_new(ssl_ctx)) == NULL) {
             BIO_free(sbio);
-            hbio = sbio = NULL;
-            goto end;
+            return NULL;
         }
 
-        /* set the server name indication ClientHello extension */
-        char *host = ctx->server;
-        if (host != NULL && *host < '0' && *host > '9' /* not IPv4 address */
-            && SSL_set_tlsext_host_name(ssl, host)) {
-            hbio = NULL;
-            goto end;
-        }
+        SSL_set_tlsext_host_name(ssl, info->server);
 
         SSL_set_connect_state(ssl);
         BIO_set_ssl(sbio, ssl, BIO_CLOSE);
 
         hbio = BIO_push(sbio, hbio);
-    } else { /* disconnecting */
-        const char *hint = tls_error_hint(detail);
+    } else if (!connect && !detail) { /* disconnecting after error */
+        const char *hint = tls_error_hint();
 
-        LOG_debug("disconnecting from TLS server");
         if (hint != NULL)
-            ERR_add_error_data(1, hint);
+            ERR_add_error_data(2, " : ", hint);
         /*
-         * as a workaround for OpenSSL double free, do not pop the sbio, but
-         * rely on BIO_free_all() done by OSSL_CMP_PKIMESSAGE_http_perform()
+         * If we pop sbio and BIO_free() it this may lead to libssl double free.
+         * Rely on BIO_free_all() done by OSSL_HTTP_transfer() in http_client.c
          */
-    }
- end:
-    if (ssl_ctx != NULL) {
-        X509_STORE *ts = SSL_CTX_get_cert_store(ssl_ctx);
-        if (ts != NULL) {
-            /* indicate if OSSL_CMP_MSG_http_perform() with TLS is active */
-            (void)STORE_set0_tls_bio(ts, sbio);
-        }
     }
     return hbio;
 }
-#endif
+
+static void APP_HTTP_TLS_INFO_free(APP_HTTP_TLS_INFO *info)
+{
+    if (info != NULL) {
+        SSL_CTX_free(info->ssl_ctx);
+        OPENSSL_free((char *)info->port);
+        OPENSSL_free(info);
+    }
+}
+#endif /* ndef SECUTILS_NO_TLS */
 
 static bool use_proxy(const char *no_proxy, const char *server)
 {
@@ -353,6 +359,8 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (port <= 0) {
         return CMP_R_INVALID_PARAMETERS;
     }
+    char server_port[6];
+    sprintf(server_port, "%d", port);
     if (!OSSL_CMP_CTX_set1_server(ctx, host) ||
         (!OSSL_CMP_CTX_set_serverPort(ctx, port))) {
         goto err;
@@ -395,7 +403,6 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 #ifndef SECUTILS_NO_TLS
     if (tls != NULL) {
         X509_STORE *ts = SSL_CTX_get_cert_store(tls);
-
         /*
          * If server is localhost, we will will proceed without "host verification".
          * This will enable Bootstrapping of LRA (by itself)
@@ -410,15 +417,23 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
                 goto err;
             }
         }
-        if (!OSSL_CMP_CTX_set_http_cb(ctx, tls_http_cb) ||
-            !SSL_CTX_up_ref(tls))
+
+        if (!OSSL_CMP_CTX_set_http_cb(ctx, app_http_tls_cb))
             goto err;
-        SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
+        APP_HTTP_TLS_INFO_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
         (void)OSSL_CMP_CTX_set_http_cb_arg(ctx, NULL);
-        if (!OSSL_CMP_CTX_set_http_cb_arg(ctx, (void *)tls)) {
-            SSL_CTX_free(tls);
+        APP_HTTP_TLS_INFO *info = OPENSSL_zalloc(sizeof(*info));
+        if (info == NULL)
             goto err;
-        }
+        (void)OSSL_CMP_CTX_set_http_cb_arg(ctx, info);
+        /* info will be freed along with ctx */
+        info->server = host;
+        info->port = OPENSSL_strdup(server_port);
+        info->use_proxy = proxy != NULL;
+        info->timeout = OSSL_CMP_CTX_get_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT);
+        if (!SSL_CTX_up_ref(tls))
+            goto err;
+        info->ssl_ctx = tls;
     }
 #else
     (void)proxy_host;
@@ -803,7 +818,7 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
     OSSL_CMP_CTX_print_errors(ctx);
     if (ctx != NULL) {
 #ifndef SECUTILS_NO_TLS
-        SSL_CTX_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
+        APP_HTTP_TLS_INFO_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
 #endif
         X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
         OSSL_CMP_CTX_free(ctx);

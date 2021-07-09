@@ -14,9 +14,6 @@
 
 /* for low-level CMP API, in particular, type OSSL_CMP_CTX */
 # include <openssl/cmp.h>
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L /* TODO enable TLS support for OpenSSL 3.0 */
-# define SEC_NO_TLS
-#endif
 typedef OSSL_CMP_CTX CMP_CTX; /* for abbreviation and backward compatibility */
 
 typedef int CMP_err;

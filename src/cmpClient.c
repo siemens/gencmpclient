@@ -629,7 +629,7 @@ static OSSL_CMP_MSG *read_PKIMESSAGE(char **filenames)
     file = *filenames;
     *filenames = UTIL_next_item(file);
 
-    ret = OSSL_CMP_MSG_read(file);
+    ret = OSSL_CMP_MSG_read(file,  NULL/* libctx */, NULL /* propq */);
     if (ret == NULL)
         LOG(FL_ERR, "Cannot read PKIMessage from file '%s'", file);
     return ret;

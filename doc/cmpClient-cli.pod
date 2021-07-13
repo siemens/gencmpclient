@@ -24,45 +24,11 @@ B<cmpClient> I<options>
 [B<-section> I<names>]
 [B<-verbosity> I<level>]
 
-Message transfer options:
-
-[B<-server> I<[http://]address[:port]>][/path]
-[B<-proxy> I<[http://]address[:port][/path]>]
-[B<-no_proxy> I<addresses>]
-[B<-path> I<remote_path>]
-[B<-msg_timeout> I<seconds>]
-[B<-total_timeout> I<seconds>]
-
-Server authentication options:
-
-[B<-trusted> I<filenames>]
-[B<-untrusted> I<sources>]
-[B<-srvcert> I<filename>]
-[B<-recipient> I<name>]
-[B<-expect_sender> I<name>]
-[B<-ignore_keyusage>]
-[B<-unprotected_errors>]
-[B<-extracertsout> I<filename>]
-[B<-cacertsout> I<filename>]
-
-Client authentication options:
-
-[B<-ref> I<value>]
-[B<-secret> I<arg>]
-[B<-cert> I<filename>]
-[B<-own_trusted> I<filenames>]
-[B<-key> I<filename>]
-[B<-keypass> I<arg>]
-[B<-digest> I<name>]
-[B<-mac> I<name>]
-[B<-extracerts> I<sources>]
-[B<-unprotected_requests>]
-
 Generic message options:
 
 [B<-cmd> I<ir|cr|kur|p10cr|rr>]
 [B<-infotype> I<name>]
-[B<-geninfo> I<values>]
+[B<-geninfo> I<OID:int:N>]
 
 Certificate enrollment options:
 
@@ -76,7 +42,7 @@ Certificate enrollment options:
 [B<-sans> I<spec>]
 [B<-san_nodefault>]
 [B<-policies> I<name>]
-[B<-policy_oid> I<names>]
+[B<-policy_oids> I<names>]
 [B<-policy_oids_critical>]
 [B<-popo> I<number>]
 [B<-csr> I<filename>]
@@ -93,6 +59,44 @@ Certificate enrollment and revocation options:
 
 [B<-oldcert> I<filename>]
 [B<-revreason> I<number>]
+
+Message transfer options:
+
+[B<-server> I<[http://]address[:port]>][/path]
+[B<-path> I<remote_path>]
+[B<-proxy> I<[http://]address[:port][/path]>]
+[B<-no_proxy> I<addresses>]
+[B<-recipient> I<name>]
+[B<-msg_timeout> I<seconds>]
+[B<-total_timeout> I<seconds>]
+
+Server authentication options:
+
+[B<-trusted> I<filenames>]
+[B<-untrusted> I<sources>]
+[B<-srvcert> I<filename>]
+[B<-expect_sender> I<name>]
+[B<-ignore_keyusage>]
+[B<-unprotected_errors>]
+[B<-extracertsout> I<filename>]
+[B<-extracerts_dir> I<dirname>]
+[B<-extracerts_dir_format <I<PEM|DER|P12>]
+[B<-cacertsout> I<filename>]
+[B<-cacerts_dir> I<dirname>]
+[B<-cacerts_dir_format <I<PEM|DER|P12>]
+
+Client authentication and protection options:
+
+[B<-ref> I<value>]
+[B<-secret> I<arg>]
+[B<-cert> I<filename>]
+[B<-own_trusted> I<filenames>]
+[B<-key> I<filename>]
+[B<-keypass> I<arg>]
+[B<-digest> I<name>]
+[B<-mac> I<name>]
+[B<-extracerts> I<sources>]
+[B<-unprotected_requests>]
 
 TLS connection options:
 
@@ -119,6 +123,8 @@ Certificate status checking options, for both CMP and TLS:
 [B<-crls> I<URLs>]
 [B<-use_cdp>]
 [B<-cdps> I<URLs>]
+[B<-cdp_proxy> I<address>]
+[B<-crl_cache_dir> I<dirname>]
 [B<-crls_timeout> I<seconds>]
 [B<-use_aia>]
 [B<-ocsp> I<URLs>]
@@ -195,7 +201,9 @@ Default filename is C<config/demo.cnf>.
 Section(s) to use within config file defining CMP options.
 An empty string C<""> means no specific section.
 Default is C<default>.
-Multiple section names may be given, separated by commas and/or whitespace.
+
+Multiple section names may be given, separated by commas and/or whitespace
+(where in the latter case the whole argument must be enclosed in "...").
 Contents of sections named later may override contents of sections named before.
 In any case, as usual, the C<[default]> section and finally the unnamed
 section (as far as present) can provide per-option fallback values.
@@ -211,6 +219,284 @@ The levels DEBUG and TRACE are most useful for certificate status check issues.
 =back
 
 
+=head2 Generic message options
+
+=over 4
+
+=item B<-cmd> I<ir|cr|kur|p10cr|rr>
+
+CMP command to execute.
+Overrides C<use_case> if present.
+Currently implemented commands are:
+
+=over 8
+
+=item  ir E<nbsp>  - Initialization Request
+
+=item  cr E<nbsp>  - Certificate Request
+
+=item  p10cr - PKCS#10 Certification Request (for legacy support)
+
+=item  kur E<nbsp>E<nbsp>- Key Update Request
+
+=item  rr E<nbsp>  - Revocation Request
+
+=back
+
+B<ir> requests initialization of an end entity into a PKI hierarchy
+by issuing a first certificate.
+
+B<cr> requests issuing an additional certificate for an end entity already
+initialized to the PKI hierarchy.
+
+B<p10cr> requests issuing an additional certificate similarly to B<cr>
+but using legacy PKCS#10 CSR format.
+
+B<kur> requests a (key) update for an existing certificate.
+
+B<rr> requests revocation of an existing certificate.
+
+=item B<-infotype> I<name>
+
+Set InfoType name to use for requesting specific info in B<genm>,
+e.g., C<signKeyPairTypes>.
+
+=item B<-geninfo> I<values>
+
+A comma-separated list of InfoTypeAndValue to place in the generalInfo field of
+the PKIHeader of requests messages.
+Each InfoTypeAndValue gives an OID and an integer or string value of the form
+I<OID>:int:I<number> or I<OID>:str:I<text>,
+e.g., C<'1.2.3.4:int:56789, id-kp:str:name'>.
+
+=back
+
+=head2 Certificate enrollment options
+
+=over 4
+
+=item B<-newkeytype> I<spec>
+
+In case of IR, CR, or KUR,
+generate a new key of the given type for the requested certifiate.
+The I<spec> may be of the form "EC:I<curve>" or "RSA-I<length>".
+The key will be saved in the file specified with the B<-newkey> option.
+
+=item B<-newkey> I<filename>
+
+The file to save the newly generated key (in case  B<-newkeytype> is given).
+Otherwise the file to read the private or public key from
+for the certificate requested in IR, CR or KUR.
+Default is the public key in the PKCS#10 CSR given with the B<-csr> option,
+if any, or else the current client key, if given.
+
+=item B<-newkeypass> I<arg>
+
+Pass phrase source for the key file given with the B<-newkey> option.
+If not given here, the password will be prompted for if needed.
+
+This may be a plain password, which should be preceded by 'pass:',
+a key identifier preceded by 'engine:' to use with a crypto engine,
+the name of a environment variable preceded by 'env:' to read from,
+the name of a file preceded by 'file:' to read from,
+the numeric descriptor of a file preceded by 'fd:' to read from,
+or 'stdin' to indicate that the password input is to be read from STDIN.
+
+=item B<-subject> I<name>
+
+X509 Distinguished Name (DN) of subject to use in the requested certificate
+template.
+For KUR, it defaults to the public key
+in the PKCS#10 CSR given with the B<-csr> option, if provided,
+or of the reference certificate (see B<-oldcert>) if provided.
+This default is used for IR and CR only if no SANs are set.
+If the NULL-DN (C</>) is given then no subject is placed in the template.
+
+If provided and neither B<-cert> nor B<-oldcert> is given,
+the subject DN is used as fallback sender of outgoing CMP messages.
+
+Special characters may be escaped by C<\> (backslash); whitespace is retained.
+Empty values are permitted, but the corresponding type will not be included.
+Giving a single C</> will lead to an empty sequence of RDNs (a NULL-DN).
+Multi-valued RDNs can be formed by placing a C<+> character instead of a C</>
+between the AttributeValueAssertions (AVAs) that specify the members of the set.
+Example:
+
+C</DC=org/DC=OpenSSL/DC=users/UID=123456+CN=John Doe>
+The argument must be formatted as I</type0=value0/type1=value1/type2=...>.
+For details see the description of the B<-recipient> option.
+
+=item B<-issuer> I<name>
+
+X509 issuer Distinguished Name (DN) of the CA server
+to place in the requested certificate template in IR/CR/KUR.
+If the NULL-DN (C</>) is given then no issuer is placed in the template.
+
+If provided and neither B<-recipient> nor B<-srvcert> is given,
+the issuer DN is used as fallback recipient of outgoing CMP messages.
+
+The argument must be formatted as I</type0=value0/type1=value1/type2=...>.
+For details see the description of the B<-subject> option.
+
+=item B<-days> I<number>
+
+Number of days the new certificate is requested to be valid for, counting from
+the current time of the host.
+Also triggers the explicit request that the
+validity period starts from the current time (as seen by the host).
+
+=item B<-reqexts> I<name>
+
+Name of section in OpenSSL config file defining certificate request extensions.
+
+=item B<-sans> I<spec>
+
+One or more IP addresses, DNS names, or URIs separated by commas or whitespace
+(where in the latter case the whole argument must be enclosed in "...")
+to add as Subject Alternative Name(s) (SAN) certificate request extension.
+If the special element "critical" is given the SANs are flagged as critical.
+Cannot be used if any Subject Alternative Name extension is set via B<-reqexts>.
+
+=item B<-san_nodefault>
+
+When Subject Alternative Names are not given via B<-sans>
+nor defined via B<-reqexts>,
+they are copied by default from the reference certificate (see B<-oldcert>).
+This can be disabled by giving the B<-san_nodefault> option.
+
+=item B<-policies> I<name>
+
+Name of section in OpenSSL config file defining policies to be set
+as certificate request extension.
+This option cannot be used together with B<-policy_oids>.
+
+=item B<-policy_oids> I<names>
+
+One or more OID(s), separated by commas and/or whitespace,
+to add as certificate policies request extension.
+This option cannot be used together with B<-policies>.
+
+=item B<-policy_oids_critical>
+
+Flag the policies given with B<-policy_oids> as critical.
+
+=item B<-popo> I<number>
+
+Proof-of-Possession (POPO) method to use for IR/CR/KUR; values: C<-1>..<2> where
+C<-1> = NONE, C<0> = RAVERIFIED, C<1> = SIGNATURE (default), C<2> = KEYENC.
+
+Note that a signature-based POPO can only produced if a private key
+is provided via the B<-newkey> or B<-key> options.
+
+=item B<-csr> I<filename>
+
+PKCS#10 CSR in PEM or DER format containing a certificate request.
+With B<-cmd> I<p10cr> it is used directly in a legacy P10CR message.
+When used with B<-cmd> I<ir>, I<cr>, or I<kur>, it is transformed into the
+respective regular CMP request.
+It may also be used with B<-cmd> I<rr> to specify the certificate to be revoked
+via the included subject and public key.
+
+=item B<-out_trusted> I<filenames>
+
+Trusted certificate(s) to use for verifying the newly enrolled certificate.
+
+Multiple filenames may be given, separated by commas and/or whitespace
+(where in the latter case the whole argument must be enclosed in "...").
+Each source may contain multiple certificates.
+
+The certificate verification options
+B<-verify_hostname>, B<-verify_ip>, and B<-verify_email>
+only affect the certificate verification enabled via this option.
+
+=item B<-verify_hostname> I<name>
+
+When verification of the newly enrolled certificate is enabled (with the
+B<-out_trusted> option), check if any DNS Subject Alternative Name (or if no
+DNS SAN is included, the Common Name in the subject) equals the given I<name>.
+
+=item B<-verify_ip> I<ip>
+
+When verification of the newly enrolled certificate is enabled (with the
+B<-out_trusted> option), check if there is
+an IP address Subject Alternative Name matching the given IP address.
+
+=item B<-verify_email> I<email>
+
+When verification of the newly enrolled certificate is enabled (with the
+B<-out_trusted> option), check if there is
+an email address Subject Alternative Name matching the given email address.
+
+=item B<-implicit_confirm>
+
+Request implicit confirmation of newly enrolled certificates.
+
+=item B<-disable_confirm>
+
+Do not send certificate confirmation message for newly enrolled certificate
+without requesting implicit confirmation
+to cope with broken servers not supporting implicit confirmation correctly.
+B<WARNING:> This leads to behavior violating RFC 4210.
+
+=item B<-certout> I<filename>
+
+The file where the newly enrolled certificate should be saved.
+If B<-newkey> and B<-newkeytype> are given and B<-cmd> is not I<p10cr>
+then the related chain and key are stored in this file as well,
+else if B<-chainout> is not given the the related chain is stored here as well.
+
+=item B<-chainout> I<filename>
+
+The file where the chain of the newly enrolled certificate should be saved.
+If B<-newkey> and B<-newkeytype> are given and B<-cmd> is not I<p10cr>
+this option is ignored.
+
+=back
+
+
+=head2 Certificate enrollment and revocation options
+
+=over 4
+
+=item B<-oldcert> I<filename>
+
+The certificate to be updated (i.e., renewed or re-keyed) in Key Update Request
+(KUR) messages or to be revoked in Revocation Request (RR) messages.
+For KUR the certificate to be updated defaults to B<-cert>,
+and the resulting certificate is called I<reference certificate>.
+For RR the certificate to be revoked can also be specified using B<-csr>.
+
+The reference certificate, if any, is also used for
+deriving default subject DN and Subject Alternative Names and the
+default issuer entry in the requested certificate template of an IR/CR/KUR.
+Its subject is used as sender in CMP message headers if B<-cert> is not given.
+Its issuer is used as default recipient in CMP message headers
+if neither B<-recipient>, B<-srvcert>, nor B<-issuer> is given.
+
+=item B<-revreason> I<number>
+
+Set CRLReason to be included in revocation request (RR); values: C<0>..C<10>
+or C<-1> for none (which is the default).
+
+Reason numbers defined in RFC 5280 are:
+
+   CRLReason ::= ENUMERATED {
+        unspecified             (0),
+        keyCompromise           (1),
+        cACompromise            (2),
+        affiliationChanged      (3),
+        superseded              (4),
+        cessationOfOperation    (5),
+        certificateHold         (6),
+        -- value 7 is not used
+        removeFromCRL           (8),
+        privilegeWithdrawn      (9),
+        aACompromise           (10)
+    }
+
+=back
+
+
 =head2 Message transfer options
 
 =over 4
@@ -221,6 +507,11 @@ The IP address or DNS hostname and optionally port
 of the CMP server to connect to using HTTP(S) transport.
 The port defaults to 80 or 443 if the scheme is C<https>.
 If a path is included it provides the default value for the B<-path> option.
+
+=item B<-path> I<remote_path>
+
+HTTP path at the CMP server (aka CMP alias) to use for POST requests.
+Defaults to any path given with B<-server>, else C<"/">.
 
 =item B<-proxy> I<[http[s]://]address[:port][/path]>
 
@@ -237,10 +528,22 @@ not to use an HTTP(S) proxy for, separated by commas and/or whitespace
 (where in the latter case the whole argument must be enclosed in "...").
 Default is from the environment variable C<no_proxy> if set, else C<NO_PROXY>.
 
-=item B<-path> I<remote_path>
+=item B<-recipient> I<name>
 
-HTTP path at the CMP server (aka CMP alias) to use for POST requests.
-Defaults to any path given with B<-server>, else C<"/">.
+Distinguished Name (DN) to use in the recipient field of CMP request messages,
+i.e., the CMP server (usually the addressed CA).
+
+The recipient field in the header of a CMP message is mandatory.
+If not given explicitly the recipient is determined in the following order:
+the subject of the CMP server certificate given with the B<-srvcert> option,
+the B<-issuer> option,
+the issuer of the certificate given with the B<-oldcert> option,
+the issuer of the CMP client certificate (B<-cert> option),
+the subject of the first certificate given with the B<-untrusted> option,
+as far as any of those is present, else the NULL-DN as last resort.
+
+The argument must be formatted as I</type0=value0/type1=value1/type2=...>.
+For details see the description of the B<-subject> option.
 
 =item B<-msg_timeout> I<seconds>
 
@@ -281,10 +584,11 @@ Any extra certificates given with the B<-cert> option are appended to it.
 All these certificates may be useful for cert path construction
 for the CMP client certificate (to include in the extraCerts field of outgoing
 messages) and for the TLS client certificate (if TLS is enabled)
-as well as for chain building when verifying
-the CMP server certificate (checking signature-based CMP message protection),
+as well as for chain building
+when validating the CMP server certificate (checking signature-based
+CMP message protection),
 when verifying stapled OCSP responses (while establishing TLS connections), and
-when verifying the newly enrolled certificate.
+when validating newly enrolled certificates.
 
 Multiple filenames or URLs may be given, separated by commas and/or whitespace
 (where in the latter case the whole argument must be enclosed in "...").
@@ -299,30 +603,6 @@ May be set alternatively to the B<-trusted> option to pin the accepted server.
 If set, the subject of the certificate is also used
 as default value for the recipient of CMP requests
 and as default value for the expected sender of CMP responses.
-
-=item B<-recipient> I<name>
-
-Distinguished Name (DN) to use in the recipient field of CMP request messages,
-i.e., the CMP server (usually the addressed CA).
-
-The recipient field in the header of a CMP message is mandatory.
-If not given explicitly the recipient is determined in the following order:
-the subject of the CMP server certificate given with the B<-srvcert> option,
-the B<-issuer> option,
-the issuer of the certificate given with the B<-oldcert> option,
-the issuer of the CMP client certificate (B<-cert> option),
-the subject of the first certificate given with the B<-untrusted> option,
-as far as any of those is present, else the NULL-DN as last resort.
-
-The argument must be formatted as I</type0=value0/type1=value1/type2=...>.
-Characters may be escaped by C<\>E<nbsp>(backslash); whitespace is retained.
-Empty values are permitted, but the corresponding type will not be included.
-Giving a single C</> will lead to an empty sequence of RDNs (a NULL-DN).
-Multi-valued RDNs can be formed by placing a C<+> character instead of a C</>
-between the AttributeValueAssertions (AVAs) that specify the members of the set.
-Example:
-
-C</DC=org/DC=OpenSSL/DC=users/UID=123456+CN=John Doe>
 
 =item B<-expect_sender> I<name>
 
@@ -386,10 +666,26 @@ with a signature key."
 The file where to save any extra certificates received in the extraCerts field
 of response messages.
 
+=item B<-extracerts_dir> I<dirname>
+
+Path to save extra certificates received in the extraCerts field.
+
+=item B<-extracerts_dir_format <I<PEM|DER|P12>
+
+Format to save extra certificates received in the extraCerts field-
+
 =item B<-cacertsout> I<filename>
 
 The file where to save any CA certificates received in the caPubs field of
 initializiation response (ip) messages.
+
+=item B<-cacerts_dir> I<dirname>
+
+Path to save CA certificates received in the caPubss field.
+
+=item B<-cacerts_dir_format <I<PEM|DER|P12>
+
+Format to save CA certificates received in the caPubs field.
 
 =back
 
@@ -412,8 +708,7 @@ and (as far as needed) for verifying PBM-based protection of incoming messages.
 PBM stands for Password-Based Message Authentication Code.
 This takes precedence over the B<-cert> and B<-key> options.
 
-Currently only plain passwords are supported,
-which should be preceded by "pass:".
+Supports plain passwords preceded by "pass:" and others, see B<-newkeypass>.
 
 =item B<-cert> I<filename>
 
@@ -443,6 +738,10 @@ Multiple filenames may be given, separated by commas and/or whitespace
 (where in the latter case the whole argument must be enclosed in "...").
 Each source may contain multiple certificates.
 
+The certificate verification options
+B<-verify_hostname>, B<-verify_ip>, and B<-verify_email>
+have no effect on the certificate verification enabled via this option.
+
 =item B<-key> I<filename>
 
 The corresponding private key file for the client's current certificate given in
@@ -456,8 +755,7 @@ Pass phrase source for the private key given with the B<-key> option.
 Also used for B<-cert> and B<-oldcert> in case it is an encrypted PKCS#12 file.
 If not given here, the password will be prompted for if needed.
 
-Currently only plain passwords are supported,
-which should be preceded by "pass:".
+Supports plain passwords preceded by "pass:" and others, see B<-newkeypass>.
 
 =item B<-digest> I<name>
 
@@ -492,268 +790,6 @@ Send messages without CMP-level protection.
 =back
 
 
-=head2 Generic message options
-
-=over 4
-
-=item B<-cmd> I<ir|cr|kur|p10cr|rr>
-
-CMP command to execute. Overrides C<use_case> if present.
-Currently implemented commands are:
-
-=over 8
-
-=item  ir E<nbsp>  - Initialization Request
-
-=item  cr E<nbsp>  - Certificate Request
-
-=item  p10cr - PKCS#10 Certification Request (for legacy support)
-
-=item  kur E<nbsp>E<nbsp>- Key Update Request
-
-=item  rr E<nbsp>  - Revocation Request
-
-=back
-
-B<ir> requests initialization of an end entity into a PKI hierarchy
-by issuing a first certificate.
-
-B<cr> requests issuing an additional certificate for an end entity already
-initialized to the PKI hierarchy.
-
-B<p10cr> requests issuing an additional certificate similarly to B<cr>
-but using legacy PKCS#10 CSR format.
-
-B<kur> requests a (key) update for an existing certificate.
-
-B<rr> requests revocation of an existing certificate.
-
-=item B<-infotype> I<name>
-
-Set InfoType name to use for requesting specific info in B<genm>,
-e.g., C<signKeyPairTypes>.
-
-=item B<-geninfo> I<values>
-
-A comma-separated list of InfoTypeAndValue to place in the generalInfo field of
-the PKIHeader of requests messages.
-Each InfoTypeAndValue gives an OID and an integer or string value of the form
-I<OID>:int:I<number> or I<OID>:str:I<text>,
-e.g., C<'1.2.3:int:987, id-kp:str:name'>.
-
-=back
-
-
-=head2 Certificate enrollment options
-
-=over 4
-
-=item B<-newkeytype> I<spec>
-
-In case of IR, CR, or KUR,
-generate a new key of the given type for the requested certifiate.
-The I<spec> may be of the form "EC:I<curve>" or "RSA-I<length>".
-The key will be saved in the file specified with the B<-newkey> option.
-
-Default is the public key in the PKCS#10 CSR given with the B<-csr> option,
-if any, or else the current client key, if given.
-
-=item B<-newkey> I<filename>
-
-The file to save the newly generated key (in case  B<-newkeytype> is given).
-Otherwise the file to read the private or public key from
-for the certificate requested in IR, CR or KUR.
-Default is the current client key, if given.
-
-=item B<-newkeypass> I<arg>
-
-Pass phrase source for the key file given with the B<-newkey> option.
-If not given here, the password will be prompted for if needed.
-
-Currently only plain passwords are supported,
-which should be preceded by "pass:".
-
-=item B<-subject> I<name>
-
-X509 Distinguished Name (DN) of subject to use in the requested certificate
-template.
-For KUR, it defaults to the public key
-in the PKCS#10 CSR given with the B<-csr> option, if provided,
-or of the reference certificate (see B<-oldcert>) if provided.
-This default is used for IR and CR only if no SANs are set.
-If the NULL-DN (C</>) is given then no subject is placed in the template.
-
-If provided and neither B<-cert> nor B<-oldcert> is given,
-the subject DN is used as fallback sender of outgoing CMP messages.
-
-The argument must be formatted as I</type0=value0/type1=value1/type2=...>.
-For details see the description of the B<-recipient> option.
-
-=item B<-issuer> I<name>
-
-X509 issuer Distinguished Name (DN) of the CA server
-to place in the requested certificate template in IR/CR/KUR.
-If the NULL-DN (C</>) is given then no issuer is placed in the template.
-
-If provided and neither B<-recipient> nor B<-srvcert> is given,
-the issuer DN is used as fallback recipient of outgoing CMP messages.
-
-The argument must be formatted as I</type0=value0/type1=value1/type2=...>.
-For details see the description of the B<-recipient> option.
-
-=item B<-days> I<number>
-
-Number of days the new certificate is requested to be valid for, counting from
-the current time of the host.
-Also triggers the explicit request that the
-validity period starts from the current time (as seen by the host).
-
-=item B<-reqexts> I<name>
-
-Name of section in OpenSSL config file defining certificate request extensions.
-
-=item B<-sans> I<spec>
-
-One or more IP addresses, DNS names, or URIs separated by commas or whitespace,
-to add as Subject Alternative Name(s) (SAN) certificate request extension.
-If the special element "critical" is given the SANs are flagged as critical.
-Cannot be used if any Subject Alternative Name extension is set via B<-reqexts>.
-
-=item B<-san_nodefault>
-
-When Subject Alternative Names are not given via B<-sans>
-nor defined via B<-reqexts>,
-they are copied by default from the reference certificate (see B<-oldcert>).
-This can be disabled by giving the B<-san_nodefault> option.
-
-=item B<-policies> I<name>
-
-Name of section in OpenSSL config file defining policies to be set
-as certificate request extension.
-This option cannot be used together with B<-policy_oids>.
-
-=item B<-policy_oids> I<names>
-
-One or more OID(s), separated by commas and/or whitespace,
-to add as certificate policies request extension.
-This option cannot be used together with B<-policies>.
-
-=item B<-policy_oids_critical>
-
-Flag the policies given with B<-policy_oids> as critical.
-
-=item B<-popo> I<number>
-
-Proof-of-Possession (POPO) method to use for IR/CR/KUR; values: C<-1>..<2> where
-C<-1> = NONE, C<0> = RAVERIFIED, C<1> = SIGNATURE (default), C<2> = KEYENC.
-
-Note that a signature-based POPO can only produced if a private key
-is provided via the B<-newkey> or B<-key> options.
-
-=item B<-csr> I<filename>
-
-PKCS#10 CSR in PEM or DER format containing a certificate request.
-With B<-cmd> I<p10cr> it is used directly in a legacy P10CR message.
-When used with B<-cmd> I<ir>, I<cr>, or I<kur>, it is transformed into the
-respective regular CMP request.
-It may also be used with B<-cmd> I<rr> to specify the certificate to be revoked
-via the included subject and public key.
-
-=item B<-out_trusted> I<filenames>
-
-Trusted certificate(s) to use for verifying the newly enrolled certificate.
-
-Multiple filenames may be given, separated by commas and/or whitespace
-(where in the latter case the whole argument must be enclosed in "...").
-Each source may contain multiple certificates.
-
-=item B<-verify_hostname> I<name>
-
-When verification of the newly enrolled certificate is enabled (with the
-B<-out_trusted> option), check if any DNS Subject Alternative Name (or if no
-DNS SAN is included, the Common Name in the subject) equals the given I<name>.
-
-=item B<-verify_ip> I<ip>
-
-When verification of the newly enrolled certificate is enabled (with the
-B<-out_trusted> option), check if there is
-an IP address Subject Alternative Name matching the given IP address.
-
-=item B<-verify_email> I<email>
-
-When verification of the newly enrolled certificate is enabled (with the
-B<-out_trusted> option), check if there is
-an email address Subject Alternative Name matching the given email address.
-
-=item B<-implicit_confirm>
-
-Request implicit confirmation of newly enrolled certificates.
-
-=item B<-disable_confirm>
-
-Do not send certificate confirmation message for newly enrolled certificate
-without requesting implicit confirmation
-to cope with broken servers not supporting implicit confirmation correctly.
-B<WARNING:> This leads to behavior violating RFC 4210.
-
-=item B<-certout> I<filename>
-
-The file where the newly enrolled certificate should be saved.
-If B<-newkey> and B<-newkeytype> are given and B<-cmd> is not I<p10cr>
-then the related chain and key are stored in this file as well,
-else if B<-chainout> is not given the the related chain is stored here as well.
-
-=item B<-chainout> I<filename>
-
-The file where the chain of the newly enrolled certificate should be saved.
-If B<-newkey> and B<-newkeytype> are given and B<-cmd> is not I<p10cr>
-this option is ignored.
-
-=back
-
-
-=head2 Certificate enrollment and revocation options
-
-=over 4
-
-=item B<-oldcert> I<filename>
-
-The certificate to be updated (i.e., renewed or re-keyed) in Key Update Request
-(KUR) messages or to be revoked in Revocation Request (RR) messages.
-For KUR the certificate to be updated defaults to B<-cert>,
-and the resulting certificate is called I<reference certificate>.
-
-The reference certificate, if any, is also used for
-deriving default subject DN and Subject Alternative Names and the
-default issuer entry in the requested certificate template of an IR/CR/KUR.
-Its subject is used as sender in CMP message headers if B<-cert> is not given.
-Its issuer is used as default recipient in CMP message headers
-if neither B<-recipient>, B<-srvcert>, nor B<-issuer> is given.
-
-=item B<-revreason> I<number>
-
-Set CRLReason to be included in revocation request (RR); values: C<0>..C<10>
-or C<-1> for none (which is the default).
-
-Reason numbers defined in RFC 5280 are:
-
-   CRLReason ::= ENUMERATED {
-        unspecified             (0),
-        keyCompromise           (1),
-        cACompromise            (2),
-        affiliationChanged      (3),
-        superseded              (4),
-        cessationOfOperation    (5),
-        certificateHold         (6),
-        -- value 7 is not used
-        removeFromCRL           (8),
-        privilegeWithdrawn      (9),
-        aACompromise           (10)
-    }
-
-=back
-
-
 =head2 TLS connection options
 
 =over 4
@@ -780,8 +816,7 @@ Pass phrase source for client's private TLS key B<-tls_key>.
 Also used for B<-tls_cert> in case it is an encrypted PKCS#12 file.
 If not given here, the password will be prompted for if needed.
 
-Currently only plain passwords are supported,
-which should be preceded by "pass:".
+Supports plain passwords preceded by "pass:" and others, see B<-newkeypass>.
 
 =item B<-tls_extra> I<filenames>
 
@@ -795,6 +830,10 @@ This implies hostname validation.
 Multiple filenames may be given, separated by commas and/or whitespace
 (where in the latter case the whole argument must be enclosed in "...").
 Each source may contain multiple certificates.
+
+The certificate verification options
+B<-verify_hostname>, B<-verify_ip>, and B<-verify_email>
+have no effect on the certificate verification enabled via this option.
 
 =item B<-tls_host> I<name>
 
@@ -812,6 +851,7 @@ This may be a Common Name, a DNS name, or an IP address.
 =item B<-reqin> I<filenames>
 
 Take sequence of CMP requests from file(s).
+
 Multiple filenames may be given, separated by commas and/or whitespace
 (where in the latter case the whole argument must be enclosed in "...").
 As many files are read as needed for a complete transaction.
@@ -826,18 +866,21 @@ and the CMP server complains that the transaction ID has already been used.
 =item B<-reqout> I<filenames>
 
 Save sequence of CMP requests to file(s).
+
 Multiple filenames may be given, separated by commas and/or whitespace.
 As many files are written as needed to store the complete transaction.
 
 =item B<-rspin> I<filenames>
 
 Process sequence of CMP responses provided in file(s), skipping server.
+
 Multiple filenames may be given, separated by commas and/or whitespace.
 As many files are read as needed for the complete transaction.
 
 =item B<-rspout> I<filenames>
 
 Save sequence of CMP responses to file(s).
+
 Multiple filenames may be given, separated by commas and/or whitespace.
 As many files are written as needed to store the complete transaction.
 
@@ -900,6 +943,15 @@ enable using CRL Distribution Points (CDP) extension entries in certificates.
 
 Enable CRL-based status checking and
 use the given URL(s) as fallback certificate distribution points (CDP).
+
+=item B<-cdp_proxy> I<address>
+
+Address of the proxy server to use for getting CRLs.
+Default from environment variable C<cdp_proxy>, else C<CDP_PROXY>, else none.
+
+=tem B<-crl_cache_dir> I<dirname>
+
+Directory of the CRL cache when downloaded during verification.
 
 =item B<-crls_timeout> I<seconds>
 

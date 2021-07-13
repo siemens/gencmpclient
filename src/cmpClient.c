@@ -53,6 +53,7 @@ const char *opt_no_proxy;
 const char *opt_cdp_proxy;
 const char *opt_crl_cache_dir;
 
+long opt_keep_alive;
 long opt_msg_timeout;
 long opt_total_timeout;
 
@@ -237,6 +238,8 @@ opt_t cmp_opts[] = {
     { "recipient", OPT_TXT, {.txt = NULL}, { &opt_recipient },
       "DN of CA. Default: -srvcert subject, -issuer, issuer of -oldcert or -cert,"},
     OPT_MORE("subject of the first -untrusted cert if any, or else the NULL-DN"),
+    {"keep_alive", OPT_NUM, {.num = 1 }, { (const char **)&opt_keep_alive },
+     "Persistent HTTP connections. 0: no, 1 (the default): request, 2: require"},
     { "msg_timeout", OPT_NUM, {.num = 120}, { (const char **)&opt_msg_timeout },
       "Timeout per CMP message round trip (or 0 for none). Default 120 seconds"},
     { "total_timeout", OPT_NUM, {.num = 0}, { (const char **)&opt_total_timeout},
@@ -1035,7 +1038,13 @@ int setup_transfer(CMP_CTX *ctx)
 {
     CMP_err err;
 
-    if ((int)opt_msg_timeout < -1) {
+    if (opt_keep_alive < 0 || opt_keep_alive > 2) {
+        LOG_err("-keep_alive argument must be 0, 1, or 2");
+        err = -16;
+        goto err;
+    }
+
+    if (opt_msg_timeout < -1) {
         LOG_err("Only non-negative values allowed for -msg_timeout");
         err = -16;
         goto err;
@@ -1057,6 +1066,8 @@ int setup_transfer(CMP_CTX *ctx)
 
     err = CMPclient_setup_HTTP(ctx, opt_server, opt_path, (int)opt_msg_timeout,
                                tls, opt_proxy, opt_no_proxy);
+    if (opt_keep_alive != 1)
+        OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_KEEP_ALIVE, (int)opt_keep_alive);
 #ifndef SECUTILS_NO_TLS
     TLS_free(tls);
 #endif

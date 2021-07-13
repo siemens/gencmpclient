@@ -61,6 +61,7 @@ Message transfer options:
 \[**-proxy** _\[http://\]address\[:port\]\[/path\]_\]
 \[**-no\_proxy** _addresses_\]
 \[**-recipient** _name_\]
+\[**-keep\_alive** _value_\]
 \[**-msg\_timeout** _seconds_\]
 \[**-total\_timeout** _seconds_\]
 
@@ -74,10 +75,10 @@ Server authentication options:
 \[**-unprotected\_errors**\]
 \[**-extracertsout** _filename_\]
 \[**-extracerts\_dir** _dirname_\]
-\[**-extracerts\_dir\_format <_PEM|DER|P12_\]
+\[**-extracerts\_dir\_format** <_PEM|DER|P12_\]
 \[**-cacertsout** _filename_\]
 \[**-cacerts\_dir** _dirname_\]
-\[**-cacerts\_dir\_format <_PEM|DER|P12_\]****
+\[**-cacerts\_dir\_format** <_PEM|DER|P12_\]
 
 Client authentication and protection options:
 
@@ -504,6 +505,15 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     The argument must be formatted as _/type0=value0/type1=value1/type2=..._.
     For details see the description of the **-subject** option.
 
+- **-keep\_alive** _value_
+
+    If the given value is 0 then HTTP connections are not kept open
+    after receiving a response, which is the default behavior for HTTP 1.0.
+    If the value is 1 or 2 then persistent connections are requested.
+    If the value is 2 then persistent connections are required,
+    i.e., in case the server does not grant them an error occurs.
+    The default value is 1, which means preferring to keep the connection open.
+
 - **-msg\_timeout** _seconds_
 
     Number of seconds (or 0 for infinite) a CMP message round trip is
@@ -611,7 +621,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
     Path to save extra certificates received in the extraCerts field.
 
-- **-extracerts\_dir\_format <_PEM|DER|P12_**
+- **-extracerts\_dir\_format** <_PEM|DER|P12_
 
     Format to save extra certificates received in the extraCerts field-
 
@@ -624,7 +634,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
     Path to save CA certificates received in the caPubss field.
 
-- **-cacerts\_dir\_format <_PEM|DER|P12_**
+- **-cacerts\_dir\_format** <_PEM|DER|P12_
 
     Format to save CA certificates received in the caPubs field.
 
@@ -870,6 +880,8 @@ or the status indicates that the certificate has been revoked.
     Address of the proxy server to use for getting CRLs.
     Default from environment variable `cdp_proxy`, else `CDP_PROXY`, else none.
 
+- **-crl\_cache\_dir** _dirname_
+
     Directory of the CRL cache when downloaded during verification.
 
 - **-crls\_timeout** _seconds_
@@ -943,19 +955,3 @@ Hey! **The above document had some coding errors, which are explained below:**
 - Around line 1:
 
     &#x3d;pod directives shouldn't be over one line long!  Ignoring all 5 lines of content
-
-- Around line 75:
-
-    Unterminated B<B<...>> sequence
-
-- Around line 673:
-
-    Unterminated B<...> sequence
-
-- Around line 686:
-
-    Unterminated B<...> sequence
-
-- Around line 952:
-
-    Unknown directive: =tem

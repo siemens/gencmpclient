@@ -67,6 +67,7 @@ Message transfer options:
 [B<-proxy> I<[http://]address[:port][/path]>]
 [B<-no_proxy> I<addresses>]
 [B<-recipient> I<name>]
+[B<-keep_alive> I<value>]
 [B<-msg_timeout> I<seconds>]
 [B<-total_timeout> I<seconds>]
 
@@ -80,10 +81,10 @@ Server authentication options:
 [B<-unprotected_errors>]
 [B<-extracertsout> I<filename>]
 [B<-extracerts_dir> I<dirname>]
-[B<-extracerts_dir_format <I<PEM|DER|P12>]
+[B<-extracerts_dir_format> <I<PEM|DER|P12>]
 [B<-cacertsout> I<filename>]
 [B<-cacerts_dir> I<dirname>]
-[B<-cacerts_dir_format <I<PEM|DER|P12>]
+[B<-cacerts_dir_format> <I<PEM|DER|P12>]
 
 Client authentication and protection options:
 
@@ -545,6 +546,15 @@ as far as any of those is present, else the NULL-DN as last resort.
 The argument must be formatted as I</type0=value0/type1=value1/type2=...>.
 For details see the description of the B<-subject> option.
 
+=item B<-keep_alive> I<value>
+
+If the given value is 0 then HTTP connections are not kept open
+after receiving a response, which is the default behavior for HTTP 1.0.
+If the value is 1 or 2 then persistent connections are requested.
+If the value is 2 then persistent connections are required,
+i.e., in case the server does not grant them an error occurs.
+The default value is 1, which means preferring to keep the connection open.
+
 =item B<-msg_timeout> I<seconds>
 
 Number of seconds (or 0 for infinite) a CMP message round trip is
@@ -670,7 +680,7 @@ of response messages.
 
 Path to save extra certificates received in the extraCerts field.
 
-=item B<-extracerts_dir_format <I<PEM|DER|P12>
+=item B<-extracerts_dir_format> <I<PEM|DER|P12>
 
 Format to save extra certificates received in the extraCerts field-
 
@@ -683,7 +693,7 @@ initializiation response (ip) messages.
 
 Path to save CA certificates received in the caPubss field.
 
-=item B<-cacerts_dir_format <I<PEM|DER|P12>
+=item B<-cacerts_dir_format> <I<PEM|DER|P12>
 
 Format to save CA certificates received in the caPubs field.
 
@@ -949,7 +959,7 @@ use the given URL(s) as fallback certificate distribution points (CDP).
 Address of the proxy server to use for getting CRLs.
 Default from environment variable C<cdp_proxy>, else C<CDP_PROXY>, else none.
 
-=tem B<-crl_cache_dir> I<dirname>
+=item B<-crl_cache_dir> I<dirname>
 
 Directory of the CRL cache when downloaded during verification.
 

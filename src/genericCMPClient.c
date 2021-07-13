@@ -14,7 +14,6 @@
 #include <string.h>
 
 #include "genericCMPClient.h"
-#include "../cmpossl/crypto/cmp/cmp_local.h" /* needed to access ctx->server and ctx->proxy; TODO remove when OSSL_CMP_proxy_connect and ossl_cmp_build_cert_chain are available and used */
 
 #if OPENSSL_VERSION_NUMBER < 0x10100006L
 typedef
@@ -648,9 +647,9 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
     EVP_PKEY *new_key = OSSL_CMP_CTX_get0_newPkey(ctx, 1 /* priv */); /* NULL in case P10CR */
     X509_STORE *new_cert_truststore = OSSL_CMP_CTX_get_certConf_cb_arg(ctx);
     STACK_OF(X509) *untrusted = OSSL_CMP_CTX_get0_untrusted(ctx); /* includes extraCerts */
-    STACK_OF(X509) *chain = ossl_cmp_build_cert_chain(/* TODO libctx */NULL, NULL,
-                                                      new_cert_truststore /* may be NULL */,
-                                                      untrusted, newcert);
+    STACK_OF(X509) *chain = X509_build_chain(newcert, untrusted,
+                                             new_cert_truststore /* may be NULL */,
+                                             0, /* TODO libctx */NULL, NULL);
     if (sk_X509_num(chain) > 0)
         X509_free(sk_X509_shift(chain)); /* remove leaf (EE) cert */
     if (new_cert_truststore != NULL) {

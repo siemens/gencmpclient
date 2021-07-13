@@ -41,7 +41,7 @@ clean:
 	rm -f OpenSSL_version$(EXE)
 
 
-else ifeq ($(LIB),h)
+else ifeq ($(LIB),header)
 
 
 OPENSSL_NUMBER_SEL=head -n 1 | sed -r 's/.*?OpenSSL //' | awk '{print ($$0+0)}'
@@ -57,12 +57,15 @@ ifeq ($(OPENSSL_VERSION),1)
 endif
 
 
-else # $(LIB)
+else # $(LIB) is name of library file
 
 
 OPENSSL_VERSION=$(shell strings "$(LIB)" | grep -E 'OpenSSL [0-9]+\.[0-9]+\.' | head -n 1 | sed -r 's/.*?OpenSSL //' | awk -v FS="." '{print $$1"."$$2}')
 ifeq ($(OPENSSL_VERSION),)
 	OPENSSL_VERSION=$(shell strings "$(LIB)" | grep -E 'libcrypto\.' | head -n 1 | sed -r 's/.*?libcrypto(.[a-z]+)?\.//')
+endif
+ifeq ($(OPENSSL_VERSION),1.0.0)
+    OPENSSL_VERSION=1.0
 endif
 
 

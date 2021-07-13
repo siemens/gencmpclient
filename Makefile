@@ -55,10 +55,11 @@ else
 endif
 
 #ifeq ($(findstring clean,$(MAKECMDGOALS)),)
+ifneq ($(MAKECMDGOALS),doc)
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),clean_all)
 ifneq ($(MAKECMDGOALS),clean_test)
-OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=h OPENSSL_DIR="$(OPENSSL_DIR)")
+OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
 ifeq ($(OPENSSL_VERSION),)
     $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
     OPENSSL_VERSION=1.1.1
@@ -70,6 +71,7 @@ ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # same as comparing == 1.0
 endif
 ifeq ($(shell expr $(OPENSSL_VERSION) \< 3.0),1)
 	CMP_STANDALONE=1
+endif
 endif
 endif
 endif

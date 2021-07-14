@@ -353,11 +353,13 @@ test_profile: build
 	@/bin/echo -e "\n##### Request a certificate from a new PKI with signature protection (REQUIRED) #####"
 	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE01'
 	@/bin/echo -e "\n##### Update an existing certificate with signature protection (REQUIRED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE02'
+	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE02' -subject ""
 	@/bin/echo -e "\n##### Request a certificate from a trusted PKI with signature protection (OPTIONAL) #####"
+#	@/bin/echo -e "\n##### Request a certificate from a legacy PKI using PKCS#10 request (OPTIONAL) #####"
+#	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE05' -subject ""
 	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE03'
 	@/bin/echo -e "\n##### Revoking a certificate (RECOMMENDED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE09'
+	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE09' -subject ""
 	@/bin/echo -e "\n##### Error reporting by EE (REQUIRED) #####"
 	! ./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE10'
 	@/bin/echo -e "\n##### Error reporting by RA (REQUIRED) #####"

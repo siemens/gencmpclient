@@ -2,9 +2,9 @@
  * @file   genericCMPClient.h
  * @brief  generic CMP client library API
  *
- * @author David von Oheimb, CT RDA CST SEA, David.von.Oheimb@siemens.com
+ * @author David von Oheimb, Siemens T RDA CST SEA, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2018-2020 Siemens AG
+ *  Copyright (c) 2018-2021 Siemens AG
  *  Licensed under the Apache License, Version 2.0
  *  SPDX-License-Identifier: Apache-2.0
  */
@@ -14,7 +14,9 @@
 
 /* for low-level CMP API, in particular, type OSSL_CMP_CTX */
 # include <openssl/cmp.h>
-typedef OSSL_CMP_CTX CMP_CTX; /* for abbreviation and backward compatibility */
+/* for abbreviation and backward compatibility: */
+typedef OSSL_CMP_CTX CMP_CTX;
+typedef OSSL_CMP_severity severity;
 
 typedef int CMP_err;
 # define CMP_OK 0
@@ -61,11 +63,9 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx,
                           OPTIONAL X509_STORE *new_cert_truststore,
                           bool implicit_confirm);
 
-# define URL_HTTP_PREFIX "http://"
-# define URL_HTTPS_PREFIX "https://"
 /* must be called next in case the transfer_fn is NULL, which implies HTTP_transfer */
 CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
-                             int timeout, OPTIONAL SSL_CTX *tls,
+                             int keep_alive, int timeout, OPTIONAL SSL_CTX *tls,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy);
 

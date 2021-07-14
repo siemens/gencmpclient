@@ -2,9 +2,9 @@
  * @file   cmpClient.c
  * @brief  generic CMP client library demo/test client
  *
- * @author David von Oheimb, CT RDA CST SEA, David.von.Oheimb@siemens.com
+ * @author David von Oheimb, Siemens T RDA CST SEA, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2018-2020 Siemens AG
+ *  Copyright (c) 2018-2021 Siemens AG
  *  Licensed under the Apache License, Version 2.0
  *  SPDX-License-Identifier: Apache-2.0
  */
@@ -1064,10 +1064,9 @@ int setup_transfer(CMP_CTX *ctx)
         goto err;
     }
 
-    err = CMPclient_setup_HTTP(ctx, opt_server, opt_path, (int)opt_msg_timeout,
+    err = CMPclient_setup_HTTP(ctx, opt_server, opt_path,
+                               (int)opt_keep_alive, (int)opt_msg_timeout,
                                tls, opt_proxy, opt_no_proxy);
-    if (opt_keep_alive != 1)
-        OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_KEEP_ALIVE, (int)opt_keep_alive);
 #ifndef SECUTILS_NO_TLS
     TLS_free(tls);
 #endif

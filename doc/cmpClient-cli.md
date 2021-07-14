@@ -507,9 +507,10 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
 - **-keep\_alive** _value_
 
-    If the given value is 0 then HTTP connections are not kept open
-    after receiving a response, which is the default behavior for HTTP 1.0.
-    If the value is 1 or 2 then persistent connections are requested.
+    If the given value is 0 then HTTP connections are closed after each response,
+    which is the default behavior for HTTP 1.0.
+    If the value is 1 or 2 then persistent connections within a transaction
+    are requested.
     If the value is 2 then persistent connections are required,
     i.e., in case the server does not grant them an error occurs.
     The default value is 1, which means preferring to keep the connection open.

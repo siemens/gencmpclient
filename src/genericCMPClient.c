@@ -2,9 +2,9 @@
  * @file   genericCMPClient.c
  * @brief  generic CMP client library implementation
  *
- * @author David von Oheimb, CT RDA CST SEA, David.von.Oheimb@siemens.com
+ * @author David von Oheimb, Siemens T RDA CST SEA, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2018-2020 Siemens AG
+ *  Copyright (c) 2018-2021 Siemens AG
  *  Licensed under the Apache License, Version 2.0
  *  SPDX-License-Identifier: Apache-2.0
  */
@@ -336,7 +336,7 @@ static int is_localhost(const char *host)
 
 CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
                              const char *server, const char *path,
-                             int timeout, OPTIONAL SSL_CTX *tls,
+                             int keep_alive, int timeout, OPTIONAL SSL_CTX *tls,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy)
 {
@@ -367,7 +367,8 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (path == NULL)
         path = parsed_path;
     if (!OSSL_CMP_CTX_set1_serverPath(ctx, path) ||
-        (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT, timeout))) {
+        (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT, timeout)) ||
+        (keep_alive >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_KEEP_ALIVE, keep_alive))) {
         goto err;
     }
 

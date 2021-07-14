@@ -288,7 +288,7 @@ test_cli: build
 	@ :
 	( HARNESS_ACTIVE=1 \
 	  HARNESS_VERBOSE=$(V) \
-          HARNESS_FAILLOG=faillog_$$OPENSSL_CMP_SERVER.txt \
+          HARNESS_FAILLOG=../test/faillog_$$OPENSSL_CMP_SERVER.txt \
 	  SRCTOP=cmpossl \
 	  BLDTOP=. \
 	  BIN_D=. \
@@ -336,6 +336,8 @@ test_conformance_cmpossl: build start_LightweightCmpRA
 	$(CMPOSSL)bootstrap -server localhost:6003/delayedlra
 	make kill_LightweightCmpRA
 
+
+# do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
 test_Simple: get_PPKI_crls cmpossl/test/recipes/81-test_cmp_cli_data/Simple
 	make test_cli OPENSSL_CMP_SERVER=Simple
 

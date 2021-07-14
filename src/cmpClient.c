@@ -1408,7 +1408,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
                 if (err != CMP_OK)
                     goto err;
             } else {
-                LOG(FL_WARN, "-subject %s since -ref or -cert is given", msg);
+                LOG(FL_WARN, "-subject %s since sender is taken from -ref or -cert", msg);
             }
         }
         if (opt_issuer != NULL)
@@ -1425,18 +1425,16 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             LOG(FL_WARN, "-policy_oids %s", msg);
 
         /* TODO handle validate use case option conflicts */
-        if (use_case == genm && opt_csr != NULL)
-            LOG_warn("-csr option is ignored for 'genm' command");
         if (use_case != pkcs10) {
             if (opt_implicit_confirm)
                 LOG(FL_WARN, "-implicit_confirm %s, and 'p10cr'", msg);
             if (opt_disable_confirm)
                 LOG(FL_WARN, "-disable_confirm %s, and 'p10cr'", msg);
+            if (opt_certout != NULL)
+                LOG(FL_WARN, "-certout %s, and 'p10cr'", msg);
+            if (opt_chainout != NULL)
+                LOG(FL_WARN, "-chainout %s, and 'p10cr'", msg);
         }
-        if (opt_certout != NULL)
-            LOG(FL_WARN, "-certout %s", msg);
-        if (opt_chainout != NULL)
-            LOG(FL_WARN, "-chainout %s", msg);
     }
     if (use_case != revocation && opt_revreason != CRL_REASON_NONE)
         LOG_warn("-revreason option is ignored for commands other than 'rr'");
@@ -1445,7 +1443,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 
     if (opt_oldcert != NULL) {
         if (use_case == genm) {
-            LOG_warn("-csr option is ignored for 'genm' command");
+            LOG_warn("-oldcert option is ignored for 'genm' command");
         } else {
             oldcert = CERT_load(opt_oldcert, opt_keypass,
                                 use_case == update ? "certificate to be updated" :
@@ -1457,10 +1455,14 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         }
     }
     if (opt_csr != NULL) {
-        if ((csr = CSR_load(opt_csr, "PKCS#10 CSR")) == NULL
-                || !OSSL_CMP_CTX_set1_p10CSR(ctx, csr)) {
-            err = -15;
-            goto err;
+        if (use_case == genm) {
+            LOG_warn("-csr option is ignored for 'genm' command");
+        } else {
+            if ((csr = CSR_load(opt_csr, "PKCS#10 CSR")) == NULL
+                    || !OSSL_CMP_CTX_set1_p10CSR(ctx, csr)) {
+                err = -15;
+                goto err;
+            }
         }
     }
 

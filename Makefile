@@ -187,8 +187,8 @@ endif
 clean_test:
 	rm -f creds/{manufacturer,operational*}.*
 	rm -fr creds/crls
-	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/*/test.*cert*.pem
-	rm -f cmpossl/test/recipes/81-test_cmp_cli_data/Simple
+	rm -f cmpossl/test/recipes/80-test_cmp_http_data/*/test.*cert*.pem
+	rm -f cmpossl/test/recipes/80-test_cmp_http_data/Simple
 	rm -f test/faillog_*.txt
 	rm -fr test/{Upstream,Downstream}
 
@@ -223,9 +223,9 @@ endif
 creds/crls:
 	mkdir $@
 
-cmpossl/test/recipes/81-test_cmp_cli_data/Simple:
-	cd cmpossl/test/recipes/81-test_cmp_cli_data && \
-	ln -s ../../../../test/cmpossl/recipes/81-test_cmp_cli_data/Simple
+cmpossl/test/recipes/80-test_cmp_http_data/Simple:
+	cd cmpossl/test/recipes/80-test_cmp_http_data && \
+	ln -s ../../../../test/cmpossl/recipes/80-test_cmp_http_data/Simple
 
 get_PPKI_crls: | creds/crls
 	@ # ping >/dev/null $(PINGCOUNTOPT) 1 ppki-playground.ct.siemens.com
@@ -284,7 +284,7 @@ demo_Insta:
 	INSTA=1 $(MAKE) demo
 
 test_cli: build
-	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER in cmpossl/test/recipes/81-test_cmp_cli_data/$OPENSSL_CMP_SERVER"
+	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER in cmpossl/test/recipes/80-test_cmp_http_data/$OPENSSL_CMP_SERVER"
 	@ :
 	( HARNESS_ACTIVE=1 \
 	  HARNESS_VERBOSE=$(V) \
@@ -295,7 +295,7 @@ test_cli: build
 	  EXE_EXT= \
 	  LD_LIBRARY_PATH=$(BIN_D) \
           OPENSSL_CMP_CONFIG=test_config.cnf \
-	  $(PERL) test/cmpossl/recipes/81-test_cmp_cli.t )
+	  $(PERL) test/cmpossl/recipes/80-test_cmp_http.t )
 	@ :
 
 .phony: start_LightweightCmpRA kill_LightweightCmpRA
@@ -338,7 +338,7 @@ test_conformance_cmpossl: build start_LightweightCmpRA
 
 
 # do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
-test_Simple: get_PPKI_crls cmpossl/test/recipes/81-test_cmp_cli_data/Simple
+test_Simple: get_PPKI_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple
 	make test_cli OPENSSL_CMP_SERVER=Simple
 
 test_Mock:

@@ -174,7 +174,7 @@ sub test_cmp_cli_aspect {
     unlink "test.cert.pem", "test.cacerts.pem", "test.extracerts.pem";
 }
 
-indir "../cmpossl/test/recipes/81-test_cmp_cli_data" => sub {
+indir "../cmpossl/test/recipes/80-test_cmp_http_data" => sub {
     plan tests => 1 + @server_configurations * @all_aspects
         + (grep(/^Mock$/, @server_configurations)
            && grep(/^certstatus$/, @all_aspects) ? 0 : 1);

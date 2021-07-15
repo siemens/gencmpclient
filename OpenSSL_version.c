@@ -14,7 +14,7 @@
 #include <openssl/crypto.h>
 
 #if OPENSSL_VERSION_NUMBER < 0x10002000L
-#error Better not use OpenSSL versions older than 1.0.2. They are unsupported and insecure.
+#error Should not use OpenSSL versions older than 1.0.2. They are unsupported and insecure.
 #endif
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 #define OpenSSL_version_num SSLeay

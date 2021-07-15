@@ -20,6 +20,7 @@ typedef OSSL_CMP_severity severity;
 
 typedef int CMP_err;
 # define CMP_OK 0
+# define CMP_R_OTHER_LIB_ERR 99
 # define CMP_R_LOAD_CERTS   255
 # define CMP_R_LOAD_CREDS   254
 # define CMP_R_GENERATE_KEY 253

@@ -41,11 +41,13 @@ STACK_OF(X509_EXTENSION) *(*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTE
 
 static int CMPOSSL_error()
 {
-    int err = ERR_GET_REASON(ERR_peek_last_error());
-    if (err == 0) { /* check for wrong old CMPforOpenSSL behavior */
-        err = -100;
-    }
-    return err;
+    unsigned long err = ERR_peek_last_error();
+
+    if (err == 0) /* check for wrong old CMPforOpenSSL behavior */
+        return 100;
+    if (ERR_GET_LIB(err) != ERR_LIB_CMP)
+        return CMP_R_OTHER_LIB_ERR;
+    return ERR_GET_REASON(err);
 }
 
 /*

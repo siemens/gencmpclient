@@ -102,8 +102,6 @@ endif
 .phony: default build build_prereq
 default: build
 
-.phony: test all zip
-
 ifndef USE_ICV
     export SECUTILS_CONFIG_NO_ICV=-DSECUTILS_CONFIG_NO_ICV
 endif
@@ -203,14 +201,14 @@ ifneq ("$(wildcard $(LIBCMP_DIR))","")
 endif
 endif
 
-PROXY ?= http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy no_proxy=ppki-playground.ct.siemens.com # or, e.g., tsy1.coia.siemens.net = 194.145.60.1:9400
-
 ifdef INSTA
+    PROXY ?= http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy no_proxy=ppki-playground.ct.siemens.com # or, e.g., tsy1.coia.siemens.net = 194.145.60.1:9400
     unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
     OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
     override EXTRA_OPTS += -path pkix/ -newkeytype rsa:1024
 else
+    PROXY=
     unreachable="cannot reach ppki-playground.ct.siemens.com"
     CA_SECTION=EJBCA
     OCSP_CHECK=openssl ocsp -url http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp \
@@ -244,37 +242,37 @@ get_Insta_crls: | creds/crls
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl"
 
+CMPCLIENT=$(PROXY) LD_LIBRARY_PATH=. ./cmpClient$(EXE)
 ifndef INSTA
 demo: build get_PPKI_crls
 else
 demo: build get_Insta_crls
 endif
-	@/bin/echo -e "\n##### running cmpClient demo #####"
-	@/bin/echo -e ""
-	$(PROXY) ./cmpClient$(EXE) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
+	@/bin/echo -e "\n##### running cmpClient demo #####\n"
+	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
 ifndef INSTA
-	./cmpClient validate -cert creds/ppki_playground_cmp.p12 -tls_cert "" -own_trusted creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -untrusted creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt
+	$(CMPCLIENT) validate -cert creds/ppki_playground_cmp.p12 -tls_cert "" -own_trusted creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -untrusted creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt
 	@/bin/echo -e "\nValidating own TLS client cert"
-	./cmpClient validate -cert creds/ppki_playground_tls.p12 -tls_trusted creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -untrusted creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt
+	$(CMPCLIENT) validate -cert creds/ppki_playground_tls.p12 -tls_trusted creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -untrusted creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt
 else
-	./cmpClient validate -section Insta -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/InstaDemoCA.crt # -no_check_time
+	$(CMPCLIENT) validate -section Insta -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/InstaDemoCA.crt # -no_check_time
 endif
 	@echo
-	$(PROXY) ./cmpClient$(EXE) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS)
+	$(CMPCLIENT) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS)
 	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
 	openssl x509 -noout -text -in creds/operational.crt
 	@echo :
 	openssl x509 -noout -text -in creds/operational.crt | sed '/^         [0-9a-f].*/d'
 	# @echo
-	# ./cmpClient pkcs10 -section $(CA_SECTION)
+	# $(CMPCLIENT) pkcs10 -section $(CA_SECTION)
 	@echo
-	$(PROXY) ./cmpClient$(EXE) update -section $(CA_SECTION) $(EXTRA_OPTS)
+	$(CMPCLIENT) update -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
 	$(OCSP_CHECK)
 	@echo
 	@sleep 1 # for INSTA helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
-	$(PROXY) ./cmpClient$(EXE) revoke -section $(CA_SECTION) $(EXTRA_OPTS)
+	$(CMPCLIENT) revoke -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
 	$(OCSP_CHECK)
 	@echo -e "\n#### demo finished ####"
@@ -283,8 +281,44 @@ endif
 demo_Insta:
 	INSTA=1 $(MAKE) demo
 
+.phony: start_LightweightCmpRA kill_LightweightCmpRA
+start: #LightweightCmpRA
+	java -jar CmpCaMock.jar . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 2>/dev/null &
+	mkdir test/Upstream test/Downstream 2>/dev/null || true
+	java -jar LightweightCmpRa.jar config/ConformanceTest.xml 2>/dev/null &
+	@ # -Dorg.slf4j.simpleLogger.log.com.siemens=debug
+	sleep 2
+kill: #LightweightCmpRA
+	PID=`ps aux|grep "java -jar CmpCaMock.jar"        | grep -v grep | awk '{ print $$2 }'` && \
+	if [ -n "$$PID" ]; then kill $$PID; fi
+	PID=`ps aux|grep "java -jar LightweightCmpRa.jar" | grep -v grep | awk '{ print $$2 }'` && \
+	if [ -n "$$PID" ]; then kill $$PID; fi
+
+.phony: test_conformance_cmpclient test_conformance_cmpossl test_conformance
+.phony: conformance_cmpclient conformance_cmpossl conformance
+CMPCLNT = LD_LIBRARY_PATH=. ./cmpClient$(EXE) -section CmpRa,
+CMPOSSL = ./openssl$(EXE) cmp -config config/demo.cnf -section CmpRa,
+test_conformance: start conformance_cmpclient conformance_cmpossl kill
+test_conformance_cmpossl: start conformance_cmpossl kill
+test_conformance_cmpclient: start conformance_cmpclient kill
+conformance_cmpclient: build
+	CMPCL="$(CMPCLNT)" make conformance
+conformance_cmpossl: newkey
+	CMPCL="$(CMPOSSL)" make conformance
+newkey:
+	openssl$(EXE) ecparam -genkey -name secp521r1 -out creds/manufacturer.pem
+	openssl$(EXE) ecparam -genkey -name prime256v1 -out creds/operational.pem
+conformance:
+	$(CMPCL)imprint -server localhost:6002/lrawithmacprotection
+	$(CMPCL)bootstrap
+	openssl$(EXE) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
+	$(CMPCL)pkcs10
+	$(CMPCL)update -server localhost:6001 -path /rrkur
+	$(CMPCL)revoke -server localhost:6001 -path /rrkur
+	$(CMPCL)bootstrap -server localhost:6003/delayedlra
+
 test_cli: build
-	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER in cmpossl/test/recipes/80-test_cmp_http_data/$OPENSSL_CMP_SERVER"
+	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER in cmpossl/test/recipes/80-test_cmp_http_data/$$OPENSSL_CMP_SERVER"
 	@ :
 	( HARNESS_ACTIVE=1 \
 	  HARNESS_VERBOSE=$(V) \
@@ -298,75 +332,47 @@ test_cli: build
 	  $(PERL) test/cmpossl/recipes/80-test_cmp_http.t )
 	@ :
 
-.phony: start_LightweightCmpRA kill_LightweightCmpRA
-start_LightweightCmpRA:
-	java -jar CmpCaMock.jar . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 2>/dev/null &
-	mkdir test/Upstream test/Downstream 2>/dev/null || true
-	java -jar LightweightCmpRa.jar config/ConformanceTest.xml 2>/dev/null &
-	@ # -Dorg.slf4j.simpleLogger.log.com.siemens=debug
-	sleep 2
-
-kill_LightweightCmpRA:
-	PID=`ps aux|grep "java -jar CmpCaMock.jar"        | grep -v grep | awk '{ print $$2 }'` && \
-	if [ -n "$$PID" ]; then kill $$PID; fi
-	PID=`ps aux|grep "java -jar LightweightCmpRa.jar" | grep -v grep | awk '{ print $$2 }'` && \
-	if [ -n "$$PID" ]; then kill $$PID; fi
-
-.phony: test_conformance test_conformance_cmpossl
-test_conformance: build start_LightweightCmpRA
-	./cmpClient imprint -section CmpRa -server localhost:6002/lrawithmacprotection
-	./cmpClient bootstrap -section CmpRa
-	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
-	./cmpClient pkcs10 -section CmpRa
-	./cmpClient update -section CmpRa -server localhost:6001 -path /rrkur
-	./cmpClient revoke -section CmpRa -server localhost:6001 -path /rrkur
-	./cmpClient bootstrap -section CmpRa -server localhost:6003/delayedlra
-	make kill_LightweightCmpRA
-
-CMPOSSL=./openssl cmp -config config/demo.cnf -section CmpRa,
-test_conformance_cmpossl: build start_LightweightCmpRA
-	./openssl ecparam -genkey -name secp521r1 -out creds/manufacturer.pem
-	$(CMPOSSL)imprint -server localhost:6002/lrawithmacprotection
-	./openssl ecparam -genkey -name prime256v1 -out creds/operational.pem
-	$(CMPOSSL)bootstrap
-	./openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
-	$(CMPOSSL)pkcs10
-	$(CMPOSSL)update -server localhost:6001 -path /rrkur
-	$(CMPOSSL)revoke -server localhost:6001 -path /rrkur
-	$(CMPOSSL)bootstrap -server localhost:6003/delayedlra
-	make kill_LightweightCmpRA
-
-
-# do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
-test_Simple: get_PPKI_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple
-	make test_cli OPENSSL_CMP_SERVER=Simple
-
 test_Mock:
 	make test_cli OPENSSL_CMP_SERVER=Mock
 
 test_Insta: get_Insta_crls
 	$(PROXY) make test_cli OPENSSL_CMP_SERVER=Insta
 
+# do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
+test_Simple: get_PPKI_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple
+	make test_cli OPENSSL_CMP_SERVER=Simple \
+	|| true # do not exit on test failure
+# Currently the following test cases fail due to SimpleLra configuration:
+#   conection   : tls host explicit host
+##   verification: not matching untrusted cert
+##   credentials : wrong cert/key ignored   or   empty ref but correct cert
+#   commands    : use csr for revocation
+#   enrollment  : subject empty string
+
+# do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
 test_profile: build
 	@/bin/echo -e "\n##### Request a certificate from a PKI with MAC protection (RECOMMENDED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE04'
+	$(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE04'
 	@/bin/echo -e "\n##### Request a certificate from a new PKI with signature protection (REQUIRED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE01'
+	$(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE01'
 	@/bin/echo -e "\n##### Update an existing certificate with signature protection (REQUIRED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE02' -subject ""
+	$(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE02' -subject ""
 	@/bin/echo -e "\n##### Request a certificate from a trusted PKI with signature protection (OPTIONAL) #####"
 #	@/bin/echo -e "\n##### Request a certificate from a legacy PKI using PKCS#10 request (OPTIONAL) #####"
-#	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE05' -subject ""
-	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE03'
+#	$(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE05' -subject ""
+	$(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE03'
 	@/bin/echo -e "\n##### Revoking a certificate (RECOMMENDED) #####"
-	./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE09' -subject ""
+	$(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE09' -subject ""
 	@/bin/echo -e "\n##### Error reporting by EE (REQUIRED) #####"
-	! ./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,EE10'
+	! $(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE10'
 	@/bin/echo -e "\n##### Error reporting by RA (REQUIRED) #####"
-	! ./cmpClient$(EXE) -config config/profile.cnf -section 'Simple,RA11'
+	! $(CMPCLIENT) -config config/profile.cnf -section 'Simple,RA11'
 	echo "\n##### All profile tests succeeded #####"
 
-all:	build doc test
+.phony: all test_all doc zip
+all:	build doc
+
+test_all: demo demo_Insta test_conformance test_profile test_cli test_Mock test_Simple # takes very long: test_Insta
 
 doc: doc/cmpClient-cli.md
 

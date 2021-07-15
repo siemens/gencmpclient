@@ -1,5 +1,5 @@
 #! /usr/bin/env perl
-# Copyright 2007-2019 The OpenSSL Project Authors. All Rights Reserved.
+# Copyright 2007-2021 The OpenSSL Project Authors. All Rights Reserved.
 # Copyright Nokia 2007-2019
 # Copyright Siemens AG 2015-2019
 #
@@ -16,20 +16,28 @@ use warnings;
 use POSIX;
 use File::Spec::Functions qw/catfile/;
 use File::Compare qw/compare_text/;
-use OpenSSL::Test qw/:DEFAULT with data_file data_dir bldtop_dir/;
+use OpenSSL::Test qw/:DEFAULT cmdstr data_file data_dir bldtop_dir with/;
+sub data_dir { return "../cmpossl/test/recipes/80-test_cmp_http_data" }
 use OpenSSL::Test::Utils;
 use Data::Dumper; # for debugging purposes only
 
-setup("test_cmp_cli");
+BEGIN {
+    setup("test_cmp_http");
+}
 
 plan skip_all => "These tests are not supported in a no-cmp build"
     if disabled("cmp");
 plan skip_all => "These tests are not supported in a no-ec build"
     if disabled("ec");
-plan skip_all => "Tests involving server not available on Windows or VMS"
-    if $^O =~ /^(VMS|MSWin32)$/;
+plan skip_all => "These tests are not supported in a no-sock build"
+    if disabled("sock");
 
-sub chop_dblquot { # chop any leading & trailing '"' (needed for Windows)
+plan skip_all => "Tests involving local HTTP server not available on Windows or VMS"
+    if $^O =~ /^(VMS|MSWin32|msys)$/;
+plan skip_all => "Tests involving local HTTP server not available in cross-compile builds"
+    if defined $ENV{EXE_SHELL};
+
+sub chop_dblquot { # chop any leading and trailing '"' (needed for Windows)
     my $str = shift;
     $str =~ s/^\"(.*?)\"$/$1/;
     return $str;
@@ -127,12 +135,12 @@ my @all_aspects = ("connection", "verification", "credentials", "commands", "enr
 # set env variable, e.g., OPENSSL_CMP_ASPECTS="commands enrollment" to select specific aspects
 
 my $faillog;
-if ($ENV{HARNESS_FAILLOG}) {
-    my $file = $ENV{HARNESS_FAILLOG};
+my $file = $ENV{HARNESS_FAILLOG}; # pathname relative to result_dir
+if ($file) {
     open($faillog, ">", $file) or die "Cannot open $file for writing: $!";
 }
 
-sub test_cmp_cli {
+sub test_cmp_http {
     my $server_name = shift;
     my $aspect = shift;
     my $n = shift;
@@ -156,7 +164,7 @@ sub test_cmp_cli {
                   $title); });
 }
 
-sub test_cmp_cli_aspect {
+sub test_cmp_http_aspect {
     my $server_name = shift;
     my $aspect = shift;
     my $tests = shift;
@@ -165,22 +173,28 @@ sub test_cmp_cli_aspect {
         plan tests => $n;
         my $i = 1;
         foreach (@$tests) {
-          SKIP: {
-              test_cmp_cli($server_name, $aspect, $n, $i++, $$_[0], $$_[1], $$_[2]);
-              sleep($sleep);
-            }
+            test_cmp_http($server_name, $aspect, $n, $i++, $$_[0], $$_[1], $$_[2]);
+            sleep($sleep);
         }
     };
     unlink "test.cert.pem", "test.cacerts.pem", "test.extracerts.pem";
 }
 
-indir "../cmpossl/test/recipes/80-test_cmp_http_data" => sub {
-    plan tests => 1 + @server_configurations * @all_aspects
+# The input files for the tests done here dynamically depend on the test server
+# selected (where the Mock server used by default is just one possibility).
+# On the other hand the main test configuration file test.cnf, which references
+# several server-dependent input files by relative file names, is static.
+# Moreover the tests use much greater variety of input files than output files.
+# Therefore we chose the current directory as a subdirectory of $SRCTOP and it
+# was simpler to prepend the output file names by BLDTOP than doing the tests
+# from $BLDTOP/test-runs/test_cmp_http and prepending the input files by SRCTOP.
+
+indir data_dir() => sub {
+    plan tests => @server_configurations * @all_aspects
         + (grep(/^Mock$/, @server_configurations)
-           && grep(/^certstatus$/, @all_aspects) ? 0 : 1);
+           && grep(/^certstatus$/, @all_aspects) ? 0 : 1) + 1;
 
-    test_cmp_cli_aspect("basic", "options", \@cmp_basic_tests);
-
+    test_cmp_http_aspect("basic", "options", \@cmp_basic_tests);
     indir "Mock" => sub {
         use_mock_srv_internally();
     };
@@ -189,25 +203,29 @@ indir "../cmpossl/test/recipes/80-test_cmp_http_data" => sub {
     foreach my $server_name (@server_configurations) {
         $server_name = chop_dblquot($server_name);
         load_config($server_name, $server_name);
-        my $pid;
-        if ($server_name eq "Mock") {
-            indir "Mock" => sub {
-                $pid = start_mock_server("");
-                die "Cannot start CMP mock server" unless $pid;
+        {
+          SKIP: {
+            my $pid;
+            if ($server_name eq "Mock") {
+                indir "Mock" => sub {
+                    $pid = start_mock_server("");
+                    die "Cannot start or find the started CMP mock server" unless $pid;
+                }
             }
-        }
-        foreach my $aspect (@all_aspects) {
-            $aspect = chop_dblquot($aspect);
-            next if $server_name eq "Mock" && $aspect eq "certstatus";
-            if (not($server_name =~ m/Insta/)) { # do not update aspect-specific settings for Insta
-            load_config($server_name, $aspect); # update with any aspect-specific settings
-            }
-            indir $server_name => sub {
-                my $tests = load_tests($server_name, $aspect);
-                test_cmp_cli_aspect($server_name, $aspect, $tests);
+            foreach my $aspect (@all_aspects) {
+                $aspect = chop_dblquot($aspect);
+                next if $server_name eq "Mock" && $aspect eq "certstatus";
+                if (not($server_name =~ m/Insta/)) { # do not update aspect-specific settings for Insta
+                load_config($server_name, $aspect); # update with any aspect-specific settings
+                }
+                indir $server_name => sub {
+                    my $tests = load_tests($server_name, $aspect);
+                    test_cmp_http_aspect($server_name, $aspect, $tests);
+                };
             };
-        };
-        stop_mock_server($pid) if $pid;
+            stop_mock_server($pid) if $pid;
+          }
+        }
     };
 };
 
@@ -256,13 +274,13 @@ sub load_tests {
         s/^\s+// for (@fields); # remove leading whitespace from elements
         s/\s+$// for (@fields); # remove trailing whitespace from elements
         s/^\"(\".*?\")\"$/$1/ for (@fields); # remove escaping from quotation marks from elements
-        my $expected_exit = $fields[$column];
+        my $expected_result = $fields[$column];
         my $description = 2;
         my $title = $fields[$description];
-        next LOOP if (!defined($expected_exit)
-                      || ($expected_exit ne 0 && $expected_exit ne 1));
+        next LOOP if (!defined($expected_result)
+                      || ($expected_result ne 0 && $expected_result ne 1));
         @fields = grep {$_ ne 'BLANK'} @fields[$description + 1 .. @fields - 1];
-        push @result, [$title, \@fields, $expected_exit];
+        push @result, [$title, \@fields, $expected_result];
     }
     close($data);
     return \@result;
@@ -274,15 +292,18 @@ sub mock_server_pid {
 
 sub start_mock_server {
     my $args = $_[0]; # optional further CLI arguments
-    my $dir = bldtop_dir("");
-    $dir = bldtop_dir("cmpossl");
+    my $dir = bldtop_dir("cmpossl");
     my $app = "cmpossl/apps/openssl cmp";
     my $cmd = "LD_LIBRARY_PATH=$dir DYLD_LIBRARY_PATH=$dir " .
         bldtop_dir($app) . " -config server.cnf $args";
+    print "Current directory is ".getcwd()."\n";
+    print "Launching mock server: $cmd\n";
 #    my $pid = Proc::Background->new({'die_upon_destroy' => 1}, $cmd); sleep(1); return $pid;
     my $pid = mock_server_pid();
-    return $pid if $pid; # already running
-    print "starting server: $cmd\n";
+    if ($pid) {
+        print "Server was already running\n";
+        return $pid;
+    }
     return system("$cmd &") == 0 # start in background, check for success
         ? (sleep 1, mock_server_pid()) : 0;
 }
@@ -290,6 +311,6 @@ sub start_mock_server {
 sub stop_mock_server {
     my $pid = $_[0];
 #    $pid->die; return; # for some reason the process still runs
-    print "stopping server with pid: $pid\n";
-    system("kill $pid") if $pid;
+    print "Killing mock server with pid=$pid\n";
+    kill('KILL', $pid);
 }

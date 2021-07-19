@@ -300,14 +300,14 @@ endif
 	@echo -e "\n#### demo finished ####"
 	@echo :
 
-.phony: start_LightweightCmpRA kill_LightweightCmpRA
+.phony: start_LightweightCmpRA stop_LightweightCmpRA
 start: #LightweightCmpRA
-	java -jar CmpCaMock.jar . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 2>/dev/null &
+	java -jar CmpCaMock.jar . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 &
 	mkdir test/Upstream test/Downstream 2>/dev/null || true
-	java -jar LightweightCmpRa.jar config/ConformanceTest.xml 2>/dev/null &
+	java -jar LightweightCmpRa.jar config/ConformanceTest.xml &
 	@ # -Dorg.slf4j.simpleLogger.log.com.*=debug
 	sleep 2
-kill: #LightweightCmpRA
+stop: #LightweightCmpRA
 	PID=`ps aux|grep "java -jar CmpCaMock.jar"        | grep -v grep | awk '{ print $$2 }'` && \
 	if [ -n "$$PID" ]; then kill $$PID; fi
 	PID=`ps aux|grep "java -jar LightweightCmpRa.jar" | grep -v grep | awk '{ print $$2 }'` && \
@@ -317,9 +317,9 @@ kill: #LightweightCmpRA
 .phony: conformance_cmpclient conformance_cmpossl conformance
 CMPCLNT = LD_LIBRARY_PATH=. ./cmpClient$(EXE) -section CmpRa,
 CMPOSSL = ./openssl$(EXE) cmp -config config/demo.cnf -section CmpRa,
-test_conformance: start conformance_cmpclient conformance_cmpossl kill
-test_conformance_cmpossl: start conformance_cmpossl kill
-test_conformance_cmpclient: start conformance_cmpclient kill
+test_conformance: start conformance_cmpclient conformance_cmpossl stop
+test_conformance_cmpossl: start conformance_cmpossl stop
+test_conformance_cmpclient: start conformance_cmpclient stop
 conformance_cmpclient: build
 	CMPCL="$(CMPCLNT)" make conformance $(EJBCA_ENV)
 conformance_cmpossl: newkey

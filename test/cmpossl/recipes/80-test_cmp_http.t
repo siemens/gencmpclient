@@ -292,8 +292,8 @@ sub mock_server_pid {
 
 sub start_mock_server {
     my $args = $_[0]; # optional further CLI arguments
-    my $dir = bldtop_dir("cmpossl");
-    my $app = "cmpossl/apps/openssl cmp";
+    my $dir = bldtop_dir(".");
+    my $app = "./openssl cmp";
     my $cmd = "LD_LIBRARY_PATH=$dir DYLD_LIBRARY_PATH=$dir " .
         bldtop_dir($app) . " -config server.cnf $args";
     print "Current directory is ".getcwd()."\n";

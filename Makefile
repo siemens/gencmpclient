@@ -201,14 +201,15 @@ endif
 endif
 
 ifndef EJBCA
-    PROXY ?=
+# optional SET_PROXY variable can be set to override default proxy settings (for use with INSTA)
+    SET_PROXY ?= http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy # or, e.g., SET_PROXY=http_proxy=tsy1.coia.siemens.net # or SET_PROXY=http_proxy=194.145.60.250:9400
     unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
     OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
     override EXTRA_OPTS += -path pkix/ -newkeytype rsa:1024
 else
-    PROXY=
-    unreachable="cannot reach EJBCA"
+    SET_PROXY ?= no_proxy=$$EJBCA_HOST
+    unreachable="cannot reach EJBCA at $$EJBCA_HOST"
     CA_SECTION=EJBCA
     OCSP_CHECK=openssl ocsp -url $$EJBCA_OCSP_URL \
                -CAfile $$EJBCA_CMP_TRUSTED -issuer $$EJBCA_CMP_ISSUER \
@@ -234,24 +235,40 @@ get_EJBCA_crls: | creds/crls
 
 get_Insta_crls: | creds/crls
 	@ #curl -m 2 -s pki.certificate.fi ...
-	$(PROXY) wget -O /dev/null --tries=1 --max-redirect=0 --timeout=2 https://www.insta.fi/ --no-verbose
+	$(SET_PROXY) wget -O /dev/null --tries=1 --max-redirect=0 --timeout=2 https://www.insta.fi/ --no-verbose
 	@ # | fgrep "301 Moved Permanently" -q
 	@ # || (echo $(unreachable); exit 1)
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
-	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl"
+	@$(SET_PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl"
 
-.phony: demo_Insta demo_EJBCA
+.phony: demo demo_Insta demo_EJBCA
+demo: demo_EJBCA
 demo_Insta:
-	$(MAKE) demo # EJBCA=
+	$(MAKE) run_demo $(EJBCA_ENV) # EJBCA=
 demo_EJBCA:
-	$(MAKE) demo EJBCA=1
+	$(MAKE) run_demo EJBCA=1 $(EJBCA_ENV)
 
-CMPCLIENT=$(PROXY) LD_LIBRARY_PATH=. ./cmpClient$(EXE)
-.phony: demo
+EJBCA_ENV= \
+	EJBCA_HOST="ppki-playground.ct.siemens.com" \
+	EJBCA_OCSP_URL="http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp" \
+	 EJBCA_CDP_URL_PREFIX="http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+" \
+	EJBCA_CDPS="Infrastructure+Root+CA+v1.0 Infrastructure+Issuing+CA+v1.0 ECC+Root+CA+v1.0 RSA+Root+CA+v1.0" \
+	EJBCA_CDP_URL_POSTFIX="%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE" \
+	EJBCA_CMP_ISSUER="creds/PPKI_Playground_ECCIssuingCAv10.crt" \
+	EJBCA_CMP_CLIENT="creds/PPKI_Playground_CMP.p12" \
+	EJBCA_TLS_CLIENT="creds/PPKI_Playground_TLS.p12" \
+	EJBCA_CMP_TRUSTED="creds/PPKI_Playground_ECCRootCAv10.crt" \
+	EJBCA_TRUSTED="creds/PPKI_Playground_InfrastructureRootCAv10.crt" \
+	EJBCA_UNTRUSTED="creds/PPKI_Playground_InfrastructureIssuingCAv10.crt" \
+	EJBCA_CMP_RECIPIENT="/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
+	EJBCA_CMP_SUBJECT="/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
+
+CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH=. ./cmpClient$(EXE)
+.phony: run_demo
 ifdef EJBCA
-demo: build get_EJBCA_crls
+run_demo: build get_EJBCA_crls
 else
-demo: build get_Insta_crls
+run_demo: build get_Insta_crls
 endif
 	@/bin/echo -e "\n##### running cmpClient demo #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
@@ -304,9 +321,9 @@ test_conformance: start conformance_cmpclient conformance_cmpossl kill
 test_conformance_cmpossl: start conformance_cmpossl kill
 test_conformance_cmpclient: start conformance_cmpclient kill
 conformance_cmpclient: build
-	CMPCL="$(CMPCLNT)" make conformance
+	CMPCL="$(CMPCLNT)" make conformance $(EJBCA_ENV)
 conformance_cmpossl: newkey
-	CMPCL="$(CMPOSSL)" make conformance
+	CMPCL="$(CMPOSSL)" make conformance $(EJBCA_ENV)
 newkey:
 	openssl$(EXE) ecparam -genkey -name secp521r1 -out creds/manufacturer.pem
 	openssl$(EXE) ecparam -genkey -name prime256v1 -out creds/operational.pem
@@ -338,9 +355,9 @@ test_Mock:
 	make test_cli OPENSSL_CMP_SERVER=Mock
 
 test_Insta: get_Insta_crls
-	$(PROXY) make test_cli OPENSSL_CMP_SERVER=Insta
+	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=Insta
 test_EJBCA: get_EJBCA_crls
-	$(PROXY) make test_cli OPENSSL_CMP_SERVER=EJBCA
+	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=EJBCA
 
 # do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
 test_Simple: get_EJBCA_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple
@@ -353,30 +370,36 @@ test_Simple: get_EJBCA_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple
 #   commands    : use csr for revocation
 #   enrollment  : subject empty string
 
+.phony: test_profile profile_Simple profile_EJBCA
+test_profile: profile_Simple profile_EJBCA
 # do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
-test_profile: build
+profile_Simple:
+	PROFILE=Simple make profile $(EJBCA_ENV)
+profile_EJBCA:
+	PROFILE=EJBCA make profile $(EJBCA_ENV)
+profile: build
 	@/bin/echo -e "\n##### Request a certificate from a PKI with MAC protection (RECOMMENDED) #####"
-	$(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE04'
+	$(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE04
 	@/bin/echo -e "\n##### Request a certificate from a new PKI with signature protection (REQUIRED) #####"
-	$(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE01'
+	$(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE01
 	@/bin/echo -e "\n##### Update an existing certificate with signature protection (REQUIRED) #####"
-	$(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE02' -subject ""
+	$(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE02 -subject ""
 	@/bin/echo -e "\n##### Request a certificate from a trusted PKI with signature protection (OPTIONAL) #####"
 #	@/bin/echo -e "\n##### Request a certificate from a legacy PKI using PKCS#10 request (OPTIONAL) #####"
-#	$(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE05' -subject ""
-	$(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE03'
+#	$(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE05 -subject ""
+	$(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE03
 	@/bin/echo -e "\n##### Revoking a certificate (RECOMMENDED) #####"
-	$(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE09' -subject ""
+	$(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE09 -subject ""
 	@/bin/echo -e "\n##### Error reporting by EE (REQUIRED) #####"
-	! $(CMPCLIENT) -config config/profile.cnf -section 'Simple,EE10'
+	! $(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE10
 	@/bin/echo -e "\n##### Error reporting by RA (REQUIRED) #####"
-	! $(CMPCLIENT) -config config/profile.cnf -section 'Simple,RA11'
+	! $(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,RA11
 	echo "\n##### All profile tests succeeded #####"
 
 .phony: all test_all doc zip
 all:	build doc
 
-test_all: demo demo_EJBCA test_conformance test_profile test_cli test_Mock test_Simple # takes very long: test_Insta
+test_all: demo_Insta demo_EJBCA test_conformance test_profile test_cli test_Mock test_Simple test_Insta
 
 doc: doc/cmpClient-cli.md
 

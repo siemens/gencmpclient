@@ -4,11 +4,11 @@ msg_timeout = 10
 total_timeout = 100
 ignore_keyusage = 1
 unprotected_errors = 1
-no_proxy = ${ENV::EJBCA_HOST}
 
 [EJBCA]
 server = ${ENV::EJBCA_HOST}:443
 path = ejbca/publicweb/cmp/PlaygroundECC
+no_proxy = ${ENV::EJBCA_HOST}
 secret = pass:SecretCmp
 cert = ${ENV::EJBCA_CMP_CLIENT}
 key = $cert

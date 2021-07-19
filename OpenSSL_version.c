@@ -4,7 +4,7 @@
  *
  * @author David von Oheimb, CT RDA CST SEA, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2018-2019 Siemens AG
+ *  Copyright (c) 2021 Siemens AG
  *  Licensed under the Apache License, Version 2.0
  *  SPDX-License-Identifier: Apache-2.0
  ******************************************************************************/

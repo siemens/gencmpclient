@@ -4,35 +4,34 @@ msg_timeout = 10
 total_timeout = 100
 ignore_keyusage = 1
 unprotected_errors = 1
-#proxy = http://de.coia.siemens.net:9400
-no_proxy = ppki-playground.ct.siemens.com
+no_proxy = ${ENV::EJBCA_HOST}
 
 [EJBCA]
-server = ppki-playground.ct.siemens.com:443
+server = ${ENV::EJBCA_HOST}:443
 path = ejbca/publicweb/cmp/PlaygroundECC
 secret = pass:SecretCmp
-cert = creds/ppki_playground_cmp.p12
+cert = ${ENV::EJBCA_CMP_CLIENT}
 key = $cert
 keypass = pass:12345
-recipient = "/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
-subject = "/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
-#srvcert = creds/trusted/PPKIPlaygroundECCRootCAv10.crt
-trusted = "creds/trusted/PPKIPlaygroundECCRootCAv10.crt, creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt"
-out_trusted = $trusted
-tls_trusted = creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt
+recipient = ${ENV::EJBCA_CMP_RECIPIENT}
+subject = ${ENV::EJBCA_CMP_SUBJECT}
+#srvcert = ${ENV::EJBCA_CMP_TRUSTED}
+trusted = ${ENV::EJBCA_CMP_TRUSTED}, ${ENV::EJBCA_TRUSTED}
+out_trusted = ${ENV::EJBCA_CMP_TRUSTED}
+tls_trusted = ${ENV::EJBCA_TRUSTED}
 #tls_host = $server
-tls_cert = creds/ppki_playground_tls.p12
+tls_cert = ${ENV::EJBCA_TLS_CLIENT}
 tls_key = $tls_cert
 tls_keypass = pass:12345
 tls_used = 1
-crls = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+ECC+Issuing+CA+v1.0%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE, creds/crls/PPKIPlaygroundECCRootCAv10.crl, creds/crls/PPKIPlaygroundInfrastructureRootCAv10.crl"
+crls = ${ENV::EJBCA_CDP_URL_PREFIX}ECC+Issuing+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, creds/crls/EJBCA-ECCRootCAv10.crl, creds/crls/EJBCA-InfrastructureRootCAv10.crl
 use_cdp = 1
-cdps = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+ECC+Root+CA+v1.0%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE, https://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE"
+cdps = ${ENV::EJBCA_CDP_URL_PREFIX}ECC+Root+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}Infrastructure+Root+CA${ENV::EJBCA_CDP_URL_POSTFIX}
 use_aia = 1
-ocsp = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp"
+ocsp = ${ENV::EJBCA_OCSP_URL}
 
 [no-tls]
-server = ppki-playground.ct.siemens.com:80
+server = ${ENV::EJBCA_HOST}:80
 tls_used = 0
 
 [no-certstatus]
@@ -59,7 +58,7 @@ trusted = creds/trusted/CMP_LRA_DOWNSTREAM_Root.pem
 out_trusted = creds/trusted/ENROLL_Root.pem
 #tls_trusted =
 #tls_host = $server
-#tls_cert = creds/ppki_playground_tls.p12
+#tls_cert = ${ENV::EJBCA_TLS_CLIENT}
 #tls_key = $tls_cert
 #tls_keypass = pass:12345
 tls_used = 0
@@ -67,7 +66,7 @@ tls_used = 0
 #use_cdp = 1
 #cdps =
 #use_aia = 1
-#ocsp = "http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp"
+#ocsp = ${ENV::EJBCA_OCSP_URL}
 
 [Insta]
 server = pki.certificate.fi:8700/pkix/
@@ -100,7 +99,7 @@ key =
 newkeytype = EC:secp521r1
 newkey = creds/manufacturer.pem # fallback for cmpossl
 newkeypass = pass:12345
-reqexts = empty # is ignored by PPKI Playground ECC Issuing CA
+reqexts = empty # is ignored by EJBCA
 policies = empty
 certout = creds/manufacturer.crt
 
@@ -116,7 +115,7 @@ san_nodefault = 1
 certout = creds/operational.crt
 
 [update]
-path = /ejbca/publicweb/cmp/PlaygroundCMPSigning
+path = ejbca/publicweb/cmp/PlaygroundCMPSigning
 cmd = kur
 secret =
 cert = $bootstrap::certout
@@ -133,7 +132,7 @@ implicit_confirm = 1
 certout = $bootstrap::certout
 
 [revoke]
-path = /ejbca/publicweb/cmp/PlaygroundCMPSigning
+path = ejbca/publicweb/cmp/PlaygroundCMPSigning
 cmd = rr
 secret =
 cert = $bootstrap::certout
@@ -166,8 +165,8 @@ certout = creds/operational.crt
 
 [reqexts]
 #basicConstraints = CA:FASE
-keyUsage = "critical, digitalSignature" # is ignored by PPKI Playground ECC Issuing CA
-extendedKeyUsage = "critical, serverAuth, 1.3.6.1.5.5.7.3.2" # is ignored by PPKI Playground ECC Issuing CA
+keyUsage = "critical, digitalSignature" # is ignored by EJBCA
+extendedKeyUsage = "critical, serverAuth, 1.3.6.1.5.5.7.3.2" # is ignored by EJBCA
 subjectAltName = @alt_names
 
 [alt_names]
@@ -181,8 +180,8 @@ certificatePolicies = "critical, @pkiPolicy"
 
 [pkiPolicy]
 policyIdentifier = 1.3.6.1.4.1.4329.38.4.2.2
-CPS = http://www.siemens.com/pki-policy/
+CPS = http://www.my-company.com/pki-policy/
 userNotice.1 = @notice
 
 [notice]
-explicitText=Siemens policy text
+explicitText=policy text

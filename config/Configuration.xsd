@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- edited with XMLSpy v2010 rel. 3 sp1 (x64) (http://www.altova.com) by Kretschmer (Siemens AG) -->
-<!-- Copyright (c) 2020 Siemens AG Licensed under the Apache License, Version 
-	2.0 SPDX-License-Identifier: Apache-2.0 -->
+<!-- edited with XMLSpy v2010 rel. 3 sp1 (x64) (http://www.altova.com) -->
+<!-- Copyright (c) 2021 Siemens AG -->
+<!-- Licensed under the Apache License, Version 2.0 SPDX-License-Identifier: Apache-2.0 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
 	<xs:element name="Configuration">
 		<xs:annotation>

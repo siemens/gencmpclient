@@ -1,8 +1,7 @@
 # optional LIB_OUT defines absolute or relative path where libcmp, libgencmpcl, and libsecutils shall be produced
 # optional LPATH defines absolute path where to find pre-installed libraries, e.g., /usr/lib
 # optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
-# optional INSTA variable can be set (e.g., to 1) for demo/tests with the Insta Demo CA
-# optional INSTA variable can be set to override default proxy settings (for use with INSTA)
+# by default, the Insta Demo CA ist used for demonstration purposes.
 
 SHELL=bash # This is needed because of a problem in "build" rule; good for supporting extended file name globbing
 PERL=/usr/bin/perl
@@ -201,20 +200,19 @@ ifneq ("$(wildcard $(LIBCMP_DIR))","")
 endif
 endif
 
-ifdef INSTA
-    PROXY ?= http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy no_proxy=ppki-playground.ct.siemens.com # or, e.g., tsy1.coia.siemens.net = 194.145.60.1:9400
+ifndef EJBCA
+    PROXY ?=
     unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
     OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
     override EXTRA_OPTS += -path pkix/ -newkeytype rsa:1024
 else
     PROXY=
-    unreachable="cannot reach ppki-playground.ct.siemens.com"
+    unreachable="cannot reach EJBCA"
     CA_SECTION=EJBCA
-    OCSP_CHECK=openssl ocsp -url http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp \
-               -CAfile creds/trusted/PPKIPlaygroundECCRootCAv10.crt -issuer creds/PPKIPlaygroundECCIssuingCAv10.crt \
+    OCSP_CHECK=openssl ocsp -url $$EJBCA_OCSP_URL \
+               -CAfile $$EJBCA_CMP_TRUSTED -issuer $$EJBCA_CMP_ISSUER \
                -cert creds/operational.crt
-#              -CAfile creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -issuer creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt \
     override EXTRA_OPTS +=
 endif
 
@@ -225,13 +223,13 @@ cmpossl/test/recipes/80-test_cmp_http_data/Simple:
 	cd cmpossl/test/recipes/80-test_cmp_http_data && \
 	ln -s ../../../../test/cmpossl/recipes/80-test_cmp_http_data/Simple
 
-get_PPKI_crls: | creds/crls
-	@ # ping >/dev/null $(PINGCOUNTOPT) 1 ppki-playground.ct.siemens.com
+get_EJBCA_crls: | creds/crls
+	@ # ping >/dev/null $(PINGCOUNTOPT) 1 $(EJBCA_HOST)
 	@ # || echo $(unreachable); exit 1
-	@for CA in 'Infrastructure+Root+CA+v1.0' 'Infrastructure+Issuing+CA+v1.0' 'ECC+Root+CA+v1.0' 'RSA+Root+CA+v1.0'; \
+	@for CA in $$EJBCA_CDPS; \
 	do \
 		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
-		wget -q "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+$$CA%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O "creds/crls/PPKIPlayground$$ca.crl"; \
+		wget -q "$$EJBCA_CDP_URL_PREFIX$$CA$$EJBCA_CDP_URL_POSTFIX" -O "creds/crls/EJBCA-$$ca.crl"; \
 	done
 
 get_Insta_crls: | creds/crls
@@ -242,19 +240,26 @@ get_Insta_crls: | creds/crls
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	@$(PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl"
 
+.phony: demo_Insta demo_EJBCA
+demo_Insta:
+	$(MAKE) demo # EJBCA=
+demo_EJBCA:
+	$(MAKE) demo EJBCA=1
+
 CMPCLIENT=$(PROXY) LD_LIBRARY_PATH=. ./cmpClient$(EXE)
-ifndef INSTA
-demo: build get_PPKI_crls
+.phony: demo
+ifdef EJBCA
+demo: build get_EJBCA_crls
 else
 demo: build get_Insta_crls
 endif
 	@/bin/echo -e "\n##### running cmpClient demo #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
-ifndef INSTA
-	$(CMPCLIENT) validate -cert creds/ppki_playground_cmp.p12 -tls_cert "" -own_trusted creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -untrusted creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt
+ifdef EJBCA
+	$(CMPCLIENT) validate -cert $$EJBCA_CMP_CLIENT -tls_cert "" -own_trusted $$EJBCA_TRUSTED -untrusted $$EJBCA_UNTRUSTED
 	@/bin/echo -e "\nValidating own TLS client cert"
-	$(CMPCLIENT) validate -cert creds/ppki_playground_tls.p12 -tls_trusted creds/trusted/PPKIPlaygroundInfrastructureRootCAv10.crt -untrusted creds/PPKIPlaygroundInfrastructureIssuingCAv10.crt
+	$(CMPCLIENT) validate -cert $$EJBCA_TLS_CLIENT -tls_trusted $$EJBCA_TRUSTED -untrusted $$EJBCA_UNTRUSTED
 else
 	$(CMPCLIENT) validate -section Insta -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/InstaDemoCA.crt # -no_check_time
 endif
@@ -271,22 +276,19 @@ endif
 	@echo :
 	$(OCSP_CHECK)
 	@echo
-	@sleep 1 # for INSTA helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
+	@sleep 1 # for Insta helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
 	$(CMPCLIENT) revoke -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
 	$(OCSP_CHECK)
 	@echo -e "\n#### demo finished ####"
 	@echo :
 
-demo_Insta:
-	INSTA=1 $(MAKE) demo
-
 .phony: start_LightweightCmpRA kill_LightweightCmpRA
 start: #LightweightCmpRA
 	java -jar CmpCaMock.jar . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 2>/dev/null &
 	mkdir test/Upstream test/Downstream 2>/dev/null || true
 	java -jar LightweightCmpRa.jar config/ConformanceTest.xml 2>/dev/null &
-	@ # -Dorg.slf4j.simpleLogger.log.com.siemens=debug
+	@ # -Dorg.slf4j.simpleLogger.log.com.*=debug
 	sleep 2
 kill: #LightweightCmpRA
 	PID=`ps aux|grep "java -jar CmpCaMock.jar"        | grep -v grep | awk '{ print $$2 }'` && \
@@ -337,9 +339,11 @@ test_Mock:
 
 test_Insta: get_Insta_crls
 	$(PROXY) make test_cli OPENSSL_CMP_SERVER=Insta
+test_EJBCA: get_EJBCA_crls
+	$(PROXY) make test_cli OPENSSL_CMP_SERVER=EJBCA
 
 # do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
-test_Simple: get_PPKI_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple
+test_Simple: get_EJBCA_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple
 	make test_cli OPENSSL_CMP_SERVER=Simple \
 	|| true # do not exit on test failure
 # Currently the following test cases fail due to SimpleLra configuration:
@@ -372,7 +376,7 @@ test_profile: build
 .phony: all test_all doc zip
 all:	build doc
 
-test_all: demo demo_Insta test_conformance test_profile test_cli test_Mock test_Simple # takes very long: test_Insta
+test_all: demo demo_EJBCA test_conformance test_profile test_cli test_Mock test_Simple # takes very long: test_Insta
 
 doc: doc/cmpClient-cli.md
 

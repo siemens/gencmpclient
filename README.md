@@ -6,13 +6,7 @@ with associated CLI-based demo/test client and documentation.
 
 ## Status
 
-* All features agreed with the participating Siemens business units
-have been implemented and documented in FY 2019.
-* Several hundreds of test cases have been compiled and executed successfully in FY 2020.
-* [Open-source clearing has been finished](https://sw360.siemens.com/group/guest/projects/-/project/detail/a85b052efc1c3d42ebd3ef217fd600a4#/tab-ClearingStatus) in Feb 2020.
-* Maintenance (i.e., minor updates and fixes, also to the documentation)
-is ongoing, at least in FY 2021.
-
+* Open-sourced in September 2021x
 
 ## Prerequisites
 
@@ -33,11 +27,9 @@ sudo apt install libssl-dev
 ```
 while `apt install ssh wget git make gcc` usually is not needed as far as these tools are pre-installed.
 
-Using the [CPP-VM](https://ccp.siemens.com/docs/meta-siemens/docs/getting-started/), all prerequisites are available out of the box.
-
 As a sanity check you can execute in a shell:
 ```
-git clone git@code.siemens.com:product-pki/genCMPClient.git
+git clone git@github.com:siemens/genCMPClient.git
 cd genCMPClient
 make -f OpenSSL_version.mk
 ```
@@ -57,23 +49,21 @@ rm -f OpenSSL_version
 
 ## Getting the software
 
-For accessing `git@code.siemens.com` you will need an SSH client with credentials allowing to read from that repository.
-
-For accessing `https://github.com/mpeylo/cmpossl` from the Siemens intranet you may need to set up an HTTP proxy, for instance:
+For accessing the code repositories on GitHub you may need
+an SSH client with suitable credentials or an HTTP proxy setp, for instance:
 ```
-export https_proxy=http://de.coia.siemens.net:9400
+export https_proxy=http://proxy.my-company.com:8080
 ```
-<!---export no_proxy=$no_proxy,code.siemens.com  # not needed since we use SSH for the other (sub-)modules -->
 
 You can clone the git repository and its submodules with
 ```
-git clone git@code.siemens.com:product-pki/genCMPClient.git
+git clone git@github.com:siemens/genCMPClient.git
 cd genCMPClient
 make get_submodules
 ```
 
 This will fetch also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
-the [Security Utilities (SecUtils)](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities) library
+the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils) library
 (which has some recursive submodules, of which only `libs/interfaces` is fetched).
 
 When you later want to update your local copy of all relevant repositories it is sufficient to invoke
@@ -84,7 +74,7 @@ make update
 
 ## Building the software
 
-The generic CMP client (and also its underlying CMP and SecUtils libraries) assumes that OpenSSL (with any version >= 1.1.0) is already installed,
+The generic CMP client (and also its underlying CMP and Security Utilities libraries) assumes that OpenSSL (with any version >= 1.1.0) is already installed,
 including the C header files needed for development (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
 By default the OpenSSL headers will be searched for in `/usr/include` and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
 You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation, e.g.:
@@ -100,14 +90,7 @@ where the CC environment variable may be set as needed; it defaults to 'gcc'.
 Also the ROOTFS environment variable may be set, e.g., for cross compiliation.
 
 The result is in, for instance, `./libgencmpcl.so`.
-This also builds all required dependencies (such as `./libcmp.so` and `./libSecUtils.so`) and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
-
-**Important Note:** by default, the Security Utilities make use of the
-[Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library
-for secure device-level storage of key material for confidentiality and integrity protection of files.
-Since the UTA library is not yet generally available Siemens-wide the SecUtils are so far integrated in a way that the use of the UTA lib is disabled (via `SEC_NO_UTA=1`).
-This means that secure storage of protection credentials for private keys and trusted certificates needs to be solved by other means.
-
+This also builds all required dependencies (such as `./libcmp.so` and `./libsecutils.so`) and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
 
 ## Using the demo client
 
@@ -120,8 +103,6 @@ make demo
 or manually like this:
 
 ```
-export no_proxy=ppki-playground.ct.siemens.com
-wget "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN%3dPPKI+Playground+Infrastructure+Issuing+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE" -O creds/crls/PPKIPlaygroundInfrastructureIssuingCAv10.crl
 ./cmpClient
 ```
 
@@ -139,7 +120,7 @@ The demo client allows also to update and revoke the enrolled certificate, like 
 
 The demo client may also interact with the external Insta Certifier Demo CA via
 ```
-export http_proxy=de.coia.siemens.net:9400  # adapt to your needs
+export http_proxy=  # adapt to your needs
 make demo_Insta
 ```
 
@@ -154,21 +135,15 @@ CLI-based tests using the external Insta Demo CA may be invoked using
 ```
 make test_Insta
 ```
-where the PROXY environment variable may be used to override the default (which is `http_proxy=de.coia.siemens.net:9400`) in order to reach the external Insta CA
-or
-```
-make test_SimpleLra
-```
-assuming a local SimpleLra instance is running and forwards requests to the Siemens Product PKI (PPKI) Playground CA server.
-
+where the PROXY environment variable may be used to override the default in order to reach the Insta CA.
 
 ## Using the library in own applications
 
-For compiling the library itself you will need to add the directories `include`, `include_cmp`, and `securityUtilities/include` to your C headers path and
+For compiling the library itself you will need to add the directories `include`, `include_cmp`, and `libsecutils/include` to your C headers path and
 make sure that any OpenSSL header files included have the same version as the one used to build the standalone CMP library `libcmp`.
 
-For linking you will need to add the directories `.` and `securityUtilities` to your library path and
-refer the linker to the CMP and SecUtils libraries, e.g., `-lcmp -lSecUtils`.
+For linking you will need to add the directories `.` and `libsecutils` to your library path and
+refer the linker to the CMP and Securit Utilities libraries, e.g., `-lcmp -lsecutils`.
 Also make sure that the OpenSSL libraries (typically referred to via `-lssl -lcrypto`) are in your library path and
 (the version) of the libraries found there by the linker match the header files found by the compiler.
 
@@ -181,10 +156,8 @@ All this is already done for the cmp client application.
 
 The Generic CMP client API specification and CLI documentation are available in the [doc](doc/) folder.
 
-A recording of the tutorial held via Circuit on 2018-Dec-13 is available [here](https://myvideo.siemens.com/media/1_f7bjtdba).
-
 The Doxygen documentation of the underlying Security Utilities library is going to be available
-via a link in its [README file](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities/blob/development/README.md).
+via a link in its [README file](https://github.com/siemens/libsecutils/blob/master/README.md).
 
 
 ## Disclaimer
@@ -194,6 +167,3 @@ Our development procedures and processes are not sufficient to assure product-gr
 Although some effort has already been spent on quality assurance,
 it is explicitly not guaranteed that all due measures for productive software have been implemented.
 Therefore we cannot provide any guarantees about this software and do not take any liability for it.
-
-Please also note that the [Siemens Inner Source License](LICENSE) applies to
-the overall repository and the Apache License, Version 2.0 applies to the code.

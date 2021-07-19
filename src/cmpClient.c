@@ -2,9 +2,9 @@
  * @file   cmpClient.c
  * @brief  generic CMP client library demo/test client
  *
- * @author David von Oheimb, Siemens T RDA CST SEA, David.von.Oheimb@siemens.com
+ * @author David von Oheimb, Siemens AG, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2018-2021 Siemens AG
+ *  Copyright (c) 2021 Siemens AG
  *  Licensed under the Apache License, Version 2.0
  *  SPDX-License-Identifier: Apache-2.0
  */

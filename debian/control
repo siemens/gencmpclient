@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: David von Oheimb <David.von.Oheimb@siemens.com>
 Build-Depends: git, autotools-dev, libssl-dev, pkg-config, debhelper (>= 9)
 Standards-Version: 4.0.0
-Homepage: https://code.siemens.com/product-pki/genCMPClient
+Homepage: https://github.com/siemens/genCMPClient
 
 Package: libgencmpcl
 Architecture: any

@@ -60,10 +60,10 @@ if (NOT YOCTO_BUILD)
 
     if(WGET_FOUND)
 
-        set(CRL_URL "https://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&issuer=CN%3dPPKI+Playground+ECC+Root+CA+v1.0%2cOU%3dCorporate+Technology%2cOU%3dFor+internal+test+purposes+only%2cO%3dSiemens%2cC%3dDE")
+        set(CRL_URL "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl")
         message(STATUS ${CRL_URL})
 
-        execute_process(COMMAND ${WGET_EXECUTABLE} "--no-check-certificate" "-OPPKIPlaygroundECCRootCAv10.crl" ${CRL_URL}
+        execute_process(COMMAND ${WGET_EXECUTABLE} "--no-check-certificate" "-O creds/crls/InstaDemoCA.crl" ${CRL_URL}
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/creds/crls
             RESULT_VARIABLE WGET_SUBMOD_RESULT
         )

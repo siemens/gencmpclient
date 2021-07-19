@@ -944,7 +944,7 @@ or the status indicates that the certificate has been revoked.
 
 # COPYRIGHT
 
-Copyright (c) 2020 Siemens AG.
+Copyright (c) 2021 Siemens AG.
 
 Licensed under the Apache License, Version 2.0
 SPDX-License-Identifier: Apache-2.0

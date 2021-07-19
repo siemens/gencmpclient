@@ -3,7 +3,7 @@
 #msg_timeout = 10
 #total_timeout = 100
 #ignore_keyusage = 0
-#unprotectederrors = 0
+#unprotected_errors = 0
 no_proxy = ${ENV::EJBCA_HOST}
 #verbosity = 7
 
@@ -26,13 +26,13 @@ cert = ${ENV::EJBCA_CMP_CLIENT}
 key = $cert
 keypass = pass:12345
 out_trusted = ${ENV::EJBCA_CMP_TRUSTED}
-tls_trusted = ${ENV::EJBCA_TRUSTED}
-#tls_host = $server
-tls_cert = ${ENV::EJBCA_TLS_CLIENT}
-tls_key = $tls_cert
-tls_keypass = pass:12345
+#tls_trusted = ${ENV::EJBCA_TRUSTED}
+##tls_host = $server
+#tls_cert = ${ENV::EJBCA_TLS_CLIENT}
+#tls_key = $tls_cert
+#tls_keypass = pass:12345
 #tls_used = 1
-unprotectederrors = 1
+unprotected_errors = 1
 
 
 [EE04] # 5.1.4 Request a certificate from a PKI with MAC protection (RECOMMENDED)
@@ -77,8 +77,8 @@ certout = creds/operational2.crt
 
 [EE02] # 5.1.3 Update an existing certificate with signature protection (MANDATORY)
 cmd = kur
-server = localhost:9083
-path = cmp/PlaygroundECC
+server = localhost:9083 # overrides EJBCA
+path = cmp/PlaygroundECC # overrides EJBCA
 #secret =
 cert = $EE01::certout
 key = $EE01::newkey
@@ -93,8 +93,8 @@ certout = $EE01::certout
 # not supported by Simple RA:
 [EE05] # 5.1.5 Request a certificate from a legacy PKI using PKCS#10 request (OPTIONAL)
 cmd = p10cr
-#server = localhost:9080
-#path = cmp/PlaygroundECC
+#server = localhost:9080 # overrides EJBCA
+#path = cmp/PlaygroundECC # overrides EJBCA
 cert = $EE01::certout
 key = $EE01::newkey
 keypass = $EE01::newkeypass
@@ -110,6 +110,8 @@ certout = $EE01::certout
 [EE??] # 5.1.7 Delayed enrollment (RECOMMENDED)
 
 [EE09] # 5.2 Revoking a certificate (RECOMMENDED)
+server = localhost:9083 # overrides EJBCA
+path = cmp/PlaygroundECC # overrides EJBCA
 cmd = rr
 #secret =
 cert = $EE03::certout

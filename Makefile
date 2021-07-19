@@ -261,7 +261,9 @@ EJBCA_ENV= \
 	EJBCA_TRUSTED="creds/PPKI_Playground_InfrastructureRootCAv10.crt" \
 	EJBCA_UNTRUSTED="creds/PPKI_Playground_InfrastructureIssuingCAv10.crt" \
 	EJBCA_CMP_RECIPIENT="/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
+	EJBCA_CMP_SERVER="/CN=Product PKI Playground CMP Signer/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
 	EJBCA_CMP_SUBJECT="/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
+	EJBCA_CMP_SUBJECT_ECC="/CN=ECC-EE/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
 
 CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH=. ./cmpClient$(EXE)
 .phony: run_demo
@@ -352,7 +354,9 @@ test_cli: build
 	@ :
 
 test_Mock:
+ifeq ($(shell expr $(OPENSSL_VERSION) \>= 1.1),1) # OpenSSL <1.1 does not support -no_check_time
 	make test_cli OPENSSL_CMP_SERVER=Mock
+endif
 
 test_Insta: get_Insta_crls
 	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=Insta
@@ -361,7 +365,7 @@ test_EJBCA: get_EJBCA_crls
 
 # do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
 test_Simple: get_EJBCA_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple
-	make test_cli OPENSSL_CMP_SERVER=Simple \
+	make test_cli OPENSSL_CMP_SERVER=Simple $(EJBCA_ENV) \
 	|| true # do not exit on test failure
 # Currently the following test cases fail due to SimpleLra configuration:
 #   conection   : tls host explicit host

@@ -53,8 +53,10 @@ else
     LIB_OUT_REVERSE_DIR=$(LIB_OUT)
 endif
 
+ifeq ($(MAKECMDGOALS),doc)
+    OPENSSL_VERSION=1.1.1 # dummy
+else
 #ifeq ($(findstring clean,$(MAKECMDGOALS)),)
-ifneq ($(MAKECMDGOALS),doc)
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),clean_all)
 ifneq ($(MAKECMDGOALS),clean_test)

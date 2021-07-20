@@ -355,13 +355,15 @@ test_cli: build
 
 test_Mock:
 ifeq ($(shell expr $(OPENSSL_VERSION) \>= 1.1),1) # OpenSSL <1.1 does not support -no_check_time nor OCSP
+	$(info skipping Mock since OpenSSL <1.1 does not support -no_check_time nor OCSP)
 	make test_cli OPENSSL_CMP_SERVER=Mock $(EJBCA_ENV)
 endif
 
+.phony: test_Insta test_EJBCA-AWS
 test_Insta: get_Insta_crls
-	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=Insta
-test_EJBCA: get_EJBCA_crls
-	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=EJBCA
+	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=Insta $(EJBCA_ENV)
+test_EJBCA-AWS: get_EJBCA_crls
+	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=EJBCA $(EJBCA_ENV)
 
 # do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
 test_Simple: get_EJBCA_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple

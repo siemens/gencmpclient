@@ -1,7 +1,8 @@
-# optional LIB_OUT defines absolute or relative path where libcmp, libgencmpcl, and libsecutils shall be produced
-# optional LPATH defines absolute path where to find pre-installed libraries, e.g., /usr/lib
-# optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation
-# by default, the Insta Demo CA ist used for demonstration purposes.
+# Optional LPATH defines absolute or relative path where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
+# Optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
+# Optional LIB_OUT defines absolute or relative path where libgencmpcl, libcmp, and libsecutils shall be placed, defaulting to LPATH if set, else '.'
+# Relative paths such as '.' are interpreted relative to the directory of the genCMPClient.
+# By default, the Insta Demo CA ist used for demonstration purposes.
 
 SHELL=bash # This is needed because of a problem in "build" rule; good for supporting extended file name globbing
 PERL=/usr/bin/perl
@@ -28,11 +29,12 @@ ifeq ($(LPATH),)
 #   else
         OPENSSL_DIR ?= $(ROOTFS)/usr
 #   endif
-    SECUTILS=libsecutils
-    SECUTILS_LIB=$(SECUTILS)/libsecutils$(DLL)
+    SECUTILS_DIR=libsecutils
+    SECUTILS_LIB=$(SECUTILS_DIR)/libsecutils$(DLL)
     LIB_OUT ?= .
 else
     OPENSSL_DIR ?= $(LPATH)/..
+    # SECUTILS and SECUTILS_LIB not needed since pre-installed
     LIB_OUT ?= $(LPATH)
 endif
 LIBCMP_LIB=$(LIB_OUT)/libcmp$(DLL)
@@ -114,7 +116,7 @@ ifdef NO_TLS
 endif
 
 .phony: submodules
-ifeq ($(SECUTILS),)
+ifeq ($(SECUTILS_DIR),)
 submodules:
 else
 .phony: get_submodules build_submodules clean_submodules
@@ -122,22 +124,22 @@ submodules: build_submodules
 
 build_submodules: get_submodules build_cmpossl build_secutils # $(LIBCMP_INC) $(LIBCMP_LIB) $(SECUTILS_LIB)
 
-get_submodules: $(SECUTILS)/include $(LIBCMP_DIR)/include
+get_submodules: $(SECUTILS_DIR)/include $(LIBCMP_DIR)/include
 
 update: update_secutils update_cmpossl
 	git pull
 
-$(SECUTILS)/include: # not: update_secutils
-	git submodule update $(GIT_PROGRESS) --init $(SECUTILS)
+$(SECUTILS_DIR)/include: # not: update_secutils
+	git submodule update $(GIT_PROGRESS) --init $(SECUTILS_DIR)
 
 $(SECUTILS_LIB):
 	build_secutils
 
 .phony: update_secutils build_secutils
 update_secutils:
-	git submodule update $(GIT_PROGRESS) --init $(SECUTILS)
+	git submodule update $(GIT_PROGRESS) --init $(SECUTILS_DIR)
 build_secutils: # not: update_secutils
-	$(MAKE) -C $(SECUTILS) build CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIB_OUT_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS_DIR) build CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIB_OUT_REVERSE_DIR)"
 
 $(LIBCMP_DIR)/include: # not: update_cmpossl
 ifdef CMP_STANDALONE
@@ -161,26 +163,28 @@ ifdef CMP_STANDALONE
 endif
 
 clean_submodules:
-	rm -rf $(SECUTILS) cmpossl $(LIBCMP_LIB) $(SECUTILS_LIB)
+	rm -rf $(SECUTILS_DIR) cmpossl $(LIBCMP_LIB) $(SECUTILS_LIB)
 
-endif # eq ($(SECUTILS),)
+endif # eq ($(SECUTILS_DIR),)
 
 build_prereq: submodules
 ifdef CMP_STANDALONE
+    ifneq ($(wildcard $(LIBCMP_LIB)),)
 	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="$(LIBCMP_LIB)"` && \
 	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
 	    (echo "WARNING: OpenSSL version '$$LIBCMP_OPENSSL_VERSION' used for building libcmp does not match '$(OPENSSL_VERSION)' to be used for building client"; true); \
 	fi
+    endif
 endif
 
 build: build_prereq
-	$(MAKE) -f Makefile_src $(OUTBIN) build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIB_DIR="$(LIB_OUT)" CFLAGS="$(CFLAGS)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+	$(MAKE) -f Makefile_src $(OUTBIN) build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIB_OUT="$(LIB_OUT)" CFLAGS="$(CFLAGS)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
 .phony: clean_test clean clean_uta clean_all
 
 ifeq ($(LPATH),)
 clean_uta:
-	$(MAKE) -C $(SECUTILS) clean_uta
+	$(MAKE) -C $(SECUTILS_DIR) clean_uta
 endif
 
 clean_test:
@@ -196,7 +200,7 @@ clean: clean_test
 
 clean_all: clean
 ifeq ($(LPATH),)
-	$(MAKE) -C $(SECUTILS) OUT_DIR="$(LIB_OUT_REVERSE_DIR)" clean || true
+	$(MAKE) -C $(SECUTILS_DIR) OUT_DIR="$(LIB_OUT_REVERSE_DIR)" clean || true
 ifneq ("$(wildcard $(LIBCMP_DIR))","")
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_DIR)/include_cmp" LIBCMP_DIR="$(LIB_OUT_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
@@ -433,7 +437,7 @@ zip:
 ################################################################
 
 ROOTDIR=$(PWD)
-TAR=$(SECUTILS)/tar
+TAR=$(SECUTILS_DIR)/tar
 
 unpackCMPforOpenSSL_trigger=openssl/Configure
 ${unpackCMPforOpenSSL_trigger}: $(TAR)/openssl-*tar.gz $(TAR)/openssl-*_cmp-*

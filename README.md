@@ -77,6 +77,12 @@ This will fetch also the underlying [CMPforOpenSSL extension to OpenSSL](https:/
 the [Security Utilities (libsecutils)](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities) library
 (which has some recursive submodules, of which only `libs/interfaces` is fetched).
 
+For using the project as a git submodule,
+do for instance the following in the directory where you want to integrate it:
+```
+git submodule add git@code.siemens.com:product-pki/genCMPClient.git
+```
+
 When you later want to update your local copy of all relevant repositories it is sufficient to invoke
 ```
 make update
@@ -92,6 +98,13 @@ You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL i
 ```
 export OPENSSL_DIR=/usr/local
 ```
+You may also specify using the environment variable `LIB_OUT`
+where the produced libraries (`libgencmpcl`, `libcmp`, and `libsecutils´)
+shall be placed. By default, the base directory (`.`) of `genCMPClient` is used.
+For all path variables, relative paths such as `.` are interpreted
+relative to the directory of the genCMPClient module.
+For further details on optional environment variables,
+see the [`Makefile`](Makefile) and [`Makefile_src`](Makefile_src).
 
 In the newly created directory `genCMPClient` you can build the software simply with
 ```
@@ -181,7 +194,7 @@ All this is already done for the cmp client application.
 
 ## Documentation
 
-The Generic CMP client API specification and CLI documentation are available in the [doc](doc/) folder.
+The Generic CMP client API specification and CLI documentation are available in the [`doc`](doc/) folder.
 
 A recording of the tutorial held via Circuit on 2018-Dec-13 is available [here](https://myvideo.siemens.com/media/1_f7bjtdba).
 

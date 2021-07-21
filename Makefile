@@ -55,29 +55,22 @@ else
     LIB_OUT_REVERSE_DIR=$(LIB_OUT)
 endif
 
-ifeq ($(MAKECMDGOALS),doc)
-    OPENSSL_VERSION=1.1.1 # dummy
+ifeq ($(filter doc clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
+    OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
+    ifeq ($(OPENSSL_VERSION),)
+        $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
+        OPENSSL_VERSION=1.1.1
+    endif
+    $(info detected OpenSSL version $(OPENSSL_VERSION).x)
+    ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # same as comparing == 1.0
+        $(info enabling compilation quirks for OpenSSL 1.0.2)
+        OSSL_VERSION_QUIRKS+=-Wno-discarded-qualifiers -Wno-unused-parameter
+    endif
+    ifeq ($(shell expr $(OPENSSL_VERSION) \< 3.0),1)
+        CMP_STANDALONE=1
+    endif
 else
-#ifeq ($(findstring clean,$(MAKECMDGOALS)),)
-ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(MAKECMDGOALS),clean_all)
-ifneq ($(MAKECMDGOALS),clean_test)
-OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
-ifeq ($(OPENSSL_VERSION),)
-    $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
-    OPENSSL_VERSION=1.1.1
-endif
-$(info detected OpenSSL version $(OPENSSL_VERSION).x)
-ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # same as comparing == 1.0
-    $(info enabling compilation quirks for OpenSSL 1.0.2)
-    OSSL_VERSION_QUIRKS+=-Wno-discarded-qualifiers -Wno-unused-parameter
-endif
-ifeq ($(shell expr $(OPENSSL_VERSION) \< 3.0),1)
-	CMP_STANDALONE=1
-endif
-endif
-endif
-endif
+    OPENSSL_VERSION=1.1.1 # dummy
 endif
 
 ifeq ($(LPATH),)
@@ -180,7 +173,7 @@ endif
 build: build_prereq
 	$(MAKE) -f Makefile_src $(OUTBIN) build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIB_OUT="$(LIB_OUT)" CFLAGS="$(CFLAGS)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
-.phony: clean_test clean clean_uta clean_all
+.phony: clean_test clean clean_uta clean_this
 
 ifeq ($(LPATH),)
 clean_uta:
@@ -195,10 +188,10 @@ clean_test:
 	rm -f test/faillog_*.txt
 	rm -fr test/{Upstream,Downstream}
 
-clean: clean_test
+clean_this: clean_test
 	$(MAKE) -f Makefile_src clean
 
-clean_all: clean
+clean: clean_this
 ifeq ($(LPATH),)
 	$(MAKE) -C $(SECUTILS_DIR) OUT_DIR="$(LIB_OUT_REVERSE_DIR)" clean || true
 ifneq ("$(wildcard $(LIBCMP_DIR))","")
@@ -485,7 +478,7 @@ OUTBIN=$(LIB_OUT)/libgencmpcl$(DLL)
 
 #SRCS=Makefile include/genericCMPClient.h src/genericCMPClient.c src/cmpClient.c
 #SRCS_TAR=libgencmpcl_0.1.0.orig.tar.gz
-.phony: deb deb_clean
+.phony: deb clean_deb
 deb:
 	@ # #tar czf $(SRCS_TAR) $(SRCS)
 	@ # #rm -f  $(OUTBIN) debian/tmp/usr/lib/libgencmpcl.so*
@@ -493,7 +486,7 @@ deb:
 	rm -r debian/tmp
 	@ # rm $(SRCS_TAR)
 
-deb_clean:
+clean_deb:
 	rm ../libgencmpcl*.deb
 
 .phony: debian debiandir

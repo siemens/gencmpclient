@@ -127,14 +127,14 @@ update: update_secutils update_cmpossl
 	git pull
 
 $(SECUTILS_DIR)/include: # not: update_secutils
-	git submodule update $(GIT_PROGRESS) --init $(SECUTILS_DIR)
+	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)
 
 $(SECUTILS_LIB):
 	build_secutils
 
 .phony: update_secutils build_secutils
 update_secutils:
-	git submodule update $(GIT_PROGRESS) --init $(SECUTILS_DIR)
+	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)
 build_secutils: # not: update_secutils
 	$(MAKE) -C $(SECUTILS_DIR) build CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIB_OUT_REVERSE_DIR)"
 

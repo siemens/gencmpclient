@@ -60,14 +60,11 @@ override CFLAGS += $(DEBUG_FLAGS) -std=gnu90 -fstack-protector -fno-omit-frame-p
 override CFLAGS += -Werror -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter #-DPEDANTIC -pedantic -Wno-declaration-after-statement # -Werror
 ifeq ($(LPATH),)
    override CFLAGS += -I$(SECUTILS_DIR)/include
-   ifdef LIBCMP_INC
-       override CFLAGS += -I$(PREFIX)$(LIBCMP_INC)
-   endif
+endif
+ifdef LIBCMP_INC
+    override CFLAGS += -I$(PREFIX)$(LIBCMP_INC) -DCMP_STANDALONE
 endif
 override CFLAGS += -I$(PREFIX)include
-ifdef LIBCMP_INC
-   override CFLAGS += -include $(PREFIX)$(LIBCMP_INC)/openssl/openssl_backport.h
-endif
 override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
 override CFLAGS += $(OSSL_VERSION_QUIRKS)
 

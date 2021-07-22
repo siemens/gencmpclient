@@ -179,8 +179,14 @@ assuming a local SimpleLra instance is running and forwards requests to the Siem
 
 ## Using the library in own applications
 
-For compiling the library itself you will need to add the directories `include`, `include_cmp`, and `libsecutils/include` to your C headers path and
-make sure that any OpenSSL header files included have the same version as the one used to build the standalone CMP library `libcmp`.
+For compiling applications using the library,
+you will need to add the directories [`include`](include/) and
+[`libsecutils/include`](libsecutils/include/) to your C headers path.
+If and only if using the standalone version, you need to
+add also the directory [`cmpossl/include_cmp`](cmpossl/include_cmp/),
+define the C macro `CMP_STANDALONE`, and
+make sure that any OpenSSL header files included have the same version
+as the one used to build the standalone CMP library `libcmp`.
 
 For linking you will need to add the directories `.` and `libsecutils` to your library path and
 refer the linker to the CMP and Securit Utilities libraries, e.g., `-lcmp -lsecutils`.

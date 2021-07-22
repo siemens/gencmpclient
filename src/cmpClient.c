@@ -9,14 +9,14 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
+#include <genericCMPClient.h>
+
 #include <openssl/ssl.h>
 
 #include <secutils/config/config.h>
 /* #include <secutils/util/log.h> */
 #include <secutils/certstatus/crls.h> /* just for use in test_load_crl_cb() */
 #include <secutils/certstatus/crl_mgmt.h>
-
-#include <genericCMPClient.h>
 
 #ifdef LOCAL_DEFS
 # include "genericCMPClient_use.h"

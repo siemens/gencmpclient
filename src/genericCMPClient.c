@@ -9,11 +9,11 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
+#include "genericCMPClient.h"
+
 #include <openssl/cmperr.h>
 #include <openssl/ssl.h>
 #include <string.h>
-
-#include "genericCMPClient.h"
 
 #if OPENSSL_VERSION_NUMBER < 0x10100006L
 typedef

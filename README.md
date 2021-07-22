@@ -188,8 +188,14 @@ define the C macro `CMP_STANDALONE`, and
 make sure that any OpenSSL header files included have the same version
 as the one used to build the standalone CMP library `libcmp`.
 
-For linking you will need to add the directories `.` and `libsecutils` to your library path and
-refer the linker to the CMP and Securit Utilities libraries, e.g., `-lcmp -lsecutils`.
+For linking you will need to
+refer the linker to the CMP and Securit Utilities libraries,
+e.g., `-lcmp -lsecutils -lgencmpcl`,
+add the directories (using the linker option `-L`) where they can be found.
+See also the environment variable `LIB_OUT`.
+For helping the Linux loader to find the libraries at runtime,
+it is recommended to set also linker options like `-Wl,-rpath=.`.
+
 Also make sure that the OpenSSL libraries (typically referred to via `-lssl -lcrypto`) are in your library path and
 (the version) of the libraries found there by the linker match the header files found by the compiler.
 

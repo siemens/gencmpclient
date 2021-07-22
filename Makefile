@@ -24,6 +24,9 @@ endif
 ROOTFS ?= $(DESTDIR)$(prefix)
 
 ifeq ($(LPATH),)
+    ifeq ($(LIB_OUT),)
+        override LIB_OUT = .
+    endif
 #   ifneq ($(wildcard $(ROOTFS)/usr/local/include/openssl),)
 #       OPENSSL_DIR ?= $(ROOTFS)/usr/local
 #   else
@@ -31,11 +34,12 @@ ifeq ($(LPATH),)
 #   endif
     SECUTILS_DIR=libsecutils
     SECUTILS_LIB=$(SECUTILS_DIR)/libsecutils$(DLL)
-    LIB_OUT ?= .
 else
+    ifeq ($(LIB_OUT),)
+        override LIB_OUT = $(LPATH)
+    endif
     OPENSSL_DIR ?= $(LPATH)/..
     # SECUTILS and SECUTILS_LIB not needed since pre-installed
-    LIB_OUT ?= $(LPATH)
 endif
 LIBCMP_LIB=$(LIB_OUT)/libcmp$(DLL)
 

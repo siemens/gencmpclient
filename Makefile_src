@@ -22,15 +22,19 @@ else
 endif
 
 ifeq ($(LPATH),)
+    ifeq ($(LIB_OUT),)
+        override LIB_OUT = .
+    endif
+    OPENSSL_DIR ?= $(ROOTFS)/usr
     SECUTILS_LIB=$(PREFIX)$(LIB_OUT)/libsecutils$(DLL)
     SECUTILS_DIR_=libsecutils
     SECUTILS_DIR=$(PREFIX)$(SECUTILS_DIR_)
-    OPENSSL_DIR ?= $(ROOTFS)/usr
-    LIB_OUT ?= .
 else
-    SECUTILS_LIB=$(PREFIX)$(LPATH)/libsecutils$(DLL)
+    ifeq ($(LIB_OUT),)
+        override LIB_OUT = $(LPATH)
+    endif
     OPENSSL_DIR ?= $(LPATH)/..
-    LIB_OUT ?= $(LPATH)
+    SECUTILS_LIB=$(PREFIX)$(LPATH)/libsecutils$(DLL)
 endif
 
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)

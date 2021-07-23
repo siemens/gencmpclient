@@ -4,6 +4,22 @@ This is the code repository for the cross-division generic CMP client library
 with associated CLI-based demo/test client and documentation.
 
 
+## Purpose
+
+The purpose of this software is to provide a high-level API
+on top of the detailed CMP (and CRMF) API of
+[CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
+CMPforOpenSSL and [OpenSSL](https://www.openssl.org/) since version 3.0.
+The high-level API is on the one hand convenient to use for application
+programmers and on the other hand complete and flexible enough
+to cover the major certificate management use cases.
+The library supports developing CMP clients that follow
+the [Lightweight Certificate Management Protocol (CMP) Profile](https://datatracker.ietf.org/doc/html/draft-ietf-lamps-lightweight-cmp-profile),
+which is geared towards simple and interoperable industrial use.
+The software also provides a commmand-line interface (CLI)
+that is handy for interactive exploration of using CMP in a PKI.
+
+
 ## Status
 
 * All features agreed with the participating Siemens business units
@@ -13,6 +29,17 @@ have been implemented and documented in FY 2019.
 * Maintenance (i.e., minor updates and fixes, also to the documentation)
 is ongoing, at least in FY 2021.
 * Open-sourcing planned by September 2021.
+
+
+
+## Documentation
+
+The Generic CMP client API specification and CLI documentation are available in the [`doc`](doc/) folder.
+
+The Doxygen documentation of the underlying Security Utilities library is going to be available
+via a link in its [README file](https://github.com/siemens/libsecutils/blob/master/README.md).
+
+A recording of the tutorial held via Circuit on 2018-Dec-13 is available [here](https://myvideo.siemens.com/media/1_f7bjtdba).
 
 
 ## Prerequisites
@@ -123,6 +150,7 @@ Since the UTA library is not generally available and used, the SecUtils are so f
 This means that unless the UTA library is enabled (via `SECUTILS_USE_UTA=1`) and used,
 secure storage of protection credentials for private keys and trusted certificates needs to be solved by other means.
 
+
 ## Using the demo client
 
 The CMP demo client is implemented in [`src/cmpClient.c`](src/cmpClient.c).
@@ -177,6 +205,7 @@ make test_SimpleLra
 ```
 assuming a local SimpleLra instance is running and forwards requests to the Siemens Product PKI (PPKI) Playground CA server.
 
+
 ## Using the library in own applications
 
 For compiling applications using the library,
@@ -202,16 +231,6 @@ Also make sure that the OpenSSL libraries (typically referred to via `-lssl -lcr
 For building your application you will need to `#include` the header file [`genericCMPClient.h`](include/genericCMPClient.h) and link using `-lgencmpcl`.
 
 All this is already done for the cmp client application.
-
-
-## Documentation
-
-The Generic CMP client API specification and CLI documentation are available in the [`doc`](doc/) folder.
-
-A recording of the tutorial held via Circuit on 2018-Dec-13 is available [here](https://myvideo.siemens.com/media/1_f7bjtdba).
-
-The Doxygen documentation of the underlying Security Utilities library is going to be available
-via a link in its [README file](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities/blob/development/README.md).
 
 
 ## Disclaimer

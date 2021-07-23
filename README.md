@@ -8,8 +8,8 @@ with associated CLI-based demo/test client and documentation.
 
 The purpose of this software is to provide a high-level API
 on top of the detailed CMP (and CRMF) API of
-[CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
-CMPforOpenSSL and [OpenSSL](https://www.openssl.org/) since version 3.0.
+[CMPforOpenSSL](https://github.com/mpeylo/cmpossl) and
+and [OpenSSL](https://www.openssl.org/) since version 3.0.
 The high-level API is on the one hand convenient to use for application
 programmers and on the other hand complete and flexible enough
 to cover the major certificate management use cases.
@@ -29,7 +29,6 @@ have been implemented and documented in FY 2019.
 * Maintenance (i.e., minor updates and fixes, also to the documentation)
 is ongoing, at least in FY 2021.
 * Open-sourcing planned by September 2021.
-
 
 
 ## Documentation
@@ -153,32 +152,17 @@ secure storage of protection credentials for private keys and trusted certificat
 
 ## Using the demo client
 
-The CMP demo client is implemented in [`src/cmpClient.c`](src/cmpClient.c).
+The CMP demo client is implemented in [`src/cmpClient.c`](src/cmpClient.c)
+as part of the CLI.
 It can be executed with
 ```
 make demo_EJBCA
-```
-
-or manually like this:
-
-```
-export no_proxy=ppki-playground.ct.siemens.com
-mkdir creds/crls
-wget "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN=PPKI+Playground+Infrastructure+Root+CA+v1.0%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE" -O creds/crls/EJBCA-InfrastructureRootCAv10.crl
-wget "http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=PEM&issuer=CN=PPKI+Playground+Infrastructure+ECC+Root+CA+v1.0%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE" -O creds/crls/EJBCA-ECCRootCAv10.crl
-./cmpClient bootstrap
 ```
 
 Among others, successful execution should produce a new certificate at `creds/operational.crt`.
 You can view this certificate for instance by executing
 ```
 openssl x509 -noout -text -in creds/operational.crt
-```
-
-The demo client allows also to update and revoke the enrolled certificate, like this:
-```
-./cmpClient update
-./cmpClient revoke
 ```
 
 The demo client may also interact with the external Insta Certifier Demo CA via
@@ -190,7 +174,8 @@ make demo_Insta
 
 ## Using the CLI-based client
 
-The Comand Line Interface (CLI) of the CMP client is implemented in [`src/cmpClient.c`](src/cmpClient.c).
+The Comand Line Interface (CLI) of the CMP client is implemented in
+[`src/cmpClient.c`](src/cmpClient.c).
 It supports most of the features of the genCMPClient library.
 The CLI use with the available options are documented in [`cmpClient-cli.md`](doc/cmpClient-cli.md).
 
@@ -210,9 +195,9 @@ assuming a local SimpleLra instance is running and forwards requests to the Siem
 
 For compiling applications using the library,
 you will need to add the directories [`include`](include/) and
-[`libsecutils/include`](libsecutils/include/) to your C headers path.
+[`libsecutils/include`](https://github.com/siemens/libsecutils/blob/master/include/) to your C headers path.
 If and only if using the standalone version, you need to
-add also the directory [`cmpossl/include_cmp`](cmpossl/include_cmp/),
+add also the directory [`cmpossl/include_cmp`](https://github.com/mpeylo/cmpossl/tree/cmp-lib4/include/),
 define the C macro `CMP_STANDALONE`, and
 make sure that any OpenSSL header files included have the same version
 as the one used to build the standalone CMP library `libcmp`.

@@ -687,7 +687,7 @@ CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                           OPTIONAL const X509_EXTENSIONS *exts)
 {
     X509_NAME *subj = NULL;
-#if 0
+#if 0 /* as far as needed, checks are anyway done by the low-level library */
     if (new_key == NULL) {
         LOG(FL_ERR, "No new_key parameter given");
         return ERR_R_PASSED_NULL_PARAMETER;
@@ -714,7 +714,7 @@ CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                             OPTIONAL const X509_EXTENSIONS *exts)
 {
     X509_NAME *subj = NULL;
-#if 0
+#if 0 /* as far as needed, checks are anyway done by the low-level library */
     if (new_key == NULL) {
         LOG(FL_ERR, "No new_key parameter given");
         return ERR_R_PASSED_NULL_PARAMETER;
@@ -755,12 +755,6 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                                  OPTIONAL const X509 *old_cert, const EVP_PKEY *new_key)
 {
-#if 0
-    if (new_key == NULL) {
-        LOG(FL_ERR, "No new_key parameter given");
-        return ERR_R_PASSED_NULL_PARAMETER;
-    }
-#endif
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, old_cert,
                                           NULL /* subject */, NULL /* exts */,
                                           NULL /* csr */);
@@ -782,7 +776,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
         LOG(FL_ERR, "No ctx parameter given");
         return ERR_R_PASSED_NULL_PARAMETER;
     }
-#if 0
+#if 0 /* as far as needed, checks are anyway done by the low-level library */
     if (cert == NULL) {
         LOG(FL_ERR, "No cert parameter given");
         return ERR_R_PASSED_NULL_PARAMETER;
@@ -792,7 +786,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
         if (!OSSL_CMP_CTX_set1_oldCert(ctx, (X509 *)cert))
             goto err;
     } else {
-#if 0 /* TODO */
+#if 0 /* TODO, also check why cert == NULL is accepted by Mock server */
         if (!OSSL_CMP_CTX_set1_p10CSR(ctx, csr))
             goto err;
 #endif

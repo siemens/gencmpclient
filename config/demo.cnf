@@ -126,7 +126,7 @@ newkey = $bootstrap::newkey # fallback for cmpossl
 newkeypass = $bootstrap::newkeypass
 reqexts = ""
 policies = ""
-#oldcert = $bootstrap::certout
+oldcert = $bootstrap::certout # == cert
 subject = ""
 implicit_confirm = 1
 certout = $bootstrap::certout
@@ -138,7 +138,7 @@ secret =
 cert = $bootstrap::certout
 key = $bootstrap::newkey
 keypass = $bootstrap::newkeypass
-oldcert = $update::certout
+oldcert = $update::certout # == cert
 revreason = 5 #CRL_REASON_CESSATION_OF_OPERATION
 subject =
 

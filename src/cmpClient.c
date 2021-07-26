@@ -170,14 +170,15 @@ opt_t cmp_opts[] = {
     OPT_HEADER("Certificate enrollment"),
     { "newkeytype", OPT_TXT, {.txt = NULL}, { &opt_newkeytype },
       "Generate key for ir/cr/kur of given type, e.g., EC:secp256r1 or RSA-2048"},
+    /* TODO: OPT_MORE("On 'central:', server-side key generation is requested, implies -popo -1"), */
     { "newkey", OPT_TXT, {.txt = NULL}, { &opt_newkey },
-      "Key to use for ir/cr/kur (defaulting to -key or -csr) if -newkeytype not given."},
+      "Key to use for ir/cr/kur (defaulting to pubkey of -csr) if -newkeytype not given."},
     OPT_MORE("File to save new generated key if -newkeytype is given"),
     { "newkeypass", OPT_TXT, {.txt = NULL}, { &opt_newkeypass },
       "Pass phrase source for -newkey"},
     { "subject", OPT_TXT, {.txt = NULL}, { &opt_subject },
       "Distinguished Name (DN) of subject to use in the requested cert template"},
-    OPT_MORE("For kur, default is subject of -csr arg, else of reference cert (see -oldcert)"),
+    OPT_MORE("For kur, default is subject of -csr arg, else subject of -oldcert"),
     { "issuer", OPT_TXT, {.txt = NULL}, { &opt_issuer },
       "DN of the issuer to place in the requested certificate template"},
     { "days", OPT_NUM, {.num = 0}, { (const char **) &opt_days },
@@ -284,7 +285,7 @@ opt_t cmp_opts[] = {
     { "own_trusted", OPT_TXT, {.txt = NULL}, { &opt_own_trusted },
       "Optional certs to validate chain building for own CMP signer cert"},
     { "key", OPT_TXT, {.txt = NULL}, { &opt_key },
-      "Key for the client certificate"},
+      "Key for the client certificate to use for protecting requests"},
     { "keypass", OPT_TXT, {.txt = NULL}, { &opt_keypass },
       "Pass phrase source for the client -key, -cert, and -oldcert"},
     { "digest", OPT_TXT, {.txt = NULL}, { &opt_digest },
@@ -917,6 +918,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
     CREDENTIALS *cmp_creds = NULL;
     CMP_err err = -6;
 
+    use_case = use_case; /* prevent warning on unused parameter */
     const char *new_cert_trusted = opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
     if (new_cert_trusted != NULL) {
         LOG(FL_TRACE, "Using '%s' as trust store for validating new cert", new_cert_trusted);
@@ -942,8 +944,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
 
     if (opt_secret != NULL || opt_key != NULL) {
         const char *const creds_desc = "credentials for CMP level";
-        if ((opt_secret != NULL && opt_ref != NULL)
-            || (use_case != update && use_case != revocation && opt_secret != NULL)) {
+        if (opt_secret != NULL) {
             /* use PBM except for kur and rr if secret is present */
             char *secret = FILES_get_pass(opt_secret, "PBM-based message protection");
             cmp_creds = CREDENTIALS_new(NULL, NULL, NULL, secret, opt_ref);
@@ -1221,22 +1222,12 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
     if (use_case == update) {
         if (opt_oldcert == NULL && opt_csr == NULL) {
-            if (opt_cert != NULL) {
-                LOG(FL_INFO, "-oldcert is defaulting to -cert for 'kur'");
-                opt_oldcert = opt_cert;
-            } else {
-                LOG_err("Missing -oldcert for certificate to be updated and no fallback -csr nor -cert given");
-                goto err;
-            }
+            LOG_err("Missing -oldcert for certificate to be updated and no -csr given");
+            goto err;
         }
         if (opt_subject != NULL)
             LOG(FL_INFO, "Given -subject '%s' overrides the subject of '%s' for 'kur'",
                 opt_subject, opt_oldcert != NULL ? opt_oldcert : opt_csr);
-        if (opt_key == NULL && opt_csr == NULL && opt_keypass == NULL) {
-            LOG(FL_INFO, "-newkey and -newkeypass are defaulting to -key and -keypass");
-            opt_key = opt_newkey;
-            opt_keypass = opt_newkeypass;
-        }
     } else {
         if (opt_secret != NULL && opt_key != NULL)
             LOG_warn("-key value will not be used for signing messages since -secret option selects PBM-based protection");
@@ -1338,7 +1329,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     if (use_case == pkcs10 || use_case == revocation) {
         const char *msg = "option is ignored for 'p10cr' and 'rr' commands";
 
-        if (opt_newkeytype != 0)
+        if (opt_newkeytype != NULL)
             LOG(FL_WARN, "-newkeytype %s", msg);
         if (opt_newkey != NULL)
             LOG(FL_WARN, "-newkey %s", msg);
@@ -1354,23 +1345,23 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
                 goto err;
             }
             const char *key_spec = strcmp(opt_newkeytype, "ECC") == 0 ? "EC:secp256r1" : opt_newkeytype;
-            new_pkey = KEY_new(key_spec);
-            if (new_pkey == NULL) {
-                LOG(FL_ERR, "Unable to generate new private key according to specification '%s'",
-                    key_spec);
-                goto err;
-            }
-        } else {
-            if (opt_newkey == NULL && opt_key == NULL) {
-                LOG_err("Missing -newkeytype or -newkey or -key option");
-                goto err;
-            }
-            if (opt_newkey != NULL) {
-                new_pkey = KEY_load(opt_newkey, opt_newkeypass, NULL /* engine */,
-                                    "private key to use for certificate request");
-                if (new_pkey == NULL) {
+            /* TODO: if (strncmp(opt_newkeytype, "central:", 8) == 0) {
+               } else */ {
+                if ((new_pkey = KEY_new(key_spec)) == NULL) {
+                    LOG(FL_ERR, "Unable to generate new private key according to specification '%s'",
+                        key_spec);
                     goto err;
                 }
+            }
+        } else {
+            if (opt_newkey == NULL) {
+                LOG_err("Missing -newkeytype or -newkey option");
+                goto err;
+            }
+            new_pkey = KEY_load(opt_newkey, opt_newkeypass, NULL /* engine */,
+                                "private key to use for certificate request");
+            if (new_pkey == NULL) {
+                goto err;
             }
         }
     }

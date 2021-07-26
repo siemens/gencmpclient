@@ -59,6 +59,7 @@ else
     LIB_OUT_REVERSE_DIR=$(LIB_OUT)
 endif
 
+MAKECMDGOALS ?= default
 ifneq ($(filter-out doc clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
     OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
     ifeq ($(OPENSSL_VERSION),)
@@ -71,6 +72,7 @@ ifneq ($(filter-out doc clean clean_this clean_test clean_submodules clean_opens
         OSSL_VERSION_QUIRKS+=-Wno-discarded-qualifiers -Wno-unused-parameter
     endif
     ifeq ($(shell expr $(OPENSSL_VERSION) \< 3.0),1)
+        $(info compiling with standalone CMP library)
         CMP_STANDALONE=1
     endif
 else

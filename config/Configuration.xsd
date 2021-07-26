@@ -6,7 +6,7 @@
 	<xs:element name="Configuration">
 		<xs:annotation>
 			<xs:documentation>A RA/LRA configuration
-				In a production environment the integrity of this Configuration must			be protected by external measures.
+				In a production environment the integrity of this Configuration must be protected by external measures.
 			</xs:documentation>
 		</xs:annotation>
 		<xs:complexType>

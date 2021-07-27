@@ -1362,9 +1362,12 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 return -40;
             }
             const char *key_spec = strcmp(opt_newkeytype, "ECC") == 0 ? "EC:secp256r1" : opt_newkeytype;
-            /* TODO: if (strncmp(opt_newkeytype, "central:", 8) == 0) {
-               } else */ {
-                if ((*new_pkey = KEY_new(key_spec)) == NULL) {
+            if (strncmp(opt_newkeytype, "central:", 8) == 0) {
+                /* trigger central key generation */
+                new_pkey = NULL;
+                OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPO_METHOD, (int)OSSL_CRMF_POPO_NONE);
+            } else {
+                if ((new_pkey = KEY_new(key_spec)) == NULL) {
                     LOG(FL_ERR, "Unable to generate new private key according to specification '%s'",
                         key_spec);
                     return CMP_R_GENERATE_KEY;

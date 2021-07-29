@@ -16,7 +16,7 @@ use warnings;
 use POSIX;
 use File::Spec::Functions qw/catfile/;
 use File::Compare qw/compare_text/;
-use OpenSSL::Test qw/:DEFAULT cmdstr data_file data_dir bldtop_dir with/;
+use OpenSSL::Test qw/:DEFAULT cmdstr data_file bldtop_dir with/;
 sub data_dir { return "../cmpossl/test/recipes/80-test_cmp_http_data" }
 use OpenSSL::Test::Utils;
 use Data::Dumper; # for debugging purposes only
@@ -87,6 +87,13 @@ my $sleep = 0;  # The time to sleep between two requests
 # The local $server_name variables below are among others taken as the name of a
 # sub-directory with server-specific certs etc. and CA-specific config section.
 
+sub subst_env {
+    my $val = shift;
+    return '""""' if $val eq "";
+    return $ENV{$1} if $val =~ /^\$\{ENV::(\w+)}$/;
+    return $val;
+}
+
 sub load_config {
     my $server_name = shift;
     my $section = shift;
@@ -99,19 +106,19 @@ sub load_config {
         } elsif (m/\[\s*.*?\s*\]/) {
             $active = 0;
         } elsif ($active) {
-            $ca_dn       = $1 eq "" ? '""""' : $1 if m/^\s*ca_dn\s*=\s*(.*)?\s*$/;
-            $server_dn   = $1 eq "" ? '""""' : $1 if m/^\s*server_dn\s*=\s*(.*)?\s*$/;
-            $server_host = $1 eq "" ? '""""' : $1 if m/^\s*server_host\s*=\s*(\S*)?\s*(\#.*)?$/;
-            $server_port = $1 eq "" ? '""""' : $1 if m/^\s*server_port\s*=\s*(.*)?\s*$/;
-            $server_tls  = $1 eq "" ? '""""' : $1 if m/^\s*server_tls\s*=\s*(.*)?\s*$/;
-            $server_path = $1 eq "" ? '""""' : $1 if m/^\s*server_path\s*=\s*(.*)?\s*$/;
-            $server_cert = $1 eq "" ? '""""' : $1 if m/^\s*server_cert\s*=\s*(.*)?\s*$/;
-            $kur_port    = $1 eq "" ? '""""' : $1 if m/^\s*kur_port\s*=\s*(.*)?\s*$/;
-            $pbm_port    = $1 eq "" ? '""""' : $1 if m/^\s*pbm_port\s*=\s*(.*)?\s*$/;
-            $pbm_ref     = $1 eq "" ? '""""' : $1 if m/^\s*pbm_ref\s*=\s*(.*)?\s*$/;
-            $pbm_secret  = $1 eq "" ? '""""' : $1 if m/^\s*pbm_secret\s*=\s*(.*)?\s*$/;
-            $column      = $1 eq "" ? '""""' : $1 if m/^\s*column\s*=\s*(.*)?\s*$/;
-            $sleep       = $1 eq "" ? '""""' : $1 if m/^\s*sleep\s*=\s*(.*)?\s*$/;
+            $ca_dn       = subst_env($1) if m/^\s*ca_dn\s*=\s*(.*)?\s*$/;
+            $server_dn   = subst_env($1) if m/^\s*server_dn\s*=\s*(.*)?\s*$/;
+            $server_host = subst_env($1) if m/^\s*server_host\s*=\s*(\S*)?\s*(\#.*)?$/;
+            $server_port = subst_env($1) if m/^\s*server_port\s*=\s*(.*)?\s*$/;
+            $server_tls  = subst_env($1) if m/^\s*server_tls\s*=\s*(.*)?\s*$/;
+            $server_path = subst_env($1) if m/^\s*server_path\s*=\s*(.*)?\s*$/;
+            $server_cert = subst_env($1) if m/^\s*server_cert\s*=\s*(.*)?\s*$/;
+            $kur_port    = subst_env($1) if m/^\s*kur_port\s*=\s*(.*)?\s*$/;
+            $pbm_port    = subst_env($1) if m/^\s*pbm_port\s*=\s*(.*)?\s*$/;
+            $pbm_ref     = subst_env($1) if m/^\s*pbm_ref\s*=\s*(.*)?\s*$/;
+            $pbm_secret  = subst_env($1) if m/^\s*pbm_secret\s*=\s*(.*)?\s*$/;
+            $column      = subst_env($1) if m/^\s*column\s*=\s*(.*)?\s*$/;
+            $sleep       = subst_env($1) if m/^\s*sleep\s*=\s*(.*)?\s*$/;
         }
     }
     close CH;

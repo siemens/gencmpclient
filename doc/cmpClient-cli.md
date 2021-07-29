@@ -160,14 +160,14 @@ Certificate verification options, for both CMP and TLS:
 The **cmpClient** command is a demo and test client implementation
 of the Certificate Management Protocol (CMP) as defined in RFC 4210.
 It can be used to request certificates from a CA via a CMP server,
-to update or revoke them, and to perform possibly other CMP requests.
+to update or revoke them, and to perform other CMP requests.
 
 # USAGE
 
 - **imprint|bootstrap|pkcs10|update|revoke**
 
     Select demo `use_case` of the cmpClient application. The corresponding CMP request
-    will be executed with default settings. These settings could be adapt via the
+    will be executed with default settings. These settings could be adapted via the
     file 'config/demo.cnf'.
 
 - List of options available for the `cmpClient` application:
@@ -250,7 +250,7 @@ to update or revoke them, and to perform possibly other CMP requests.
 
     In case of IR, CR, or KUR,
     generate a new key of the given type for the requested certifiate.
-    The _spec_ may be of the form "EC:_curve_" or "RSA-_length_".
+    The _spec_ may be of the form `EC:`_curve_ or `RSA-`_length_".
     The key will be saved in the file specified with the **-newkey** option.
 
 - **-newkey** _filename_
@@ -259,7 +259,7 @@ to update or revoke them, and to perform possibly other CMP requests.
     Otherwise the file to read the private or public key from
     for the certificate requested in IR, CR or KUR.
     Default is the public key in the PKCS#10 CSR given with the **-csr** option,
-    if any, or else the current client key, if given.
+    if any.
 
 - **-newkeypass** _arg_
 
@@ -277,13 +277,13 @@ to update or revoke them, and to perform possibly other CMP requests.
 
     X509 Distinguished Name (DN) of subject to use in the requested certificate
     template.
-    For KUR, it defaults to the public key
+    For KUR, it defaults to the subject
     in the PKCS#10 CSR given with the **-csr** option, if provided,
-    or of the reference certificate (see **-oldcert**) if provided.
+    otherwise the subject of the **-oldcert**, if provided.
     This default is used for IR and CR only if no SANs are set.
     If the NULL-DN (`/`) is given then no subject is placed in the template.
 
-    If provided and neither **-cert** nor **-oldcert** is given,
+    If provided and no **-oldcert** is given,
     the subject DN is used as fallback sender of outgoing CMP messages.
 
     Special characters may be escaped by `\` (backslash); whitespace is retained.
@@ -357,7 +357,7 @@ to update or revoke them, and to perform possibly other CMP requests.
     `-1` = NONE, `0` = RAVERIFIED, `1` = SIGNATURE (default), `2` = KEYENC.
 
     Note that a signature-based POPO can only produced if a private key
-    is provided via the **-newkey** or **-key** options.
+    is provided via the **-newkey** option.
 
 - **-csr** _filename_
 
@@ -428,8 +428,7 @@ to update or revoke them, and to perform possibly other CMP requests.
 
     The certificate to be updated (i.e., renewed or re-keyed) in Key Update Request
     (KUR) messages or to be revoked in Revocation Request (RR) messages.
-    For KUR the certificate to be updated defaults to **-cert**,
-    and the resulting certificate is called _reference certificate_.
+    For KUR the certificate to be updated is called _reference certificate_.
     For RR the certificate to be revoked can also be specified using **-csr**.
 
     The reference certificate, if any, is also used for
@@ -670,8 +669,6 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
     and the signature is done with the corresponding key.
     In Initialization Request (IR) messages this can be used for authenticating
     using an external entity certificate as defined in appendix E.7 of RFC 4210.
-    For Key Update Request (KUR) messages this is also used as
-    the certificate to be updated if the **-oldcert** option is not given.
     If the file includes further certs, they are appended to the untrusted certs
     because they typically constitute the chain of the client certificate, which
     is included in the extraCerts field in signature-protected request messages.
@@ -691,7 +688,7 @@ Default is from the environment variable `no_proxy` if set, else `NO_PROXY`.
 
 - **-key** _filename_
 
-    The corresponding private key file for the client's current certificate given in
+    The corresponding private key file for the client's certificate given in
     the **-cert** option.
     This will be used for signature-based message protection
     unless the **-secret** option indicating PBM or **-unprotected\_requests** is given.

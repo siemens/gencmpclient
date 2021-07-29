@@ -166,7 +166,7 @@ Certificate verification options, for both CMP and TLS:
 The B<cmpClient> command is a demo and test client implementation
 of the Certificate Management Protocol (CMP) as defined in RFC 4210.
 It can be used to request certificates from a CA via a CMP server,
-to update or revoke them, and to perform possibly other CMP requests.
+to update or revoke them, and to perform other CMP requests.
 
 =head1 USAGE
 
@@ -175,7 +175,7 @@ to update or revoke them, and to perform possibly other CMP requests.
 =item B<imprint|bootstrap|pkcs10|update|revoke>
 
 Select demo C<use_case> of the cmpClient application. The corresponding CMP request
-will be executed with default settings. These settings could be adapt via the
+will be executed with default settings. These settings could be adapted via the
 file 'config/demo.cnf'.
 
 =item List of options available for the C<cmpClient> application:

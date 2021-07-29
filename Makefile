@@ -207,7 +207,8 @@ endif
 
 ifndef EJBCA
 # optional SET_PROXY variable can be set to override default proxy settings (for use with INSTA)
-    SET_PROXY ?= http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy # or, e.g., SET_PROXY=http_proxy=tsy1.coia.siemens.net # or SET_PROXY=http_proxy=194.145.60.250:9400
+    SET_PROXY ?= no_proxy=localhost,127.0.0.1,ppki-playground.ct.siemens.com \
+   http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy # or, e.g., tsy1.coia.siemens.net.9400 or 194.145.60.250:9400
     unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
     OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
@@ -379,11 +380,8 @@ else
 	make test_cli OPENSSL_CMP_SERVER=Simple $(EJBCA_ENV) || true # do not exit on test failure
 endif
 # Currently the following test cases fail due to SimpleLra configuration:
-#   conection   : tls host explicit host
-##   verification: not matching untrusted cert
-##   credentials : wrong cert/key ignored   or   empty ref but correct cert
-#   commands    : use csr for revocation
-#   enrollment  : subject empty string
+#   conection 54: tls host explicit host
+#   commands  35: use csr for revocation
 
 .phony: test_profile profile_Simple profile_EJBCA
 test_profile: profile_Simple profile_EJBCA
@@ -394,21 +392,21 @@ profile_EJBCA:
 	PROFILE=EJBCA make profile $(EJBCA_ENV)
 profile: build
 	@/bin/echo -e "\n##### Request a certificate from a PKI with MAC protection (RECOMMENDED) #####"
-	$(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE04
+	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE04
 	@/bin/echo -e "\n##### Request a certificate from a new PKI with signature protection (REQUIRED) #####"
-	$(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE01
+	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE01
 	@/bin/echo -e "\n##### Update an existing certificate with signature protection (REQUIRED) #####"
-	$(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE02 -subject ""
+	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE02 -subject ""
 	@/bin/echo -e "\n##### Request a certificate from a trusted PKI with signature protection (OPTIONAL) #####"
 #	@/bin/echo -e "\n##### Request a certificate from a legacy PKI using PKCS#10 request (OPTIONAL) #####"
-#	$(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE05 -subject ""
-	$(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE03
+#	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE05 -subject ""
+	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE03
 	@/bin/echo -e "\n##### Revoking a certificate (RECOMMENDED) #####"
-	$(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE09 -subject ""
+	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE09 -subject ""
 	@/bin/echo -e "\n##### Error reporting by EE (REQUIRED) #####"
-	! $(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,EE10
+	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE10
 	@/bin/echo -e "\n##### Error reporting by RA (REQUIRED) #####"
-	! $(CMPCLIENT) -config config/profile.cnf -section $$PROFILE,RA11
+	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),RA11
 	echo "\n##### All profile tests succeeded #####"
 
 .phony: all test_all doc zip

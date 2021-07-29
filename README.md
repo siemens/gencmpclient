@@ -220,11 +220,5 @@ All this is already done for the cmp client application.
 
 ## Disclaimer
 
-This software including associated documentation is provided ‘as is’ in a preliminary state.
-Our development procedures and processes are not sufficient to assure product-grade software quality.
-Although some effort has already been spent on quality assurance,
-it is explicitly not guaranteed that all due measures for productive software have been implemented.
-Therefore we cannot provide any guarantees about this software and do not take any liability for it.
-
-Please also note that the [Siemens Inner Source License](LICENSE) applies to
-the overall repository and the Apache License, Version 2.0 applies to the code.
+This software including associated documentation is provided ‘as is’.
+Effort has been spent on quality assurance, but there are no guarantees.

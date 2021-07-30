@@ -34,8 +34,10 @@ out_trusted = ${ENV::EJBCA_CMP_TRUSTED}
 #tls_used = 1
 unprotected_errors = 1
 
+# Lightweight CMP Profile document to which the below section numbers refer to:
+# https://datatracker.ietf.org/doc/html/draft-ietf-lamps-lightweight-cmp-profile
 
-[EE04] # 5.1.4 Request a certificate from a PKI with PBMAC protection (RECOMMENDED)
+[EE04] # 4.1.4. Requesting a certificate from a PKI with MAC-based protection (RECOMMENDED)
 cmd = ir
 secret = pass:SecretCmp
 ref = any
@@ -48,7 +50,7 @@ newkeypass = pass:12345
 newkey = creds/manufacturer.pem
 certout = creds/manufacturer.crt
 
-[EE01] #_5.1.1 Request a certificate from a new PKI with signature protection (MANDATORY)
+[EE01] # 4.1.1. Requesting a certificate from a new PKI with signature-based protection (MANDATORY)
 cmd = ir
 #secret =
 cert = $EE04::certout
@@ -60,7 +62,7 @@ newkeypass = pass:12345
 newkey = creds/operational.pem
 certout = creds/operational.crt
 
-[EE03] # 5.1.2 Request a certificate from a trusted PKI with signature protection (OPTIONAL)
+[EE02] # 4.1.2 Requesting an additional certificate with signature-based protection (OPTIONAL)
 cmd = cr
 #secret =
 cert = $EE01::certout
@@ -76,7 +78,7 @@ newkeypass = pass:123456
 newkey = creds/operational2.pem
 certout = creds/operational2.crt
 
-[EE02] # 5.1.3 Update an existing certificate with signature protection (MANDATORY)
+[EE03] # 4.1.3 Updating an existing certificate with signature-based protection (MANDATORY)
 cmd = kur
 server = localhost:9083 # overrides EJBCA
 path = cmp/PlaygroundECC # overrides EJBCA
@@ -93,7 +95,7 @@ newkeypass = $EE01::newkeypass
 certout = $EE01::certout
 
 # not supported by Simple RA:
-[EE05] # 5.1.5 Request a certificate from a legacy PKI using PKCS#10 request (OPTIONAL)
+[EE05] # 4.1.5 Requesting a certificate from a legacy PKI using a PKCS#10 request (OPTIONAL)
 cmd = p10cr
 #server = localhost:9080 # overrides EJBCA
 #path = cmp/PlaygroundECC # overrides EJBCA
@@ -107,25 +109,25 @@ newkey =
 newkeypass =
 certout = $EE01::certout
 
-[EE??] # 5.1.6 Generate the key pair centrally ...  (OPTIONAL)
+[EE06] # 4.1.6 Adding central key generation to a certificate request (OPTIONAL)
 
-[EE??] # 5.1.7 Delayed enrollment (RECOMMENDED)
+[EE07] # 4.1.7 Handling delayed enrollment (RECOMMENDED)
 
-[EE09] # 5.2 Revoking a certificate (RECOMMENDED)
+[EE08] # 4.2 Revoking a certificate (RECOMMENDED)
 server = localhost:9083 # overrides EJBCA
 path = cmp/PlaygroundECC # overrides EJBCA
 cmd = rr
 #secret =
-cert = $EE03::certout
-key = $EE03::newkey
-keypass = $EE03::newkeypass
+cert = $EE02::certout
+key = $EE02::newkey
+keypass = $EE02::newkeypass
 
 subject =
 newkeytype =
-oldcert = $EE03::certout # == cert
+oldcert = $EE02::certout # == cert
 revreason = 5 # cessationOfOperation
 
-[EE10] # 5.3 Error reporting (MANDATORY)
+[EE09] # 4.1.1 Error reporting, upstream using a certConf message (MANDATORY)
 cmd = $EE01::cmd
 #secret =
 cert = $EE01::cert
@@ -138,15 +140,13 @@ newkey = $EE01::newkey
 certout = $EE01::certout
 out_trusted = $EE04::certout # wrong trust anchor
 
-[EE??] # 5.4.1 General message and response  (OPTIONAL)
+[EE31] # 4.3.1 Get CA certificates  (OPTIONAL)
 
-[EE??] # 5.4.2 Get CA certificates  (OPTIONAL)
+[EE32] # 4.3.2 Get root CA certificate update (OPTIONAL)
 
-[EE??] # 5.4.3 Get root CA certificate update  (OPTIONAL)
+[EE33] # 4.3.3. Get certificate request template (OPTIONAL)
 
-[EE??] # 5.4.4 Get certificate request parameters  (OPTIONAL)
-
-[RA11] # 6.3 Error reporting (MANDATORY)
+[RA36] # 3.6 Error reporting, downstream using error message (MANDATORY)
 cmd = $EE01::cmd
 #secret =
 cert = $EE01::cert
@@ -159,17 +159,18 @@ newkeypass = $EE01::newkeypass
 newkey = $EE01::newkey
 certout = $EE01::certout
 
-[S_7.1-??] # HTTP transport
+[TR01] # HTTP transport
 
-[S_7.2-??] # HTTPS transport using certificates
+[TR02] # HTTPS transport using certificates
 
-[S_7.3-??] # HTTPS transport using shared secrets
+[TR03] # HTTPS transport using shared secrets
 
-[S_7.4-??] # File-based transport
+[TR62] # CoAP transport
 
-[S_7.5-??] # CoAP transport
+[TR63] # Piggybacking on another reliable transport
 
-[S_7.6-??] # Piggybacking on another reliable transport
+[TR64] # File-based transport
+
 
 
 [reqexts]

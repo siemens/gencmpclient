@@ -391,22 +391,22 @@ profile_Simple:
 profile_EJBCA:
 	PROFILE=EJBCA make profile $(EJBCA_ENV)
 profile: build
-	@/bin/echo -e "\n##### Request a certificate from a PKI with MAC protection (RECOMMENDED) #####"
+	@/bin/echo -e "\n##### Requesting a certificate from a PKI with MAC-based protection (RECOMMENDED) #####"
 	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE04
-	@/bin/echo -e "\n##### Request a certificate from a new PKI with signature protection (REQUIRED) #####"
+	@/bin/echo -e "\n##### Requesting a certificate from a new PKI with signature-based protection (MANDATORY) #####"
 	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE01
-	@/bin/echo -e "\n##### Update an existing certificate with signature protection (REQUIRED) #####"
-	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE02 -subject ""
-	@/bin/echo -e "\n##### Request a certificate from a trusted PKI with signature protection (OPTIONAL) #####"
+	@/bin/echo -e "\n##### Updating an existing certificate with signature-ased protection (MANDATORY) #####"
+	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE03 -subject ""
+	@/bin/echo -e "\n##### Requesting an additional certificate with signature-based protection (OPTIONAL) #####"
+	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE02
 #	@/bin/echo -e "\n##### Request a certificate from a legacy PKI using PKCS#10 request (OPTIONAL) #####"
 #	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE05 -subject ""
-	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE03
 	@/bin/echo -e "\n##### Revoking a certificate (RECOMMENDED) #####"
-	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE09 -subject ""
-	@/bin/echo -e "\n##### Error reporting by EE (REQUIRED) #####"
-	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE10
-	@/bin/echo -e "\n##### Error reporting by RA (REQUIRED) #####"
-	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),RA11
+	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE08 -subject ""
+	@/bin/echo -e "\n##### Error reporting by EE (MANDATORY) #####"
+	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE09
+	@/bin/echo -e "\n##### Error reporting by RA (MANDATORY) #####"
+	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),RA36
 	echo "\n##### All profile tests succeeded #####"
 
 .phony: all test_all doc zip

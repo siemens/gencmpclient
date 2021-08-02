@@ -72,7 +72,7 @@ ifneq ($(filter-out doc clean clean_this clean_test clean_submodules clean_opens
         OSSL_VERSION_QUIRKS+=-Wno-discarded-qualifiers -Wno-unused-parameter
     endif
     ifeq ($(shell expr $(OPENSSL_VERSION) \< 3.0),1)
-        $(info compiling with standalone CMP library)
+        $(info enabling compilation with standalone CMP library)
         CMP_STANDALONE=1
     endif
 else
@@ -366,8 +366,9 @@ test_cli: build
 
 test_Mock:
 ifeq ($(shell expr $(OPENSSL_VERSION) \>= 1.1),1) # OpenSSL <1.1 does not support -no_check_time nor OCSP
-	$(info skipping Mock since OpenSSL <1.1 does not support -no_check_time nor OCSP)
 	make test_cli OPENSSL_CMP_SERVER=Mock $(EJBCA_ENV)
+else
+	$(info skipping Mock since OpenSSL <1.1 does not support -no_check_time nor OCSP)
 endif
 
 .phony: test_Insta test_EJBCA-AWS

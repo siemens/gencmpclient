@@ -221,7 +221,10 @@ indir data_dir() => sub {
             }
             foreach my $aspect (@all_aspects) {
                 $aspect = chop_dblquot($aspect);
-                next if $server_name eq "Mock" && $aspect eq "certstatus";
+                if ($server_name eq "Mock" && $aspect eq "certstatus") {
+                    print "Skipping certstatus check as not supported by Mock server\n";
+                    next;
+                }
                 if (not($server_name =~ m/Insta/)) { # do not update aspect-specific settings for Insta
                 load_config($server_name, $aspect); # update with any aspect-specific settings
                 }

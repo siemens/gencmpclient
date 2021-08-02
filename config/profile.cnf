@@ -1,11 +1,24 @@
+# For full documentation of the options, see ../doc/cmpClient-cli.{pod,md}
+
 [default]
-#digest = sha256
-#msg_timeout = 10
-#total_timeout = 100
-#ignore_keyusage = 0
-#unprotected_errors = 0
+#verbosity = 6 # means INFO (default)
 no_proxy = ${ENV::EJBCA_HOST}
-#verbosity = 7
+#tls_used = 0 # (default)
+#keep_alive = 1 # means preferring to keep the connection open (default)
+#msg_timeout = 120 # in seconds (default). 0 means infinite.
+#total_timeout = 0 # in seconds (default). 0 means infinite.
+#crls_timeout = 10 # in seconds (default). 0 means infinite.
+#ocsp_timeout = 10 # in seconds (default). 0 means infinite.
+#digest = sha256 # (default)
+#mac = hmac-sha1 # (default)
+#ignore_keyusage = 0 # (default)
+#san_nodefault = 0 # (default)
+#popo = 1 # means SIGNATURE (default)
+#revreason = -1 # means none (default)
+#use_cdp = 0 # (default)
+#use_aia = 0 # (default)
+#disable_confirm = 0 # (default)
+#unprotected_errors = 0 # (default)
 
 [Simple] # TODO use LightweightRA rather than Simple RA
 server = localhost:9080
@@ -32,7 +45,7 @@ out_trusted = ${ENV::EJBCA_CMP_TRUSTED}
 #tls_key = $tls_cert
 #tls_keypass = pass:12345
 #tls_used = 1
-unprotected_errors = 1
+unprotected_errors = 1 # this workaround is needed for EJBCA
 
 # Lightweight CMP Profile document to which the below section numbers refer to:
 # https://datatracker.ietf.org/doc/html/draft-ietf-lamps-lightweight-cmp-profile
@@ -40,7 +53,7 @@ unprotected_errors = 1
 [EE04] # 4.1.4. Requesting a certificate from a PKI with MAC-based protection (RECOMMENDED)
 cmd = ir
 secret = pass:SecretCmp
-ref = any
+ref = dummy # value is not checked by server
 #cert =
 #key =
 #keypass =

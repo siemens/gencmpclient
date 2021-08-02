@@ -1,8 +1,27 @@
+# For full documentation of the options, see ../doc/cmpClient-cli.{pod,md}
+
 [default]
-digest = sha256
+#verbosity = 6 # means INFO (default)
+no_proxy = ${ENV::EJBCA_HOST}
+#tls_used = 0 # (default)
+#keep_alive = 1 # means preferring to keep the connection open (default)
+#msg_timeout = 120 # in seconds (default). 0 means infinite.
 msg_timeout = 10
-total_timeout = 100
+#total_timeout = 0 # in seconds (default). 0 means infinite.
+total_timeout = 30
+#crls_timeout = 10 # in seconds (default). 0 means infinite.
+#ocsp_timeout = 10 # in seconds (default). 0 means infinite.
+#digest = sha256 # (default)
+#mac = hmac-sha1 # (default)
+#ignore_keyusage = 0 # (default)
 ignore_keyusage = 1
+#san_nodefault = 0 # (default)
+#popo = 1 # means SIGNATURE (default)
+#revreason = -1 # means none (default)
+#use_cdp = 0 # (default)
+#use_aia = 0 # (default)
+#disable_confirm = 0 # (default)
+#unprotected_errors = 0 # (default)
 unprotected_errors = 1
 
 [EJBCA]
@@ -56,17 +75,12 @@ subject = "/CN=test-genCMPClientDemo"
 untrusted = creds/ENROLL_Chain.pem
 trusted = creds/trusted/CMP_LRA_DOWNSTREAM_Root.pem
 out_trusted = creds/trusted/ENROLL_Root.pem
+#tls_used = 0
 #tls_trusted =
 #tls_host = $server
 #tls_cert = ${ENV::EJBCA_TLS_CLIENT}
 #tls_key = $tls_cert
 #tls_keypass = pass:12345
-tls_used = 0
-#crls =
-#use_cdp = 1
-#cdps =
-#use_aia = 1
-#ocsp = ${ENV::EJBCA_OCSP_URL}
 
 [Insta]
 server = pki.certificate.fi:8700/pkix/

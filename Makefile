@@ -208,7 +208,7 @@ endif
 ifndef EJBCA
 # optional SET_PROXY variable can be set to override default proxy settings (for use with INSTA)
     SET_PROXY ?= no_proxy=localhost,127.0.0.1,ppki-playground.ct.siemens.com \
-   http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy # or, e.g., tsy1.coia.siemens.net.9400 or 194.145.60.250:9400
+    http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy # or, e.g., tsy1.coia.siemens.net.9400 or 194.145.60.250:9400
     unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
     OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt

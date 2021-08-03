@@ -2,7 +2,7 @@
 
 [default]
 #verbosity = 6 # means INFO (default)
-no_proxy = ${ENV::EJBCA_HOST}
+no_proxy = localhost,127.0.01,${ENV::EJBCA_HOST}
 #tls_used = 0 # (default)
 #keep_alive = 1 # means preferring to keep the connection open (default)
 #msg_timeout = 120 # in seconds (default). 0 means infinite.

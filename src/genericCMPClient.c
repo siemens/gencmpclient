@@ -311,24 +311,6 @@ static void APP_HTTP_TLS_INFO_free(APP_HTTP_TLS_INFO *info)
 }
 #endif /* ndef SECUTILS_NO_TLS */
 
-static bool use_proxy(const char *no_proxy, const char *server)
-{
-    size_t sl = strlen(server);
-    const char *found = NULL;
-
-    if (no_proxy == NULL)
-        no_proxy = getenv("no_proxy");
-    if (no_proxy == NULL)
-        no_proxy = getenv("NO_PROXY");
-    if (no_proxy != NULL)
-        found = strstr(no_proxy, server);
-    while (found != NULL
-           && ((found != no_proxy && found[-1] != ' ' && found[-1] != ',')
-               || (found[sl] != '\0' && found[sl] != ' ' && found[sl] != ',')))
-        found = strstr(found + 1, server);
-    return found == NULL;
-}
-
 #ifndef SECUTILS_NO_TLS
 static int is_localhost(const char *host)
 {
@@ -376,48 +358,21 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         goto err;
     }
 
-    if (proxy == NULL)
-        proxy = getenv("http_proxy");
-    if (proxy == NULL)
-        proxy = getenv("HTTP_PROXY");
-    if (proxy != NULL && proxy[0] == '\0')
-        proxy = NULL;
-    if (proxy != NULL && !use_proxy(no_proxy, /* server */ host))
-        proxy = NULL;
-    /* TODO use instead: OSSL_CMP_CTX_set1_no_proxy() when switching to new http_client.c */
-    char *proxy_host = host;
-    if (proxy != NULL) {
-#ifdef OLD_HTTP_API /* TODO remove */
-        char proxy_uri[255 + 1];
-        snprintf(proxy_host = proxy_uri, sizeof(proxy_uri), "%s", proxy);
-        int proxy_port = CONN_parse_uri(&proxy_host, 0, NULL /* p_path */, "proxy");
-        if (proxy_port <= 0) {
-            return CMP_R_INVALID_PARAMETERS;
-        }
-        if (!OSSL_CMP_CTX_set1_proxy(ctx, proxy_host) ||
-            !OSSL_CMP_CTX_set_proxyPort(ctx, proxy_port)) {
-            goto err;
-        }
-#else
-        if (!OSSL_CMP_CTX_set1_proxy(ctx, proxy))
-            goto err;
-#endif
-    }
-
+    if (!OSSL_CMP_CTX_set1_proxy(ctx, proxy) ||
+        !OSSL_CMP_CTX_set1_no_proxy(ctx, no_proxy))
+        goto err;
+    const char *proxy_host =  OSSL_HTTP_adapt_proxy(proxy, no_proxy, host, tls != NULL);
 #ifndef SECUTILS_NO_TLS
     if (tls != NULL) {
+        const char *host_or_proxy = proxy_host == NULL ? host : proxy_host;
         X509_STORE *ts = SSL_CTX_get_cert_store(tls);
-        /*
-         * If server is "localhost", we will proceed without host verification.
-         * This will enable Bootstrapping of LRA (by itself)
-         * using only SMC which doesn't contain host.
-         */
-        if (is_localhost(proxy_host /* == host if no proxy */)) {
+        if (is_localhost(host_or_proxy)) {
             LOG(FL_WARN, "skiping host verification on localhost");
+            /* enables self-bootstrapping of local RA using its device cert */
         } else {
             /* set expected host if not already done by caller */
             if (STORE_get0_host(ts) == NULL &&
-                !STORE_set1_host_ip(ts, proxy_host, proxy_host)) {
+                !STORE_set1_host_ip(ts, host_or_proxy, host_or_proxy)) {
                 goto err;
             }
         }
@@ -433,21 +388,19 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         /* info will be freed along with ctx */
         info->server = host;
         info->port = OPENSSL_strdup(server_port);
-        info->use_proxy = proxy != NULL;
+        info->use_proxy = proxy_host != NULL;
         info->timeout = OSSL_CMP_CTX_get_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT);
         if (!SSL_CTX_up_ref(tls))
             goto err;
         info->ssl_ctx = tls;
     }
-#else
-    (void)proxy_host;
 #endif
 
     if (path == NULL)
         path = "";
     LOG(FL_INFO, "will contact http%s://%s:%d%s%s%s%s", tls != NULL ? "s" : "",
         host, port, path[0] == '/' ? "" : "/", path,
-        proxy != NULL ? " via proxy " : "", proxy != NULL ? proxy : "");
+        proxy_host != NULL ? " via proxy " : "", proxy_host != NULL ? proxy_host : "");
     return CMP_OK;
 
  err:

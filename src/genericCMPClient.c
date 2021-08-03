@@ -264,11 +264,11 @@ static const char *tls_error_hint(void)
 /* adapted from OpenSSL:apps/lib/apps.c */
 static BIO *app_http_tls_cb(BIO *hbio, void *arg, int connect, int detail)
 {
+    APP_HTTP_TLS_INFO *info = (APP_HTTP_TLS_INFO *)arg;
+    SSL_CTX *ssl_ctx = info->ssl_ctx;
+    BIO *sbio = NULL;
     if (connect && detail) { /* connecting with TLS */
-        APP_HTTP_TLS_INFO *info = (APP_HTTP_TLS_INFO *)arg;
-        SSL_CTX *ssl_ctx = info->ssl_ctx;
         SSL *ssl;
-        BIO *sbio = NULL;
 
         if ((info->use_proxy
              && !OSSL_HTTP_proxy_connect(hbio, info->server, info->port,
@@ -297,6 +297,13 @@ static BIO *app_http_tls_cb(BIO *hbio, void *arg, int connect, int detail)
          * If we pop sbio and BIO_free() it this may lead to libssl double free.
          * Rely on BIO_free_all() done by OSSL_HTTP_transfer() in http_client.c
          */
+    }
+    if (ssl_ctx != NULL) {
+        X509_STORE *ts = SSL_CTX_get_cert_store(ssl_ctx);
+        if (ts != NULL) {
+            /* indicate if OSSL_CMP_MSG_http_perform() with TLS is active */
+            (void)STORE_set0_tls_bio(ts, sbio);
+        }
     }
     return hbio;
 }

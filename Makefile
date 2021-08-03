@@ -101,7 +101,7 @@ endif
 # generic CMP Client lib and client
 ################################################################
 
-.phony: default build build_prereq
+.phony: default build build_no_tls build_prereq
 default: build
 
 ifndef USE_ICV
@@ -178,6 +178,9 @@ endif
 
 build: build_prereq
 	$(MAKE) -f Makefile_src $(OUTBIN) build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIB_OUT="$(LIB_OUT)" CFLAGS="$(CFLAGS)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+
+build_no_tls:
+	$(MAKE) build SECUTILS_NO_TLS=1
 
 .phony: clean_test clean clean_uta clean_this
 
@@ -426,7 +429,7 @@ endif
 .phony: all test_all doc zip
 all:	build doc
 
-test_all: demo_Insta demo_EJBCA test_conformance test_profile test_cli test_Mock test_Simple test_Insta
+test_all: build_no_tls clean demo_Insta demo_EJBCA test_conformance test_profile test_cli test_Mock test_Simple test_Insta
 
 doc: doc/cmpClient-cli.md
 

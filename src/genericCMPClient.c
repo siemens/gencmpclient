@@ -221,6 +221,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
 }
 
 #ifndef SECUTILS_NO_TLS
+/* yields the name of the SW component, not the name of an executable */
 static char *opt_getprog(void)
 {
     return "CMP client";
@@ -260,6 +261,7 @@ static const char *tls_error_hint(void)
 }
 
 /* HTTP callback function that supports TLS connection also via HTTPS proxy */
+/* adapted from OpenSSL:apps/lib/apps.c */
 static BIO *app_http_tls_cb(BIO *hbio, void *arg, int connect, int detail)
 {
     if (connect && detail) { /* connecting with TLS */
@@ -361,7 +363,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         return CMP_R_INVALID_PARAMETERS;
     }
     char server_port[6];
-    sprintf(server_port, "%d", port);
+    snprintf(server_port, sizeof(server_port), "%d", port);
     if (!OSSL_CMP_CTX_set1_server(ctx, host) ||
         (!OSSL_CMP_CTX_set_serverPort(ctx, port))) {
         goto err;
@@ -406,7 +408,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (tls != NULL) {
         X509_STORE *ts = SSL_CTX_get_cert_store(tls);
         /*
-         * If server is localhost, we will will proceed without "host verification".
+         * If server is "localhost", we will proceed without host verification.
          * This will enable Bootstrapping of LRA (by itself)
          * using only SMC which doesn't contain host.
          */
@@ -786,7 +788,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
         if (!OSSL_CMP_CTX_set1_oldCert(ctx, (X509 *)cert))
             goto err;
     } else {
-#if 0 /* TODO, also check why cert == NULL is accepted by Mock server */
+#if 0 /* TODO enable, and check why cert == NULL is accepted by Mock server */
         if (!OSSL_CMP_CTX_set1_p10CSR(ctx, csr))
             goto err;
 #endif

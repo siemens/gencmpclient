@@ -163,7 +163,7 @@
 					<SignatureBased KeyStorePath="certs/ppki_playground_cmp_signer.p12" KeyStorePassword="12345"/>
 				</out>
 			</CmpCredentials>
-			<CmpHttpServer ServingUrl="https://0.0.0.0:9443/cmp/PlaygroundECC">
+			<CmpHttpServer ServingUrl="https://0.0.0.0:9085/cmp/PlaygroundECC">
 				<TlsConfig KeyStorePath="certs/localhost.p12" KeyStorePassword="12345" TrustStorePath="certs/cmptrust.pem" ClientAuthenticationNeeded="true" EnableCrlCheck="false" EnableCRLDistPoints="true"/>
 			</CmpHttpServer>
 		</Downstream>

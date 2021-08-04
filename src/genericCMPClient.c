@@ -265,8 +265,12 @@ static const char *tls_error_hint(void)
 static BIO *app_http_tls_cb(BIO *hbio, void *arg, int connect, int detail)
 {
     APP_HTTP_TLS_INFO *info = (APP_HTTP_TLS_INFO *)arg;
-    SSL_CTX *ssl_ctx = info->ssl_ctx;
+    SSL_CTX *ssl_ctx = NULL;
     BIO *sbio = NULL;
+    X509_STORE *ts;
+
+    if (info == NULL || (ssl_ctx = info->ssl_ctx) == NULL)
+        return NULL;
     if (connect && detail) { /* connecting with TLS */
         SSL *ssl;
 
@@ -277,7 +281,7 @@ static BIO *app_http_tls_cb(BIO *hbio, void *arg, int connect, int detail)
                 || (sbio = BIO_new(BIO_f_ssl())) == NULL) {
             return NULL;
         }
-        if (ssl_ctx == NULL || (ssl = SSL_new(ssl_ctx)) == NULL) {
+        if ((ssl = SSL_new(ssl_ctx)) == NULL) {
             BIO_free(sbio);
             return NULL;
         }
@@ -298,12 +302,9 @@ static BIO *app_http_tls_cb(BIO *hbio, void *arg, int connect, int detail)
          * Rely on BIO_free_all() done by OSSL_HTTP_transfer() in http_client.c
          */
     }
-    if (ssl_ctx != NULL) {
-        X509_STORE *ts = SSL_CTX_get_cert_store(ssl_ctx);
-        if (ts != NULL) {
-            /* indicate if OSSL_CMP_MSG_http_perform() with TLS is active */
-            (void)STORE_set0_tls_bio(ts, sbio);
-        }
+    if ((ts = SSL_CTX_get_cert_store(ssl_ctx)) != NULL) {
+        /* indicate if OSSL_CMP_MSG_http_perform() with TLS is active */
+        (void)STORE_set0_tls_bio(ts, sbio);
     }
     return hbio;
 }
@@ -775,11 +776,13 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 {
     OSSL_CMP_CTX_print_errors(ctx);
     if (ctx != NULL) {
-#ifndef SECUTILS_NO_TLS
-        APP_HTTP_TLS_INFO_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
-#endif
+        APP_HTTP_TLS_INFO *info = OSSL_CMP_CTX_get_http_cb_arg(ctx);
+
         X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
         OSSL_CMP_CTX_free(ctx);
+#ifndef SECUTILS_NO_TLS
+        APP_HTTP_TLS_INFO_free(info);
+#endif
     }
 }
 

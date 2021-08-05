@@ -313,6 +313,7 @@ static void APP_HTTP_TLS_INFO_free(APP_HTTP_TLS_INFO *info)
 {
     if (info != NULL) {
         SSL_CTX_free(info->ssl_ctx);
+        OPENSSL_free((char *)info->server);
         OPENSSL_free((char *)info->port);
         OPENSSL_free(info);
     }
@@ -375,7 +376,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         const char *host_or_proxy = proxy_host == NULL ? host : proxy_host;
         X509_STORE *ts = SSL_CTX_get_cert_store(tls);
         if (is_localhost(host_or_proxy)) {
-            LOG(FL_WARN, "skiping host verification on localhost");
+            LOG(FL_WARN, "skipping host name verification on localhost");
             /* enables self-bootstrapping of local RA using its device cert */
         } else {
             /* set expected host if not already done by caller */
@@ -394,7 +395,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
             goto err;
         (void)OSSL_CMP_CTX_set_http_cb_arg(ctx, info);
         /* info will be freed along with ctx */
-        info->server = host;
+        info->server =  OPENSSL_strdup(host);
         info->port = OPENSSL_strdup(server_port);
         info->use_proxy = proxy_host != NULL;
         info->timeout = OSSL_CMP_CTX_get_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT);

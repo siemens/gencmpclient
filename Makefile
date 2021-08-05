@@ -389,11 +389,8 @@ ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # OpenSSL <1.1 does not support
 	$(info skipping certstatus aspect since OpenSSL <1.1 does not support OCSP)
 	make test_cli OPENSSL_CMP_SERVER=Simple OPENSSL_CMP_ASPECTS="connection verification credentials commands enrollment" $(EJBCA_ENV) || true # do not exit on test failure
 else
-	make test_cli OPENSSL_CMP_SERVER=Simple $(EJBCA_ENV) || true # do not exit on test failure
+	make test_cli OPENSSL_CMP_SERVER=Simple $(EJBCA_ENV)
 endif
-# Currently the following test cases fail due to SimpleLra configuration:
-#   conection 54: tls host explicit host
-#   commands  35: use csr for revocation
 
 .phony: test_profile profile_Simple profile_EJBCA
 test_profile: profile_Simple profile_EJBCA
@@ -441,7 +438,6 @@ zip:
             LICENSE README.md .gitmodules Makefile{,_src} CMakeLists.txt \
 	    OpenSSL_version.{c,mk} include/genericCMPClient.h \
 	    src/cmpClient.c src/genericCMPClient.c
-
 
 
 

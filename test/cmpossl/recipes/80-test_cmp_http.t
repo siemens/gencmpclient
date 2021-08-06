@@ -156,6 +156,17 @@ sub test_cmp_http {
     my $params = shift;
     my $expected_result = shift;
     my $path_app = bldtop_dir($app);
+    $expected_result = 1 if $server_name eq "Mock" && $title =~ m/- ok for Mock/;
+    sleep($sleep) if 0
+            || $title eq "config default with expected sender"
+            || $title eq "explicit srvcert"
+            || $title eq "srvcert big file"
+            || $title eq "untrusted is wrong cert"
+            || $title eq "ir + infotype"
+            || $title eq "empty ref but correct cert"
+            || $title eq "subject country missing"
+            || $title eq "out_trusted bigcert"
+            || $title eq "oldcert wrong cert";
     with({ exit_checker => sub {
         my $actual_result = shift == 0;
         my $OK = $actual_result == $expected_result;
@@ -166,6 +177,7 @@ sub test_cmp_http {
                 " expected=$expected_result actual=$actual_result\n";
             print $faillog "$invocation\n\n";
         }
+        sleep($sleep) if $expected_result == 1;
         return $OK; } },
          sub { ok(run(cmd([$path_app, @$params,])),
                   $title); });
@@ -181,7 +193,6 @@ sub test_cmp_http_aspect {
         my $i = 1;
         foreach (@$tests) {
             test_cmp_http($server_name, $aspect, $n, $i++, $$_[0], $$_[1], $$_[2]);
-            sleep($sleep);
         }
     };
     unlink "test.cert.pem", "test.cacerts.pem", "test.extracerts.pem";

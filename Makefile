@@ -353,6 +353,11 @@ conformance:
 	$(CMPCL)bootstrap -server localhost:6003/delayedlra
 
 test_cli: build
+ifneq ($(OPENSSL_CMP_SERVER),Mock)
+    ifeq ($(EJBCA_HOST),)
+	$(error Test target test_$(OPENSSL_CMP_SERVER) not supported in this environment)
+    endif
+endif
 	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER in cmpossl/test/recipes/80-test_cmp_http_data/$$OPENSSL_CMP_SERVER"
 	@ :
 	( HARNESS_ACTIVE=1 \
@@ -382,9 +387,6 @@ test_EJBCA-AWS: get_EJBCA_crls
 
 # do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
 test_Simple: get_EJBCA_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple
-ifeq ($(EJBCA_HOST),)
-	$(error Test target not supported in this environment)
-endif
 ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # OpenSSL <1.1 does not support OCSP
 	$(info skipping certstatus aspect since OpenSSL <1.1 does not support OCSP)
 	make test_cli OPENSSL_CMP_SERVER=Simple OPENSSL_CMP_ASPECTS="connection verification credentials commands enrollment" $(EJBCA_ENV) || true # do not exit on test failure
@@ -423,10 +425,13 @@ endif
 	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),RA36
 	echo "\n##### All profile tests succeeded #####"
 
-.phony: all test_all doc zip
+.phony: all test_all test_oss doc zip
 all:	build doc
 
-test_all: build_no_tls clean demo_Insta demo_EJBCA test_conformance test_profile test_cli test_Mock test_Simple test_Insta
+test_all: test_oss demo_EJBCA test_profile test_Simple
+
+test_oss: clean build_no_tls
+	$(MAKE) clean build demo_Insta test_conformance test_Mock test_Insta
 
 doc: doc/cmpClient-cli.md
 

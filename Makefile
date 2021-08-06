@@ -283,7 +283,7 @@ run_demo: build get_Insta_crls
 endif
 ifeq ($(EJBCA_HOST),)
     ifdef EJBCA
-	$(error Test target not supported in this environment)
+	$(error Target demo_EJBCA not supported in this environment)
     endif
 endif
 	@/bin/echo -e "\n##### running cmpClient demo #####\n"
@@ -354,9 +354,11 @@ conformance:
 
 test_cli: build
 ifneq ($(OPENSSL_CMP_SERVER),Mock)
+ifneq ($(OPENSSL_CMP_SERVER),Insta)
     ifeq ($(EJBCA_HOST),)
-	$(error Test target test_$(OPENSSL_CMP_SERVER) not supported in this environment)
+	$(error Target test_$(OPENSSL_CMP_SERVER) not supported in this environment)
     endif
+endif
 endif
 	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER in cmpossl/test/recipes/80-test_cmp_http_data/$$OPENSSL_CMP_SERVER"
 	@ :
@@ -404,7 +406,7 @@ profile_EJBCA:
 profile: build
 ifeq ($(EJBCA_HOST),)
 #   ifeq ($(PROFILE),EJBCA)
-	$(error Test target not supported in this environment)
+	$(error Target test_profile not supported in this environment)
 #   endif
 endif
 	@/bin/echo -e "\n##### Requesting a certificate from a PKI with MAC-based protection (RECOMMENDED) #####"

@@ -777,8 +777,9 @@ void CMPclient_finish(OSSL_CMP_CTX *ctx)
 {
     OSSL_CMP_CTX_print_errors(ctx);
     if (ctx != NULL) {
+#ifndef SECUTILS_NO_TLS
         APP_HTTP_TLS_INFO *info = OSSL_CMP_CTX_get_http_cb_arg(ctx);
-
+#endif
         X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
         OSSL_CMP_CTX_free(ctx);
 #ifndef SECUTILS_NO_TLS

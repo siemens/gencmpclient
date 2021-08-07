@@ -158,15 +158,19 @@ sub test_cmp_http {
     my $path_app = bldtop_dir($app);
     $expected_result = 1 if $server_name eq "Mock" && $title =~ m/- ok for Mock/;
     sleep($sleep) if 0
-            || $title eq "config default with expected sender"
-            || $title eq "explicit srvcert"
-            || $title eq "srvcert big file"
-            || $title eq "untrusted is wrong cert"
-            || $title eq "ir + infotype"
-            || $title eq "empty ref but correct cert"
-            || $title eq "subject country missing"
-            || $title eq "out_trusted bigcert"
-            || $title eq "oldcert wrong cert";
+        || $title eq "config default with expected sender"
+        || $title eq "explicit srvcert"
+        || $title eq "srvcert big file"
+        || $title eq "untrusted is wrong cert"
+        || $title eq "unknown attribute in expected sender"
+        || $title eq "requesting new signer.crt for Insta"
+        || $title eq "ir + infotype"
+        || $title eq "empty ref but correct cert"
+        || $title eq "subject country missing"
+        || $title eq "out_trusted bigcert"
+        || $title eq "implicit confirm"
+        || $title eq "oldcert ignored"
+        || $title eq "oldcert wrong cert";
     with({ exit_checker => sub {
         my $actual_result = shift == 0;
         my $OK = $actual_result == $expected_result;

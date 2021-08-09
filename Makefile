@@ -282,7 +282,7 @@ else
 run_demo: build get_Insta_crls
 endif
 ifeq ($(EJBCA_HOST)$(INSTA),)
-	$(warning "### Target demo_EJBCA not supported in this environment ###")
+	$(warning "### skipping demo_EJBCA not supported in this environment ###")
 else
 	@/bin/echo -e "\n##### running cmpClient demo #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
@@ -353,7 +353,7 @@ conformance:
 
 test_cli: build
 ifeq ($(filter-out EJBCA Simple,$(OPENSSL_CMP_SERVER))$(EJBCA_HOST),)
-	$(warning "### Target test_$(OPENSSL_CMP_SERVER) not supported in this environment ###")
+	$(warning "### skipping test_$(OPENSSL_CMP_SERVER) not supported in this environment ###")
 else
 	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER in cmpossl/test/recipes/80-test_cmp_http_data/$$OPENSSL_CMP_SERVER"
 	@ :
@@ -371,10 +371,10 @@ else
 endif
 
 test_Mock:
-ifeq ($(shell expr $(OPENSSL_VERSION) \>= 1.1),1) # OpenSSL <1.1 does not support -no_check_time nor OCSP
-	make test_cli OPENSSL_CMP_SERVER=Mock $(EJBCA_ENV)
+ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # OpenSSL <1.1 does not support -no_check_time nor OCSP
+	$(warning skipping test_Mock since OpenSSL <1.1 does not support -no_check_time nor OCSP)
 else
-	$(info skipping Mock since OpenSSL <1.1 does not support -no_check_time nor OCSP)
+	make test_cli OPENSSL_CMP_SERVER=Mock $(EJBCA_ENV)
 endif
 
 .phony: test_Insta test_EJBCA-AWS
@@ -386,8 +386,8 @@ test_EJBCA-AWS: get_EJBCA_crls
 # do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
 test_Simple: get_EJBCA_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple
 ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # OpenSSL <1.1 does not support OCSP
-	$(info skipping certstatus aspect since OpenSSL <1.1 does not support OCSP)
-	make test_cli OPENSSL_CMP_SERVER=Simple OPENSSL_CMP_ASPECTS="connection verification credentials commands enrollment" $(EJBCA_ENV) || true # do not exit on test failure
+	$(warning skipping certstatus aspect since OpenSSL <1.1 does not support OCSP)
+	make test_cli OPENSSL_CMP_SERVER=Simple $(EJBCA_ENV) OPENSSL_CMP_ASPECTS="connection verification credentials commands enrollment"
 else
 	make test_cli OPENSSL_CMP_SERVER=Simple $(EJBCA_ENV)
 endif
@@ -401,7 +401,7 @@ profile_EJBCA:
 	PROFILE=EJBCA make profile $(EJBCA_ENV)
 profile: build
 ifeq ($(EJBCA_HOST),)
-	$(warning "### Target test_profile not supported in this environment ###")
+	$(warning "### skipping test_profile not supported in this environment ###")
 else
 	@/bin/echo -e "\n##### Requesting a certificate from a PKI with MAC-based protection (RECOMMENDED) #####"
 	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE04

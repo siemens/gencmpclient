@@ -157,9 +157,10 @@ sub test_cmp_http {
     my $expected_result = shift;
     my $path_app = bldtop_dir($app);
     $expected_result = 1 if $server_name eq "Mock" && $title =~ m/- ok for Mock/;
+    sleep($sleep) if $title eq "explicit srvcert";
     sleep($sleep) if 0
-        || $title eq "config default with expected sender"
         || $title eq "explicit srvcert"
+        || $title eq "config default with expected sender"
         || $title eq "srvcert big file"
         || $title eq "untrusted is wrong cert"
         || $title eq "unknown attribute in expected sender"
@@ -167,6 +168,7 @@ sub test_cmp_http {
         || $title eq "ir + infotype"
         || $title eq "empty ref but correct cert"
         || $title eq "subject country missing"
+        || $title eq "popo SIGNATURE"
         || $title eq "out_trusted bigcert"
         || $title eq "implicit confirm"
         || $title eq "oldcert ignored"

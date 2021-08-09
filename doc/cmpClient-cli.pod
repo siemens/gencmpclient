@@ -10,12 +10,23 @@ cmpClient - genCMPClient CLI for the Certificate Management Protocol (RFC4210)
 
 =head1 SYNOPSIS
 
-B<cmpClient> (B<imprint|bootstrap|update|revoke|pkcs10>) [B<-section> I<server>]
+B<cmpClient> (B<imprint|bootstrap|pkcs10|update|revoke>) [B<-section> I<server>]
 
 In this simple style of invocation, the first argument of the application,
 e.g., C<bootstrap>, is mapped to using a section in F<config/demo.cnf>.
 The optional server argument may be used to reference a CMP server to be used,
 where the default is C<EJBCA>. This is also used as config section name.
+
+B<cmpClient> B<validate> I<options>
+
+In this form of invocation, no CMP command is performed but
+a certificate is validated, optionally including revocation status checks.
+The target is given by the B<-tls_cert> option if present, otherwise B<-cert>.
+In the former case B<-tls_trusted> must be given, otherwise B<-own_trusted>.
+
+Further verification options like B<-untrusted> may be given,
+and also the B<-config> and B<-section> options may used as detailed below.
+By default, the sections C<EJBCA>,C<validate> of F<config/demo.cnf> are used.
 
 B<cmpClient> I<options>
 
@@ -124,7 +135,7 @@ Certificate status checking options, for both CMP and TLS:
 [B<-crls> I<URLs>]
 [B<-use_cdp>]
 [B<-cdps> I<URLs>]
-[B<-cdp_proxy> I<address>]
+[B<-cdp_proxy> I<url>]
 [B<-crl_cache_dir> I<dirname>]
 [B<-crls_timeout> I<seconds>]
 [B<-use_aia>]
@@ -952,10 +963,10 @@ enable using CRL Distribution Points (CDP) extension entries in certificates.
 Enable CRL-based status checking and
 use the given URL(s) as fallback certificate distribution points (CDP).
 
-=item B<-cdp_proxy> I<address>
+=item B<-cdp_proxy> I<url>
 
-Address of the proxy server to use for getting CRLs.
-Default from environment variable C<cdp_proxy>, else C<CDP_PROXY>, else none.
+URL of the proxy server to send CDP URLs to in the form C<url?url=CDP_URL>
+or to send issuer Distinguished Names (DNs) to in the form C<url?issuer=DN>.
 
 =item B<-crl_cache_dir> I<dirname>
 

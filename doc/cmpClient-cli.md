@@ -4,12 +4,23 @@ cmpClient - genCMPClient CLI for the Certificate Management Protocol (RFC4210)
 
 # SYNOPSIS
 
-**cmpClient** (**imprint|bootstrap|update|revoke|pkcs10**) \[**-section** _server_\]
+**cmpClient** (**imprint|bootstrap|pkcs10|update|revoke**) \[**-section** _server_\]
 
 In this simple style of invocation, the first argument of the application,
 e.g., `bootstrap`, is mapped to using a section in `config/demo.cnf`.
 The optional server argument may be used to reference a CMP server to be used,
 where the default is `EJBCA`. This is also used as config section name.
+
+**cmpClient** **validate** _options_
+
+In this form of invocation, no CMP command is performed but
+a certificate is validated, optionally including revocation status checks.
+The target is given by the **-tls\_cert** option if present, otherwise **-cert**.
+In the former case **-tls\_trusted** must be given, otherwise **-own\_trusted**.
+
+Further verification options like **-untrusted** may be given,
+and also the **-config** and **-section** options may used as detailed below.
+By default, the sections `EJBCA`,`validate` of `config/demo.cnf` are used.
 
 **cmpClient** _options_
 
@@ -118,7 +129,7 @@ Certificate status checking options, for both CMP and TLS:
 \[**-crls** _URLs_\]
 \[**-use\_cdp**\]
 \[**-cdps** _URLs_\]
-\[**-cdp\_proxy** _address_\]
+\[**-cdp\_proxy** _url_\]
 \[**-crl\_cache\_dir** _dirname_\]
 \[**-crls\_timeout** _seconds_\]
 \[**-use\_aia**\]
@@ -873,10 +884,10 @@ or the status indicates that the certificate has been revoked.
     Enable CRL-based status checking and
     use the given URL(s) as fallback certificate distribution points (CDP).
 
-- **-cdp\_proxy** _address_
+- **-cdp\_proxy** _url_
 
-    Address of the proxy server to use for getting CRLs.
-    Default from environment variable `cdp_proxy`, else `CDP_PROXY`, else none.
+    URL of the proxy server to send CDP URLs to in the form `url?url=CDP_URL`
+    or to send issuer Distinguished Names (DNs) to in the form `url?issuer=DN`.
 
 - **-crl\_cache\_dir** _dirname_
 

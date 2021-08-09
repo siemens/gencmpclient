@@ -145,8 +145,7 @@ bool opt_ocsp_last;
 bool opt_stapling;
 
 X509_VERIFY_PARAM *vpm = NULL;
-CRLMGMT_DATA *cmdat_tls = NULL;
-CRLMGMT_DATA *cmdat_new = NULL;
+CRLMGMT_DATA *cmdata = NULL;
 STACK_OF(X509_CRL) *crls = NULL;
 
 opt_t cmp_opts[] = {
@@ -340,8 +339,7 @@ opt_t cmp_opts[] = {
     { "cdps", OPT_TXT, {.txt = NULL}, {&opt_cdps},
       "Enable CRL-based status checking and use given URL(s) as fallback CDP"},
     { "cdp_proxy", OPT_TXT, {.txt = NULL}, { &opt_cdp_proxy },
-      "Address of the proxy server to use for getting CRLs."},
-    OPT_MORE("Default from environment variable 'cdp_proxy', else 'CDP_PROXY', else none"),
+      "URL of the proxy server to send CDP URLs or cert isser names to"},
     { "crl_cache_dir", OPT_TXT, {.txt = NULL}, { &opt_crl_cache_dir },
       "Directory of the CRL cache when downloaded during verification."},
     { "crls_timeout", OPT_NUM, {.num = -1}, { (const char **)&opt_crls_timeout },
@@ -437,7 +435,7 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
                                   opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
                                   opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout))
             goto err;
-        if (!STORE_set_crl_callback(tls_truststore, CRLMGMT_load_crl_cb, cmdat_tls))
+        if (!STORE_set_crl_callback(tls_truststore, CRLMGMT_load_crl_cb, cmdata))
             goto err;
     } else {
         LOG_warn("-tls_used given without -tls_trusted; will not authenticate the server");
@@ -498,7 +496,7 @@ X509_STORE *setup_CMP_truststore(void)
                               opt_check_all, false /* stapling */, crls,
                               opt_use_cdp, opt_cdps, (int)opt_crls_timeout,
                               opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout) ||
-        !STORE_set_crl_callback(cmp_truststore, CRLMGMT_load_crl_cb, cmdat_tls) ||
+        !STORE_set_crl_callback(cmp_truststore, CRLMGMT_load_crl_cb, cmdata) ||
         /* clear any expected host/ip/email address; opt_expect_sender is used instead: */
         !STORE_set1_host_ip(cmp_truststore, NULL, NULL)) {
         STORE_free(cmp_truststore);
@@ -925,7 +923,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
                                   false, NULL, -1,
                                   false, NULL, -1))
             goto err;
-        if (!STORE_set_crl_callback(new_cert_truststore, CRLMGMT_load_crl_cb, cmdat_new))
+        if (!STORE_set_crl_callback(new_cert_truststore, CRLMGMT_load_crl_cb, cmdata))
             goto err;
     }
     /* cannot set these vpm options before STORE_set_parameters(new_cert_truststore, ...) */
@@ -1105,7 +1103,7 @@ static size_t get_cert_filename(const X509 *cert, const char *prefix,
     return len;
 }
 
-static bool validate_revocation_status(void)
+static bool validate_cert(void)
 {
     bool ret = false;
 
@@ -1117,15 +1115,15 @@ static bool validate_revocation_status(void)
         opt_keypass = opt_tls_keypass;
         opt_cert = opt_tls_cert;
         opt_trusted = opt_tls_trusted;
-    } else if (opt_cert == NULL) {
-        LOG_err("Missing -cert option for target certificate");
-        return false;
-    } else {
+    } else if (opt_cert != NULL) {
         if (opt_own_trusted == NULL) {
             LOG_err("Missing -own_trusted option for target certificate given by -cert");
             return false;
         }
         opt_trusted = opt_own_trusted;
+    } else {
+        LOG_err("Missing -cert option for target certificate");
+        return false;
     }
 
     LOG(FL_INFO, "Validating certificate, optionally including revocation status ");
@@ -1155,7 +1153,7 @@ static bool validate_revocation_status(void)
                               opt_use_aia, opt_ocsp, (int)opt_ocsp_timeout))
         goto err;
 
-    if (!STORE_set_crl_callback(store, CRLMGMT_load_crl_cb, cmdat_tls))
+    if (!STORE_set_crl_callback(store, CRLMGMT_load_crl_cb, cmdata))
         goto err;
 
     LOG(FL_DEBUG, "Initializing store context");
@@ -1395,7 +1393,6 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
         if (opt_policy_oids != NULL)
             LOG(FL_WARN, "-policy_oids %s", msg);
 
-        /* TODO handle validate use case option conflicts */
         if (use_case != pkcs10) {
             if (opt_implicit_confirm)
                 LOG(FL_WARN, "-implicit_confirm %s, and 'p10cr'", msg);
@@ -1763,13 +1760,8 @@ int main(int argc, char *argv[])
         LOG_err("Out of memory");
         goto end;
     }
-    cmdat_tls = CRLMGMT_DATA_new();
-    if (cmdat_tls == 0) {
-        LOG_err("Out of memory");
-        goto end;
-    }
-    cmdat_new = CRLMGMT_DATA_new();
-    if (cmdat_new == 0) {
+    cmdata = CRLMGMT_DATA_new();
+    if (cmdata == 0) {
         LOG_err("Out of memory");
         goto end;
     }
@@ -1788,18 +1780,17 @@ int main(int argc, char *argv[])
     if (!set_verbosity(opt_verbosity))
         goto end;
 
-    CRLMGMT_DATA_set_proxy_url(cmdat_tls, opt_cdp_proxy);
-    CRLMGMT_DATA_set_crl_max_download_size(cmdat_tls, opt_crl_maxdownload_size);
-    CRLMGMT_DATA_set_crl_cache_dir(cmdat_tls, opt_crl_cache_dir);
-    CRLMGMT_DATA_set_note(cmdat_tls, "tls connection");
-
-    CRLMGMT_DATA_set_proxy_url(cmdat_new, opt_cdp_proxy);
-    CRLMGMT_DATA_set_crl_max_download_size(cmdat_new, opt_crl_maxdownload_size);
-    CRLMGMT_DATA_set_crl_cache_dir(cmdat_new, opt_crl_cache_dir);
-    CRLMGMT_DATA_set_note(cmdat_new, "new certificates");
+    CRLMGMT_DATA_set_proxy_url(cmdata, opt_cdp_proxy);
+    CRLMGMT_DATA_set_crl_max_download_size(cmdata, opt_crl_maxdownload_size);
+    CRLMGMT_DATA_set_crl_cache_dir(cmdata, opt_crl_cache_dir);
+    CRLMGMT_DATA_set_note(cmdata, "tls or cmp connection or new certificates");
 
     /* handle here to start correct demo use case */
     if (opt_cmd != NULL) {
+        if (use_case == validate) {
+            LOG_err("-cmd option cannot be combined with 'validate' use case");
+            goto end;
+        }
         if (strcmp(opt_cmd, "ir") == 0) {
             use_case = imprint;
         } else if (strcmp(opt_cmd, "cr") == 0) {
@@ -1822,7 +1813,7 @@ int main(int argc, char *argv[])
     }
 
     if (use_case == validate) {
-        if (validate_revocation_status())
+        if (validate_cert())
             rc = EXIT_SUCCESS;
     } else {
         if ((CMPclient(use_case, log_fn)) == CMP_OK)
@@ -1832,8 +1823,7 @@ int main(int argc, char *argv[])
  end:
     if (rc != EXIT_SUCCESS)
         OSSL_CMP_CTX_print_errors(NULL);
-    CRLMGMT_DATA_free(cmdat_new);
-    CRLMGMT_DATA_free(cmdat_tls);
+    CRLMGMT_DATA_free(cmdata);
     X509_VERIFY_PARAM_free(vpm);
     /* TODO fix potential memory leaks; find out why this potentially crashes: */
     NCONF_free(config);

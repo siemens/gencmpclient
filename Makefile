@@ -208,7 +208,7 @@ ifneq ("$(wildcard $(LIBCMP_DIR))","")
 endif
 endif
 
-ifndef EJBCA
+ifneq ($(INSTA),)
 # optional SET_PROXY variable can be set to override default proxy settings (for use with INSTA)
     SET_PROXY ?= no_proxy=localhost,127.0.0.1,ppki-playground.ct.siemens.com \
     http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy # or, e.g., tsy1.coia.siemens.net.9400 or 194.145.60.250:9400
@@ -253,9 +253,9 @@ get_Insta_crls: | creds/crls
 .phony: demo demo_Insta demo_EJBCA
 demo: demo_EJBCA
 demo_Insta:
-	$(MAKE) run_demo $(EJBCA_ENV) # EJBCA=
+	$(MAKE) run_demo INSTA=1 $(EJBCA_ENV)
 demo_EJBCA:
-	$(MAKE) run_demo EJBCA=1 $(EJBCA_ENV)
+	$(MAKE) run_demo INSTA=  $(EJBCA_ENV)
 
 EJBCA_ENV= \
 	EJBCA_HOST="ppki-playground.ct.siemens.com" \
@@ -276,26 +276,24 @@ EJBCA_ENV= \
 
 CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH=. ./cmpClient$(EXE)
 .phony: run_demo
-ifdef EJBCA
+ifeq ($(INSTA),)
 run_demo: build get_EJBCA_crls
 else
 run_demo: build get_Insta_crls
 endif
-ifeq ($(EJBCA_HOST),)
-    ifdef EJBCA
-	$(error Target demo_EJBCA not supported in this environment)
-    endif
-endif
+ifeq ($(EJBCA_HOST)$(INSTA),)
+	$(warning "### Target demo_EJBCA not supported in this environment ###")
+else
 	@/bin/echo -e "\n##### running cmpClient demo #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
-ifdef EJBCA
+    ifeq ($(INSTA),)
 	$(CMPCLIENT) validate -cert $$EJBCA_CMP_CLIENT -tls_cert "" -own_trusted $$EJBCA_TRUSTED -untrusted $$EJBCA_UNTRUSTED
 	@/bin/echo -e "\nValidating own TLS client cert"
 	$(CMPCLIENT) validate -cert $$EJBCA_TLS_CLIENT -tls_trusted $$EJBCA_TRUSTED -untrusted $$EJBCA_UNTRUSTED
-else
+    else
 	$(CMPCLIENT) validate -section Insta -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/InstaDemoCA.crt # -no_check_time
-endif
+    endif
 	@echo
 	$(CMPCLIENT) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS)
 	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
@@ -315,6 +313,7 @@ endif
 	$(OCSP_CHECK)
 	@echo -e "\n#### demo finished ####"
 	@echo :
+endif
 
 .phony: start_LightweightCmpRA stop_LightweightCmpRA
 start: #LightweightCmpRA
@@ -353,13 +352,9 @@ conformance:
 	$(CMPCL)bootstrap -server localhost:6003/delayedlra
 
 test_cli: build
-ifneq ($(OPENSSL_CMP_SERVER),Mock)
-ifneq ($(OPENSSL_CMP_SERVER),Insta)
-    ifeq ($(EJBCA_HOST),)
-	$(error Target test_$(OPENSSL_CMP_SERVER) not supported in this environment)
-    endif
-endif
-endif
+ifeq ($(filter-out EJBCA Simple,$(OPENSSL_CMP_SERVER))$(EJBCA_HOST),)
+	$(warning "### Target test_$(OPENSSL_CMP_SERVER) not supported in this environment ###")
+else
 	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER in cmpossl/test/recipes/80-test_cmp_http_data/$$OPENSSL_CMP_SERVER"
 	@ :
 	( HARNESS_ACTIVE=1 \
@@ -373,6 +368,7 @@ endif
           OPENSSL_CMP_CONFIG=test_config.cnf \
 	  $(PERL) test/cmpossl/recipes/80-test_cmp_http.t )
 	@ :
+endif
 
 test_Mock:
 ifeq ($(shell expr $(OPENSSL_VERSION) \>= 1.1),1) # OpenSSL <1.1 does not support -no_check_time nor OCSP
@@ -405,10 +401,8 @@ profile_EJBCA:
 	PROFILE=EJBCA make profile $(EJBCA_ENV)
 profile: build
 ifeq ($(EJBCA_HOST),)
-#   ifeq ($(PROFILE),EJBCA)
-	$(error Target test_profile not supported in this environment)
-#   endif
-endif
+	$(warning "### Target test_profile not supported in this environment ###")
+else
 	@/bin/echo -e "\n##### Requesting a certificate from a PKI with MAC-based protection (RECOMMENDED) #####"
 	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE04
 	@/bin/echo -e "\n##### Requesting a certificate from a new PKI with signature-based protection (MANDATORY) #####"
@@ -421,11 +415,12 @@ endif
 #	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE05 -subject ""
 	@/bin/echo -e "\n##### Revoking a certificate (RECOMMENDED) #####"
 	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE08 -subject ""
-	@/bin/echo -e "\n##### Error reporting by EE (MANDATORY) #####"
+	@/bin/echo -e "\n##### Error reporting by client (MANDATORY) #####"
 	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE09
-	@/bin/echo -e "\n##### Error reporting by RA (MANDATORY) #####"
+	@/bin/echo -e "\n##### Error reporting by server (MANDATORY) #####"
 	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),RA36
 	echo "\n##### All profile tests succeeded #####"
+endif
 
 .phony: all test_all test_oss doc zip
 all:	build doc

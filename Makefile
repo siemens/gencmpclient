@@ -431,6 +431,7 @@ test_oss: clean build_no_tls
 	$(MAKE) clean build demo_Insta test_conformance test_Mock test_Insta
 
 doc: doc/cmpClient-cli.md
+	$(MAKE) -C $(SECUTILS_DIR) doc
 
 doc/cmpClient-cli.md: doc/cmpClient-cli.pod
 	pod2markdown doc/cmpClient-cli.pod doc/cmpClient-cli.md

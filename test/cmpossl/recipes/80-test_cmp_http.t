@@ -318,9 +318,8 @@ sub mock_server_pid {
 sub start_mock_server {
     my $args = $_[0]; # optional further CLI arguments
     my $dir = bldtop_dir(".");
-    my $app = "./openssl cmp";
-    my $cmd = "LD_LIBRARY_PATH=$dir DYLD_LIBRARY_PATH=$dir " .
-        bldtop_dir($app) . " -config server.cnf $args";
+    my $app = "$ENV{OPENSSL} cmp";
+    my $cmd = "LD_LIBRARY_PATH=$ENV{OPENSSL_LIB_PATH} $app -config server.cnf $args";
     print "Current directory is ".getcwd()."\n";
     print "Launching mock server: $cmd\n";
 #    my $pid = Proc::Background->new({'die_upon_destroy' => 1}, $cmd); sleep(1); return $pid;

@@ -59,6 +59,12 @@ else
     LIB_OUT_REVERSE_DIR=$(LIB_OUT)
 endif
 
+# defaults for test_conformance:
+LIGHTWEIGHTCMPRA ?= ./LightweightCmpRa.jar
+CMPCAMOCK =? ./CmpCaMock.jar
+OPENSSL_LIB_PATH ?=
+OPENSSL ?= openssl
+
 MAKECMDGOALS ?= default
 ifneq ($(filter-out doc clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
     OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
@@ -315,23 +321,23 @@ else
 	@echo :
 endif
 
-.phony: start_LightweightCmpRA stop_LightweightCmpRA
+.phony: start stop
 start: #LightweightCmpRA
-	java -jar CmpCaMock.jar . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 &
+	java -jar $(CMPCAMOCK) . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 &
 	mkdir test/Upstream test/Downstream 2>/dev/null || true
-	java -jar LightweightCmpRa.jar config/ConformanceTest.xml &
+	java -jar $(LIGHTWEIGHTCMPRA) config/ConformanceTest.xml &
 	@ # -Dorg.slf4j.simpleLogger.log.com.*=debug
 	sleep 2
 stop: #LightweightCmpRA
-	PID=`ps aux|grep "java -jar CmpCaMock.jar"        | grep -v grep | awk '{ print $$2 }'` && \
+	PID=`ps aux|grep "java -jar $(CMPCAMOCK)"        | grep -v grep | awk '{ print $$2 }'` && \
 	if [ -n "$$PID" ]; then kill $$PID; fi
-	PID=`ps aux|grep "java -jar LightweightCmpRa.jar" | grep -v grep | awk '{ print $$2 }'` && \
+	PID=`ps aux|grep "java -jar $(LIGHTWEIGHTCMPRA)" | grep -v grep | awk '{ print $$2 }'` && \
 	if [ -n "$$PID" ]; then kill $$PID; fi
 
 .phony: test_conformance_cmpclient test_conformance_cmpossl test_conformance
 .phony: conformance_cmpclient conformance_cmpossl conformance
 CMPCLNT = LD_LIBRARY_PATH=. ./cmpClient$(EXE) -section CmpRa,
-CMPOSSL = ./openssl$(EXE) cmp -config config/demo.cnf -section CmpRa,
+CMPOSSL = LD_LIBRARY_PATH=$(OPENSSL_LIB_PATH) $(OPENSSL)$(EXE) cmp -config config/demo.cnf -section CmpRa,
 test_conformance: start conformance_cmpclient conformance_cmpossl stop
 test_conformance_cmpossl: start conformance_cmpossl stop
 test_conformance_cmpclient: start conformance_cmpclient stop
@@ -425,10 +431,10 @@ endif
 .phony: all test_all test_oss doc zip
 all:	build doc
 
-test_all: test_oss demo_EJBCA test_profile test_Simple
+test_all: test_oss demo_EJBCA test_conformance test_profile test_Simple
 
 test_oss: clean build_no_tls
-	$(MAKE) clean build demo_Insta test_conformance test_Mock test_Insta
+	$(MAKE) clean build demo_Insta test_Mock test_Insta
 
 doc: doc/cmpClient-cli.md
 	$(MAKE) -C $(SECUTILS_DIR) doc

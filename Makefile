@@ -59,6 +59,31 @@ else
     LIB_OUT_REVERSE_DIR=$(LIB_OUT)
 endif
 
+ifneq ($(EJBCA_ENABLED),)
+EJBCA_ENV= \
+	EJBCA_HOST="ppki-playground.ct.siemens.com" \
+	EJBCA_OCSP_URL="http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp" \
+	 EJBCA_CDP_URL_PREFIX="http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+" \
+	EJBCA_CDPS="Infrastructure+Root+CA+v1.0 Infrastructure+Issuing+CA+v1.0 ECC+Root+CA+v1.0 RSA+Root+CA+v1.0" \
+	EJBCA_CDP_URL_POSTFIX="%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE" \
+	EJBCA_CMP_ISSUER="creds/PPKI_Playground_ECCIssuingCAv10.crt" \
+	EJBCA_CMP_CLIENT="creds/PPKI_Playground_CMP.p12" \
+	EJBCA_TLS_CLIENT="creds/PPKI_Playground_TLS.p12" \
+	EJBCA_CMP_TRUSTED="creds/PPKI_Playground_ECCRootCAv10.crt" \
+	EJBCA_TRUSTED="creds/PPKI_Playground_InfrastructureRootCAv10.crt" \
+	EJBCA_UNTRUSTED="creds/PPKI_Playground_InfrastructureIssuingCAv10.crt" \
+	EJBCA_CMP_RECIPIENT="/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
+	EJBCA_CMP_SERVER="/CN=Product PKI Playground CMP Signer/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
+	EJBCA_CMP_SUBJECT="/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
+	EJBCA_CMP_SUBJECT_ECC="/CN=ECC-EE/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
+	EJBCA_ENABLED=1
+# optional SET_PROXY variable can be set to override default proxy settings (for use with INSTA)
+    SET_PROXY ?= no_proxy=localhost,127.0.0.1,ppki-playground.ct.siemens.com \
+    http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy # or, e.g., tsy1.coia.siemens.net.9400 or 194.145.60.250:9400
+else
+    SET_PROXY ?= no_proxy=$$EJBCA_HOST
+endif
+
 # defaults for test_conformance:
 LIGHTWEIGHTCMPRA ?= ./LightweightCmpRa.jar
 CMPCAMOCK =? ./CmpCaMock.jar
@@ -215,15 +240,11 @@ endif
 endif
 
 ifneq ($(INSTA),)
-# optional SET_PROXY variable can be set to override default proxy settings (for use with INSTA)
-    SET_PROXY ?= no_proxy=localhost,127.0.0.1,ppki-playground.ct.siemens.com \
-    http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy # or, e.g., tsy1.coia.siemens.net.9400 or 194.145.60.250:9400
     unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
     OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
     override EXTRA_OPTS += -path pkix/ -newkeytype rsa:1024
 else
-    SET_PROXY ?= no_proxy=$$EJBCA_HOST
     unreachable="cannot reach EJBCA at $$EJBCA_HOST"
     CA_SECTION=EJBCA
     OCSP_CHECK=openssl ocsp -url $$EJBCA_OCSP_URL \
@@ -240,6 +261,7 @@ cmpossl/test/recipes/80-test_cmp_http_data/Simple:
 	ln -s ../../../../test/cmpossl/recipes/80-test_cmp_http_data/Simple
 
 get_EJBCA_crls: | creds/crls
+ifneq ($(EJBCA_ENABLED),)
 	@ # ping >/dev/null $(PINGCOUNTOPT) 1 $(EJBCA_HOST)
 	@ # || echo $(unreachable); exit 1
 	@for CA in $$EJBCA_CDPS; \
@@ -247,6 +269,7 @@ get_EJBCA_crls: | creds/crls
 		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
 		wget -q "$$EJBCA_CDP_URL_PREFIX$$CA$$EJBCA_CDP_URL_POSTFIX" -O "creds/crls/EJBCA-$$ca.crl"; \
 	done
+endif
 
 get_Insta_crls: | creds/crls
 	@ #curl -m 2 -s pki.certificate.fi ...
@@ -263,23 +286,6 @@ demo_Insta:
 demo_EJBCA:
 	$(MAKE) run_demo INSTA=  $(EJBCA_ENV)
 
-EJBCA_ENV= \
-	EJBCA_HOST="ppki-playground.ct.siemens.com" \
-	EJBCA_OCSP_URL="http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp" \
-	 EJBCA_CDP_URL_PREFIX="http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+" \
-	EJBCA_CDPS="Infrastructure+Root+CA+v1.0 Infrastructure+Issuing+CA+v1.0 ECC+Root+CA+v1.0 RSA+Root+CA+v1.0" \
-	EJBCA_CDP_URL_POSTFIX="%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE" \
-	EJBCA_CMP_ISSUER="creds/PPKI_Playground_ECCIssuingCAv10.crt" \
-	EJBCA_CMP_CLIENT="creds/PPKI_Playground_CMP.p12" \
-	EJBCA_TLS_CLIENT="creds/PPKI_Playground_TLS.p12" \
-	EJBCA_CMP_TRUSTED="creds/PPKI_Playground_ECCRootCAv10.crt" \
-	EJBCA_TRUSTED="creds/PPKI_Playground_InfrastructureRootCAv10.crt" \
-	EJBCA_UNTRUSTED="creds/PPKI_Playground_InfrastructureIssuingCAv10.crt" \
-	EJBCA_CMP_RECIPIENT="/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
-	EJBCA_CMP_SERVER="/CN=Product PKI Playground CMP Signer/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
-	EJBCA_CMP_SUBJECT="/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
-	EJBCA_CMP_SUBJECT_ECC="/CN=ECC-EE/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
-
 CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH=. ./cmpClient$(EXE)
 .phony: run_demo
 ifeq ($(INSTA),)
@@ -287,8 +293,8 @@ run_demo: build get_EJBCA_crls
 else
 run_demo: build get_Insta_crls
 endif
-ifeq ($(EJBCA_HOST)$(INSTA),)
-	$(warning "### skipping demo_EJBCA not supported in this environment ###")
+ifeq ($(EJBCA_ENABLED)$(INSTA),)
+	$(warning "### skipping demo_EJBCA since not supported in this environment ###")
 else
 	@/bin/echo -e "\n##### running cmpClient demo #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
@@ -358,8 +364,8 @@ conformance:
 	$(CMPCL)bootstrap -server localhost:6003/delayedlra
 
 test_cli: build
-ifeq ($(filter-out EJBCA Simple,$(OPENSSL_CMP_SERVER))$(EJBCA_HOST),)
-	$(warning "### skipping test_$(OPENSSL_CMP_SERVER) not supported in this environment ###")
+ifeq ($(filter-out EJBCA Simple,$(OPENSSL_CMP_SERVER))$(EJBCA_ENABLED),)
+	$(warning "### skipping test_$(OPENSSL_CMP_SERVER) since not supported in this environment ###")
 else
 	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER in cmpossl/test/recipes/80-test_cmp_http_data/$$OPENSSL_CMP_SERVER"
 	@ :
@@ -406,8 +412,8 @@ profile_Simple:
 profile_EJBCA:
 	PROFILE=EJBCA make profile $(EJBCA_ENV)
 profile: build
-ifeq ($(EJBCA_HOST),)
-	$(warning "### skipping test_profile not supported in this environment ###")
+ifeq ($(EJBCA_ENABLED),)
+	$(warning "### skipping test_profile since not supported in this environment ###")
 else
 	@/bin/echo -e "\n##### Requesting a certificate from a PKI with MAC-based protection (RECOMMENDED) #####"
 	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE04

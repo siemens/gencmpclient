@@ -340,16 +340,16 @@ stop: #LightweightCmpRA
 	PID=`ps aux|grep "java -jar $(LIGHTWEIGHTCMPRA)" | grep -v grep | awk '{ print $$2 }'` && \
 	if [ -n "$$PID" ]; then kill $$PID; fi
 
-.phony: test_conformance_cmpclient test_conformance_cmpossl test_conformance
-.phony: conformance_cmpclient conformance_cmpossl conformance
+.phony: test_conformance_cmpclient test_conformance_openssl test_conformance
+.phony: conformance_cmpclient conformance_openssl conformance
 CMPCLNT = LD_LIBRARY_PATH=. ./cmpClient$(EXE) -section CmpRa,
 CMPOSSL = LD_LIBRARY_PATH=$(OPENSSL_LIB_PATH) $(OPENSSL)$(EXE) cmp -config config/demo.cnf -section CmpRa,
-test_conformance: start conformance_cmpclient conformance_cmpossl stop
-test_conformance_cmpossl: start conformance_cmpossl stop
+test_conformance: start conformance_cmpclient conformance_openssl stop
+test_conformance_openssl: start conformance_openssl stop
 test_conformance_cmpclient: start conformance_cmpclient stop
 conformance_cmpclient: build
 	CMPCL="$(CMPCLNT)" make conformance $(EJBCA_ENV)
-conformance_cmpossl: newkey
+conformance_openssl: newkey
 	CMPCL="$(CMPOSSL)" make conformance $(EJBCA_ENV)
 newkey:
 	openssl$(EXE) ecparam -genkey -name secp521r1 -out creds/manufacturer.pem

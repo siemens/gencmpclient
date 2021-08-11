@@ -1,8 +1,10 @@
 #!/bin/make
-# Optional LPATH defines absolute or relative path where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
-# Optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
-# Optional LIB_OUT defines absolute or relative path where libgencmpcl, libcmp, and libsecutils shall be placed, defaulting to LPATH if set, else '.'
-# Optional LIBCMP_INC defines absolute or relative path of the libcmp header files, must be defined if and only if libcmp is used (CMP_STANDLONE)
+# Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
+# Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
+# Optional OUT_DIR defines where libgencmpcl, libcmp, and libsecutils shall be placed, defaulting to LPATH if set, else '.'
+# Optional LIBCMP_INC defines the directory of the libcmp header files, must be defined if and only if libcmp is used (CMP_STANDLONE)
+# All these paths may be absolute or relative to the dir containing this Makefile.
+# Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS (default see below).
 # OSSL_VERSION_QUIRKS maybe be needed to provide for setting OpenSSL compilation version quirks
 
 PREFIX=
@@ -22,16 +24,16 @@ else
 endif
 
 ifeq ($(LPATH),)
-    ifeq ($(LIB_OUT),)
-        override LIB_OUT = .
+    ifeq ($(OUT_DIR),)
+        override OUT_DIR = .
     endif
     OPENSSL_DIR ?= $(ROOTFS)/usr
-    SECUTILS_LIB=$(PREFIX)$(LIB_OUT)/libsecutils$(DLL)
+    SECUTILS_LIB=$(PREFIX)$(OUT_DIR)/libsecutils$(DLL)
     SECUTILS_DIR_=libsecutils
     SECUTILS_DIR=$(PREFIX)$(SECUTILS_DIR_)
 else
-    ifeq ($(LIB_OUT),)
-        override LIB_OUT = $(LPATH)
+    ifeq ($(OUT_DIR),)
+        override OUT_DIR = $(LPATH)
     endif
     OPENSSL_DIR ?= $(LPATH)/..
     SECUTILS_LIB=$(PREFIX)$(LPATH)/libsecutils$(DLL)
@@ -56,9 +58,10 @@ OPENSSL_DLLS = *{crypto,ssl}*.dll
 
 CC ?= gcc
 ifdef NDEBUG
-    override DEBUG_FLAGS += -DNDEBUG=1 -O2
+    DEBUG_FLAGS ?= -O2
+    override DEBUG_FLAGS += -DNDEBUG=1
 else
-    override DEBUG_FLAGS += -g -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -O0 # not every compiler(version) supports -Og
+    DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
 endif
 override CFLAGS += $(DEBUG_FLAGS) -std=gnu90 -fstack-protector -fno-omit-frame-pointer -D_FORTIFY_SOURCE=2
 override CFLAGS += -Werror -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter #-DPEDANTIC -pedantic -Wno-declaration-after-statement # -Werror
@@ -87,14 +90,14 @@ override LIBS += -lsecutils -lcrypto
 
 override LDFLAGS += $(DEBUG_FLAGS) # needed for -fsanitize=...
 ifeq ($(LPATH),)
-    override LDFLAGS += -L$(PREFIX)$(LIB_OUT) -Wl,-rpath=$(LIB_OUT)
+    override LDFLAGS += -L$(PREFIX)$(OUT_DIR) -Wl,-rpath=$(OUT_DIR):genCMPClient
     override LDFLAGS += -L$(SECUTILS_DIR) -Wl,-rpath=$(SECUTILS_DIR_)
     override LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
 else
     override LDFLAGS += -L$(LPATH)
 endif
 
-LIBGENCMPCL=$(LIB_OUT)/libgencmpcl$(DLL)
+LIBGENCMPCL=$(OUT_DIR)/libgencmpcl$(DLL)
 
 OBJS = src/genericCMPClient$(OBJ) src/cmpClient$(OBJ)
 
@@ -121,7 +124,7 @@ ifeq ($(findstring clean,$(MAKECMDGOALS)),)
 -include $(DEPS)
 endif
 
-$(OBJS): %$(OBJ): %.c | $(SECUTILS_LIB) # $(PREFIX)$(LIB_OUT)/libcmp$(DLL)
+$(OBJS): %$(OBJ): %.c | $(SECUTILS_LIB) # $(PREFIX)$(OUT_DIR)/libcmp$(DLL)
 	 $(CC) $(CFLAGS) -c -fPIC $< -o $@
 	@$(CC) $(CFLAGS) -MM $< -MT $@ -MF $*.d
 

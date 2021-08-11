@@ -1,7 +1,8 @@
-# Optional LPATH defines absolute or relative path where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
-# Optional OPENSSL_DIR defines absolute or relative path to OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
-# Optional LIB_OUT defines absolute or relative path where libgencmpcl, libcmp, and libsecutils shall be placed, defaulting to LPATH if set, else '.'
-# Relative paths such as '.' are interpreted relative to the directory of the genCMPClient.
+# Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
+# Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
+# Optional OUT_DIR defines where libgencmpcl, libcmp, and libsecutils shall be placed, defaulting to LPATH if set, else '.'
+# All these paths may be absolute or relative to the dir containing this Makefile.
+# Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS. Also CFLAGS is passed to build goals.
 # By default, the Insta Demo CA ist used for demonstration purposes.
 
 SHELL=bash # This is needed because of a problem in "build" rule; good for supporting extended file name globbing
@@ -24,8 +25,8 @@ endif
 ROOTFS ?= $(DESTDIR)$(prefix)
 
 ifeq ($(LPATH),)
-    ifeq ($(LIB_OUT),)
-        override LIB_OUT = .
+    ifeq ($(OUT_DIR),)
+        override OUT_DIR = .
     endif
 #   ifneq ($(wildcard $(ROOTFS)/usr/local/include/openssl),)
 #       OPENSSL_DIR ?= $(ROOTFS)/usr/local
@@ -35,13 +36,15 @@ ifeq ($(LPATH),)
     SECUTILS_DIR=libsecutils
     SECUTILS_LIB=$(SECUTILS_DIR)/libsecutils$(DLL)
 else
-    ifeq ($(LIB_OUT),)
-        override LIB_OUT = $(LPATH)
+    ifeq ($(OUT_DIR),)
+        override OUT_DIR = $(LPATH)
     endif
     OPENSSL_DIR ?= $(LPATH)/..
     # SECUTILS and SECUTILS_LIB not needed since pre-installed
 endif
-LIBCMP_LIB=$(LIB_OUT)/libcmp$(DLL)
+LIBCMP_LIB=$(OUT_DIR)/libcmp$(DLL)
+
+OUTBIN=$(OUT_DIR)/libgencmpcl$(DLL)
 
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 # $(OPENSSL_DIR) is relative path, assumed relative to ./
@@ -51,12 +54,19 @@ else
     OPENSSL_REVERSE_DIR=$(OPENSSL_DIR)
 endif
 
-ifeq ($(shell echo $(LIB_OUT) | grep "^/"),)
-# $(LIB_OUT) is relative path, assumed relative to ./
-    LIB_OUT_REVERSE_DIR=../$(LIB_OUT)
+ifeq ($(shell echo $(OUT_DIR) | grep "^/"),)
+# $(OUT_DIR) is relative path, assumed relative to ./
+    OUT_DIR_REVERSE_DIR=../$(OUT_DIR)
 else
-# $(LIB_OUT) is absolute path
-    LIB_OUT_REVERSE_DIR=$(LIB_OUT)
+# $(OUT_DIR) is absolute path
+    OUT_DIR_REVERSE_DIR=$(OUT_DIR)
+endif
+
+ifneq ($(NDEBUG),)
+    DEBUG_FLAGS ?= -O2
+    override DEBUG_FLAGS += -DNDEBUG=1
+else
+    DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
 endif
 
 ifneq ($(EJBCA_ENABLED),)
@@ -113,7 +123,7 @@ endif
 ifeq ($(LPATH),)
     LIBCMP_DIR=cmpossl
     ifdef CMP_STANDALONE
-        LIBCMP_INC=$(LIBCMP_DIR)/include_cmp
+        LIBCMP_INC=$(OUT_DIR)/include_cmp # consistent to the default value cmpossl/Makefile
     endif
 else
     LIBCMP_DIR=cmpossl # TODO correct?
@@ -169,7 +179,7 @@ $(SECUTILS_LIB):
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)
 build_secutils: # not: update_secutils
-	$(MAKE) -C $(SECUTILS_DIR) build CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(LIB_OUT_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 
 $(LIBCMP_DIR)/include: # not: update_cmpossl
 ifdef CMP_STANDALONE
@@ -189,7 +199,7 @@ update_cmpossl:
 build_cmpossl: # not: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 ifdef CMP_STANDALONE
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build LIBCMP_INC="../$(LIBCMP_INC)" LIBCMP_DIR="$(LIB_OUT_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 
 clean_submodules:
@@ -208,10 +218,10 @@ ifdef CMP_STANDALONE
 endif
 
 build: build_prereq
-	$(MAKE) -f Makefile_src $(OUTBIN) build OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" LIB_OUT="$(LIB_OUT)" CFLAGS="$(CFLAGS)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+	$(MAKE) -f Makefile_src $(OUTBIN) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OUT_DIR="$(OUT_DIR)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
 build_no_tls:
-	$(MAKE) build SECUTILS_NO_TLS=1
+	$(MAKE) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
 
 .phony: clean_test clean clean_uta clean_this
 
@@ -233,9 +243,9 @@ clean_this: clean_test
 
 clean: clean_this
 ifeq ($(LPATH),)
-	$(MAKE) -C $(SECUTILS_DIR) OUT_DIR="$(LIB_OUT_REVERSE_DIR)" clean || true
+	$(MAKE) -C $(SECUTILS_DIR) clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
 ifneq ("$(wildcard $(LIBCMP_DIR))","")
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean LIBCMP_INC="../$(LIBCMP_DIR)/include_cmp" LIBCMP_DIR="$(LIB_OUT_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 endif
 
@@ -440,7 +450,7 @@ all:	build doc
 test_all: test_oss demo_EJBCA test_conformance test_profile test_Simple
 
 test_oss: clean build_no_tls
-	$(MAKE) clean build demo_Insta test_Mock test_Insta
+	$(MAKE) clean build demo_Insta test_Mock test_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
 
 doc: doc/cmpClient-cli.md
 	$(MAKE) -C $(SECUTILS_DIR) doc
@@ -502,11 +512,6 @@ clean_openssl:
 .phony: buildCMPforOpenSSL
 buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 
-
-
-
-# Target for debian packaging
-OUTBIN=$(LIB_OUT)/libgencmpcl$(DLL)
 
 #SRCS=Makefile include/genericCMPClient.h src/genericCMPClient.c src/cmpClient.c
 #SRCS_TAR=libgencmpcl_0.1.0.orig.tar.gz

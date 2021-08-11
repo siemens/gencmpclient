@@ -124,7 +124,7 @@ You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL i
 ```
 export OPENSSL_DIR=/usr/local
 ```
-You may also specify using the environment variable `LIB_OUT`
+You may also specify using the environment variable `OUT_DIR`
 where the produced libraries (`libgencmpcl`, `libcmp`, and `libsecutils´)
 shall be placed. By default, the base directory (`.`) of `genCMPClient` is used.
 For all path variables, relative paths such as `.` are interpreted
@@ -206,7 +206,7 @@ For linking you will need to
 refer the linker to the CMP and Securit Utilities libraries,
 e.g., `-lcmp -lsecutils -lgencmpcl`,
 add the directories (using the linker option `-L`) where they can be found.
-See also the environment variable `LIB_OUT`.
+See also the environment variable `OUT_DIR`.
 For helping the Linux loader to find the libraries at runtime,
 it is recommended to set also linker options like `-Wl,-rpath=.`.
 

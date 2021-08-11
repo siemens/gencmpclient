@@ -353,7 +353,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (port <= 0) {
         return CMP_R_INVALID_PARAMETERS;
     }
-    char server_port[6];
+    char server_port[11];
     snprintf(server_port, sizeof(server_port), "%d", port);
     if (!OSSL_CMP_CTX_set1_server(ctx, host) ||
         (!OSSL_CMP_CTX_set_serverPort(ctx, port))) {

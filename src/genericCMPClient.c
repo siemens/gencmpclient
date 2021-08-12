@@ -98,7 +98,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
     OSSL_CMP_CTX *ctx = NULL;
 
     if (pctx == NULL) {
-        return ERR_R_PASSED_NULL_PARAMETER;
+        return CMP_R_NULL_ARGUMENT;
     }
     if ((ctx = OSSL_CMP_CTX_new(/* TODO libctx */NULL, NULL)) == NULL ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn != NULL ? (OSSL_CMP_log_cb_t)log_fn :
@@ -339,7 +339,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     const char *parsed_path;
 
     if (ctx == NULL || server == NULL) {
-        return ERR_R_PASSED_NULL_PARAMETER;
+        return CMP_R_NULL_ARGUMENT;
     }
 #ifdef SECUTILS_NO_TLS
     if (tls != NULL) {
@@ -425,7 +425,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
 {
     if (ctx == NULL) {
         LOG(FL_ERR, "No ctx parameter given");
-        return ERR_R_PASSED_NULL_PARAMETER;
+        return CMP_R_NULL_ARGUMENT;
     }
 
     if (old_cert != NULL && !OSSL_CMP_CTX_set1_oldCert(ctx, (X509 *)old_cert))
@@ -576,11 +576,11 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
 
     if (ctx == NULL) {
         LOG(FL_ERR, "No ctx parameter given");
-        return ERR_R_PASSED_NULL_PARAMETER;
+        return CMP_R_NULL_ARGUMENT;
     }
     if (new_creds == NULL) {
         LOG(FL_ERR, "No new_creds parameter given");
-        return ERR_R_PASSED_NULL_PARAMETER;
+        return CMP_R_NULL_ARGUMENT;
     }
 
     /* check if any enrollment function has already been called before on ctx */
@@ -654,11 +654,11 @@ CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 #if 0 /* as far as needed, checks are anyway done by the low-level library */
     if (new_key == NULL) {
         LOG(FL_ERR, "No new_key parameter given");
-        return ERR_R_PASSED_NULL_PARAMETER;
+        return CMP_R_NULL_ARGUMENT;
     }
     if (subject == NULL) {
         LOG(FL_ERR, "No subject parameter given");
-        return ERR_R_PASSED_NULL_PARAMETER;
+        return CMP_R_NULL_ARGUMENT;
     }
 #endif
     if (subject != NULL && (subj = parse_DN(subject, "subject")) == NULL)
@@ -681,11 +681,11 @@ CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 #if 0 /* as far as needed, checks are anyway done by the low-level library */
     if (new_key == NULL) {
         LOG(FL_ERR, "No new_key parameter given");
-        return ERR_R_PASSED_NULL_PARAMETER;
+        return CMP_R_NULL_ARGUMENT;
     }
     if (subject == NULL) {
         LOG(FL_ERR, "No subject parameter given");
-        return ERR_R_PASSED_NULL_PARAMETER;
+        return CMP_R_NULL_ARGUMENT;
     }
 #endif
     if (subject != NULL && (subj = parse_DN(subject, "subject")) == NULL)
@@ -704,7 +704,7 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 {
     if (csr == NULL) {
         LOG(FL_ERR, "No csr parameter given");
-        return ERR_R_PASSED_NULL_PARAMETER;
+        return CMP_R_NULL_ARGUMENT;
     }
 
     CMP_err err = CMPclient_setup_certreq(ctx, NULL /* new_key */,
@@ -738,12 +738,12 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
 {
     if (ctx == NULL) {
         LOG(FL_ERR, "No ctx parameter given");
-        return ERR_R_PASSED_NULL_PARAMETER;
+        return CMP_R_NULL_ARGUMENT;
     }
 #if 0 /* as far as needed, checks are anyway done by the low-level library */
     if (cert == NULL) {
         LOG(FL_ERR, "No cert parameter given");
-        return ERR_R_PASSED_NULL_PARAMETER;
+        return CMP_R_NULL_ARGUMENT;
     }
 #endif
     if (cert != NULL) {
@@ -773,9 +773,19 @@ char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx, char *buf, size_t buf
     return OSSL_CMP_CTX_snprint_PKIStatus(ctx, buf, bufsize);
 }
 
-void CMPclient_finish(OSSL_CMP_CTX *ctx)
+CMP_err CMPclient_reinit(OSSL_CMP_CTX *ctx)
 {
-    OSSL_CMP_CTX_print_errors(ctx);
+    OSSL_CMP_CTX_print_errors(ctx /* may be NULL */);
+    if (ctx == NULL) {
+        LOG(FL_ERR, "No ctx parameter given");
+        return CMP_R_NULL_ARGUMENT;
+    }
+    return OSSL_CMP_CTX_reinit(ctx) ? CMP_OK : CMPOSSL_error();
+}
+
+void CMPclient_finish(OPTIONAL OSSL_CMP_CTX *ctx)
+{
+    OSSL_CMP_CTX_print_errors(ctx /* may be NULL */);
     if (ctx != NULL) {
 #ifndef SECUTILS_NO_TLS
         APP_HTTP_TLS_INFO *info = OSSL_CMP_CTX_get_http_cb_arg(ctx);

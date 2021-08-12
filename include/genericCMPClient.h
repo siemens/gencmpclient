@@ -98,13 +98,13 @@ CMP_err CMPclient_setup_certreq(CMP_CTX *ctx,
 /*-
  * Either the internal CMPclient_enroll() or the specific CMPclient_imprint(),
  * CMPclient_bootstrap(), CMPclient_pkcs10(), or CMPclient_update[_anycert]())
- * or CMPclient_revoke() can be called next, only once for the given ctx
+ * or CMPclient_revoke() can be called next.
  */
 /* the structure returned in *new_creds must be freed by the caller */
 /*
  * @brief perform the given type of certificate request (ir/cr/p10cr/kur)
  *
- * @param |ctx| CMP context to be used for implicit parameters, xmay get updated
+ * @param |ctx| CMP context to be used for implicit parameters, may get updated
  * @param |new_creds| pointer to variable where to store new credentials including enrolled certificate
  * @param |cmd| the type of request to be performed: CMP_IR, CMP_CR, CMP_P10CR, or CMP_KUR
  * @return CMP_OK on success, else CMP error code
@@ -129,8 +129,11 @@ CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr,
 /* get error information sent by the server */
 char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx, char *buf, size_t bufsize);
 
-/* must be called after any of the above activities */
-void CMPclient_finish(CMP_CTX *ctx);
+/* must be called between any of the above certificate management activities */
+CMP_err CMPclient_reinit(CMP_CTX *ctx);
+
+/* should be called on application termination */
+void CMPclient_finish(OPTIONAL CMP_CTX *ctx);
 
 /* CREDENTIALS helpers */
 # ifdef LOCAL_DEFS

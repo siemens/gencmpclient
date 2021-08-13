@@ -294,7 +294,7 @@ to update or revoke them, and to perform other CMP requests.
     This default is used for IR and CR only if no SANs are set.
     If the NULL-DN (`/`) is given then no subject is placed in the template.
 
-    If provided and no **-oldcert** is given,
+    If provided and **-oldcert** and **-csr** are not given,
     the subject DN is used as fallback sender of outgoing CMP messages.
 
     Special characters may be escaped by `\` (backslash); whitespace is retained.
@@ -378,6 +378,8 @@ to update or revoke them, and to perform other CMP requests.
     respective regular CMP request.
     It may also be used with **-cmd** _rr_ to specify the certificate to be revoked
     via the included subject and public key.
+    Its subject is used as fallback sender in CMP message headers
+    if **-cert** and **-oldcert** are not given.
 
 - **-out\_trusted** _filenames_
 

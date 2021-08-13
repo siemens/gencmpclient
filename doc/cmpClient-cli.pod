@@ -324,7 +324,7 @@ otherwise the subject of the B<-oldcert>, if provided.
 This default is used for IR and CR only if no SANs are set.
 If the NULL-DN (C</>) is given then no subject is placed in the template.
 
-If provided and no B<-oldcert> is given,
+If provided and B<-oldcert> and B<-csr> are not given,
 the subject DN is used as fallback sender of outgoing CMP messages.
 
 Special characters may be escaped by C<\> (backslash); whitespace is retained.
@@ -408,6 +408,8 @@ When used with B<-cmd> I<ir>, I<cr>, or I<kur>, it is transformed into the
 respective regular CMP request.
 It may also be used with B<-cmd> I<rr> to specify the certificate to be revoked
 via the included subject and public key.
+Its subject is used as fallback sender in CMP message headers
+if B<-cert> and B<-oldcert> are not given.
 
 =item B<-out_trusted> I<filenames>
 

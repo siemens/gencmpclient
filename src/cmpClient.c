@@ -1425,10 +1425,8 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
         if (use_case == genm) {
             LOG_warn("-csr option is ignored for 'genm' command");
         } else {
-            if ((*csr = CSR_load(opt_csr, "PKCS#10 CSR")) == NULL
-                    || !OSSL_CMP_CTX_set1_p10CSR(ctx, *csr)) {
+            if ((*csr = CSR_load(opt_csr, "PKCS#10 CSR")) == NULL)
                 return -48;
-            }
         }
     }
     return CMP_OK;

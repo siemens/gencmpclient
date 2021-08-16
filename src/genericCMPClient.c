@@ -220,6 +220,40 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
     return CMPOSSL_error();
 }
 
+CMP_err CMPclient_setup_SSL(CMP_CTX *ctx, SSL *ssl, const char *path,
+                            int keep_alive, int timeout)
+{
+    if (ctx == NULL || ssl == NULL) {
+        return CMP_R_NULL_ARGUMENT;
+    }
+    if (!OSSL_CMP_CTX_set1_serverPath(ctx, path) ||
+        (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT, timeout)) ||
+        (keep_alive >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_KEEP_ALIVE, keep_alive))) {
+        goto err;
+    }
+
+#ifdef SECUTILS_NO_TLS
+    LOG(FL_ERR, "SSL is not supported by this build");
+    return CMP_R_INVALID_PARAMETERS;
+#else
+    BIO *sbio = BIO_new(BIO_f_ssl());
+    if (sbio == NULL) {
+        goto err;
+    }
+    BIO_set_ssl(sbio, ssl,  BIO_NOCLOSE);
+    (void)OSSL_CMP_CTX_set_transfer_cb_arg(ctx, sbio);
+
+    if (path == NULL)
+        path = "";
+    LOG(FL_INFO, "will contact CMP server via existing SSL connection at HTTP path \"%s%s\"",
+        path[0] == '/' ? "" : "/", path);
+    return CMP_OK;
+#endif
+
+    err:
+    return CMPOSSL_error();
+}
+
 #ifndef SECUTILS_NO_TLS
 /* yields the name of the SW component, not the name of an executable */
 static char *opt_getprog(void)
@@ -231,8 +265,9 @@ typedef struct app_http_tls_info_st {
     const char *server;
     const char *port;
     int use_proxy;
-    int timeout;
+    int timeout; /* for OSSL_HTTP_proxy_connect() */
     SSL_CTX *ssl_ctx;
+    SSL *ssl;
 } APP_HTTP_TLS_INFO;
 
 static const char *tls_error_hint(void)
@@ -343,7 +378,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     }
 #ifdef SECUTILS_NO_TLS
     if (tls != NULL) {
-        LOG(FL_ERR, "TLS is not supported in this build");
+        LOG(FL_ERR, "TLS is not supported by this build");
         return CMP_R_INVALID_PARAMETERS;
     }
 #endif
@@ -388,13 +423,14 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 
         if (!OSSL_CMP_CTX_set_http_cb(ctx, app_http_tls_cb))
             goto err;
-        APP_HTTP_TLS_INFO_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
-        (void)OSSL_CMP_CTX_set_http_cb_arg(ctx, NULL);
         APP_HTTP_TLS_INFO *info = OPENSSL_zalloc(sizeof(*info));
         if (info == NULL)
             goto err;
+        APP_HTTP_TLS_INFO_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
         (void)OSSL_CMP_CTX_set_http_cb_arg(ctx, info);
         /* info will be freed along with ctx */
+        OSSL_CMP_CTX_set_transfer_cb_arg(ctx, NULL); /* indicate that SSL is not used */
+
         info->server =  OPENSSL_strdup(host);
         info->port = OPENSSL_strdup(server_port);
         info->use_proxy = proxy_host != NULL;
@@ -788,12 +824,16 @@ void CMPclient_finish(OPTIONAL OSSL_CMP_CTX *ctx)
     OSSL_CMP_CTX_print_errors(ctx /* may be NULL */);
     if (ctx != NULL) {
 #ifndef SECUTILS_NO_TLS
+        BIO *sbio = OSSL_CMP_CTX_get_transfer_cb_arg(ctx);
         APP_HTTP_TLS_INFO *info = OSSL_CMP_CTX_get_http_cb_arg(ctx);
 #endif
         X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
         OSSL_CMP_CTX_free(ctx);
 #ifndef SECUTILS_NO_TLS
-        APP_HTTP_TLS_INFO_free(info);
+        if (sbio == NULL)
+            APP_HTTP_TLS_INFO_free(info);
+        else
+            BIO_free(sbio);
 #endif
     }
 }

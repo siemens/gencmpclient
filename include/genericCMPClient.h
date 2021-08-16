@@ -67,11 +67,14 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx,
                           OPTIONAL X509_STORE *new_cert_truststore,
                           bool implicit_confirm);
 
-/* must be called next in case the transfer_fn is NULL, which implies HTTP_transfer */
+/* must be called next if the transfer_fn is NULL and no existing SSL connection is used */
 CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
                              int keep_alive, int timeout, OPTIONAL SSL_CTX *tls,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy);
+/* must be called alternatively if transfer_fn is NULL and existing SSL connection is used */
+CMP_err CMPclient_setup_SSL(CMP_CTX *ctx, SSL *ssl, const char *path,
+                            int keep_alive, int timeout);
 
 /*-
  * @brief fill the cert template used for certificate requests (ir/cr/p10cr/kur)

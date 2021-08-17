@@ -62,6 +62,7 @@ else
     OUT_DIR_REVERSE_DIR=$(OUT_DIR)
 endif
 
+override CFLAGS += -DOPENSSL_FUNC=__func__ # workaround for pedantic C compiler
 ifneq ($(NDEBUG),)
     DEBUG_FLAGS ?= -O2
     override DEBUG_FLAGS += -DNDEBUG=1

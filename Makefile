@@ -167,7 +167,8 @@ build_submodules: get_submodules build_cmpossl build_secutils # $(LIBCMP_INC) $(
 get_submodules: $(SECUTILS_DIR)/include $(LIBCMP_DIR)/include
 
 update: update_secutils update_cmpossl
-	git pull
+	git fetch
+	git rebase
 
 $(SECUTILS_DIR)/include: # not: update_secutils
 	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)

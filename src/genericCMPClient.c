@@ -54,10 +54,13 @@ static int CMPOSSL_error()
  * Core functionality
  */
 
-CMP_err CMPclient_init(OPTIONAL LOG_cb_t log_fn)
+CMP_err CMPclient_init(OPTIONAL const char* name, OPTIONAL LOG_cb_t log_fn)
 {
+    if (name == NULL)
+        name = CMPCLIENT_MODULE_NAME;
+    LOG_set_name(name);
     LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
-    UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, "genericCMPClient");
+    UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, NULL);
     if (!STORE_EX_check_index()) {
         LOG(FL_ERR, "failed to initialize STORE_EX index\n");
         return ERR_R_INIT_FAIL;

@@ -1689,9 +1689,9 @@ int main(int argc, char *argv[])
     int i;
     int rv, rc = EXIT_FAILURE;
 
-    LOG_set_name("cmpClient");
+    const char *name = "cmpClient";
     LOG_cb_t log_fn = LOG_console;
-    if (CMPclient_init(log_fn) != CMP_OK)
+    if (CMPclient_init(name, log_fn) != CMP_OK)
         goto end;
 
     enum use_case use_case = no_use_case; /* default */

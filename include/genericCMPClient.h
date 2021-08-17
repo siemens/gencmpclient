@@ -21,6 +21,8 @@
 typedef OSSL_CMP_CTX CMP_CTX;
 typedef OSSL_CMP_severity severity;
 
+# define CMPCLIENT_MODULE_NAME "genCMPClient"
+
 typedef int CMP_err;
 # define CMP_OK 0
 # define CMP_R_OTHER_LIB_ERR 99
@@ -50,7 +52,7 @@ typedef int CMP_err;
 
 /* CMP client core functions */
 /* should be called once, as soon as the application starts */
-CMP_err CMPclient_init(OPTIONAL LOG_cb_t log_fn);
+CMP_err CMPclient_init(OPTIONAL const char* name, OPTIONAL LOG_cb_t log_fn);
 
 /* must be called first */
 CMP_err CMPclient_prepare(CMP_CTX **pctx,

@@ -100,7 +100,7 @@ make get_submodules
 ```
 
 This will fetch also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
-the [Security Utilities (libsecutils)](https://code.siemens.com/mo_mm_linux_distribution/securityUtilities) library
+the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils) library
 (which has some recursive submodules, of which only `libs/interfaces` is fetched).
 
 For using the project as a git submodule,

@@ -65,25 +65,25 @@ tls_used = 0
 #tls_key = $key
 
 [imprint]
+server = http://md1raekc:6002/lrawithmacprotection
+secret = pass:myPresharedSecret
+untrusted = creds/trusted/CMP_LRA_DOWNSTREAM_EE.pem
 cmd = ir
 cert =
 key =
-newkeytype = CKG
-## newkeytype = EC:secp521r1
+newkeytype = central:
 newkey = creds/manufacturer.pem # fallback for cmpossl
 newkeypass = pass:12345
-reqexts = empty # is ignored by EJBCA
-policies = empty
+reqexts = reqexts
+policies = certificatePolicies
 certout = creds/manufacturer.crt
 
 [bootstrap]
 cmd = cr
 secret =
-## newkeytype = EC:prime256v1 # an alias of EC:secp256r1
 newkey = creds/operational.pem # fallback for cmpossl
 newkeypass = pass:12345
 newkeytype = central:
-## newkeytype = EC:secp521r1
 newkey = creds/manufacturer.pem # fallback for cmpossl
 newkeypass = pass:12345
 reqexts = reqexts

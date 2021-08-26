@@ -91,6 +91,21 @@ policies = certificatePolicies
 san_nodefault = 1
 certout = creds/operational.crt
 
+[bootstraprsa]
+cmd = cr
+secret =
+newkey = creds/operational.pem # fallback for cmpossl
+newkeypass = pass:12345
+newkeytype = central:
+newkey = creds/manufacturer.pem # fallback for cmpossl
+newkeypass = pass:12345
+reqexts = reqexts
+policies = certificatePolicies
+san_nodefault = 1
+certout = creds/operational.crt
+cert = creds/CMP_EE_Chain_RSA.pem # workaround for cmpossl
+key = creds/CMP_EE_Key_RSA.pem # workaround for cmpossl
+
 [update]
 path = ejbca/publicweb/cmp/PlaygroundCMPSigning
 cmd = kur

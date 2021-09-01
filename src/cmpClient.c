@@ -1361,13 +1361,17 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 LOG_err("Missing -newkey option specifying the file to save the new key");
                 return -40;
             }
-            const char *key_spec = strcmp(opt_newkeytype, "ECC") == 0 ? "EC:secp256r1" : opt_newkeytype;
-            if (strncmp(opt_newkeytype, "central:", 8) == 0) {
+            int central_keygen = strncmp(opt_newkeytype, "central:", 8) == 0;
+            if (central_keygen) {
                 /* trigger central key generation */
-                new_pkey = NULL;
+                opt_newkeytype += 8;
                 OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPO_METHOD, (int)OSSL_CRMF_POPO_NONE);
-            } else {
-                if ((new_pkey = KEY_new(key_spec)) == NULL) {
+                /* TODO document the use of OSSL_CRMF_POPO_NONE for central key generation */
+            }
+            if (*opt_newkeytype != '\0') {
+                /* TODO replace hack: gen preliminary key also when central key gen is requested to quickly get key algorithm identifier */
+                const char *key_spec = strcmp(opt_newkeytype, "ECC") == 0 ? "EC:secp256r1" : opt_newkeytype;
+                if ((*new_pkey = KEY_new(key_spec)) == NULL) {
                     LOG(FL_ERR, "Unable to generate new private key according to specification '%s'",
                         key_spec);
                     return CMP_R_GENERATE_KEY;

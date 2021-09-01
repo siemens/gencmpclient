@@ -71,6 +71,7 @@ cmd = ir
 cert =
 key =
 newkeytype = central:
+newkeytype = central:EC:secp521r1  # specifies type of key to request
 newkey = creds/manufacturer.pem # fallback for cmpossl
 newkeypass = pass:12345
 reqexts = reqexts

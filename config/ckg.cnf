@@ -14,7 +14,7 @@ use_aia = 0
 ocsp =
 
 [CmpRa] # LightweightCmpRa
-server = http://md1raekc:6000/onlinelra
+server = http://localhost:6000/onlinelra
 secret = pass:myPresharedSecret
 cert = creds/CMP_EE_Keystore.p12
 key = $cert
@@ -65,7 +65,7 @@ tls_used = 0
 #tls_key = $key
 
 [imprint]
-server = http://md1raekc:6002/lrawithmacprotection
+server = http://localhost:6002/lrawithmacprotection
 secret = pass:myPresharedSecret
 cmd = ir
 cert =

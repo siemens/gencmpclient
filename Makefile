@@ -462,7 +462,7 @@ doc/cmpClient-cli.md: doc/cmpClient-cli.pod
 
 zip:
 	zip genCMPClient.zip \
-            LICENSE README.md .gitmodules Makefile{,_src} CMakeLists.txt \
+            LICENSE.txt .md .gitmodules Makefile{,_src} CMakeLists.txt \
 	    OpenSSL_version.{c,mk} include/genericCMPClient.h \
 	    src/cmpClient.c src/genericCMPClient.c
 

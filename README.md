@@ -222,3 +222,11 @@ All this is already done for the cmp client application.
 
 This software including associated documentation is provided ‘as is’.
 Effort has been spent on quality assurance, but there are no guarantees.
+
+
+## License
+
+This work is licensed under the terms of the Apache Software License 2.0.
+See the [LICENSE.txt](LICENSE.txt) file in the top-level directory.
+
+SPDX-License-Identifier: Apache-2.0

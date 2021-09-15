@@ -4,8 +4,14 @@
  *
  * @author David von Oheimb, Siemens AG, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2021 Siemens AG
- *  Licensed under the Apache License, Version 2.0
+ *  Copyright 2007-2021 The OpenSSL Project Authors. All Rights Reserved.
+ *  Copyright Nokia 2007-2019
+ *  Copyright (c) 2015-2021 Siemens AG
+ *
+ *  Licensed under the Apache License 2.0 (the "License").
+ *  You may not use this file except in compliance with the License.
+ *  You can obtain a copy in the file LICENSE in the source distribution
+ *  or at https://www.openssl.org/source/license.html
  *  SPDX-License-Identifier: Apache-2.0
  */
 

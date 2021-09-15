@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- edited with XMLSpy v2010 rel. 3 sp1 (x64) (http://www.altova.com) -->
-<!-- Copyright (c) 2021 Siemens AG -->
-<!-- Licensed under the Apache License, Version 2.0 SPDX-License-Identifier: Apache-2.0 -->
+<!-- Copyright (c) 2020-2021 Siemens AG -->
+<!-- Licensed under the Apache License 2.0 (the "License").
+     You may not use this file except in compliance with the License.
+     You can obtain a copy in the file LICENSE in the source distribution
+     or at https://www.openssl.org/source/license.html -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
 	<xs:element name="Configuration">
 		<xs:annotation>

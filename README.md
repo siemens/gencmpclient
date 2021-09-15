@@ -19,7 +19,7 @@ to cover the major certificate management use cases.
 The library supports developing CMP clients that follow
 the [Lightweight Certificate Management Protocol (CMP) Profile](https://datatracker.ietf.org/doc/html/draft-ietf-lamps-lightweight-cmp-profile),
 which is geared towards simple and interoperable industrial use.
-The software also provides a commmand-line interface (CLI)
+The software also provides a command-line interface (CLI)
 that is handy for interactive exploration of using CMP in a PKI.
 
 
@@ -93,7 +93,9 @@ rm -f OpenSSL_version
 
 For accessing `git@code.siemens.com` you will need an SSH client with credentials allowing to read from that repository.
 
-For accessing `https://github.com/mpeylo/cmpossl` from the Siemens intranet you may need to set up an HTTP proxy, for instance:
+For accessing the code repositories on GitHub from the Siemens intranet
+you may need an SSH client with suitable credentials
+or an HTTP proxy set up, for instance:
 ```
 export https_proxy=http://de.coia.siemens.net:9400
 ```
@@ -143,8 +145,8 @@ In the newly created directory `genCMPClient` you can build the software simply 
 ```
 make
 ```
-where the CC environment variable may be set as needed; it defaults to 'gcc'.
-Also the ROOTFS environment variable may be set, e.g., for cross compiliation.
+where the CC environment variable may be set as needed; it defaults to %'gcc'.
+Also the ROOTFS environment variable may be set, e.g., for cross compilation.
 
 The result is in, for instance, `./libgencmpcl.so`.
 This also builds all required dependencies (such as `./libcmp.so` and `./libsecutils.so`) and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
@@ -181,7 +183,7 @@ make demo_Insta
 
 ## Using the CLI-based client
 
-The Comand Line Interface (CLI) of the CMP client is implemented in
+The Command Line Interface (CLI) of the CMP client is implemented in
 [`src/cmpClient.c`](src/cmpClient.c).
 It supports most of the features of the genCMPClient library.
 The CLI use with the available options are documented in [`cmpClient-cli.pod`](doc/cmpClient-cli.pod).
@@ -210,11 +212,11 @@ make sure that any OpenSSL header files included have the same version
 as the one used to build the standalone CMP library `libcmp`.
 
 For linking you will need to
-refer the linker to the CMP and Securit Utilities libraries,
+refer the linker to the CMP and Security Utilities libraries,
 e.g., `-lcmp -lsecutils -lgencmpcl`,
 add the directories (using the linker option `-L`) where they can be found.
 See also the environment variable `OUT_DIR`.
-For helping the Linux loader to find the libraries at runtime,
+For helping the Linux loader to find the libraries at run time,
 it is recommended to set also linker options like `-Wl,-rpath=.`.
 
 Also make sure that the OpenSSL libraries (typically referred to via `-lssl -lcrypto`) are in your library path and

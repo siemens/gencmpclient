@@ -3,6 +3,9 @@
 This is the code repository for the cross-division generic CMP client library
 with associated CLI-based demo/test client and documentation.
 
+**Note:** This [inner-source repository](https://code.siemens.com/product-pki/genCMPClient) is going to retire.
+Please switch to the OSS repository at [https://github.com/siemens/gencmpclient](https://github.com/siemens/gencmpclient).
+
 
 ## Purpose
 
@@ -20,15 +23,19 @@ The software also provides a commmand-line interface (CLI)
 that is handy for interactive exploration of using CMP in a PKI.
 
 
-## Status
+## Status and changelog
 
 * All features agreed with the participating Siemens business units
 have been implemented and documented in FY 2019.
 * Several hundreds of test cases have been compiled and executed successfully in FY 2020.
 * [Open-source clearing has been finished](https://sw360.siemens.com/group/guest/projects/-/project/detail/a85b052efc1c3d42ebd3ef217fd600a4#/tab-ClearingStatus) in Feb 2020.
 * Open-sourcing done on 17th September 2021 to [https://github.com/siemens/gencmpclient](https://github.com/siemens/gencmpclient).
+* **This [inner-source repository](https://code.siemens.com/product-pki/genCMPClient) is going to retire.
+Please switch to the [GitHub repository](https://github.com/siemens/gencmpclient).**
 * Maintenance (i.e., minor updates and fixes, also to the documentation)
 and feature extensions towards CMP version 3 are planned for FY 2022.
+
+See the [CHANGELOG.md](CHANGELOG.md) file in the top-level directory.
 
 
 ## Documentation

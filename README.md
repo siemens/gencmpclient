@@ -109,8 +109,7 @@ make get_submodules
 ```
 
 This will fetch also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
-the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils) library
-(which has some recursive submodules, of which only `libs/interfaces` is fetched).
+the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils) library.
 
 For using the project as a git submodule,
 do for instance the following in the directory where you want to integrate it:
@@ -183,7 +182,7 @@ make demo_Insta
 
 ## Using the CLI-based client
 
-The Command Line Interface (CLI) of the CMP client is implemented in
+The Command-Line Interface (CLI) of the CMP client is implemented in
 [`src/cmpClient.c`](src/cmpClient.c).
 It supports most of the features of the genCMPClient library.
 The CLI use with the available options are documented in [`cmpClient-cli.pod`](doc/cmpClient-cli.pod).

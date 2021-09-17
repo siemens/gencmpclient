@@ -1,6 +1,0 @@
-Maintainer: David von Oheimb <David.von.Oheimb@siemens.com>
-Build-Depends: libssl-dev, libuta-dev
-Depends: libssl1.1
-Description: generic CMP client library
- Generic CMP client library based on CMPforOpenSSL
-

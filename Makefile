@@ -528,13 +528,6 @@ deb:
 clean_deb:
 	rm ../libgencmpcl*.deb
 
-.phony: debian debiandir
-debian: debian_control.in debian_changelog.in
-	HEADER_TARGET=headers_install MAKEFLAGS="-j1 LPATH=/usr/lib/" libs/interfaces/debian/makedeb.sh libgencmpcl
-
-debiandir: debian_control.in debian_changelog.in
-	HEADER_TARGET=headers_install MAKEFLAGS="-j1 LPATH=/usr/lib/" libs/interfaces/debian/makedeb.sh libgencmpcl debdironly
-
 # installation target - append ROOTFS=<path> to install into virtual root
 # filesystem
 .phony: install headers_install uninstall

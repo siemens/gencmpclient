@@ -958,11 +958,3 @@ Copyright (c) 2021 Siemens AG.
 
 Licensed under the Apache License, Version 2.0
 SPDX-License-Identifier: Apache-2.0
-
-# POD ERRORS
-
-Hey! **The above document had some coding errors, which are explained below:**
-
-- Around line 1:
-
-    &#x3d;pod directives shouldn't be over one line long!  Ignoring all 5 lines of content

@@ -26,9 +26,9 @@ that is handy for interactive exploration of using CMP in a PKI.
 have been implemented and documented in FY 2019.
 * Several hundreds of test cases have been compiled and executed successfully in FY 2020.
 * [Open-source clearing has been finished](https://sw360.siemens.com/group/guest/projects/-/project/detail/a85b052efc1c3d42ebd3ef217fd600a4#/tab-ClearingStatus) in Feb 2020.
+* Open-sourcing done on 17th September 2021 to [https://github.com/siemens/gencmpclient](https://github.com/siemens/gencmpclient).
 * Maintenance (i.e., minor updates and fixes, also to the documentation)
-is ongoing, at least in FY 2021.
-* Open-sourcing planned by September 2021.
+and feature extensions towards CMP version 3 are planned for FY 2022.
 
 
 ## Documentation
@@ -143,9 +143,9 @@ The result is in, for instance, `./libgencmpcl.so`.
 This also builds all required dependencies (such as `./libcmp.so` and `./libsecutils.so`) and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
 
 **Important Note:** by default, the Security Utilities supports using the
-[Unified Trust Anchor (UTA) API](https://code.siemens.com/hermann.seuschek/uta_api) library
+[Unified Trust Anchor (UTA) API](https://github.com/siemens/libuta) library
 for secure device-level storage of key material for confidentiality and integrity protection of files.
-Since the UTA library is not generally available and used, the SecUtils are so far integrated in a way that the use of the UTA lib is not enabled.
+Since the UTA library is not generally used, the SecUtils are by default integrated in a way that the use of the UTA lib is not enabled.
 This means that unless the UTA library is enabled (via `SECUTILS_USE_UTA=1`) and used,
 secure storage of protection credentials for private keys and trusted certificates needs to be solved by other means.
 

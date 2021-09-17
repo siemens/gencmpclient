@@ -1,0 +1,10 @@
+genCMPClient
+
+Copyright (c) Siemens AG, 2021
+
+Authors:
+ David von Oheimb <David.von.Oheimb@siemens.com>
+
+This work is licensed under the terms of the Apache Software License 2.0.
+
+SPDX-License-Identifier: Apache-2.0

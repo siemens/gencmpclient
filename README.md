@@ -1,93 +1,207 @@
-# gencmpclient
+# generic CMP client
+
+This is the code repository for the generic CMP client library
+with associated CLI-based demo/test client and documentation.
 
 
+## Purpose
 
-## Getting started
+The purpose of this software is to provide a high-level API
+on top of the detailed CMP (and CRMF) API of
+[CMPforOpenSSL](https://github.com/mpeylo/cmpossl) and
+and [OpenSSL](https://www.openssl.org/) since version 3.0.
+The high-level API is on the one hand convenient to use for application
+programmers and on the other hand complete and flexible enough
+to cover the major certificate management use cases.
+The library supports developing CMP clients that follow
+the [Lightweight Certificate Management Protocol (CMP) Profile](https://datatracker.ietf.org/doc/html/draft-ietf-lamps-lightweight-cmp-profile),
+which is geared towards simple and interoperable industrial use.
+The software also provides a command-line interface (CLI)
+that is handy for interactive exploration of using CMP in a PKI.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## Status and changelog
 
-## Add your files
+See the [CHANGELOG.md](CHANGELOG.md) file in the top-level directory.
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
 
+## Documentation
+
+The Generic CMP client API specification and CLI documentation are available in the [`doc`](doc/) folder.
+
+The Doxygen documentation of the underlying Security Utilities library is going to be available
+via a link in its [README file](https://github.com/siemens/libsecutils/blob/master/README.md).
+
+
+## Prerequisites
+
+This software should work with any flavor of Linux, including [Cygwin](https://www.cygwin.com/),
+also on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
+
+The following network and development tools are required.
+* SSH (tested with OpenSSH 7.2, 7.4, and 7.9)
+* wget (tested with versions 1.17, 1.18, and 1.20)
+* Git (tested with versions 2.7.2, 2.11.0, and 2.20)
+* GNU make (tested with versions 4.1 and 4.2.1)
+* GNU C compiler (tested with versions 5.4.0, 7.3.0, 8.3.0, and 10.0.1)
+* OpenSSL development edition (tested with versions 1.0.2u, 1.1.0, 1.1.1, and 3.0.0-beta2-dev)
+
+For instance, on a Debian system these may be installed as follows:
 ```
-cd existing_repo
-git remote add origin https://code.siemens.com/ct-rda-cst-ses-de/remote-attestation/base-functionality/gencmpclient.git
-git branch -M main
-git push -uf origin main
+sudo apt install libssl-dev
+```
+while `apt install ssh wget git make gcc` usually is not needed as far as these tools are pre-installed.
+
+As a sanity check you can execute in a shell:
+```
+git clone git@github.com:siemens/genCMPClient.git
+cd genCMPClient
+make -f OpenSSL_version.mk
+```
+In order for this to work, you may need to set OPENSSL_DIR as described below,
+e.g.,
+```
+export OPENSSL_DIR=/usr/local
 ```
 
-## Integrate with your tools
+This should output on the console something like
+```
+cc [...] OpenSSL_version.c -lcrypto -o OpenSSL_version
+OpenSSL 1.1.1d  10 Sep 2019 (0x1010104f)
+rm -f OpenSSL_version
+```
 
-- [ ] [Set up project integrations](https://code.siemens.com/ct-rda-cst-ses-de/remote-attestation/base-functionality/gencmpclient/-/settings/integrations)
 
-## Collaborate with your team
+## Getting the software
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+For accessing the code repositories on GitHub you may need
+an SSH client with suitable credentials or an HTTP proxy set up, for instance:
+```
+export https_proxy=http://proxy.my-company.com:8080
+```
 
-## Test and Deploy
+You can clone the git repository and its submodules with
+```
+git clone git@github.com:siemens/genCMPClient.git
+cd genCMPClient
+make get_submodules
+```
 
-Use the built-in continuous integration in GitLab.
+This will fetch also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
+the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils) library.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+For using the project as a git submodule,
+do for instance the following in the directory where you want to integrate it:
+```
+git submodule add git@code.siemens.com:siemens/genCMPClient.git
+```
 
-***
+When you later want to update your local copy of all relevant repositories it is sufficient to invoke
+```
+make update
+```
 
-# Editing this README
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+## Building the software
 
-## Suggestions for a good README
+The generic CMP client (and also its underlying CMP and Security Utilities libraries) assumes that OpenSSL (with any version >= 1.1.0) is already installed,
+including the C header files needed for development (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
+By default the OpenSSL headers will be searched for in `/usr/include` and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
+You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation, e.g.:
+```
+export OPENSSL_DIR=/usr/local
+```
+You may also specify using the environment variable `OUT_DIR`
+where the produced libraries (`libgencmpcl`, `libcmp`, and `libsecutils´)
+shall be placed. By default, the base directory (`.`) of `genCMPClient` is used.
+For all path variables, relative paths such as `.` are interpreted
+relative to the directory of the genCMPClient module.
+For further details on optional environment variables,
+see the [`Makefile`](Makefile) and [`Makefile_src`](Makefile_src).
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+In the newly created directory `genCMPClient` you can build the software simply with
+```
+make
+```
+where the CC environment variable may be set as needed; it defaults to %'gcc'.
+Also the ROOTFS environment variable may be set, e.g., for cross compilation.
 
-## Name
-Choose a self-explaining name for your project.
+The result is in, for instance, `./libgencmpcl.so`.
+This also builds all required dependencies (such as `./libcmp.so` and `./libsecutils.so`) and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## Using the demo client
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+The CMP demo client is implemented in [`src/cmpClient.c`](src/cmpClient.c)
+as part of the CLI.
+It can be executed with
+```
+make demo
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+Among others, successful execution should produce a new certificate at `creds/operational.crt`.
+You can view this certificate for instance by executing
+```
+openssl x509 -noout -text -in creds/operational.crt
+```
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+The demo client may also interact with the external Insta Certifier Demo CA via
+```
+export http_proxy=  # adapt to your needs
+make demo_Insta
+```
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## Using the CLI-based client
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+The Command-Line Interface (CLI) of the CMP client is implemented in
+[`src/cmpClient.c`](src/cmpClient.c).
+It supports most of the features of the genCMPClient library.
+The CLI use with the available options are documented in [`cmpClient-cli.md`](doc/cmpClient-cli.md).
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+CLI-based tests using the external Insta Demo CA may be invoked using
+```
+make test_Insta
+```
+where the PROXY environment variable may be used to override the default in order to reach the Insta CA.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## Using the library in own applications
+
+For compiling applications using the library,
+you will need to add the directories [`include`](include/) and
+[`libsecutils/include`](https://github.com/siemens/libsecutils/blob/master/include/) to your C headers path.
+If and only if using the standalone version, you need to
+add also the directory [`cmpossl/include_cmp`](https://github.com/mpeylo/cmpossl/tree/cmp-lib4/include/),
+define the C macro `CMP_STANDALONE`, and
+make sure that any OpenSSL header files included have the same version
+as the one used to build the standalone CMP library `libcmp`.
+
+For linking you will need to
+refer the linker to the CMP and Security Utilities libraries,
+e.g., `-lcmp -lsecutils -lgencmpcl`,
+add the directories (using the linker option `-L`) where they can be found.
+See also the environment variable `OUT_DIR`.
+For helping the Linux loader to find the libraries at run time,
+it is recommended to set also linker options like `-Wl,-rpath=.`.
+
+Also make sure that the OpenSSL libraries (typically referred to via `-lssl -lcrypto`) are in your library path and
+(the version) of the libraries found there by the linker match the header files found by the compiler.
+
+For building your application you will need to `#include` the header file [`genericCMPClient.h`](include/genericCMPClient.h) and link using `-lgencmpcl`.
+
+All this is already done for the cmp client application.
+
+
+## Disclaimer
+
+This software including associated documentation is provided ‘as is’.
+Effort has been spent on quality assurance, but there are no guarantees.
+
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+This work is licensed under the terms of the Apache Software License 2.0.
+See the [LICENSE.txt](LICENSE.txt) file in the top-level directory.
+
+SPDX-License-Identifier: Apache-2.0

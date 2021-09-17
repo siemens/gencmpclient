@@ -1,0 +1,134 @@
+<Configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Configuration.xsd">
+	<RaConfiguration>
+		<!--Imprinting and bootstrapping with signature-based protection-->
+		<Upstream>
+			<CmpCredentials>
+				<in>
+					<SignatureBased TrustStorePath="creds/trusted/CMP_CA_Root.pem"/>
+				</in>
+				<out>
+					<SignatureBased KeyStorePassword="Password" KeyStorePath="creds/CMP_LRA_UPSTREAM_Keystore.p12"/>
+				</out>
+			</CmpCredentials>
+			<CmpHttpClient ServerUrl="http://localhost:7000/ca"/>
+		</Upstream>
+		<EnrollmentCredentials TrustStorePath="creds/trusted/ENROLL_Root.pem"/>
+		<Downstream AcceptRaVerified="false">
+			<CmpHttpServer ServingUrl="http://localhost:6000/onlinelra"/>
+			<CmpCredentials>
+				<in>
+					<SignatureBased TrustStorePath="creds/trusted/CMP_EE_Root.pem"/>
+				</in>
+				<out>
+					<SignatureBased KeyStorePassword="Password" KeyStorePath="creds/CMP_LRA_DOWNSTREAM_Keystore.p12"/>
+				</out>
+			</CmpCredentials>
+		</Downstream>
+	</RaConfiguration>
+	<RaConfiguration>
+		<!--Imprinting and bootstrapping with password-based MAC protection-->
+		<Upstream>
+			<CmpCredentials>
+				<in>
+					<SignatureBased TrustStorePath="creds/trusted/CMP_CA_Root.pem"/>
+				</in>
+				<out>
+					<SignatureBased KeyStorePassword="Password" KeyStorePath="creds/CMP_LRA_UPSTREAM_Keystore.p12"/>
+				</out>
+			</CmpCredentials>
+			<CmpHttpClient ServerUrl="http://localhost:7000/ca"/>
+		</Upstream>
+		<EnrollmentCredentials TrustStorePath="creds/trusted/ENROLL_Root.pem"/>
+		<Downstream AcceptRaVerified="false">
+			<CmpHttpServer ServingUrl="http://localhost:6002/lrawithmacprotection"/>
+			<CmpCredentials>
+				<in>
+					<PasswordBased Password="myPresharedSecret" Username="keyIdentification"/>
+				</in>
+				<out>
+					<PasswordBased Password="myPresharedSecret" Username="keyIdentification"/>
+				</out>
+			</CmpCredentials>
+		</Downstream>
+	</RaConfiguration>
+	<RaConfiguration>
+		<Upstream>
+			<!--Key update and revocation with signature-based protection using cert to be udpated/revoked-->
+			<CmpCredentials>
+				<in>
+					<SignatureBased TrustStorePath="creds/trusted/CMP_CA_Root.pem"/>
+				</in>
+				<out>
+					<SignatureBased KeyStorePassword="Password" KeyStorePath="creds/CMP_LRA_UPSTREAM_Keystore.p12"/>
+				</out>
+			</CmpCredentials>
+			<CmpHttpClient ServerUrl="http://localhost:7000/ca"/>
+		</Upstream>
+		<EnrollmentCredentials TrustStorePath="creds/trusted/ENROLL_Root.pem"/>
+		<Downstream AcceptRaVerified="false">
+			<CmpHttpServer ServingUrl="http://localhost:6001/rrkur"/>
+			<CmpCredentials>
+				<in>
+					<SignatureBased TrustStorePath="creds/trusted/ENROLL_Root.pem"/> <!-- not allowed according to profile: CMP_EE_Root.pem -->
+					<!-- not allowed according to profile: <PasswordBased Password="myPresharedSecret" Username="keyIdentification"/> -->
+				</in>
+				<out>
+					<SignatureBased KeyStorePassword="Password" KeyStorePath="creds/CMP_LRA_DOWNSTREAM_Keystore.p12"/>
+					<!-- would take precedence:<PasswordBased Password="myPresharedSecret" Username="keyIdentification"/> -->
+				</out>
+			</CmpCredentials>
+		</Downstream>
+	</RaConfiguration>
+	<RaConfiguration>
+		<!-- Delayed Enrollment: Upper RA close to CA-->
+		<Upstream>
+			<CmpCredentials>
+				<in>
+					<SignatureBased TrustStorePath="creds/trusted/CMP_CA_Root.pem"/>
+				</in>
+				<out>
+					<SignatureBased KeyStorePassword="Password" KeyStorePath="creds/CMP_LRA_UPSTREAM_Keystore.p12"/>
+				</out>
+			</CmpCredentials>
+			<CmpHttpClient ServerUrl="http://localhost:7000/ca"/>
+		</Upstream>
+		<EnrollmentCredentials TrustStorePath="creds/trusted/ENROLL_Root.pem"/>
+		<Downstream AcceptRaVerified="false">
+			<OfflineFileServer OutputDirectory="test/Downstream" InputDirectory="test/Upstream" InputDirectoryPollcycle="1"/>
+			<CmpCredentials>
+				<in>
+					<SignatureBased TrustStorePassword="Password" TrustStorePath="creds/CMP_LRA_UPSTREAM_Keystore.p12"/>
+				</in>
+				<out reprotectMode="reprotect">
+					<SignatureBased KeyStorePassword="Password" KeyStorePath="creds/CMP_LRA_UPSTREAM_Keystore.p12"/>
+				</out>
+			</CmpCredentials>
+		</Downstream>
+	</RaConfiguration>
+	<RaConfiguration>
+		<!-- Delayed Enrollment: Lower RA close to EE-->
+		<Upstream>
+			<CmpCredentials>
+				<in>
+					<SignatureBased TrustStorePassword="Password" TrustStorePath="creds/CMP_LRA_UPSTREAM_Keystore.p12"/>
+				</in>
+				<out>
+					<SignatureBased KeyStorePassword="Password" KeyStorePath="creds/CMP_LRA_UPSTREAM_Keystore.p12"/>
+				</out>
+			</CmpCredentials>
+			<OfflineFileClient OutputDirectory="test/Upstream" InputDirectory="test/Downstream" InputDirectoryPollcycle="1" checkAfterTime="2"/>
+		</Upstream>
+		<EnrollmentCredentials TrustStorePath="creds/trusted/ENROLL_Root.pem"/>
+		<Downstream AcceptRaVerified="false">
+			<CmpHttpServer ServingUrl="http://localhost:6003/delayedlra"/>
+			<CmpCredentials>
+				<in>
+					<SignatureBased TrustStorePath="creds/trusted/CMP_EE_Root.pem"/>
+				</in>
+				<out>
+					<SignatureBased KeyStorePassword="Password" KeyStorePath="creds/CMP_LRA_DOWNSTREAM_Keystore.p12"/>
+				</out>
+			</CmpCredentials>
+		</Downstream>
+	</RaConfiguration>
+</Configuration>

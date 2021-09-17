@@ -1,0 +1,6 @@
+[submodule "libsecutils"]
+	path = libsecutils
+	url = git@github.com:siemens/libsecutils.git
+[submodule "cmpossl"]
+	path = cmpossl
+	url = https://github.com/mpeylo/cmpossl.git

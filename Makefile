@@ -515,15 +515,10 @@ clean_openssl:
 buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 
 
-#SRCS=Makefile include/genericCMPClient.h src/genericCMPClient.c src/cmpClient.c
-#SRCS_TAR=libgencmpcl_0.1.0.orig.tar.gz
 .phony: deb clean_deb
 deb:
-	@ # #tar czf $(SRCS_TAR) $(SRCS)
-	@ # #rm -f  $(OUTBIN) debian/tmp/usr/lib/libgencmpcl.so*
 	debuild -uc -us -I* --lintian-opts --profile debian
 	rm -r debian/tmp
-	@ # rm $(SRCS_TAR)
 
 clean_deb:
 	rm ../libgencmpcl*.deb

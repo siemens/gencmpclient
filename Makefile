@@ -250,6 +250,7 @@ ifneq ("$(wildcard $(LIBCMP_DIR))","")
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 endif
+	rm -f doc/cmpClient-cli.md
 
 ifneq ($(INSTA),)
     unreachable="cannot reach pki.certificate.fi"
@@ -458,7 +459,7 @@ doc: doc/cmpClient-cli.md
 	$(MAKE) -C $(SECUTILS_DIR) doc
 
 doc/cmpClient-cli.md: doc/cmpClient-cli.pod
-	pod2markdown doc/cmpClient-cli.pod doc/cmpClient-cli.md
+	pod2markdown $< $@
 
 zip:
 	zip genCMPClient.zip \

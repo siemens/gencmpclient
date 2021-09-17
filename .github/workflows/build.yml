@@ -1,0 +1,28 @@
+# GitHub Actions
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) Siemens AG, 2021
+
+name: CI
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: build-make
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev
+          make
+          make clean
+          make build_no_tls
+
+  doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: doc
+        run: |
+          make doc

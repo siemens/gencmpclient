@@ -1,0 +1,674 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (c) 2020-2021 Siemens AG -->
+<!-- Licensed under the Apache License 2.0 (the "License").
+     You may not use this file except in compliance with the License.
+     You can obtain a copy in the file LICENSE in the source distribution
+     or at https://www.openssl.org/source/license.html -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:element name="Configuration">
+		<xs:annotation>
+			<xs:documentation>A RA/LRA configuration
+				In a production environment the integrity of this Configuration must be protected by external measures.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="RaConfiguration" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>configuration of on (L)RA instance </xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:complexContent>
+							<xs:extension base="RA_INSTANCE"/>
+						</xs:complexContent>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="ServiceConfiguration" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>General Message Service</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Response" minOccurs="0" maxOccurs="unbounded">
+								<xs:complexType>
+									<xs:choice>
+										<xs:element name="SequenceOfCMPCertificate">
+											<xs:annotation>
+												<xs:documentation>return a SEQUENCE OF CMPCerticates
+												</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:attribute name="sourceFile" type="FileName" use="required">
+													<xs:annotation>
+														<xs:documentation>file to read the certificates from
+														</xs:documentation>
+													</xs:annotation>
+												</xs:attribute>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="CAKeyUpdAnnContent">
+											<xs:annotation>
+												<xs:documentation>return a CAKeyUpdAnnContent SEQUENCE
+												</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:attribute name="oldWithNew" type="FileName" use="required">
+													<xs:annotation>
+														<xs:documentation>file to read one certificate from
+														</xs:documentation>
+													</xs:annotation>
+												</xs:attribute>
+												<xs:attribute name="newWithOld" type="FileName" use="required">
+													<xs:annotation>
+														<xs:documentation>file to read one certificate from
+														</xs:documentation>
+													</xs:annotation>
+												</xs:attribute>
+												<xs:attribute name="newWithNew" type="FileName" use="required">
+													<xs:annotation>
+														<xs:documentation>file to read one certificate from
+														</xs:documentation>
+													</xs:annotation>
+												</xs:attribute>
+											</xs:complexType>
+										</xs:element>
+										<xs:element name="AnyAsn1Content">
+											<xs:annotation>
+												<xs:documentation>return BER encoded ASN.1 content</xs:documentation>
+											</xs:annotation>
+											<xs:complexType>
+												<xs:attribute name="sourceFile" type="FileName" use="required">
+													<xs:annotation>
+														<xs:documentation>file to read the binary content from</xs:documentation>
+													</xs:annotation>
+												</xs:attribute>
+											</xs:complexType>
+										</xs:element>
+									</xs:choice>
+									<xs:attribute name="servingOid" use="optional">
+										<xs:annotation>
+											<xs:documentation>OID to respond to. If not provided, the defaults (id-it-caCerts, id-it-rootCaKeyUpdate, id-it-certReqTemplate) are used</xs:documentation>
+										</xs:annotation>
+									</xs:attribute>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="Downstream" type="DOWNSTREAM_CONFIGURATION"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="RestService" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>REST service interface</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:all>
+							<xs:element name="Upstream" type="UPSTREAM_CONFIGURATION"/>
+							<xs:element name="RestHttpServer" type="HTTP_SERVER_CONFIGURATION"/>
+						</xs:all>
+						<xs:attribute name="Recipient" type="xs:string" use="required">
+							<xs:annotation>
+								<xs:documentation>The recipient field MUST identify the PKI management entity that is expected to receive the messages triggered by the rest interface. </xs:documentation>
+							</xs:annotation>
+						</xs:attribute>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:complexType name="RA_INSTANCE">
+		<xs:annotation>
+			<xs:documentation>Configuration of a whole RA or LRA instance.
+				An RA_INSTANCE element type describes one RaConfiguration.
+				A Downstream element describes a set of downstream interface implementations
+				sharing the same CMP protection configuration and the same
+				(optional) inventory. An InventoryClient describes the HTTP(S) REST
+				interface to the inventory. The CmpHttpServer describes an
+				HTTP(S) server accepting POST requests for CMP message exchange.
+				The CmpFileServer describes a pair of directories used for file-based
+				CMP message exchange. The CmpOfflineWebServer provides web pages for
+				CMP file upload and download. If the AcceptRaVerified attribute is set
+				to 'false' then incoming IR, CR and KUR messages have to be signed with
+				the private key of the requested certificate. Otherwise also a
+				RaVerified Proof-of-Possession is allowed. The RA and also the
+				CMPforOpenSSL implementation do not respect key usage restrictions. So always
+				a signature-based proof-of-possession can be used.</xs:documentation>
+		</xs:annotation>
+		<xs:all>
+			<xs:element name="Upstream" type="UPSTREAM_CONFIGURATION">
+				<xs:annotation>
+					<xs:documentation>Interfaces towards the CA.
+					The Upstream element holds the CMP protection configuration used
+					for the upstream interface.
+					It is possible to configure a CmpHttpClient or a OfflineFileClient.
+					The CmpHttpClient describes an HTTP(S) client
+					for CMP message exchange [RFC 6712].</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Inventory" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Inventory for end entitiy instance validation and
+storage of enrolled certificates</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:attribute name="className" use="required"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="EnrollmentCredentials">
+				<xs:annotation>
+					<xs:documentation>Credentials used to validate
+					an enrolled certificate and to calculate the additional certificates
+					in the extraCerts field of IP, CP and KUP.
+					For EnrollmentCredentials at least the TrustStorePath is mandatory.
+                                  </xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:complexContent>
+						<xs:extension base="TRUST_CREDENTIALS"/>
+					</xs:complexContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Downstream">
+				<xs:annotation>
+					<xs:documentation>Interfaces towards the EE
+					sharing the same CmpCredentials an the same Inventory
+					</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:complexContent>
+						<xs:extension base="DOWNSTREAM_CONFIGURATION">
+							<xs:attribute name="AcceptRaVerified" type="xs:boolean" use="required"/>
+						</xs:extension>
+					</xs:complexContent>
+				</xs:complexType>
+			</xs:element>
+		</xs:all>
+	</xs:complexType>
+	<xs:complexType name="MUTUAL_CERT_CREDENTIALS">
+		<xs:annotation>
+			<xs:documentation>Credentials required to provide certificate-based
+				mutual authentication. The attribute KeyStorePath is a relative
+				filenames of a password protected Java Keystore file (JKS) or
+				PKCS#12 file holding the local certificate and private key.
+				KeyStorePassword is a plain-text password required to open the store.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:complexContent>
+			<xs:extension base="TRUST_CREDENTIALS">
+				<xs:attributeGroup ref="SIGN_CREDENTIALS"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="TRUST_CREDENTIALS">
+		<xs:annotation>
+			<xs:documentation>Credentials required to provide certificate-based
+				authentication and trust. The attribute TrustStorePath is a relative
+				filename of a password protected Java Keystore file (JKS) or PKCS#12 file
+				holding the local certificate and key and the trusted certificates.
+				For the truststore also a file containing a list of
+				concatinated certificates in PEM format is supported.
+				TrustStorePassword is a plain-text password required to open the store.
+				In a production environment a more secure password protection concept
+				should be used. If an OcspResponder URL is configured, OCSP will be
+				used in the certificate validation procedure. If a CrlPath URL is
+				configured then a downloaded CRL is used. If the global java system
+				property com.sun.security.enableCRLDP is set to 'true', Sun's PKIX
+				implementation uses also the information in a certificate's CRL
+				Distribution Points extension to find the CRL. Support for the
+				caIssuers access method of the Authority Information Access
+				extension is available. It is disabled by default for compatibility
+				and can be enabled by setting the global system property
+				com.sun.security.enableAIAcaIssuers to the value 'true'.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="CrlFile" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>CRL files to be used for certificate status
+						validation</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:attribute name="path" type="FileName" use="required"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="CrlUrl" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>CRL URLs to be used for certificate status
+						validation</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:attribute name="uri" type="xs:anyURI" use="required"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="MatchingPeerCertificateSubject" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>A list of regular expressions. If the list is
+						empty OR if at least one expression matches the client
+						subject then the peer certificate is accepted.
+                                        </xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:attribute name="regex" type="xs:string" use="required">
+						<xs:annotation>
+							<xs:documentation>A a regular expression as used in
+								java.util.regex.Pattern</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="TrustStorePath" type="FileName" use="required">
+			<xs:annotation>
+				<xs:documentation>Name of file containing the trusted certificates,
+					defaults to KeyStorePath</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TrustStorePassword" type="xs:string" default="dont care">
+			<xs:annotation>
+				<xs:documentation>Password to open the TrustStore,
+					defaults to KeyStorePassword </xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DefaultOcspResponder" type="xs:anyURI">
+			<xs:annotation>
+				<xs:documentation>URL of the default OCSP responder, which is
+					contacted when no AIA extension is provided in the certificate
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="EnableCrlCheck" type="xs:boolean" default="false">
+			<xs:annotation>
+				<xs:documentation>true if CRL checking is enabled</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="EnableCRLDistPoints" type="xs:boolean" default="false">
+			<xs:annotation>
+				<xs:documentation>true if CRL Distribution Points extension is used
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="EnableNoFallback" type="xs:boolean" default="false">
+			<xs:annotation>
+				<xs:documentation>true if fallback mechanism is disabled
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="EnableOcspCheck" type="xs:boolean" default="false">
+			<xs:annotation>
+				<xs:documentation>true if OCSP checking is enabled
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="EnableOnlyEndEntityCheck" type="xs:boolean" default="false">
+			<xs:annotation>
+				<xs:documentation>true if only the certificate status of the end
+					entity should be checked</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="EnablePreferCRLs" type="xs:boolean" default="false">
+			<xs:annotation>
+				<xs:documentation>true if CLRs are preferred over OCSP
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="EnableSoftFail" type="xs:boolean" default="false">
+			<xs:annotation>
+				<xs:documentation>Allow revocation check to succeed if the
+					revocation status cannot be determined for one of the following
+					reasons: The CRL or OCSP response cannot be obtained because of a
+					network error. True if revocation checking should be succeeded if
+					the revocation status cannot be determined.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="CMP_CREDENTIALS">
+		<xs:annotation>
+			<xs:documentation>Credentials to build and check CMP protection.
+				A CMP_CREDENTIALS element holds the trust required to protect CMP
+				messages and to validate the protection of incoming CMP message.
+				The optional element PasswordBased holds a plain text password used to
+				validate password based protection. The optional SignatureBased
+				element contains the relative filename and plain text password of a
+				JKS or PKCS#12 keystore holding the local certificate to protect
+				outgoing messages and also the relative filename of a file holding
+				trusted self signed certificates and useful intermediate
+				certificates (both in PEM format ) to validate the protection of
+				incoming CMP messages. In a production environment a more secure
+				password protection should be used. The TrustedCertificates
+				are also used to calculate the extraCerts (whole trust chain) of
+				outgoing messages. MatchingCertificateSubject holds a list of
+				regular expressions which are used to restrict the protecting
+				certificate subject name to a string matching at least one
+				expression, e.g., “.*CN=LRA.*” would match all certificates with a
+				common name starting with “LRA”.</xs:documentation>
+		</xs:annotation>
+		<xs:all>
+			<xs:element name="in">
+				<xs:annotation>
+					<xs:documentation>Incoming protection to validate
+					</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:all minOccurs="0">
+						<xs:element name="PasswordBased" type="MAC_CREDENTIAL" minOccurs="0"/>
+						<xs:element name="SignatureBased" minOccurs="0">
+							<xs:complexType>
+								<xs:complexContent>
+									<xs:extension base="TRUST_CREDENTIALS">
+										<xs:attribute name="cacheExtraCerts" type="xs:boolean" default="false">
+											<xs:annotation>
+												<xs:documentation>If true, receiced extraCerts related to a
+													specific transactionID are cached and later re-used, if
+													next received message comes without extraCerts.
+												</xs:documentation>
+											</xs:annotation>
+										</xs:attribute>
+									</xs:extension>
+								</xs:complexContent>
+							</xs:complexType>
+						</xs:element>
+					</xs:all>
+					<xs:attribute name="enforceProtection" type="xs:boolean" default="true">
+						<xs:annotation>
+							<xs:documentation>If set to false the received message is allowed
+								to be unproteced</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+					<xs:attribute name="allowedTimeDeviationInSeconds" type="xs:integer" default="600">
+						<xs:annotation>
+							<xs:documentation>allowed positive or negative offset in the
+								message time in relation to local RA time</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="out">
+				<xs:annotation>
+					<xs:documentation>Outgoing protection to apply</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:choice minOccurs="0">
+						<xs:element name="PasswordBased" type="MAC_CREDENTIAL"/>
+						<xs:element name="SignatureBased">
+							<xs:complexType>
+								<xs:attributeGroup ref="SIGN_CREDENTIALS"/>
+							</xs:complexType>
+						</xs:element>
+					</xs:choice>
+					<xs:attribute name="reprotectMode" default="reprotect">
+						<xs:annotation>
+							<xs:documentation>"reprotect": enforce reprotection; "forward":
+								try to reuse protection; "strip": strip off protection
+							</xs:documentation>
+						</xs:annotation>
+						<xs:simpleType>
+							<xs:restriction base="xs:string">
+								<xs:enumeration value="reprotect"/>
+								<xs:enumeration value="forward"/>
+								<xs:enumeration value="strip"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:attribute>
+					<xs:attribute name="suppressRedundantExtraCerts" type="xs:boolean" default="false">
+						<xs:annotation>
+							<xs:documentation>If true, do not sent an extraCerts certificate
+								twice in a message flow related to a specific transactionID.
+							</xs:documentation>
+						</xs:annotation>
+					</xs:attribute>
+				</xs:complexType>
+			</xs:element>
+		</xs:all>
+	</xs:complexType>
+	<xs:complexType name="TLS_SERVER_CREDENTIALS">
+		<xs:annotation>
+			<xs:documentation>The element type TLS_SERVER_CREDENTIALS is
+				inherited from TLS_CREDENTIALS. If the additional
+				ClientAuthenticationNeeded attribute is set to true
+				the server endpoint requests a TLS client authentication.
+				MatchingCertificateSubject holds a list of regular expressions
+				used to restrict the client certificate subject name to a string
+				matching at least one expression, e.g., “.*CN=LRA.*” would match all
+				certificates with a common name starting with “LRA”.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:complexContent>
+			<xs:extension base="MUTUAL_CERT_CREDENTIALS">
+				<xs:attribute name="ClientAuthenticationNeeded" type="xs:boolean" default="true">
+					<xs:annotation>
+						<xs:documentation>true if client has to authenticate
+						</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="HTTP_SERVER_CONFIGURATION">
+		<xs:annotation>
+			<xs:documentation>configuration of a HTTP or HTTPS server.
+				An HTTP_SERVER_CONFIGURATION contains a TlsConfig element of type
+				TLS_SERVER_CREDENTIALS and additionally an attribute ServingUrl,
+				which holds a path and a port number. The host name part of the URL
+				is currently ignored. The TLS_SERVER_CREDENTIALS is only required
+				if the scheme is set to 'https'.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence minOccurs="0">
+			<xs:element name="TlsConfig" type="TLS_SERVER_CREDENTIALS">
+				<xs:annotation>
+					<xs:documentation>Only required for a HTTPS servingUrl
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="ServingUrl" type="xs:anyURI" use="required">
+			<xs:annotation>
+				<xs:documentation>serving URL for HTTP(S) server</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="HTTP_CLIENT_CONFIGURATION">
+		<xs:annotation>
+			<xs:documentation>A HTTP_CLIENT_CONFIGURATION contains a TlsConfig
+				element of type TLS_CREDENTIALS and additionally an attribute
+				ServerUrl, which holds a server hostname, a path, and a port number.
+				The TLS_ CREDENTIALS is only required, if the scheme is set to
+				'https'.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:annotation>
+				<xs:documentation>only required for an HTTPS ServerUrl
+				</xs:documentation>
+			</xs:annotation>
+			<xs:element name="TlsConfig" minOccurs="0">
+				<xs:complexType>
+					<xs:complexContent>
+						<xs:extension base="MUTUAL_CERT_CREDENTIALS">
+							<xs:attribute name="EnableHostVerification" type="xs:boolean" default="true">
+								<xs:annotation>
+									<xs:documentation>Enable servers hostname verification by TLS
+										client</xs:documentation>
+								</xs:annotation>
+							</xs:attribute>
+						</xs:extension>
+					</xs:complexContent>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="ServerUrl" type="xs:anyURI" use="required"/>
+	</xs:complexType>
+	<xs:simpleType name="FileName">
+		<xs:annotation>
+			<xs:documentation>Name of a file in the local filesystem
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string"/>
+	</xs:simpleType>
+	<xs:attributeGroup name="SIGN_CREDENTIALS">
+		<xs:annotation>
+			<xs:documentation>own credentials used for CMP protection, autentication, signing or encryption</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="KeyStorePath" type="FileName" use="required">
+			<xs:annotation>
+				<xs:documentation>Name of file containing the own certificate and key </xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="KeyStorePassword" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Password to open the KeyStore</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="RECIPIENT_CERTS">
+		<xs:annotation>
+			<xs:documentation>certificates of the recipients</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="CertificatePath" type="FileName" use="required">
+			<xs:annotation>
+				<xs:documentation>Name of file containing the cerificates of the recipients</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:attributeGroup>
+	<xs:complexType name="MAC_CREDENTIAL">
+		<xs:attribute name="Password" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Password for password-based PKIProtection.
+					Setting this property enables password based
+					PKIProtection check as described in [RFC 4210] section 5.1.3.1.
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Username" type="xs:string">
+			<xs:annotation>
+				<xs:documentation>If given, the sent senderKID is set to value of
+					username an the received senderKID is compared with username.
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="COAP_SERVER_CONFIGURATION">
+		<xs:attribute name="path" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>CoAP path to be served</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="MESSAGE_HANDLER_CONFIGURATION">
+		<xs:annotation>
+			<xs:documentation>Configuration for an internal message handler stub
+			</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="Id" type="xs:ID" use="required">
+			<xs:annotation>
+				<xs:documentation>ID of message handler used for lookup
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="OFFLINE_FILE_CLIENT_CONFIGURATION">
+		<xs:attribute name="InputDirectory" type="xs:string" use="required"/>
+		<xs:attribute name="InputDirectoryPollcycle" default="10">
+			<xs:annotation>
+				<xs:documentation>time in seconds between two input directory scans</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:int">
+					<xs:minInclusive value="1"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+		<xs:attribute name="OutputDirectory" type="xs:string" use="required"/>
+		<xs:attribute name="checkAfterTime" type="xs:integer" use="required"/>
+	</xs:complexType>
+	<xs:complexType name="OFFLINE_FILE_SERVER_CONFIGURATION">
+		<xs:attribute name="InputDirectory" type="xs:string" use="required"/>
+		<xs:attribute name="InputDirectoryPollcycle" default="10">
+			<xs:annotation>
+				<xs:documentation>time in seconds between two input directory scans</xs:documentation>
+			</xs:annotation>
+			<xs:simpleType>
+				<xs:restriction base="xs:int">
+					<xs:minInclusive value="1"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+		<xs:attribute name="OutputDirectory" type="xs:string" use="required"/>
+	</xs:complexType>
+	<xs:complexType name="DOWNSTREAM_CONFIGURATION">
+		<xs:all>
+			<xs:element name="CmpCredentials" type="CMP_CREDENTIALS"/>
+			<xs:element name="CmpHttpServer" type="HTTP_SERVER_CONFIGURATION" minOccurs="0"/>
+			<xs:element name="CoapServer" type="COAP_SERVER_CONFIGURATION" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>CoAP endpoint, see [RFC 7252]</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="MessageHandler" type="MESSAGE_HANDLER_CONFIGURATION" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Set up an nternal message handler
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="OfflineFileServer" type="OFFLINE_FILE_SERVER_CONFIGURATION" minOccurs="0"/>
+			<xs:element name="NestedEndpointCredentials" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>if present support reception, decomposiotion and processing of nested messages</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:complexContent>
+						<xs:extension base="NESTED_ENDPOINT_CONFIGURATION"/>
+					</xs:complexContent>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="CentralKeyGeneration" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>if present support central key generation</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:attributeGroup ref="SIGN_CREDENTIALS"/>
+				</xs:complexType>
+			</xs:element>
+		</xs:all>
+	</xs:complexType>
+	<xs:simpleType name="OID">
+		<xs:annotation>
+			<xs:documentation>ASN.1 OID</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string"/>
+	</xs:simpleType>
+	<xs:complexType name="NESTED_ENDPOINT_CONFIGURATION">
+		<xs:all>
+			<xs:element name="out">
+				<xs:complexType>
+					<xs:attributeGroup ref="SIGN_CREDENTIALS"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="in" type="TRUST_CREDENTIALS"/>
+		</xs:all>
+		<xs:attribute name="Recipient" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>The recipient field MUST identify
+				the PKI management entity that is expected to unpack
+				the nested message. </xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+	<xs:complexType name="UPSTREAM_CONFIGURATION">
+		<xs:sequence>
+			<xs:element name="CmpCredentials" type="CMP_CREDENTIALS"/>
+			<xs:element name="NestedEndpointCredentials" type="NESTED_ENDPOINT_CONFIGURATION" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>if present wrap outgoing messages into nested messages and unwrap incoming nested messages </xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:choice>
+				<xs:element name="CmpHttpClient" type="HTTP_CLIENT_CONFIGURATION"/>
+				<xs:element name="OfflineFileClient" type="OFFLINE_FILE_CLIENT_CONFIGURATION"/>
+			</xs:choice>
+		</xs:sequence>
+		<xs:attribute name="enforceRaVerified" type="xs:boolean" default="false">
+			<xs:annotation>
+				<xs:documentation>set POPO to RaVerified for outgoing  IR, CR, KUR</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+</xs:schema>

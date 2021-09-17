@@ -1,0 +1,155 @@
+#!/bin/make
+# Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
+# Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
+# Optional OUT_DIR defines where libgencmpcl, libcmp, and libsecutils shall be placed, defaulting to LPATH if set, else '.'
+# Optional LIBCMP_INC defines the directory of the libcmp header files, must be defined if and only if libcmp is used (CMP_STANDLONE)
+# All these paths may be absolute or relative to the dir containing this Makefile.
+# Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS (default see below).
+# OSSL_VERSION_QUIRKS maybe be needed to provide for setting OpenSSL compilation version quirks
+
+PREFIX=
+PREFIX_DEST = $(PREFIX)
+PREFIX_DEST ?= ./
+
+ifeq ($(OS),Windows_NT)
+    EXE=.exe
+    DLL=.dll
+    OBJ=.obj
+    LIB=bin
+else
+    EXE=
+    DLL=.so
+    OBJ=.o
+    LIB=lib
+endif
+
+ifeq ($(LPATH),)
+    ifeq ($(OUT_DIR),)
+        override OUT_DIR = .
+    endif
+    OPENSSL_DIR ?= $(ROOTFS)/usr
+    SECUTILS_LIB=$(PREFIX)$(OUT_DIR)/libsecutils$(DLL)
+    SECUTILS_DIR_=libsecutils
+    SECUTILS_DIR=$(PREFIX)$(SECUTILS_DIR_)
+else
+    ifeq ($(OUT_DIR),)
+        override OUT_DIR = $(LPATH)
+    endif
+    OPENSSL_DIR ?= $(LPATH)/..
+    SECUTILS_LIB=$(PREFIX)$(LPATH)/libsecutils$(DLL)
+endif
+
+ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
+# $(OPENSSL_DIR) is relative path
+    OPENSSL=$(PREFIX)$(OPENSSL_DIR)
+    OPENSSL_LIB=$(OPENSSL)
+    OPENSSL_RPATH=$(OPENSSL_DIR)
+    OPENSSL_RPATH_LIB=$(OPENSSL_DIR)
+else
+# $(OPENSSL_DIR) is absolute path
+    OPENSSL=$(OPENSSL_DIR)
+    OPENSSL_LIB=$(OPENSSL)/$(LIB)
+    OPENSSL_RPATH=$(OPENSSL)
+    OPENSSL_RPATH_LIB=$(OPENSSL_LIB)
+endif
+
+ARCHIVE=$(PREFIX)bin # for Jenkins
+OPENSSL_DLLS = *{crypto,ssl}*.dll
+
+CC ?= gcc
+ifdef NDEBUG
+    DEBUG_FLAGS ?= -O2
+    override DEBUG_FLAGS += -DNDEBUG=1
+else
+    DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
+endif
+override CFLAGS += $(DEBUG_FLAGS) -std=gnu90 -fstack-protector -fno-omit-frame-pointer -D_FORTIFY_SOURCE=2
+override CFLAGS += -Werror -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter #-DPEDANTIC -pedantic -Wno-declaration-after-statement # -Werror
+ifeq ($(LPATH),)
+   override CFLAGS += -I$(SECUTILS_DIR)/include
+endif
+ifdef LIBCMP_INC
+    override CFLAGS += -I$(PREFIX)$(LIBCMP_INC) -DCMP_STANDALONE
+endif
+override CFLAGS += -I$(PREFIX)include
+override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
+override CFLAGS += $(OSSL_VERSION_QUIRKS)
+
+ifdef SECUTILS_USE_UTA
+    override LIBS += -luta
+endif
+ifdef SECUTILS_NO_TLS
+    override CFLAGS += -DSECUTILS_NO_TLS=1
+else
+    override LIBS += -lssl
+endif
+ifdef LIBCMP_INC
+    override LIBS += -lcmp
+endif
+override LIBS += -lsecutils -lcrypto
+
+override LDFLAGS += $(DEBUG_FLAGS) # needed for -fsanitize=...
+ifeq ($(LPATH),)
+    override LDFLAGS += -L$(PREFIX)$(OUT_DIR) -Wl,-rpath=$(OUT_DIR):genCMPClient
+    override LDFLAGS += -L$(SECUTILS_DIR) -Wl,-rpath=$(SECUTILS_DIR_)
+    override LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
+else
+    override LDFLAGS += -L$(LPATH)
+endif
+
+LIBGENCMPCL=$(OUT_DIR)/libgencmpcl$(DLL)
+
+OBJS = src/genericCMPClient$(OBJ) src/cmpClient$(OBJ)
+
+SRCS = $(OBJS:$(OBJ)=.c)
+
+DEPS = $(SRCS:.c=.d)
+
+EXES = $(PREFIX)cmpClient$(EXE)
+
+########## rules and targets
+
+.PHONY: build
+build:	$(EXES)
+ifeq ($(OS),Windows_NT)
+ifeq ($(LPATH),)
+	@echo "Copying OpenSSL DLLs to base directory for convenient use with Windows"
+	@cp --preserve=timestamps $(OPENSSL_LIB)/$(OPENSSL_DLLS) $(PREFIX_DEST)
+endif
+	@echo "Copying SecUtils DLL to base directory for convenient use with Windows"
+	@cp --preserve=timestamps $(SECUTILS_LIB) $(PREFIX_DEST) # $(OPENSSL_LIB)/*{crypto,ssl}*.dll
+endif
+
+ifeq ($(findstring clean,$(MAKECMDGOALS)),)
+-include $(DEPS)
+endif
+
+$(OBJS): %$(OBJ): %.c | $(SECUTILS_LIB) # $(PREFIX)$(OUT_DIR)/libcmp$(DLL)
+	 $(CC) $(CFLAGS) -c -fPIC $< -o $@
+	@$(CC) $(CFLAGS) -MM $< -MT $@ -MF $*.d
+
+#%$(OBJ): %.c
+#	$(CC) $(CFLAGS) -o "$@" "$<"
+
+$(LIBGENCMPCL): src/genericCMPClient$(OBJ)
+	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@
+
+$(PREFIX)cmpClient$(EXE): src/cmpClient$(OBJ) | $(LIBGENCMPCL)
+	$(CC) $(LDFLAGS) $< $(LIBS) -lgencmpcl -o $@
+
+.PHONY: all archive
+all: build archive
+
+archive:
+	@mkdir 2>/dev/null $(ARCHIVEDIR) || true
+	@cp --preserve=timestamps $(EXES) $(ARCHIVE)
+
+.PHONY: clean
+clean:
+	rm -f $(EXES) $(LIBGENCMPCL) $(DEPS) $(OBJS)
+ifeq ($(OS),Windows_NT)
+ifeq ($(LPATH),)
+	rm -f $(PREFIX_DEST)$(OPENSSL_DLLS)
+endif
+	rm -f $(PREFIX_DEST)$(SECUTILS_LIB)
+endif

@@ -1,0 +1,210 @@
+# For full documentation of the options, see ../doc/cmpClient-cli.{pod,md}
+
+[default]
+#verbosity = 6 # means INFO (default)
+no_proxy = ${ENV::EJBCA_HOST}
+#tls_used = 0 # (default)
+#keep_alive = 1 # means preferring to keep the connection open (default)
+#msg_timeout = 120 # in seconds (default). 0 means infinite.
+#total_timeout = 0 # in seconds (default). 0 means infinite.
+#crls_timeout = 10 # in seconds (default). 0 means infinite.
+#ocsp_timeout = 10 # in seconds (default). 0 means infinite.
+#digest = sha256 # (default)
+#mac = hmac-sha1 # (default)
+#ignore_keyusage = 0 # (default)
+#san_nodefault = 0 # (default)
+#popo = 1 # means SIGNATURE (default)
+#revreason = -1 # means none (default)
+#use_cdp = 0 # (default)
+#use_aia = 0 # (default)
+#disable_confirm = 0 # (default)
+#unprotected_errors = 0 # (default)
+
+[Simple] # TODO use LightweightRA rather than Simple RA
+server = localhost:9080
+path = cmp/PlaygroundECC
+trusted = ${ENV::EJBCA_CMP_TRUSTED}, ${ENV::EJBCA_TRUSTED}
+recipient = ${ENV::EJBCA_CMP_RECIPIENT}
+subject = ${ENV::EJBCA_CMP_SUBJECT} # /CN=test-service/
+out_trusted = ${ENV::EJBCA_CMP_TRUSTED}
+
+[EJBCA]
+server = ${ENV::EJBCA_HOST}:80 #443 if tls_used = 1
+path = ejbca/publicweb/cmp/PlaygroundECC
+trusted = ${ENV::EJBCA_CMP_TRUSTED}, ${ENV::EJBCA_TRUSTED}
+recipient = ${ENV::EJBCA_CMP_RECIPIENT}
+subject = ${ENV::EJBCA_CMP_SUBJECT} # /CN=test-service/
+secret = pass:SecretCmp
+cert = ${ENV::EJBCA_CMP_CLIENT}
+key = $cert
+keypass = pass:12345
+out_trusted = ${ENV::EJBCA_CMP_TRUSTED}
+#tls_trusted = ${ENV::EJBCA_TRUSTED}
+##tls_host = $server
+#tls_cert = ${ENV::EJBCA_TLS_CLIENT}
+#tls_key = $tls_cert
+#tls_keypass = pass:12345
+#tls_used = 1
+unprotected_errors = 1 # this workaround is needed for EJBCA
+
+# Lightweight CMP Profile document to which the below section numbers refer to:
+# https://datatracker.ietf.org/doc/html/draft-ietf-lamps-lightweight-cmp-profile
+
+[EE04] # 4.1.4. Requesting a certificate from a PKI with MAC-based protection (RECOMMENDED)
+cmd = ir
+secret = pass:SecretCmp
+ref = dummy # value is not checked by server
+#cert =
+#key =
+#keypass =
+subject = ${ENV::EJBCA_CMP_SUBJECT} # /CN=test-device
+newkeytype = EC:secp521r1
+newkeypass = pass:12345
+newkey = creds/manufacturer.pem
+certout = creds/manufacturer.crt
+
+[EE01] # 4.1.1. Requesting a certificate from a new PKI with signature-based protection (MANDATORY)
+cmd = ir
+#secret =
+cert = $EE04::certout
+key = $EE04::newkey
+keypass = $EE04::newkeypass
+
+newkeytype = EC:prime256v1 # ECC implies EC:secp256r1
+newkeypass = pass:12345
+newkey = creds/operational.pem
+certout = creds/operational.crt
+
+[EE02] # 4.1.2 Requesting an additional certificate with signature-based protection (OPTIONAL)
+cmd = cr
+#secret =
+cert = $EE01::certout
+key = $EE01::newkey
+keypass = $EE01::newkeypass
+
+subject = ${ENV::EJBCA_CMP_SUBJECT} # /CN=test-service2
+reqexts = reqexts
+policies = certificatePolicies
+san_nodefault = 1
+newkeytype = EC:secp384r1
+newkeypass = pass:123456
+newkey = creds/operational2.pem
+certout = creds/operational2.crt
+
+[EE03] # 4.1.3 Updating an existing certificate with signature-based protection (MANDATORY)
+cmd = kur
+server = localhost:9083 # overrides EJBCA
+path = cmp/PlaygroundECC # overrides EJBCA
+secret =
+cert = $EE01::certout
+key = $EE01::newkey
+keypass = $EE01::newkeypass
+
+oldcert = $EE01::certout # == cert
+subject =
+newkeytype = $EE01::newkeytype
+newkey = $EE01::newkey
+newkeypass = $EE01::newkeypass
+certout = $EE01::certout
+
+# not supported by Simple RA:
+[EE05] # 4.1.5 Requesting a certificate from a legacy PKI using a PKCS#10 request (OPTIONAL)
+cmd = p10cr
+#server = localhost:9080 # overrides EJBCA
+#path = cmp/PlaygroundECC # overrides EJBCA
+cert = $EE01::certout
+key = $EE01::newkey
+keypass = $EE01::newkeypass
+
+csr = creds/test.csr.pem
+newkeytype =
+newkey =
+newkeypass =
+certout = $EE01::certout
+
+[EE06] # 4.1.6 Adding central key generation to a certificate request (OPTIONAL)
+
+[EE07] # 4.1.7 Handling delayed enrollment (RECOMMENDED)
+
+[EE08] # 4.2 Revoking a certificate (RECOMMENDED)
+server = localhost:9083 # overrides EJBCA
+path = cmp/PlaygroundECC # overrides EJBCA
+cmd = rr
+#secret =
+cert = $EE02::certout
+key = $EE02::newkey
+keypass = $EE02::newkeypass
+
+subject =
+newkeytype =
+oldcert = $EE02::certout # == cert
+revreason = 5 # cessationOfOperation
+
+[EE09] # 4.1.1 Error reporting, upstream using a certConf message (MANDATORY)
+cmd = $EE01::cmd
+#secret =
+cert = $EE01::cert
+key = $EE01::key
+keypass = $EE01::keypass
+
+newkeytype = $EE01::newkeytype
+newkeypass = $EE01::newkeypass
+newkey = $EE01::newkey
+certout = $EE01::certout
+out_trusted = $EE04::certout # wrong trust anchor
+
+[EE31] # 4.3.1 Get CA certificates  (OPTIONAL)
+
+[EE32] # 4.3.2 Get root CA certificate update (OPTIONAL)
+
+[EE33] # 4.3.3. Get certificate request template (OPTIONAL)
+
+[RA36] # 3.6 Error reporting, downstream using error message (MANDATORY)
+cmd = $EE01::cmd
+#secret =
+cert = $EE01::cert
+key = $EE01::key
+keypass = $EE01::keypass
+
+subject = "/CN=test-service2/O=WRONG" # rejected by EJBCA
+newkeytype = $EE01::newkeytype
+newkeypass = $EE01::newkeypass
+newkey = $EE01::newkey
+certout = $EE01::certout
+
+[TR01] # HTTP transport
+
+[TR02] # HTTPS transport using certificates
+
+[TR03] # HTTPS transport using shared secrets
+
+[TR62] # CoAP transport
+
+[TR63] # Piggybacking on another reliable transport
+
+[TR64] # File-based transport
+
+
+
+[reqexts]
+#basicConstraints = CA:FALSE
+keyUsage = "critical, digitalSignature" # is ignored by EJBCA
+extendedKeyUsage = "critical, serverAuth, 1.3.6.1.5.5.7.3.2" # is ignored by EJBCA
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.0 = localhost
+IP.0 = 127.0.0.1
+IP.1 = 192.168.0.1
+URI.0 = http://192.168.0.2
+
+[certificatePolicies]
+certificatePolicies = "critical, @pkiPolicy"
+
+[pkiPolicy]
+policyIdentifier = 1.3.6.1.4.1.4329.38.4.2.2
+CPS = http://www.my-company.com/pki-policy/
+userNotice.1 = @notice
+
+[notice]
+explicitText=policy text

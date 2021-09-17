@@ -157,7 +157,7 @@ make demo_Insta
 The Command-Line Interface (CLI) of the CMP client is implemented in
 [`src/cmpClient.c`](src/cmpClient.c).
 It supports most of the features of the genCMPClient library.
-The CLI use with the available options are documented in [`cmpClient-cli.md`](doc/cmpClient-cli.md).
+The CLI use with the available options are documented in [`cmpClient-cli.pod`](doc/cmpClient-cli.pod).
 
 CLI-based tests using the external Insta Demo CA may be invoked using
 ```

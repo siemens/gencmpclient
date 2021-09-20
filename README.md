@@ -76,7 +76,7 @@ For accessing the code repositories on GitHub
 you may need an SSH client with suitable credentials
 or an HTTP proxy set up, for instance:
 ```
-export https_proxy=http://proxy.my-company.com:8080
+export https_proxy=http://proxy.example.com:8080
 ```
 
 You can clone the git repository and its submodules with

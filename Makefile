@@ -92,7 +92,7 @@ EJBCA_ENV= \
     SET_PROXY ?= no_proxy=localhost,127.0.0.1,ppki-playground.ct.siemens.com \
     http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy # or, e.g., tsy1.coia.siemens.net.9400 or 194.145.60.250:9400
 else
-    SET_PROXY ?= no_proxy=$$EJBCA_HOST
+    SET_PROXY ?= no_proxy=localhost,127.0.0.1
 endif
 
 # defaults for test_conformance:

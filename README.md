@@ -93,7 +93,7 @@ the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils) l
 For using the project as a git submodule,
 do for instance the following in the directory where you want to integrate it:
 ```
-git submodule add git@code.siemens.com:siemens/genCMPClient.git
+git submodule add git@github.com:siemens/gencmpclient.git
 ```
 
 When you later want to update your local copy of all relevant repositories it is sufficient to invoke

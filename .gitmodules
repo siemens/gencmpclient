@@ -3,4 +3,4 @@
 	url = ../libsecutils.git
 [submodule "cmpossl"]
 	path = cmpossl
-	url = https://github.com/mpeylo/cmpossl.git
+	url = ../../mpeylo/cmpossl.git

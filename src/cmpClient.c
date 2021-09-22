@@ -1301,11 +1301,6 @@ static CMP_err check_options(enum use_case use_case) {
     if (opt_stapling)
         LOG_warn("OCSP stapling may be not supported by the OpenSSL build used by the SecUtils");
 #endif
-    if (opt_crls != NULL) {
-        crls = CRLs_load(opt_crls, (int)opt_crls_timeout, "pre-loaded CRLs");
-        if (crls == NULL)
-            return -30;
-    }
     return CMP_OK;
 }
 
@@ -1562,6 +1557,12 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 
     if ((err = check_options(use_case)) != CMP_OK)
         goto err;
+    if (opt_crls != NULL) {
+        crls = CRLs_load(opt_crls, (int)opt_crls_timeout, "pre-loaded CRLs");
+        err = -30;
+        if (crls == NULL)
+            goto err;
+    }
     if ((err = prepare_CMP_client(&ctx, use_case, log_fn)) != CMP_OK) {
         LOG_err("Failed to prepare CMP client");
         goto err;

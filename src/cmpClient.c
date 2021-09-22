@@ -857,6 +857,8 @@ int setup_ctx(CMP_CTX *ctx)
         return err;
 
     err = CMP_R_INVALID_ARGS;
+    if (!OSSL_CMP_CTX_set_log_verbosity(ctx, (int)opt_verbosity))
+        return err;
     if (opt_extracerts != NULL) {
         STACK_OF(X509) *certs = CERTS_load(opt_extracerts, "extra certificates for CMP");
         if (certs == NULL) {

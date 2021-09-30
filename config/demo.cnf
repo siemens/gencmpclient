@@ -2,7 +2,6 @@
 
 [default]
 #verbosity = 6 # means INFO (default)
-no_proxy = ${ENV::EJBCA_HOST}
 #tls_used = 0 # (default)
 #keep_alive = 1 # means preferring to keep the connection open (default)
 #msg_timeout = 120 # in seconds (default). 0 means infinite.
@@ -27,7 +26,7 @@ unprotected_errors = 1
 [EJBCA]
 server = ${ENV::EJBCA_HOST}:443
 path = ejbca/publicweb/cmp/PlaygroundECC
-no_proxy = ${ENV::EJBCA_HOST}
+no_proxy = 127.0.0.1,localhost,${ENV::EJBCA_HOST}
 secret = pass:SecretCmp
 cert = ${ENV::EJBCA_CMP_CLIENT}
 key = $cert

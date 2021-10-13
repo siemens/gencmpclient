@@ -1135,9 +1135,10 @@ static bool validate_cert(void)
     }
 
     LOG(FL_INFO, "Validating certificate, optionally including revocation status ");
-    LOG(FL_INFO, "Target certificate: %s", opt_cert);
-    LOG(FL_DEBUG, "Trusted certs: %s", opt_trusted);
-    LOG(FL_DEBUG, "Untrusted certs: %s", opt_untrusted);
+#define STR_OR_NONE(s) (s != NULL ? s : "(none)")
+    LOG(FL_INFO, "Target certificate: %s", STR_OR_NONE(opt_cert));
+    LOG(FL_DEBUG, "Trusted certs: %s", STR_OR_NONE(opt_trusted));
+    LOG(FL_DEBUG, "Untrusted certs: %s", STR_OR_NONE(opt_untrusted));
 
     X509 *target = CERT_load(opt_cert, opt_keypass, "target cert");
     if (target == NULL)

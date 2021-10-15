@@ -168,9 +168,6 @@ certout = $bootstrap::certout
 keypass = pass:12345
 tls_keypass = $keypass
 
-[check_originality]
-certout = creds/operational.crt
-
 [empty]
 #keyUsage =
 #extendedKeyUsage =

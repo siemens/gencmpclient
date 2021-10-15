@@ -32,7 +32,7 @@
  */
 enum use_case { no_use_case,
                 /* CMP use cases: */
-                imprint, bootstrap, check_originality, pkcs10, update,
+                imprint, bootstrap, pkcs10, update,
                 revocation /* 'revoke' already defined in unistd.h */, genm,
                 default_case,
                 /* Non-CMP use cases: */
@@ -1353,7 +1353,7 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
         }
     }
 
-    if (use_case == imprint || use_case == bootstrap || use_case == check_originality || use_case == update) {
+    if (use_case == imprint || use_case == bootstrap || use_case == update) {
         if (opt_subject == NULL
             && opt_csr == NULL && opt_oldcert == NULL && opt_cert == NULL){
             LOG_err("no -subject given for enrollment; no -csr or -oldcert or -cert available for fallback");
@@ -1599,7 +1599,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     case imprint:
         err = CMPclient_imprint(ctx, &new_creds, new_pkey, opt_subject, exts);
         break;
-    case check_originality:
     case bootstrap:
         err = CMPclient_bootstrap(ctx, &new_creds, new_pkey, opt_subject, exts);
         break;
@@ -1675,7 +1674,7 @@ int print_help(const char *prog)
     BIO *bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
 
     BIO_printf(bio_stdout, "Usage:\n"
-               "%s (imprint | bootstrap | check_originality | pkcs10 | update | revoke | validate) [-section <server>]\n"
+               "%s (imprint | bootstrap | pkcs10 | update | revoke | validate) [-section <server>]\n"
                "%s options\n\n"
                "Available options are:\n",
                prog, prog);
@@ -1711,8 +1710,6 @@ int main(int argc, char *argv[])
             use_case = imprint;
         } else if (strcmp(argv[1], "bootstrap") == 0) {
             use_case = bootstrap;
-        } else if (strcmp(argv[1], "check_originality") == 0) {
-            use_case = check_originality;
         } else if (strcmp(argv[1], "pkcs10") == 0) {
             use_case = pkcs10;
         } else if (strcmp(argv[1], "update") == 0) {

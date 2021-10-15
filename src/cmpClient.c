@@ -347,7 +347,7 @@ opt_t cmp_opts[] = {
     { "cdp_proxy", OPT_TXT, {.txt = NULL}, { &opt_cdp_proxy },
       "URL of the proxy server to send CDP URLs or cert isser names to"},
     { "crl_cache_dir", OPT_TXT, {.txt = NULL}, { &opt_crl_cache_dir },
-      "Directory of the CRL cache when downloaded during verification."},
+      "Directory where to cache CRLs downloaded during verification."},
     { "crls_timeout", OPT_NUM, {.num = -1}, { (const char **)&opt_crls_timeout },
       "Timeout for CRL fetching, or 0 for none, -1 for default: 10 seconds"},
     { "crl_maxdownload_size", OPT_NUM, {.num = 0}, { (const char **)&opt_crl_maxdownload_size},
@@ -1137,8 +1137,8 @@ static bool validate_cert(void)
     LOG(FL_INFO, "Validating certificate, optionally including revocation status ");
 #define STR_OR_NONE(s) (s != NULL ? s : "(none)")
     LOG(FL_INFO, "Target certificate: %s", STR_OR_NONE(opt_cert));
-    LOG(FL_DEBUG, "Trusted certs: %s", STR_OR_NONE(opt_trusted));
-    LOG(FL_DEBUG, "Untrusted certs: %s", STR_OR_NONE(opt_untrusted));
+    LOG(FL_INFO, "Trusted certs: %s", STR_OR_NONE(opt_trusted));
+    LOG(FL_INFO, "Untrusted certs: %s", STR_OR_NONE(opt_untrusted));
 
     X509 *target = CERT_load(opt_cert, opt_keypass, "target cert");
     if (target == NULL)
@@ -1166,7 +1166,8 @@ static bool validate_cert(void)
         goto err;
 
     LOG(FL_DEBUG, "Initializing store context");
-    X509_STORE_CTX_init(ctx, store, target, untrusted);
+    if (!X509_STORE_CTX_init(ctx, store, target, untrusted))
+        goto err;
 
     LOG(FL_DEBUG, "Starting certificate verification");
     ret = X509_verify_cert(ctx) > 0;
@@ -1791,7 +1792,8 @@ int main(int argc, char *argv[])
     CRLMGMT_DATA_set_proxy_url(cmdata, opt_cdp_proxy);
     CRLMGMT_DATA_set_crl_max_download_size(cmdata, opt_crl_maxdownload_size);
     CRLMGMT_DATA_set_crl_cache_dir(cmdata, opt_crl_cache_dir);
-    CRLMGMT_DATA_set_note(cmdata, "tls or cmp connection or new certificates");
+    CRLMGMT_DATA_set_note(cmdata, use_case == validate ? "validation" :
+                          "tls or cmp connection or new certificates");
 
     /* handle here to start correct demo use case */
     if (opt_cmd != NULL) {

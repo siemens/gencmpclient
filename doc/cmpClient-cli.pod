@@ -140,6 +140,7 @@ Certificate status checking options, for both CMP and TLS:
 [B<-cdp_proxy> I<url>]
 [B<-crl_cache_dir> I<dirname>]
 [B<-crls_timeout> I<seconds>]
+[B<-crl_maxdownload_size> I<bytes>]
 [B<-use_aia>]
 [B<-ocsp> I<URLs>]
 [B<-ocsp_timeout> I<seconds>]
@@ -980,6 +981,11 @@ Directory of the CRL cache when downloaded during verification.
 
 Number of seconds fetching a CRL may take, or 0 for infinite.
 A negative value implies the default: 10 seconds.
+
+=item B<-crl_maxdownload_size> I<bytes>
+
+Maximum size of a CRL to be downloaded.
+A value of 0 indicates the OpenSSL default, which is 100 kiB.
 
 =item B<-use_aia>
 

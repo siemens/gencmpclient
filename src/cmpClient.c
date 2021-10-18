@@ -1561,12 +1561,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 
     if ((err = check_options(use_case)) != CMP_OK)
         goto err;
-    if (opt_crls != NULL) {
-        crls = CRLs_load(opt_crls, (int)opt_crls_timeout, "pre-loaded CRLs");
-        err = -30;
-        if (crls == NULL)
-            goto err;
-    }
     if ((err = prepare_CMP_client(&ctx, use_case, log_fn)) != CMP_OK) {
         LOG_err("Failed to prepare CMP client");
         goto err;
@@ -1655,7 +1649,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     KEY_free(new_pkey);
     EXTENSIONS_free(exts);
     CREDENTIALS_free(new_creds);
-    CRLs_free(crls);
     X509_free(oldcert);
     X509_REQ_free(csr);
 
@@ -1822,6 +1815,11 @@ int main(int argc, char *argv[])
         goto end;
     }
 
+    if (opt_crls != NULL) {
+        crls = CRLs_load(opt_crls, (int)opt_crls_timeout, "pre-determined CRLs");
+        if (crls == NULL)
+            goto end;
+    }
     if (use_case == validate) {
         if (validate_cert())
             rc = EXIT_SUCCESS;
@@ -1829,6 +1827,7 @@ int main(int argc, char *argv[])
         if ((CMPclient(use_case, log_fn)) == CMP_OK)
             rc = EXIT_SUCCESS;
     }
+    CRLs_free(crls);
 
  end:
     if (rc != EXIT_SUCCESS)

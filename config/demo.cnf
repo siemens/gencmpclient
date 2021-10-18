@@ -167,6 +167,11 @@ certout = $bootstrap::certout
 [validate]
 keypass = pass:12345
 tls_keypass = $keypass
+check_all = 1
+use_aia = 0
+use_cdp = 1
+crl_cache_dir = creds/crls/
+verbosity = 6
 
 [check_originality]
 certout = creds/operational.crt

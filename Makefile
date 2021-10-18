@@ -291,7 +291,7 @@ get_Insta_crls: | creds/crls
 	@ # | fgrep "301 Moved Permanently" -q
 	@ # || (echo $(unreachable); exit 1)
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
-	@$(SET_PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl"
+	$(SET_PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl?id=633"
 
 .phony: demo demo_Insta demo_EJBCA
 demo: demo_Insta
@@ -314,9 +314,9 @@ else
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
     ifeq ($(INSTA),)
-	$(CMPCLIENT) validate -cert $$EJBCA_CMP_CLIENT -tls_cert "" -own_trusted $$EJBCA_TRUSTED -untrusted $$EJBCA_UNTRUSTED
+	$(CMPCLIENT) validate -section validate -cert $$EJBCA_CMP_CLIENT -tls_cert "" -own_trusted $$EJBCA_TRUSTED -untrusted $$EJBCA_UNTRUSTED
 	@/bin/echo -e "\nValidating own TLS client cert"
-	$(CMPCLIENT) validate -cert $$EJBCA_TLS_CLIENT -tls_trusted $$EJBCA_TRUSTED -untrusted $$EJBCA_UNTRUSTED
+	$(CMPCLIENT) validate -section validate -tls_cert $$EJBCA_TLS_CLIENT -tls_trusted $$EJBCA_TRUSTED -untrusted $$EJBCA_UNTRUSTED
     else
 	$(CMPCLIENT) validate -section Insta -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/InstaDemoCA.crt # -no_check_time
     endif

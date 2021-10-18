@@ -1817,13 +1817,9 @@ int main(int argc, char *argv[])
         if (crls == NULL)
             goto end;
     }
-    if (use_case == validate) {
-        if (validate_cert())
-            rc = EXIT_SUCCESS;
-    } else {
-        if ((CMPclient(use_case, log_fn)) == CMP_OK)
-            rc = EXIT_SUCCESS;
-    }
+    if (use_case == validate ? validate_cert()
+                             : CMPclient(use_case, log_fn) == CMP_OK)
+        rc = EXIT_SUCCESS;
     CRLs_free(crls);
 
  end:

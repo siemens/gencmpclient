@@ -1453,12 +1453,13 @@ CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
         for (i = 0; i < sk_X509_num(certs); i++) {
             X509 *cert = sk_X509_value(certs, i);
             if (X509_check_issued(cert, cert) == 0) {
-                LOG(FL_WARN, "Certificate number %d in %s is self-issued and not stored", i, field);
+                LOG(FL_WARN, "cert #%d in %s is self-issued and not stored", i + 1, field);
             } else {
                 char path[FILENAME_MAX];
                 if (get_cert_filename(cert, dir, format, path, sizeof(path)) == 0
                     || !FILES_store_cert(cert, path, FILES_get_format(format), desc)) {
-                    LOG(FL_ERR, "Failed to store cert number %d from %s in %s", i, field, dir);
+                    LOG(FL_ERR, "Failed to store cert #%d from %s in %s", i + i, field, dir);
+                    CERTS_free(certs);
                     return -51;
                 }
             }

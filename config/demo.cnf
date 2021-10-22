@@ -22,6 +22,9 @@ ignore_keyusage = 1
 #disable_confirm = 0 # (default)
 #unprotected_errors = 0 # (default)
 unprotected_errors = 1
+cacertsout = creds/cacerts.pem
+extracertsout = creds/extracerts.pem
+extracerts_dir = creds/
 
 [EJBCA]
 server = ${ENV::EJBCA_HOST}:443

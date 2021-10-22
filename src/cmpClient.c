@@ -270,14 +270,14 @@ opt_t cmp_opts[] = {
       "File to save extra certificates received in the extraCerts field"},
     { "extracerts_dir", OPT_TXT, {.txt = NULL}, { &opt_extracerts_dir },
       "Path to save extra certificates received in the extraCerts field"},
-    { "extracerts_dir_format", OPT_TXT, {.txt = NULL}, { &opt_extracerts_dir_format },
-      "Format to save extra certificates received in the extraCerts field"},
+    { "extracerts_dir_format", OPT_TXT, {.txt = "pem"}, { &opt_extracerts_dir_format },
+      "Format to save certificates received in extraCerts field. Default \"pem\""},
     { "cacertsout", OPT_TXT, {.txt = NULL}, { &opt_cacertsout },
-      "File to save CA certificates received in the caPubs field of 'ip' messages"},
+      "File to save certificates received in the caPubs field."},
     { "cacerts_dir", OPT_TXT, {.txt = NULL}, { &opt_cacerts_dir },
-      "Path to save CA certificates received in the caPubs field of 'ip' messages"},
-    { "cacerts_dir_format", OPT_TXT, {.txt = NULL}, { &opt_cacerts_dir_format },
-      "Format to save CA certificates received in the caPubs field of 'ip' messages"},
+      "Path to save CA certificates received in the caPubs field"},
+    { "cacerts_dir_format", OPT_TXT, {.txt = "pem"}, { &opt_cacerts_dir_format },
+      "Format to save certificates received in caPubs field. Default \"pem\""},
 
     OPT_HEADER("Client authentication and protection"),
     { "ref", OPT_TXT, {.txt = NULL}, { &opt_ref },
@@ -1078,35 +1078,45 @@ int setup_transfer(CMP_CTX *ctx)
     return err;
 }
 
+/* file (path) name using prefix, subject DN, "_", hash, ".", and suffix */
 static size_t get_cert_filename(const X509 *cert, const char *prefix,
                                 const char *suffix,
-                                char *name_utf8_buf, size_t name_utf8_buf_len)
+                                char *buf, size_t buf_len)
 {
-    if (name_utf8_buf == NULL || name_utf8_buf_len == 0)
+    if (buf == NULL || buf_len == 0)
         return 0;
-    size_t ret, len = UTIL_safe_string_copy(prefix, name_utf8_buf, name_utf8_buf_len, NULL);
+
+    size_t ret, len = UTIL_safe_string_copy(prefix, buf, buf_len, NULL);
     if (len == 0)
         return 0;
-    char subject[256];
+
+    char subject[256], *p;
     if (X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName, subject, sizeof(subject)) <= 0)
         return 0;
-    if ((ret = UTIL_safe_string_copy(subject, name_utf8_buf + len, name_utf8_buf_len - len, NULL)) == 0)
-        return 0;;
+    if ((ret = UTIL_safe_string_copy(subject, buf + len, buf_len - len, NULL)) == 0)
+        return 0;
+    for (p = buf + len; *p != '\0'; p++)
+        if (*p == ' ')
+            *p = '_';
     len += ret;
-    if ((ret = UTIL_safe_string_copy(" [", name_utf8_buf + len, name_utf8_buf_len - len, NULL)) == 0)
+    if ((ret = UTIL_safe_string_copy("_", buf + len, buf_len - len, NULL)) == 0)
         return 0;
     len += ret;
 
     unsigned char sha1[EVP_MAX_MD_SIZE];
     unsigned int size = 0;
     X509_digest(cert, EVP_sha1(), sha1, &size);
-    if ((ret = UTIL_bintohex(sha1, size, false, '-', 4, name_utf8_buf + len, name_utf8_buf_len - len, NULL)) == 0)
+    if ((ret = UTIL_bintohex(sha1, size, false, '-', 4, buf + len, buf_len - len, NULL)) == 0)
         return 0;
     len += ret;
-    if ((ret = UTIL_safe_string_copy("].", name_utf8_buf + len, name_utf8_buf_len - len, NULL)) == 0)
+    if ((ret = UTIL_safe_string_copy(".", buf + len, buf_len - len, NULL)) == 0)
         return 0;
-    if ((ret = UTIL_safe_string_copy(suffix, name_utf8_buf + len, name_utf8_buf_len - len, NULL)) == 0)
+    len += ret;
+
+    if ((ret = UTIL_safe_string_copy(suffix, buf + len, buf_len - len, NULL)) == 0)
         return 0;
+    for (p = buf + len; *p != '\0'; p++)
+        *p = (char)tolower(*p);
     len += ret;
     return len;
 }
@@ -1191,20 +1201,6 @@ err:
 }
 
 static CMP_err check_options(enum use_case use_case) {
-    if ((opt_cacerts_dir_format != NULL && opt_cacerts_dir == NULL)
-            || (opt_cacerts_dir_format == NULL && opt_cacerts_dir != NULL)) {
-        LOG_warn("-cacerts_dir_format and -cacerts_dir has to be set both to store certs from caPubs");
-        opt_cacerts_dir_format = NULL;
-        opt_cacerts_dir = NULL;
-    }
-
-    if ((opt_extracerts_dir_format != NULL && opt_extracerts_dir == NULL)
-            || (opt_extracerts_dir_format == NULL && opt_extracerts_dir != NULL)) {
-        LOG_warn("-extracerts_dir_format and -extracerts_dir have both to be set to store certs from extracerts");
-        opt_extracerts_dir_format = NULL;
-        opt_extracerts_dir = NULL;
-    }
-
     if (opt_infotype != NULL) {
         char id_buf[100] = "id-it-";
 
@@ -1263,12 +1259,12 @@ static CMP_err check_options(enum use_case use_case) {
     }
 
     if (opt_cacerts_dir_format != NULL && FILES_get_format(opt_cacerts_dir_format) == FORMAT_UNDEF) {
-        LOG_err("-cacerts_dir_format is not of type 'PEM', 'DER', or 'P12'/'PKCS12'");
+        LOG_err("-cacerts_dir_format not accpeted");
         return -9;
     }
 
     if (opt_extracerts_dir_format != NULL && FILES_get_format(opt_extracerts_dir_format) == FORMAT_UNDEF) {
-        LOG_err("-extracerts_format is not of type 'PEM', 'DER', or 'P12'/'PKCS12'");
+        LOG_err("-extracerts_format not accepted");
         return -18;
     }
 
@@ -1437,80 +1433,50 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
     return CMP_OK;
 }
 
-CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds, enum use_case use_case) {
-    if (opt_cacertsout != NULL) {
-        STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_caPubs(ctx);
+CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
+                   const char *file, const char *dir, const char *format)
+{
+    LOG(FL_TRACE, "Extracted certs from %s", field);
 
-        if (sk_X509_num(certs) > 0
-                && CERTS_save(certs, opt_cacertsout, "CA") < 0) {
-            LOG(FL_ERR, "Failed to store %s certs in '%s'", opt_cacertsout);
+    if (file != NULL && sk_X509_num(certs) > 0) {
+        if (CERTS_save(certs, file, desc) < 0) {
+            LOG(FL_ERR, "Failed to store certs from %s in %s", field, file);
             CERTS_free(certs);
             return -50;
         }
-        CERTS_free(certs);
     }
 
-    if (opt_cacerts_dir != NULL) {
-        LOG_trace("Extracting certs from caPubs:");
-        STACK_OF(X509) *caPubs_certs = OSSL_CMP_CTX_get1_caPubs(ctx);
-        if (sk_X509_num(caPubs_certs) == 0)
-            LOG(FL_INFO, "No certificate was presented in caPubs to store under %s", opt_cacerts_dir);
-        else if (sk_X509_num(caPubs_certs) > 1)
-            LOG_warn("More than 1 certificate was presented in caPubs; further ones are ignored");
-
-        X509 *cert = sk_X509_value(caPubs_certs, 0); /* only the first one is relevant */
-        if (cert != NULL) {
-            if (X509_check_issued(cert, cert) != 0) {
-                LOG_warn("Certificate in caPubs is not self-issued and thus is not stored");
+    if (dir != NULL) {
+        if (sk_X509_num(certs) <= 0)
+            LOG(FL_INFO, "No certificate in %s to store in %s", field, dir);
+        int i;
+        for (i = 0; i < sk_X509_num(certs); i++) {
+            X509 *cert = sk_X509_value(certs, i);
+            if (X509_check_issued(cert, cert) == 0) {
+                LOG(FL_WARN, "Certificate number %d in %s is self-issued and not stored", i, field);
             } else {
-                char cacert_path[FILENAME_MAX];
-                if (get_cert_filename(cert, opt_cacerts_dir, opt_cacerts_dir_format, cacert_path, sizeof(cacert_path)) == 0 ||
-                    !FILES_store_cert(cert, cacert_path, FILES_get_format(opt_cacerts_dir_format), "CA")) {
-                    LOG(FL_ERR, "Failed to store cert from caPubs under '%s'", opt_cacerts_dir);
+                char path[FILENAME_MAX];
+                if (get_cert_filename(cert, dir, format, path, sizeof(path)) == 0
+                    || !FILES_store_cert(cert, path, FILES_get_format(format), desc)) {
+                    LOG(FL_ERR, "Failed to store cert number %d from %s in %s", i, field, dir);
                     return -51;
                 }
             }
-            X509_free(cert);
         }
-        sk_X509_pop_free(caPubs_certs, X509_free);
     }
+    CERTS_free(certs);
+    return CMP_OK;
+}
 
-    if (opt_extracertsout != NULL) {
-        STACK_OF(X509) *certs = OSSL_CMP_CTX_get1_extraCertsIn(ctx);
-        if (sk_X509_num(certs) > 0
-                && CERTS_save(certs, opt_extracertsout, "extra") < 0) {
-            LOG(FL_ERR, "Failed to store '%s'", opt_extracertsout);
-            CERTS_free(certs);
-            return -52;
-        }
-        CERTS_free(certs);
-    }
-
-    if (opt_extracerts_dir != NULL) {
-        LOG_info("Extracting certs from extracerts:");
-        STACK_OF(X509) *extra_certs = OSSL_CMP_CTX_get1_extraCertsIn(ctx);
-        if (sk_X509_num(extra_certs) <= 0) {
-            LOG(FL_WARN, "No certificates were presented in extracerts to store under %s", opt_extracerts_dir);
-        } else {
-            LOG(FL_DEBUG, "%d certificates in extracerts given", sk_X509_num(extra_certs));
-            int i;
-            for (i = 0; i < sk_X509_num(extra_certs); ++i) {
-                X509 *cert = sk_X509_value(extra_certs, i);
-                if (X509_check_issued(cert, cert) == 0) {
-                    LOG(FL_WARN, "Certificate number %d in extracerts is self-issued and thus is not stored", i);
-                } else {
-                    char extracert_path[FILENAME_MAX];
-                    if (get_cert_filename(cert, opt_extracerts_dir, opt_extracerts_dir_format, extracert_path, sizeof(extracert_path)) == 0 ||
-                        !FILES_store_cert(cert, extracert_path, FILES_get_format(opt_extracerts_dir_format), "store extra cert")) {
-                        LOG(FL_ERR, "Failed to store cert number %d from extracerts in dir '%s'", i, opt_extracerts_dir);
-                        return -53;
-                    }
-                }
-                X509_free(cert);
-            }
-        }
-        sk_X509_pop_free(extra_certs, X509_free);
-    }
+CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds, enum use_case use_case) {
+    int err = save_certs(OSSL_CMP_CTX_get1_caPubs(ctx), "caPubs", "CA",
+                         opt_cacertsout, opt_cacerts_dir, opt_cacerts_dir_format);
+    if (err != CMP_OK)
+        return err;
+    err = save_certs(OSSL_CMP_CTX_get1_extraCertsIn(ctx), "extraCerts", "extra",
+                     opt_extracertsout, opt_extracerts_dir, opt_extracerts_dir_format);
+    if (err != CMP_OK)
+        return err;
 
     if (use_case != revocation && use_case != genm && use_case != validate) {
         if (use_case != pkcs10 && opt_newkey != NULL && opt_newkeytype != NULL) {

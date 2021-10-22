@@ -695,23 +695,28 @@ of response messages.
 =item B<-extracerts_dir> I<dirname>
 
 Path to save extra certificates received in the extraCerts field.
+If given, the name must end with the (potentally platform-specific) path separator.
 
 =item B<-extracerts_dir_format> <I<PEM|DER|P12>
 
-Format to save extra certificates received in the extraCerts field-
+Format to save extra certificates received in the extraCerts field.
+This is given in the form of a file name extension, e.g., "crt".
+Default is C<pem>.
 
 =item B<-cacertsout> I<filename>
 
-The file where to save any CA certificates received in the caPubs field of
-initializiation response (ip) messages.
+The file where to save any CA certificates received in the caPubs field.
 
 =item B<-cacerts_dir> I<dirname>
 
-Path to save CA certificates received in the caPubss field.
+Path to save CA certificates received in the caPubs field.
+If given, the name must end with the (potentally platform-specific) path separator.
 
 =item B<-cacerts_dir_format> <I<PEM|DER|P12>
 
 Format to save CA certificates received in the caPubs field.
+This is given in the form of a file name extension, e.g., "crt".
+Default is C<pem>.
 
 =back
 

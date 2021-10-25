@@ -269,15 +269,15 @@ opt_t cmp_opts[] = {
     { "extracertsout", OPT_TXT, {.txt = NULL}, { &opt_extracertsout },
       "File to save extra certificates received in the extraCerts field"},
     { "extracerts_dir", OPT_TXT, {.txt = NULL}, { &opt_extracerts_dir },
-      "Path to save extra certificates received in the extraCerts field"},
+      "Path to save not self-issued extra certs received in the extraCerts field"},
     { "extracerts_dir_format", OPT_TXT, {.txt = "pem"}, { &opt_extracerts_dir_format },
-      "Format to save certificates received in extraCerts field. Default \"pem\""},
+      "Format to use for saving those certs. Default \"pem\""},
     { "cacertsout", OPT_TXT, {.txt = NULL}, { &opt_cacertsout },
       "File to save certificates received in the caPubs field."},
     { "cacerts_dir", OPT_TXT, {.txt = NULL}, { &opt_cacerts_dir },
-      "Path to save CA certificates received in the caPubs field"},
+      "Path to save self-issued CA certs received in the caPubs field"},
     { "cacerts_dir_format", OPT_TXT, {.txt = "pem"}, { &opt_cacerts_dir_format },
-      "Format to save certificates received in caPubs field. Default \"pem\""},
+      "Format to use for saving those certs. Default \"pem\""},
 
     OPT_HEADER("Client authentication and protection"),
     { "ref", OPT_TXT, {.txt = NULL}, { &opt_ref },
@@ -1452,13 +1452,15 @@ CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
         int i;
         for (i = 0; i < sk_X509_num(certs); i++) {
             X509 *cert = sk_X509_value(certs, i);
-            if (X509_check_issued(cert, cert) == 0) {
-                LOG(FL_WARN, "cert #%d in %s is self-issued and not stored", i + 1, field);
+            bool save_self_issued = strcmp(field, "caPubs") == 0;
+            if ((X509_check_issued(cert, cert) == X509_V_OK) != save_self_issued) {
+                LOG(FL_WARN, "cert #%d in %s is%s self-issued and not stored",
+                    i + 1, field, save_self_issued ? " not" : "");
             } else {
                 char path[FILENAME_MAX];
                 if (get_cert_filename(cert, dir, format, path, sizeof(path)) == 0
                     || !FILES_store_cert(cert, path, FILES_get_format(format), desc)) {
-                    LOG(FL_ERR, "Failed to store cert #%d from %s in %s", i + i, field, dir);
+                    LOG(FL_ERR, "Failed to store cert #%d from %s in %s", i + 1, field, dir);
                     CERTS_free(certs);
                     return -51;
                 }

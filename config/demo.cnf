@@ -118,6 +118,7 @@ newkeypass = pass:12345
 reqexts = empty # is ignored by EJBCA
 policies = empty
 certout = creds/manufacturer.crt
+cacerts_dir = creds/trusted
 
 [bootstrap]
 cmd = cr

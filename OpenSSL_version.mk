@@ -1,8 +1,3 @@
-ifeq ($(OPENSSL_DIR),)
-	OPENSSL_DIR=.
-endif
-
-
 ifeq ($(LIB),)
 
 
@@ -23,7 +18,7 @@ ifneq ($(OPENSSL_DIR),)
     # $(OPENSSL_DIR) is absolute path
         OPENSSL_LIB=$(OPENSSL_DIR)/$(LIB)
     endif
-    CFLAGS+=-I$(OPENSSL_DIR)/include
+    CFLAGS+=-isystem $(OPENSSL_DIR)/include
     LDFLAGS+=-L$(OPENSSL_DIR) -L$(OPENSSL_LIB) -Wl,-rpath=$(OPENSSL_DIR) -Wl,-rpath=$(OPENSSL_LIB)
 endif
 LDLIBS=-lcrypto

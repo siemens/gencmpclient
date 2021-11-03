@@ -55,7 +55,6 @@ also on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs
 
 The following network and development tools are required.
 * Git (tested with versions 2.7.2, 2.11.0, 2.20, 2.30.2)
-* SSH (only for `git@` urls; tested with OpenSSH 7.2, 7.4, 7.9, 8.4)
 * wget (tested with versions 1.17, 1.18, 1.20, 1.21)
 * GNU make (tested with versions 4.1, 4.2.1, 4.3)
 * GNU C compiler (gcc, tested with versions 5.4.0, 7.3.0, 8.3.0, 10.0.1, 10.2.1)
@@ -65,7 +64,7 @@ For instance, on a Debian system these may be installed as follows:
 ```
 sudo apt install libssl-dev
 ```
-while `apt install ssh wget git make gcc` usually is not needed as far as these tools are pre-installed.
+while `apt install wget git make gcc` usually is not needed as far as these tools are pre-installed.
 
 Using the [CPP-VM](https://ccp.siemens.com/docs/meta-siemens/docs/getting-started/), all prerequisites are available out of the box.
 

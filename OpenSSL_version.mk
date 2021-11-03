@@ -28,13 +28,13 @@ ifneq ($(OPENSSL_DIR),)
 endif
 LDLIBS=-lcrypto
 
-.phony: show build run clean
+.phony: default build show clean
 
-show: build run clean
+default: build show clean
 
 build: OpenSSL_version
 
-run:	build
+show:	build
 	@./OpenSSL_version$(EXE)
 
 clean:

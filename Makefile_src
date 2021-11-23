@@ -1,7 +1,7 @@
 #!/bin/make
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
-# Optional OUT_DIR defines where libgencmpcl, libcmp, and libsecutils shall be placed, defaulting to LPATH if set, else '.'
+# Optional OUT_DIR defines where libsecutils, libgencmpcl, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
 # Optional LIBCMP_INC defines the directory of the libcmp header files, must be defined if and only if libcmp is used (CMP_STANDLONE)
 # All these paths may be absolute or relative to the dir containing this Makefile.
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS (default see below).
@@ -75,6 +75,7 @@ override CFLAGS += -I$(PREFIX)include
 override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
 override CFLAGS += $(OSSL_VERSION_QUIRKS)
 
+override LIBS += -lcrypto
 ifdef SECUTILS_USE_UTA
     override LIBS += -luta
 endif
@@ -83,10 +84,10 @@ ifdef SECUTILS_NO_TLS
 else
     override LIBS += -lssl
 endif
+override LIBS += -lsecutils
 ifdef LIBCMP_INC
     override LIBS += -lcmp
 endif
-override LIBS += -lsecutils -lcrypto
 
 override LDFLAGS += $(DEBUG_FLAGS) # needed for -fsanitize=...
 ifeq ($(LPATH),)

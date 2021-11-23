@@ -1,6 +1,6 @@
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
-# Optional OUT_DIR defines where libgencmpcl, libcmp, and libsecutils shall be placed, defaulting to LPATH if set, else '.'
+# Optional OUT_DIR defines where libsecutils, libgencmpcl, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
 # All these paths may be absolute or relative to the dir containing this Makefile.
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS. Also CFLAGS is passed to build goals.
 # By default, the Insta Demo CA ist used for demonstration purposes.
@@ -163,7 +163,7 @@ else
 .phony: get_submodules build_submodules clean_submodules
 submodules: build_submodules
 
-build_submodules: get_submodules build_cmpossl build_secutils
+build_submodules: get_submodules build_secutils build_cmpossl
 
 get_submodules: $(SECUTILS_DIR)/include
 ifdef CMP_STANDALONE

@@ -42,7 +42,6 @@ else
     OPENSSL_DIR ?= $(LPATH)/..
     # SECUTILS and SECUTILS_LIB not needed since pre-installed
 endif
-LIBCMP_LIB=$(OUT_DIR)/libcmp$(DLL)
 
 OUTBIN=$(OUT_DIR)/libgencmpcl$(DLL)
 
@@ -163,9 +162,12 @@ else
 .phony: get_submodules build_submodules clean_submodules
 submodules: build_submodules
 
-build_submodules: get_submodules build_cmpossl build_secutils # $(LIBCMP_INC) $(LIBCMP_LIB) $(SECUTILS_LIB)
+build_submodules: get_submodules build_cmpossl build_secutils
 
-get_submodules: $(SECUTILS_DIR)/include $(LIBCMP_DIR)/include
+get_submodules: $(SECUTILS_DIR)/include
+ifdef CMP_STANDALONE
+get_submodules: $(LIBCMP_DIR)/include
+endif
 
 update: update_secutils update_cmpossl
 	git fetch
@@ -183,14 +185,13 @@ update_secutils:
 build_secutils: # not: update_secutils
 	$(MAKE) -C $(SECUTILS_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 
-$(LIBCMP_DIR)/include: # not: update_cmpossl
 ifdef CMP_STANDALONE
+$(LIBCMP_DIR)/include: # not: update_cmpossl
 	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
-else
-	mkdir -p $(LIBCMP_DIR)/include
 endif
 
 ifdef CMP_STANDALONE
+LIBCMP_LIB=$(OUT_DIR)/libcmp$(DLL)
 $(LIBCMP_LIB): $(LIBCMP_INC)
 	build_cmpossl
 endif
@@ -205,7 +206,10 @@ ifdef CMP_STANDALONE
 endif
 
 clean_submodules:
-	rm -rf $(SECUTILS_DIR) cmpossl $(LIBCMP_LIB) $(SECUTILS_LIB)
+	rm -rf $(SECUTILS_DIR) $(SECUTILS_LIB)
+ifdef CMP_STANDALONE
+	rm -rf cmpossl $(LIBCMP_LIB)
+endif
 
 endif # eq ($(SECUTILS_DIR),)
 
@@ -248,9 +252,11 @@ clean_this: clean_test
 clean: clean_this
 ifeq ($(LPATH),)
 	$(MAKE) -C $(SECUTILS_DIR) clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
+#ifdef CMP_STANDALONE not relevant here
 ifneq ("$(wildcard $(LIBCMP_DIR))","")
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_cmp clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
+#endif not relevant here
 endif
 	rm -f doc/cmpClient-cli.md
 
@@ -531,7 +537,9 @@ clean_deb:
 .phony: install headers_install uninstall
 install: $(OUTBIN)
 	install -Dm 755 $(OUTBIN) $(ROOTFS)/usr/lib/$(OUTBIN)
+ifdef CMP_STANDALONE
 	install -Dm 755 libcmp.so $(ROOTFS)/usr/lib/libcmp.so.0
+endif
 
 headers_install:
 	find include -type d -exec install -d '$(ROOTFS)/usr/{}' ';'

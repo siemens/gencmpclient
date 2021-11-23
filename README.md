@@ -29,7 +29,7 @@ See the [CHANGELOG.md](CHANGELOG.md) file in the top-level directory.
 
 The Generic CMP client API specification and CLI documentation are available in the [`doc`](doc/) folder.
 
-The Doxygen documentation of the underlying Security Utilities library is going to be available
+The Doxygen documentation of the underlying Security Utilities library is available
 via a link in its [README file](https://github.com/siemens/libsecutils/blob/master/README.md).
 
 
@@ -46,8 +46,9 @@ The following network and development tools are needed or recommended.
 
 The following OSS components are used.
 * OpenSSL development edition (tested with versions 1.0.2, 1.1.0, 1.1.1, 3.0)
-* [CMPforOpenSSL, a CMP+HTTP extension to OpenSSL](https://github.com/mpeylo/cmpossl)
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
+* [CMPforOpenSSL, a CMP+HTTP extension to OpenSSL](https://github.com/mpeylo/cmpossl),
+  if needed (at least for OpenSSL 1.x)
 
 For instance, on a Debian system these may be installed simply as follows:
 ```
@@ -130,7 +131,8 @@ where the CC environment variable may be set as needed; it defaults to %'gcc'.
 Also the ROOTFS environment variable may be set, e.g., for cross compilation.
 
 The result is in, for instance, `./libgencmpcl.so`.
-This also builds all required dependencies (such as `./libcmp.so` and `./libsecutils.so`) and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
+This also builds all required dependencies (such as `./libsecutils.so` and `./libcmp.so`)
+and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
 
 
 ## Using the demo client
@@ -174,16 +176,17 @@ where the PROXY environment variable may be used to override the default in orde
 For compiling applications using the library,
 you will need to add the directories [`include`](include/) and
 [`libsecutils/include`](https://github.com/siemens/libsecutils/blob/master/include/) to your C headers path.
-If and only if using the standalone version, you need to
-add also the directory [`cmpossl/include_cmp`](https://github.com/mpeylo/cmpossl/tree/cmp-lib4/include/),
+Unless using OpenSSL 3.0, you need to
+add also the directory [`cmpossl/include_cmp`](https://github.com/mpeylo/cmpossl/tree/cmp/include/),
 define the C macro `CMP_STANDALONE`, and
 make sure that any OpenSSL header files included have the same version
 as the one used to build the standalone CMP library `libcmp`.
 
 For linking you will need to
 refer the linker to the CMP and Security Utilities libraries,
-e.g., `-lcmp -lsecutils -lgencmpcl`,
-add the directories (using the linker option `-L`) where they can be found.
+e.g., `-lsecutils -lcmp -lgencmpcl`.
+Unless using OpenSSL 3.0, `-lcmp` is needed as well.
+Add the directories (e.g., with the linker option `-L`) where they can be found.
 See also the environment variable `OUT_DIR`.
 For helping the Linux loader to find the libraries at run time,
 it is recommended to set also linker options like `-Wl,-rpath=.`.

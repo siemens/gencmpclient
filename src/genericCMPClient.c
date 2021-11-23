@@ -292,20 +292,20 @@ static const char *tls_error_hint(void)
 
 /* HTTP callback function that supports TLS connection also via HTTPS proxy */
 /* adapted from OpenSSL:apps/lib/apps.c */
-static BIO *app_http_tls_cb(BIO *hbio, void *arg, int connect, int detail)
+static BIO *app_http_tls_cb(BIO *bio, void *arg, int connect, int detail)
 {
     APP_HTTP_TLS_INFO *info = (APP_HTTP_TLS_INFO *)arg;
-    SSL_CTX *ssl_ctx = NULL;
-    BIO *sbio = NULL;
+    SSL_CTX *ssl_ctx = info->ssl_ctx;
     X509_STORE *ts;
 
-    if (info == NULL || (ssl_ctx = info->ssl_ctx) == NULL)
-        return NULL;
-    if (connect && detail) { /* connecting with TLS */
+    if (ssl_ctx == NULL)
+        return bio; /* not using TLS */
+    if (connect) {
         SSL *ssl;
+        BIO *sbio = NULL;
 
         if ((info->use_proxy
-             && !OSSL_HTTP_proxy_connect(hbio, info->server, info->port,
+             && !OSSL_HTTP_proxy_connect(bio, info->server, info->port,
                                          NULL, NULL, /* no proxy credentials */
                                          info->timeout, bio_err, opt_getprog()))
                 || (sbio = BIO_new(BIO_f_ssl())) == NULL) {
@@ -316,27 +316,33 @@ static BIO *app_http_tls_cb(BIO *hbio, void *arg, int connect, int detail)
             return NULL;
         }
 
-        SSL_set_tlsext_host_name(ssl, info->server);
-
+        SSL_set_tlsext_host_name(ssl, info->server); /* not critical to do */
         SSL_set_connect_state(ssl);
         BIO_set_ssl(sbio, ssl, BIO_CLOSE);
 
-        hbio = BIO_push(sbio, hbio);
-    } else if (!connect && !detail) { /* disconnecting after error */
-        const char *hint = tls_error_hint();
+        bio = BIO_push(sbio, bio);
+    } else { /* disconnect */
+        const char *hint;
 
-        if (hint != NULL)
-            ERR_add_error_data(2, " : ", hint);
-        /*
-         * If we pop sbio and BIO_free() it this may lead to libssl double free.
-         * Rely on BIO_free_all() done by OSSL_HTTP_transfer() in http_client.c
-         */
+        if (!detail) { /* an error has occurred */
+            if ((hint = tls_error_hint()) != NULL)
+                ERR_add_error_data(2, " : ", hint);
+        }
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+        BIO *cbio;
+        (void)ERR_set_mark();
+        BIO_ssl_shutdown(bio);
+        cbio = BIO_pop(bio); /* connect+HTTP BIO */
+        BIO_free(bio); /* SSL BIO */
+        (void)ERR_pop_to_mark(); /* hide SSL_R_READ_BIO_NOT_SET etc. */
+        bio = cbio;
+#endif
     }
     if ((ts = SSL_CTX_get_cert_store(ssl_ctx)) != NULL) {
         /* indicate if OSSL_CMP_MSG_http_perform() with TLS is active */
-        (void)STORE_set0_tls_bio(ts, sbio);
+        (void)STORE_set0_tls_bio(ts, bio);
     }
-    return hbio;
+    return bio;
 }
 
 static void APP_HTTP_TLS_INFO_free(APP_HTTP_TLS_INFO *info)

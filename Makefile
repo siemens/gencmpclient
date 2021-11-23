@@ -108,11 +108,11 @@ ifneq ($(filter-out doc clean clean_this clean_test clean_submodules clean_opens
         OPENSSL_VERSION=1.1.1
     endif
     $(info detected OpenSSL version $(OPENSSL_VERSION).x)
-    ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # same as comparing == 1.0
+    ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # same as comparing == 1.0
         $(info enabling compilation quirks for OpenSSL 1.0.2)
         OSSL_VERSION_QUIRKS+=-Wno-discarded-qualifiers -Wno-unused-parameter
     endif
-    ifeq ($(shell expr $(OPENSSL_VERSION) \< 3.0),1)
+    ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 3.0),1)
         $(info enabling compilation with standalone CMP library)
         CMP_STANDALONE=1
     endif
@@ -404,7 +404,7 @@ else
 endif
 
 test_Mock:
-ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # OpenSSL <1.1 does not support -no_check_time nor OCSP
+ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # OpenSSL <1.1 does not support -no_check_time nor OCSP
 	$(warning skipping test_Mock since OpenSSL <1.1 does not support -no_check_time nor OCSP)
 else
 	make test_cli OPENSSL_CMP_SERVER=Mock $(EJBCA_ENV)
@@ -418,7 +418,7 @@ test_EJBCA-AWS: get_EJBCA_crls
 
 # do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
 test_Simple: get_EJBCA_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple
-ifeq ($(shell expr $(OPENSSL_VERSION) \< 1.1),1) # OpenSSL <1.1 does not support OCSP
+ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # OpenSSL <1.1 does not support OCSP
 	$(warning skipping certstatus aspect since OpenSSL <1.1 does not support OCSP)
 	make test_cli OPENSSL_CMP_SERVER=Simple $(EJBCA_ENV) OPENSSL_CMP_ASPECTS="connection verification credentials commands enrollment"
 else

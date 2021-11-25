@@ -1,7 +1,7 @@
 # generic CMP client
 
-This is the code repository for the cross-division generic CMP client library
-with associated CLI-based demo/test client and documentation.
+This is the Siemens-internal cross-division generic CMP client library
+and associated CLI-based demo client, tests, and documentation.
 
 **Note:** This [inner-source repository](https://code.siemens.com/product-pki/genCMPClient) is going to retire.
 Please switch to the OSS repository at [https://github.com/siemens/gencmpclient](https://github.com/siemens/gencmpclient).
@@ -53,19 +53,19 @@ A recording of the tutorial held via Circuit on 2018-Dec-13 is available [here](
 This software should work with any flavor of Linux, including [Cygwin](https://www.cygwin.com/),
 also on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
 
-The following network and development tools are required.
-* Git (tested with versions 2.7.2, 2.11.0, 2.20, 2.30.2)
-* wget (tested with versions 1.17, 1.18, 1.20, 1.21)
+The following network and development tools are needed or recommended.
+* Git (for getting the software, tested with versions 2.7.2, 2.11.0, 2.20, 2.30.2)
+* wget (for running the demo, tested with versions 1.17, 1.18, 1.20, 1.21)
 * GNU make (tested with versions 4.1, 4.2.1, 4.3)
 * GNU C compiler (gcc, tested with versions 5.4.0, 7.3.0, 8.3.0, 10.0.1, 10.2.1)
 
 The following OSS components are used.
 * OpenSSL development edition (tested with versions 1.0.2, 1.1.0, 1.1.1, 3.0)
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
-* [CMPforOpenSSL, a CMP+HTTP extension to OpenSSL](https://github.com/mpeylo/cmpossl),
-  if needed (at least for OpenSSL 1.x)
+* [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
+  a CMP+HTTP extension to OpenSSL, needed at least when using OpenSSL 1.x
 
-For instance, on a Debian system these may be installed as follows:
+For instance, on a Debian system these may be installed simply as follows:
 ```
 sudo apt install libssl-dev
 ```
@@ -95,7 +95,8 @@ rm -f OpenSSL_version
 
 ## Getting the software
 
-For accessing `git@code.siemens.com` you will need an SSH client with credentials allowing to read from that repository.
+For accessing `git@code.siemens.com` you will need
+an SSH client with credentials allowing to read from that repository.
 
 For accessing the code repositories on GitHub from the Siemens intranet
 you may need an SSH client with suitable credentials
@@ -129,9 +130,12 @@ make update
 
 ## Building the software
 
-The generic CMP client (and also its underlying CMP and Security Utilities libraries) assumes that OpenSSL (with any version >= 1.0.2) is already installed,
-including the C header files needed for development (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
-By default the OpenSSL headers will be searched for in `/usr/include` and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
+The generic CMP client (and also its underlying CMP and Security Utilities libraries)
+assumes that OpenSSL (with any version >= 1.1.0) is already installed,
+including the C header files needed for development
+(as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
+By default the OpenSSL headers will be searched for in `/usr/include`
+and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
 You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation, e.g.:
 ```
 export OPENSSL_DIR=/usr/local
@@ -196,12 +200,15 @@ CLI-based tests using the external Insta Demo CA may be invoked using
 ```
 make test_Insta
 ```
-where the PROXY environment variable may be used to override the default (which is `http_proxy=de.coia.siemens.net:9400`) in order to reach the external Insta CA
-or
+where the PROXY environment variable may be used to override the default
+(which is `http_proxy=de.coia.siemens.net:9400`)
+in order to reach the Insta Demo CA.
+
 ```
-make test_SimpleLra
+make test_Simple
 ```
-assuming a local SimpleLra instance is running and forwards requests to the Siemens Product PKI (PPKI) Playground CA server.
+assuming a local SimpleLra instance is running and forwards requests
+to the Siemens Product PKI (PPKI) Playground CA server.
 
 
 ## Using the library in own applications

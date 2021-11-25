@@ -96,13 +96,12 @@ else
 endif
 
 # defaults for test_conformance:
-LIGHTWEIGHTCMPRA ?= ./LightweightCmpRa.jar
-CMPCAMOCK =? ./CmpCaMock.jar
-OPENSSL_LIB_PATH ?=
-OPENSSL ?= openssl
+LIGHTWEIGHTCMPRA ?= -Dorg.slf4j.simpleLogger.log.com.siemens.pki.lightweightcmpra=error -jar ./LightweightCmpRa.jar
+CMPCAMOCK ?= -jar ./CmpCaMock.jar
+OPENSSL ?= openssl$(EXE)
 
 MAKECMDGOALS ?= default
-ifneq ($(filter-out doc clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
+ifneq ($(filter-out doc start stop clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
     OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
     ifeq ($(OPENSSL_VERSION),)
         $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
@@ -184,7 +183,7 @@ $(SECUTILS_LIB):
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)
 build_secutils: # not: update_secutils
-	$(MAKE) -C $(SECUTILS_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+	@$(MAKE) -C $(SECUTILS_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 
 ifdef CMP_STANDALONE
 $(LIBCMP_DIR)/include: # not: update_cmpossl
@@ -203,7 +202,7 @@ update_cmpossl:
 build_cmpossl: # not: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 ifdef CMP_STANDALONE
-	$(MAKE) -C $(LIBCMP_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	@$(MAKE) -C $(LIBCMP_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 
 clean_submodules:
@@ -225,7 +224,7 @@ ifdef CMP_STANDALONE
 endif
 
 build: build_prereq
-	$(MAKE) -f Makefile_src $(OUTBIN) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OUT_DIR="$(OUT_DIR)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+	@$(MAKE) -f Makefile_src $(OUTBIN) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OUT_DIR="$(OUT_DIR)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
 build_no_tls:
 	$(MAKE) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
@@ -242,8 +241,7 @@ clean_test:
 	rm -f creds/{cacerts,extracerts}.pem
 	rm -f creds/*_????????-????????-????????-????????-????????.pem
 	rm -fr creds/crls
-	rm -f cmpossl/test/recipes/80-test_cmp_http_data/*/test.*cert*.pem
-	rm -f cmpossl/test/recipes/80-test_cmp_http_data/Simple
+	rm -f test/recipes/80-test_cmp_http_data/*/test.*cert*.pem
 	rm -f test/faillog_*.txt
 	rm -fr test/{Upstream,Downstream}
 
@@ -264,12 +262,12 @@ endif
 ifneq ($(INSTA),)
     unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
-    OCSP_CHECK= #openssl ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
+    OCSP_CHECK= #$(OPENSSL) ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
     override EXTRA_OPTS += -path pkix/ -newkeytype rsa:1024
 else
     unreachable="cannot reach EJBCA at $$EJBCA_HOST"
     CA_SECTION=EJBCA
-    OCSP_CHECK=openssl ocsp -url $$EJBCA_OCSP_URL \
+    OCSP_CHECK=$(OPENSSL) ocsp -url $$EJBCA_OCSP_URL \
                -CAfile $$EJBCA_CMP_TRUSTED -issuer $$EJBCA_CMP_ISSUER \
                -cert creds/operational.crt
     override EXTRA_OPTS +=
@@ -277,10 +275,6 @@ endif
 
 creds/crls:
 	mkdir $@
-
-cmpossl/test/recipes/80-test_cmp_http_data/Simple:
-	cd cmpossl/test/recipes/80-test_cmp_http_data && \
-	ln -s ../../../../test/cmpossl/recipes/80-test_cmp_http_data/Simple
 
 get_EJBCA_crls: | creds/crls
 ifneq ($(EJBCA_ENABLED),)
@@ -309,6 +303,7 @@ demo_EJBCA:
 	$(MAKE) run_demo INSTA=  $(EJBCA_ENV)
 
 CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH=. ./cmpClient$(EXE)
+GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345 2>/dev/null
 .phony: run_demo
 ifeq ($(INSTA),)
 run_demo: build get_EJBCA_crls
@@ -330,10 +325,10 @@ else
     endif
 	@echo
 	$(CMPCLIENT) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS)
-	openssl x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
-	openssl x509 -noout -text -in creds/operational.crt
+	$(GENERATE_OPERATIONAL)
+	$(OPENSSL) x509 -noout -text -in creds/operational.crt
 	@echo :
-	openssl x509 -noout -text -in creds/operational.crt | sed '/^         [0-9a-f].*/d'
+	$(OPENSSL) x509 -noout -text -in creds/operational.crt | sed '/^         [0-9a-f].*/d'
 	# @echo
 	# $(CMPCLIENT) pkcs10 -section $(CA_SECTION)
 	@echo
@@ -350,57 +345,61 @@ else
 endif
 
 .phony: start stop
-start: #LightweightCmpRA
-	java -jar $(CMPCAMOCK) . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 &
-	mkdir test/Upstream test/Downstream 2>/dev/null || true
-	java -jar $(LIGHTWEIGHTCMPRA) config/ConformanceTest.xml &
+start:
+	@echo starting LightweightCmpRA
+	@java $(CMPCAMOCK) . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 &
+	@mkdir test/Upstream test/Downstream 2>/dev/null || true
+	@java $(LIGHTWEIGHTCMPRA) config/ConformanceTest.xml &
 	@ # -Dorg.slf4j.simpleLogger.log.com.*=debug
-	sleep 2
-stop: #LightweightCmpRA
-	PID=`ps aux|grep "java -jar $(CMPCAMOCK)"        | grep -v grep | awk '{ print $$2 }'` && \
+	@sleep 2
+stop:
+	@echo stopping LightweightCmpRA
+	@PID=`ps aux|grep "java $(CMPCAMOCK)"        | grep -v grep | awk '{ print $$2 }'` && \
 	if [ -n "$$PID" ]; then kill $$PID; fi
-	PID=`ps aux|grep "java -jar $(LIGHTWEIGHTCMPRA)" | grep -v grep | awk '{ print $$2 }'` && \
+	@PID=`ps aux|grep "java $(LIGHTWEIGHTCMPRA)" | grep -v grep | awk '{ print $$2 }'` && \
 	if [ -n "$$PID" ]; then kill $$PID; fi
 
 .phony: test_conformance_cmpclient test_conformance_openssl test_conformance
 .phony: conformance_cmpclient conformance_openssl conformance
 CMPCLNT = LD_LIBRARY_PATH=. ./cmpClient$(EXE) -section CmpRa,
-CMPOSSL = LD_LIBRARY_PATH=$(OPENSSL_LIB_PATH) $(OPENSSL)$(EXE) cmp -config config/demo.cnf -section CmpRa,
+CMPOSSL = $(OPENSSL) cmp -config config/demo.cnf -section CmpRa,
 test_conformance: start conformance_cmpclient conformance_openssl stop
 test_conformance_openssl: start conformance_openssl stop
 test_conformance_cmpclient: start conformance_cmpclient stop
 conformance_cmpclient: build
-	CMPCL="$(CMPCLNT)" make conformance $(EJBCA_ENV)
+	@CMPCL="$(CMPCLNT)" make conformance $(EJBCA_ENV)
 conformance_openssl: newkey
-	CMPCL="$(CMPOSSL)" make conformance $(EJBCA_ENV)
+	@CMPCL="$(CMPOSSL)" make conformance $(EJBCA_ENV)
 newkey:
-	openssl$(EXE) ecparam -genkey -name secp521r1 -out creds/manufacturer.pem
-	openssl$(EXE) ecparam -genkey -name prime256v1 -out creds/operational.pem
+	$(OPENSSL) ecparam -genkey -name secp521r1 -out creds/manufacturer.pem
+	$(OPENSSL) ecparam -genkey -name prime256v1 -out creds/operational.pem
 conformance:
-	$(CMPCL)imprint -server localhost:6002/lrawithmacprotection
-	$(CMPCL)bootstrap
-	openssl$(EXE) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345
-	$(CMPCL)pkcs10
-	$(CMPCL)update -server localhost:6001 -path /rrkur
-	$(CMPCL)revoke -server localhost:6001 -path /rrkur
-	$(CMPCL)bootstrap -server localhost:6003/delayedlra
+	$(CMPCL)imprint -verbosity 3 -server localhost:6002/lrawithmacprotection
+	$(CMPCL)bootstrap -verbosity 3
+	$(GENERATE_OPERATIONAL)
+	$(CMPCL)pkcs10 -verbosity 3
+	$(CMPCL)update -verbosity 3 -server localhost:6001 -path /rrkur
+	$(CMPCL)revoke -verbosity 3 -server localhost:6001 -path /rrkur
+	$(CMPCL)bootstrap -verbosity 3 -server localhost:6003/delayedlra
 
 test_cli: build
 ifeq ($(filter-out EJBCA Simple,$(OPENSSL_CMP_SERVER))$(EJBCA_ENABLED),)
 	$(warning "### skipping test_$(OPENSSL_CMP_SERVER) since not supported in this environment ###")
 else
-	@echo -e "\n#### running CLI-based tests #### with server=$$OPENSSL_CMP_SERVER in cmpossl/test/recipes/80-test_cmp_http_data/$$OPENSSL_CMP_SERVER"
+	@echo -en "\n#### running CLI-based tests #### "
+	@if [ -n "$$OPENSSL_CMP_SERVER" ]; then echo -en "with server=$$OPENSSL_CMP_SERVER"; else echo -n "without server"; fi
+	@echo -e " in test/recipes/80-test_cmp_http_data/$$OPENSSL_CMP_SERVER"
 	@ :
 	( HARNESS_ACTIVE=1 \
 	  HARNESS_VERBOSE=$(V) \
           HARNESS_FAILLOG=../test/faillog_$$OPENSSL_CMP_SERVER.txt \
-	  SRCTOP=cmpossl \
+	  SRCTOP=. \
 	  BLDTOP=. \
 	  BIN_D=. \
 	  EXE_EXT= \
 	  LD_LIBRARY_PATH=$(BIN_D) \
           OPENSSL_CMP_CONFIG=test_config.cnf \
-	  $(PERL) test/cmpossl/recipes/80-test_cmp_http.t )
+	  $(PERL) test/recipes/80-test_cmp_http.t )
 	@ :
 endif
 
@@ -418,7 +417,7 @@ test_EJBCA-AWS: get_EJBCA_crls
 	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=EJBCA $(EJBCA_ENV)
 
 # do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
-test_Simple: get_EJBCA_crls cmpossl/test/recipes/80-test_cmp_http_data/Simple
+test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple
 ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # OpenSSL <1.1 does not support OCSP
 	$(warning skipping certstatus aspect since OpenSSL <1.1 does not support OCSP)
 	make test_cli OPENSSL_CMP_SERVER=Simple $(EJBCA_ENV) OPENSSL_CMP_ASPECTS="connection verification credentials commands enrollment"
@@ -453,16 +452,16 @@ else
 	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE09
 	@/bin/echo -e "\n##### Error reporting by server (MANDATORY) #####"
 	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),RA36
-	echo "\n##### All profile tests succeeded #####"
+	@echo "\n##### All profile tests succeeded #####"
 endif
 
-.phony: all test_all test_oss doc zip
+.phony: all test_all test doc zip
 all:	build doc
 
-test_all: test_oss demo_EJBCA test_conformance test_profile test_Simple
+test_all: test demo_EJBCA test_conformance test_profile test_Simple
 
-test_oss: clean build_no_tls
-	$(MAKE) clean build demo_Insta test_Mock test_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
+test: clean build_no_tls
+	@$(MAKE) clean build demo_Insta test_Mock test_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
 
 doc: doc/cmpClient-cli.md
 	$(MAKE) -C $(SECUTILS_DIR) doc

@@ -1,8 +1,7 @@
 # generic CMP client
 
-This is the code repository for the generic CMP client library
-with associated CLI-based demo/test client and documentation.
-
+This is a generic CMP client library with high-level API
+and associated CLI-based demo client, tests, and documentation.
 
 ## Purpose
 
@@ -47,8 +46,8 @@ The following network and development tools are needed or recommended.
 The following OSS components are used.
 * OpenSSL development edition (tested with versions 1.0.2, 1.1.0, 1.1.1, 3.0)
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
-* [CMPforOpenSSL, a CMP+HTTP extension to OpenSSL](https://github.com/mpeylo/cmpossl),
-  if needed (at least for OpenSSL 1.x)
+* [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
+  a CMP+HTTP extension to OpenSSL, needed at least when using OpenSSL 1.x
 
 For instance, on a Debian system these may be installed simply as follows:
 ```
@@ -78,8 +77,9 @@ rm -f OpenSSL_version
 
 ## Getting the software
 
-For accessing the code repositories on GitHub you may need
-an SSH client with suitable credentials or an HTTP proxy set up, for instance:
+For accessing the code repositories on GitHub
+you may need an SSH client with suitable credentials
+or an HTTP proxy set up, for instance:
 ```
 export https_proxy=http://proxy.my-company.com:8080
 ```
@@ -108,9 +108,12 @@ make update
 
 ## Building the software
 
-The generic CMP client (and also its underlying CMP and Security Utilities libraries) assumes that OpenSSL (with any version >= 1.1.0) is already installed,
-including the C header files needed for development (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
-By default the OpenSSL headers will be searched for in `/usr/include` and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
+The generic CMP client (and also its underlying CMP and Security Utilitieslibraries)
+assumes that OpenSSL (with any version >= 1.1.0) is already installed,
+including the C header files needed for development
+(as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
+By default the OpenSSL headers will be searched for in `/usr/include`
+and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
 You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation, e.g.:
 ```
 export OPENSSL_DIR=/usr/local
@@ -168,7 +171,8 @@ CLI-based tests using the external Insta Demo CA may be invoked using
 ```
 make test_Insta
 ```
-where the PROXY environment variable may be used to override the default in order to reach the Insta CA.
+where the PROXY environment variable may be used to override the default
+in order to reach the Insta Demo CA.
 
 
 ## Using the library in own applications

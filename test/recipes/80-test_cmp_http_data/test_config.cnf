@@ -1,0 +1,254 @@
+[default]
+batch = 1 # do not use stdin
+total_timeout = 8 # prevent, e.g., infinite polling due to error
+trusted = trusted.crt
+newkey = new.key
+newkeypass =
+cmd = ir
+out_trusted = root.crt
+certout = test.cert.pem
+policies = certificatePolicies
+#policy_oids = 1.2.3.4
+#policy_oids_critical = 1
+#verbosity = 7
+
+############################# server configurations
+
+[Mock] # the built-in OpenSSL CMP mock server
+no_check_time = 1  # is not supported by OpenSSL 1.0.2
+#attime = 1524704000
+server_host = 127.0.0.1 # localhost
+server_port = 1700
+server_tls = 0
+server_cert = server.crt
+server = $server_host:$server_port
+server_path = pkix/
+path = $server_path
+ca_dn = /O=openssl_cmp
+recipient = $ca_dn
+server_dn = /O=openssl_cmp
+expect_sender = $server_dn
+subject = "/C=AU/ST=Some-State/O=Internet Widgits Pty Ltd/CN=leaf"
+newkey = signer.key
+out_trusted = signer_root.crt
+kur_port = 1700
+pbm_port = 1700
+pbm_ref =
+pbm_secret = pass:test
+cert = signer.crt
+key  = signer.p12
+keypass = pass:12345
+ignore_keyusage = 0
+column = 0
+sleep = 0
+
+[EJBCA]
+server_host = ec2-204-236-244-127.compute-1.amazonaws.com
+server_port = 80
+server_tls = 443
+server_cert = issuing.crt
+server = $server_host:$server_port
+server_path = /ejbca/publicweb/cmp/ECCEndEntity
+path = $server_path
+ca_dn = /CN=ECC Issuing CA v10/OU=For test purpose only/O=CMPforOpenSSL/C=DE
+recipient = $ca_dn
+server_dn = /CN=ECC Issuing CA v10/OU=For test purpose only/O=CMPforOpenSSL/C=DE
+subject = "/CN=ECC-EE/OU=For test purposes only/O=CMPforOpenSSL/C=DE"
+kur_port = 83
+pbm_port = 80
+pbm_ref =
+pbm_secret = pass:SecretCmp
+cert = signer.crt
+key  = signer.p12
+keypass = pass:12345
+ignore_keyusage = 0
+unprotected_errors = 1 # EJBCA sends error messages and negative responses without protection
+column = 0
+sleep = 1
+
+[Insta]
+server_host = pki.certificate.fi # 91.213.161.196
+server_port = 8700
+server_tls = 0
+server_cert = issuing.crt
+server = $server_host:$server_port
+server_path = pkix/
+path = $server_path
+ca_dn = /C=FI/O=Insta Demo/CN=Insta Demo CA
+server_dn = /C=FI/O=Insta Demo/CN=Insta Demo CA
+recipient = $ca_dn
+subject = /C=FI/O=Insta Demo/CN=ECC-EE
+kur_port = 8700
+pbm_port = 8700
+pbm_ref = 3078
+ref = $pbm_ref
+pbm_secret = pass:insta
+secret = $pbm_secret
+key =
+cert =
+ignore_keyusage = 1
+crls = ../../../../creds/crls/InstaDemoCA.crl
+column = 1
+sleep = 4
+# 3 is not sufficient: sometimes leads to HTTP code 503 (Service Unavailable)
+
+[Simple] # this is a Siemens-only test configuration
+#no_check_time = 1  # not yet needed here; # is not supported by OpenSSL 1.0.2
+#attime = 1564704000
+server_host = 127.0.0.1 # localhost
+server_port = 9080
+server_tls = 9085
+server_cert = server.crt
+server = $server_host:$server_port
+tls_cert = tls.p12
+tls_key = $tls_cert
+tls_keypass = pass:12345
+tls_trusted = tls_trusted.pem
+server_path = cmp/PlaygroundECC/
+path = $server_path
+ca_dn = ${ENV::EJBCA_CMP_RECIPIENT}
+recipient = $ca_dn
+server_dn = ${ENV::EJBCA_CMP_SERVER}
+expect_sender = $server_dn
+subject = ${ENV::EJBCA_CMP_SUBJECT_ECC}
+kur_port = 9083
+pbm_port = 9084
+pbm_ref =
+pbm_secret = pass:SecretCmp
+cert = signer.crt
+key  = signer.p12
+keypass = pass:12345
+ignore_keyusage = 0
+unprotected_errors = 1 # EJBCA sends error messages and negative responses without protection
+crls = "../../../../creds/crls/EJBCA-InfrastructureIssuingCAv10.crl, ../../../../creds/crls/EJBCA-ECCRootCAv10.crl, ../../../../creds/crls/EJBCA-InfrastructureRootCAv10.crl ../../../../creds/crls/EJBCA-RSARootCAv10.crl"
+cdps = ${ENV::EJBCA_CDP_URL_PREFIX}Infrastructure+Issuing+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}Infrastructure+Root+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}ECC+Issuing+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}ECC+Root+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}
+ocsp = ${ENV::EJBCA_OCSP_URL}
+column = 0
+sleep = 0
+
+############################# aspects
+
+[connection]
+msg_timeout = 5
+total_timeout =
+# reset any TLS options to default:
+tls_used =
+tls_cert =
+tls_key =
+tls_keypass =
+tls_trusted =
+tls_host =
+# reset any certstatus options:
+crls =
+cdps =
+ocsp =
+
+[tls]
+server =
+tls_used =
+tls_cert =
+tls_key =
+tls_keypass =
+tls_trusted =
+tls_host =
+
+[credentials]
+ref =
+secret =
+cert =
+key =
+keypass =
+extracerts =
+digest =
+unprotected_requests =
+# reset any certstatus options:
+crls =
+cdps =
+ocsp =
+
+[verification]
+#expect_sender =
+srvcert =
+trusted =
+untrusted =
+#unprotected_errors =
+extracertsout =
+# reset any certstatus options:
+crls =
+cdps =
+ocsp =
+
+[commands]
+cmd =
+cacertsout =
+infotype =
+oldcert =
+revreason =
+geninfo =
+# reset any certstatus options:
+crls =
+cdps =
+ocsp =
+
+[enrollment]
+cmd =
+newkey =
+newkeypass =
+#subject =
+issuer =
+days =
+reqexts =
+sans =
+san_nodefault = 0
+#popo =
+implicit_confirm = 0
+disable_confirm = 0
+certout =
+out_trusted =
+oldcert =
+csr =
+# reset any certstatus options:
+crls =
+cdps =
+ocsp =
+
+[certstatus]
+cmd = cr
+secret = # force using signature-based protection
+cert = signer.crt
+key = signer.p12
+keypass = pass:12345
+# by default using crls, ocsp, and cdps as defined above
+verbosity = 7
+
+############################# extra cert template contents
+
+[certificatePolicies]
+certificatePolicies = "critical, @pkiPolicy"
+
+[pkiPolicy]
+policyIdentifier = 1.2.3.4
+
+[reqexts]
+basicConstraints = CA:FALSE
+#basicConstraints = critical, CA:TRUE
+keyUsage = critical, digitalSignature # keyAgreement, keyEncipherment, nonRepudiation
+extendedKeyUsage = critical, clientAuth # serverAuth, codeSigning
+#crlDistributionPoints = URI:http:
+#authorityInfoAccess = URI:http:
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.0 = localhost
+IP.0 = 127.0.0.1
+IP.1 = 192.168.1.1
+URI.0 = http://192.168.0.2
+
+[reqexts_invalidkey]
+subjectAltName = @alt_names_3
+
+[alt_names_3]
+DNS.0 = localhost
+DNS.1 = example.com
+DNS.2 = example2.com
+DNS__3 = example3.com

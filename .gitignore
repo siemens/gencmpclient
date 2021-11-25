@@ -14,6 +14,7 @@
 *.dll
 *.exe
 mk
+attic
 tmp/
 bak/
 share/

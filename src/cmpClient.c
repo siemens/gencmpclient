@@ -91,7 +91,7 @@ const char *opt_mac;
 const char *opt_extracerts;
 bool opt_unprotected_requests;
 
-const char *opt_cmd; /* TODO? add genm */
+const char *opt_cmd;
 const char *opt_infotype;
 static int infotype = NID_undef;
 char *opt_geninfo;
@@ -167,9 +167,9 @@ opt_t cmp_opts[] = {
 
     OPT_HEADER("Generic message"),
     { "cmd", OPT_TXT, {.txt = NULL}, { &opt_cmd },
-      "CMP request to send: ir/cr/p10cr/kur/rr. Overrides 'use_case' if given"}, /* TODO? add genm */
+      "CMP request to send: ir/cr/p10cr/kur/rr/genm. Overrides 'use_case' if given"},
     { "infotype", OPT_TXT, {.txt = NULL}, { &opt_infotype },
-      "InfoType name for requesting specific info in genm, currently ignored"},
+      "InfoType name for requesting specific info in genm, e.g. 'signKeyPairTypes'"},
     { "geninfo", OPT_TXT, {.txt = NULL}, { (const char **)&opt_geninfo },
       "Comma-separated list of OID and value to place in generalInfo PKIHeader"},
     OPT_MORE("of form <OID>:int:<n> or <OID>:str:<s>, e.g. \'1.2.3.4:int:56789, id-kp:str:name'"),
@@ -1252,8 +1252,6 @@ static CMP_err check_options(enum use_case use_case) {
             LOG_err("Unknown OID name in -infotype option");
             return -31;
         }
-        /* TODO remove warning when genm is supported */
-        LOG_warn("-infotype option is ignored as long as 'genm' is not supported");
     }
 
     if (!opt_secret && ((opt_cert == NULL) != (opt_key == NULL))) {
@@ -1353,8 +1351,8 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                                       enum use_case use_case)
 {
     CMP_err err;
-    if (use_case == pkcs10 || use_case == revocation) {
-        const char *msg = "option is ignored for 'p10cr' and 'rr' commands";
+    if (use_case == pkcs10 || use_case == revocation || use_case == genm) {
+        const char *msg = "option is ignored for 'p10cr', 'rr', and 'genm' commands";
 
         if (opt_newkeytype != NULL)
             LOG(FL_WARN, "-newkeytype %s", msg);
@@ -1381,7 +1379,7 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                     return CMP_R_GENERATE_KEY;
                 }
             }
-        } else {
+        } else if (use_case != genm) {
             if (opt_newkey == NULL) {
                 LOG_err("Missing -newkeytype or -newkey option");
                 return -42;
@@ -1564,6 +1562,52 @@ CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds, enum use_case use
     return CMP_OK;
 }
 
+static void print_itavs(STACK_OF(OSSL_CMP_ITAV) *itavs)
+{
+    OSSL_CMP_ITAV *itav = NULL;
+    char buf[128];
+    int i, r;
+    int n = sk_OSSL_CMP_ITAV_num(itavs); /* itavs == NULL leads to 0 */
+
+    if (n == 0) {
+        LOG(FL_INFO, "genp contains no ITAV");
+        return;
+    }
+
+    for (i = 0; i < n; i++) {
+        itav = sk_OSSL_CMP_ITAV_value(itavs, i);
+        r = OBJ_obj2txt(buf, 128, OSSL_CMP_ITAV_get0_type(itav), 0);
+        if (r < 0)
+            LOG(FL_ERR, "could not get ITAV details");
+        else if (r == 0)
+            LOG(FL_INFO, "genp contains empty ITAV");
+        else
+            LOG(FL_INFO, "genp contains ITAV of type: %s", buf);
+    }
+}
+
+static CMP_err do_genm(CMP_CTX *ctx, int infotype)
+{
+    STACK_OF(OSSL_CMP_ITAV) *itavs;
+
+    if (infotype != NID_undef) {
+        OSSL_CMP_ITAV *itav = OSSL_CMP_ITAV_create(OBJ_nid2obj(infotype), NULL);
+        if (itav == NULL) {
+            LOG(FL_ERR, "Failed to create ITAV for genm");
+            return -22;
+        }
+        OSSL_CMP_CTX_push0_genm_ITAV(ctx, itav);
+    }
+
+    if ((itavs = OSSL_CMP_exec_GENM_ses(ctx)) != NULL) {
+        print_itavs(itavs);
+        sk_OSSL_CMP_ITAV_pop_free(itavs, OSSL_CMP_ITAV_free);
+        return CMP_OK;
+    }
+    LOG(FL_ERR, "Did not obtain ITAVs from genp");
+    return -22;
+}
+
 static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 {
     CMP_err err = -1;
@@ -1621,11 +1665,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         /* SimpleLra does not accept CRL_REASON_NONE: "missing crlEntryDetails for REVOCATION_REQ" */
         break;
     case genm:
-        /* TODO? implement genm and remove next 4 lines when done */
-        LOG(FL_ERR, "CMP request type 'genm' is not supported");
-        err = -22;
-        if (strstr(opt_config, CONFIG_TEST) != NULL)
-            err = CMP_OK;
+        err = do_genm(ctx, infotype);
         break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);
@@ -1750,6 +1790,8 @@ int main(int argc, char *argv[])
             use_case = update;
         } else if (strcmp(argv[1], "revoke") == 0) {
             use_case = revocation;
+        } else if (strcmp(argv[1], "genm") == 0) {
+            use_case = genm;
         } else if (strcmp(argv[1], "validate") == 0) {
             use_case = validate;
         }

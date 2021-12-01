@@ -39,7 +39,7 @@ B<cmpClient> I<options>
 
 Generic message options:
 
-[B<-cmd> I<ir|cr|kur|p10cr|rr>]
+[B<-cmd> I<ir|cr|kur|p10cr|rr|genm>]
 [B<-infotype> I<name>]
 [B<-geninfo> I<OID:int:N>]
 
@@ -186,7 +186,7 @@ to update or revoke them, and to perform other CMP requests.
 
 =over 4
 
-=item B<imprint|bootstrap|pkcs10|update|revoke>
+=item B<imprint|bootstrap|pkcs10|update|revoke|genm>
 
 Select demo C<use_case> of the cmpClient application. The corresponding CMP request
 will be executed with default settings. These settings could be adapted via the
@@ -238,7 +238,7 @@ The levels DEBUG and TRACE are most useful for certificate status check issues.
 
 =over 4
 
-=item B<-cmd> I<ir|cr|kur|p10cr|rr>
+=item B<-cmd> I<ir|cr|kur|p10cr|rr|genm>
 
 CMP command to execute.
 Overrides C<use_case> if present.
@@ -256,6 +256,8 @@ Currently implemented commands are:
 
 =item  rr E<nbsp>  - Revocation Request
 
+=item  genm  - General Message
+
 =back
 
 B<ir> requests initialization of an end entity into a PKI hierarchy
@@ -270,6 +272,11 @@ but using legacy PKCS#10 CSR format.
 B<kur> requests a (key) update for an existing certificate.
 
 B<rr> requests revocation of an existing certificate.
+
+B<genm> requests information using a General Message, where optionally
+included B<InfoTypeAndValue>s may be used to state which info is of interest.
+Upon receipt of the General Response, information about all received
+ITAV B<infoType>s is printed to stdout.
 
 =item B<-infotype> I<name>
 

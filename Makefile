@@ -353,6 +353,10 @@ else
 	$(CMPCLIENT) revoke -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
 	$(OCSP_CHECK)
+    ifneq ($(INSTA),)
+	$(CMPCLIENT) genm -section $(CA_SECTION) $(EXTRA_OPTS)
+	@echo :
+    endif
 	@echo -e "\n#### demo finished ####"
 	@echo :
 endif

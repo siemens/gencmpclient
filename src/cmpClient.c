@@ -1353,6 +1353,8 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
 
         if (opt_newkeytype != NULL)
             LOG(FL_WARN, "-newkeytype %s", msg);
+        if (opt_newkeypass != NULL)
+            LOG(FL_WARN, "-newkeypass %s", msg);
         if (opt_newkey != NULL)
             LOG(FL_WARN, "-newkey %s", msg);
         if (opt_days != 0)

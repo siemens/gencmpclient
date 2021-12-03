@@ -35,6 +35,8 @@ typedef int CMP_err;
 # define CMP_R_STORE_CREDS        252
 # define CMP_R_RECIPIENT          251
 # define CMP_R_INVALID_CONTEXT    250
+# define CMP_R_GET_ITAV           249
+# define CMP_R_INVALID_CACERTS    248
 # define CMP_R_INVALID_PARAMETERS CMP_R_INVALID_ARGS
 
 /* further error codes are defined in ../cmpossl/include/openssl/cmperr.h */
@@ -142,11 +144,17 @@ CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 /* reason codes are defined in openssl/x509v3.h */
 CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr, */ int reason);
 
-/* get error information sent by the server */
-char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx, char *buf, size_t bufsize);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+/* get CA certs, discard duplicates, and verify they are non-expired CA certs */
+CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out);
+#endif
 
 /* must be called between any of the above certificate management activities */
 CMP_err CMPclient_reinit(CMP_CTX *ctx);
+
+/* get error information sent by the server */
+char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx,
+                                  char *buf, size_t bufsize);
 
 /* should be called on application termination */
 void CMPclient_finish(OPTIONAL CMP_CTX *ctx);

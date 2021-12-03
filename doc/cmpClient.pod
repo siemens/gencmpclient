@@ -284,6 +284,7 @@ ITAV B<infoType>s is printed to stdout.
 
 Set InfoType name to use for requesting specific info in B<genm>,
 e.g., C<signKeyPairTypes>.
+So far, there is specific support for C<caCerts>.
 
 =item B<-geninfo> I<values>
 
@@ -736,7 +737,11 @@ Default is C<pem>.
 
 =item B<-cacertsout> I<filename>
 
-The file where to save any CA certificates received in the caPubs field.
+The file where to save CA certificates.
+If on a successful certificate request the response (i.e., IP, CP, or KUP)
+contains certificates in its caPubs field, they are stored in the given file.
+On a successful general message (genm) with infoType C<caCerts>, the list
+of received certificates, which may be empty, is also stored in this file.
 
 =item B<-cacerts_dir> I<dirname>
 

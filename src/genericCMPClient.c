@@ -679,14 +679,13 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
         LOG(FL_ERR, "No ctx parameter given");
         return CMP_R_INVALID_CONTEXT;
     }
+    if (OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_unspecified) {
+        LOG(FL_ERR, "The ctx parameter is not clean - call CMPclient_reinit()");
+        return CMP_R_INVALID_CONTEXT;
+    }
     if (new_creds == NULL) {
         LOG(FL_ERR, "No new_creds parameter given");
         return CMP_R_NULL_ARGUMENT;
-    }
-
-    /* check if any enrollment function has already been called before on ctx */
-    if (OSSL_CMP_CTX_get_status(ctx) != -1) {
-        return CMP_R_INVALID_CONTEXT;
     }
 
     switch (cmd) {
@@ -847,6 +846,11 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
         LOG(FL_ERR, "No ctx parameter given");
         return CMP_R_INVALID_CONTEXT;
     }
+    if (OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_unspecified) {
+        LOG(FL_ERR, "The ctx parameter is not clean - call CMPclient_reinit()");
+        return CMP_R_INVALID_CONTEXT;
+    }
+
 #if 0 /* as far as needed, checks are anyway done by the low-level library */
     if (cert == NULL) {
         LOG(FL_ERR, "No cert parameter given");
@@ -874,6 +878,130 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
  err:
     return CMPOSSL_error();
 }
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static OSSL_CMP_ITAV *get_genm_itav(CMP_CTX *ctx,
+                                    OSSL_CMP_ITAV *req, /* gets consumed */
+                                    int expected, const char *desc)
+{
+    STACK_OF(OSSL_CMP_ITAV) *itavs = NULL;
+    int i, n;
+
+    if (ctx == NULL) {
+        LOG(FL_ERR, "No ctx parameter given");
+        goto err;
+    }
+    if (OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_unspecified) {
+        LOG(FL_ERR, "The ctx parameter is not clean - should call CMPclient_reinit() before");
+        goto err;
+    }
+
+    if (!OSSL_CMP_CTX_push0_genm_ITAV(ctx, req))
+        goto err;
+    req = NULL;
+    itavs = OSSL_CMP_exec_GENM_ses(ctx);
+    if (itavs == NULL) {
+        if (OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_request)
+            LOG(FL_ERR, "Could not obtain valid response message on genm requesting %s",
+                desc);
+        return NULL;
+    }
+
+    if ((n = sk_OSSL_CMP_ITAV_num(itavs)) <= 0) {
+        LOG(FL_ERR, "Response on genm requesting %s contains no ITAV", desc);
+        sk_OSSL_CMP_ITAV_free(itavs);
+        return NULL;
+    }
+    if (n > 1)
+        LOG(FL_WARN, "Response on genm contains %d ITAVs; will use the first ITAV with infoType id-it-%s",
+            n, desc);
+    for (i = 0; i < n; i++) {
+        OSSL_CMP_ITAV *itav = sk_OSSL_CMP_ITAV_shift(itavs);
+        ASN1_OBJECT *obj = OSSL_CMP_ITAV_get0_type(itav);
+        char name[128];
+        int r;
+
+        if (OBJ_obj2nid(obj) == expected) {
+            for (i++; i < n; i++)
+                OSSL_CMP_ITAV_free(sk_OSSL_CMP_ITAV_shift(itavs));
+            sk_OSSL_CMP_ITAV_free(itavs);
+            return itav;
+        }
+
+        r = OBJ_obj2txt(name, sizeof(name), obj, 0);
+        if (r < 0)
+            LOG(FL_WARN, "cannot get InfoType details while expecting %s from genp",
+                desc);
+        else if (r == 0)
+            LOG(FL_WARN, "genp contains empty InfoType name while expecting %s from genp",
+                desc);
+        else
+            LOG(FL_WARN, "genp contains unexpected InfoType %s while expecting %s from genp",
+                name, desc);
+        OSSL_CMP_ITAV_free(itav);
+    }
+    LOG(FL_ERR, "could not find any ITAV for %s in genp", desc);
+
+ err:
+    sk_OSSL_CMP_ITAV_free(itavs);
+    OSSL_CMP_ITAV_free(req);
+    return NULL;
+}
+
+static const X509_VERIFY_PARAM *get0_trustedStore_vpm(const CMP_CTX *ctx)
+{
+    /* const */ X509_STORE *ts = OSSL_CMP_CTX_get0_trustedStore(ctx);
+
+    return ts == NULL ? NULL : X509_STORE_get0_param(ts);
+}
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out)
+{
+    OSSL_CMP_ITAV *req, *itav;
+    STACK_OF(X509) *certs = NULL;
+    CMP_err err = CMP_OK;
+
+    if (out == NULL) {
+        LOG(FL_ERR, "No out parameter given");
+        return CMP_R_NULL_ARGUMENT;
+    }
+    *out = NULL;
+
+    if ((req = OSSL_CMP_ITAV_new_caCerts(NULL)) == NULL) {
+        LOG(FL_ERR, "Failed to create ITAV for genm requesting caCerts");
+        return CMPOSSL_error();
+    }
+    itav = get_genm_itav(ctx, req, NID_id_it_caCerts, "caCerts");
+    if (itav == NULL)
+        return CMP_R_GET_ITAV;
+
+    if (!OSSL_CMP_ITAV_get0_caCerts(itav, &certs)) {
+        err = CMPOSSL_error();
+        goto end;
+    }
+    if (certs == NULL) /* no CA certificate available */
+        goto end;
+    if (!CERT_check_all("genp", certs /* may be NULL */, 1 /* CA */,
+                        get0_trustedStore_vpm(ctx))) {
+        err = CMP_R_INVALID_CACERTS;
+        goto end;
+    }
+    *out = sk_X509_new_reserve(NULL, sk_X509_num(certs));
+    if (!X509_add_certs(*out, certs,
+                        X509_ADD_FLAG_UP_REF | X509_ADD_FLAG_NO_DUP)) {
+        LOG_err("Failure storing caCerts received in genp");
+        sk_X509_pop_free(*out, X509_free);
+        *out = NULL;
+        err = CMPOSSL_error();
+    }
+
+ end:
+    OSSL_CMP_ITAV_free(itav);
+    return err;
+}
+#endif
 
 char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx, char *buf,
                                   size_t bufsize)

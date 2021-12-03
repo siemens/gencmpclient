@@ -172,7 +172,7 @@ opt_t cmp_opts[] = {
     { "cmd", OPT_TXT, {.txt = NULL}, { &opt_cmd },
       "CMP request to send: ir/cr/p10cr/kur/rr/genm. Overrides 'use_case' if given"},
     { "infotype", OPT_TXT, {.txt = NULL}, { &opt_infotype },
-      "InfoType name for requesting specific info in genm, e.g. 'signKeyPairTypes'"},
+      "InfoType name for requesting specific info in genm, e.g. 'caCerts'"},
     { "geninfo", OPT_TXT, {.txt = NULL}, { (const char **)&opt_geninfo },
       "Comma-separated list of OID and value to place in generalInfo PKIHeader"},
     OPT_MORE("of form <OID>:int:<n> or <OID>:str:<s>, e.g. \'1.2.3.4:int:56789, id-kp:str:name'"),
@@ -292,7 +292,7 @@ opt_t cmp_opts[] = {
       { &opt_extracerts_dir_format },
       "Format to use for saving those certs. Default \"pem\""},
     { "cacertsout", OPT_TXT, {.txt = NULL}, { &opt_cacertsout },
-      "File to save certificates received in the caPubs field."},
+      "File to save certificates received in caPubs field or genp of type caCerts"},
     { "cacerts_dir", OPT_TXT, {.txt = NULL}, { &opt_cacerts_dir },
       "Path to save self-issued CA certs received in the caPubs field"},
     { "cacerts_dir_format", OPT_TXT, {.txt = "pem"},
@@ -1322,12 +1322,27 @@ static CMP_err check_options(enum use_case use_case)
     if (opt_popo == OSSL_CRMF_POPO_NONE)
         opt_centralkeygen = true;
 
-    if (opt_infotype != NULL) {
+    if (opt_infotype == NULL) {
+        if (use_case == genm)
+            LOG_warn("no -infotype option given for genm");
+    } else if (use_case != genm) {
+        LOG_warn("-infotype option is ignored for commands other than 'genm'");
+    } else {
         char id_buf[100] = "id-it-";
 
         strncat(id_buf, opt_infotype, sizeof(id_buf) - strlen(id_buf) - 1);
         if ((infotype = OBJ_sn2nid(id_buf)) == NID_undef) {
-            LOG_err("Unknown OID name in -infotype option");
+            LOG(FL_ERR, "Unknown OID name '%s' in -infotype option", id_buf);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+            if (strcmp(opt_infotype, "caCerts") == 0
+                || strcmp(opt_infotype, "certReqTemplate") == 0)
+                LOG_info("caCerts and certReqTemplate are not supported by OpenSSL < 3.0");
+#endif
+#if OPENSSL_VERSION_NUMBER < 0x30100000L
+            if (strcmp(opt_infotype, "rootCaCert") == 0
+                || strcmp(opt_infotype, "crlStatusList") == 0)
+            LOG_info("rootCaCert and crlStatusList are not supported by OpenSSL < 3.1");
+#endif
             return -31;
         }
     }
@@ -1448,6 +1463,8 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
             LOG(FL_WARN, "-days %s", msg);
         if (opt_popo != OSSL_CRMF_POPO_NONE - 1)
             LOG(FL_WARN, "-popo %s", msg);
+        if (opt_out_trusted != NULL)
+            LOG(FL_WARN, "-out_trusted %s", msg);
     } else {
         if (opt_newkeytype != NULL || opt_centralkeygen) {
             if (opt_newkey == NULL) {
@@ -1728,28 +1745,59 @@ static int print_itavs(const STACK_OF(OSSL_CMP_ITAV) *itavs)
     return ret;
 }
 
-static CMP_err do_genm(CMP_CTX *ctx, int infotype)
+static CMP_err do_genm(CMP_CTX *ctx)
 {
-    STACK_OF(OSSL_CMP_ITAV) *itavs;
-
-    if (infotype != NID_undef) {
-        OSSL_CMP_ITAV *itav = OSSL_CMP_ITAV_create(OBJ_nid2obj(infotype), NULL);
-
-        if (itav == NULL) {
-            LOG(FL_ERR, "Failed to create ITAV for genm");
-            return -21;
+    switch (infotype) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    case NID_id_it_caCerts:
+        if (opt_cacertsout == NULL) {
+            LOG(FL_ERR, "Missing -cacertsout option for -infotype caCerts");
+            return -24;
         }
-        OSSL_CMP_CTX_push0_genm_ITAV(ctx, itav);
-    }
 
-    if ((itavs = OSSL_CMP_exec_GENM_ses(ctx)) != NULL) {
-        int res = print_itavs(itavs);
+        STACK_OF(X509) *cacerts = NULL;
+        CMP_err err = CMPclient_caCerts(ctx, &cacerts);
 
-        sk_OSSL_CMP_ITAV_pop_free(itavs, OSSL_CMP_ITAV_free);
-        return res ? CMP_OK : -22;
+        if (err == CMP_OK) {
+            /* TODO possibly check authorization of sender/origin */
+            if (cacerts == NULL) {
+                LOG_warn("no CA certificate available");
+                cacerts = sk_X509_new_null();
+            }
+            if (CERTS_save(cacerts, opt_cacertsout,
+                                  "caCerts from genp") < 0) {
+                LOG(FL_ERR, "Failed to store caCerts from genp in %s",
+                    opt_cacertsout);
+                err = -25;
+            }
+        }
+        CERTS_free(cacerts);
+        return err;
+#endif
+    default:
+        if (infotype != NID_undef) {
+            OSSL_CMP_ITAV *req =
+                OSSL_CMP_ITAV_create(OBJ_nid2obj(infotype), NULL);
+
+            LOG(FL_WARN, "No specific support for -infotype %s avaiable",
+                opt_infotype);
+            if (req == NULL || !OSSL_CMP_CTX_push0_genm_ITAV(ctx, req)) {
+                LOG(FL_ERR, "Failed to create ITAV for genm");
+                return -21;
+            }
+        }
+
+        STACK_OF(OSSL_CMP_ITAV) *itavs = OSSL_CMP_exec_GENM_ses(ctx);
+        if (itavs != NULL) {
+            int res = print_itavs(itavs);
+
+            sk_OSSL_CMP_ITAV_pop_free(itavs, OSSL_CMP_ITAV_free);
+            return res ? CMP_OK : -22;
+        }
+        if (OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_request)
+            LOG(FL_ERR, "Could not obtain valid response message on genm");
+        return -23;
     }
-    LOG(FL_ERR, "Could not obtain ITAVs from genp");
-    return -24;
 }
 
 static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
@@ -1807,7 +1855,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         err = CMPclient_revoke(ctx, oldcert, (int)opt_revreason);
         break;
     case genm:
-        err = do_genm(ctx, infotype);
+        err = do_genm(ctx);
         break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);
@@ -1815,7 +1863,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
 
     int status = OSSL_CMP_CTX_get_status(ctx);
-    if (err != -19 && status >= 0) {
+    if (err != -19 && use_case != genm && status >= 0) {
         /* we got some response, print PKIStatusInfo */
         char buf[OSSL_CMP_PKISI_BUFLEN];
         char *string = CMPclient_snprint_PKIStatus(ctx, buf, sizeof(buf));

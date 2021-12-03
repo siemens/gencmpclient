@@ -1561,28 +1561,35 @@ CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds, enum use_case use
     return CMP_OK;
 }
 
-static void print_itavs(STACK_OF(OSSL_CMP_ITAV) *itavs)
+static int print_itavs(const STACK_OF(OSSL_CMP_ITAV) *itavs)
 {
-    OSSL_CMP_ITAV *itav = NULL;
-    char buf[128];
-    int i, r;
-    int n = sk_OSSL_CMP_ITAV_num(itavs); /* itavs == NULL leads to 0 */
+    int i, ret = 1;
+    int n = sk_OSSL_CMP_ITAV_num(itavs);
 
-    if (n == 0) {
-        LOG(FL_INFO, "genp contains no ITAV");
-        return;
+    if (n <= 0) { /* also in case itavs == NULL */
+        LOG(FL_INFO, "genp does not contain any ITAV");
+        return ret;
     }
 
-    for (i = 0; i < n; i++) {
-        itav = sk_OSSL_CMP_ITAV_value(itavs, i);
-        r = OBJ_obj2txt(buf, 128, OSSL_CMP_ITAV_get0_type(itav), 0);
-        if (r < 0)
-            LOG(FL_ERR, "could not get ITAV details");
-        else if (r == 0)
-            LOG(FL_INFO, "genp contains empty ITAV");
-        else
-            LOG(FL_INFO, "genp contains ITAV of type: %s", buf);
+    for (i = 1; i <= n; i++) {
+        OSSL_CMP_ITAV *itav = sk_OSSL_CMP_ITAV_value(itavs, i - 1);
+        ASN1_OBJECT *type = OSSL_CMP_ITAV_get0_type(itav);
+        char name[80];
+
+        if (itav == NULL) {
+            LOG(FL_ERR, "could not get ITAV #%d from genp", i);
+            ret = 0;
+            continue;
+        }
+        if (i2t_ASN1_OBJECT(name, sizeof(name), type) <= 0) {
+            LOG(FL_ERR, "error parsing type of ITAV #%d from genp", i);
+            ret = 0;
+        }
+        else {
+            LOG(FL_INFO, "ITAV #%d from genp type=%s", i, name);
+        }
     }
+    return ret;
 }
 
 static CMP_err do_genm(CMP_CTX *ctx, int infotype)
@@ -1599,12 +1606,12 @@ static CMP_err do_genm(CMP_CTX *ctx, int infotype)
     }
 
     if ((itavs = OSSL_CMP_exec_GENM_ses(ctx)) != NULL) {
-        print_itavs(itavs);
+        int res = print_itavs(itavs);
         sk_OSSL_CMP_ITAV_pop_free(itavs, OSSL_CMP_ITAV_free);
-        return CMP_OK;
+        return res ? CMP_OK : -23;
     }
-    LOG(FL_ERR, "Did not obtain ITAVs from genp");
-    return -22;
+    LOG(FL_ERR, "Could not obtain ITAVs from genp");
+    return -24;
 }
 
 static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)

@@ -1054,7 +1054,7 @@ int setup_transfer(CMP_CTX *ctx)
     if (opt_tls_cert == NULL && opt_tls_key == NULL && opt_tls_keypass == NULL
         && opt_tls_extra == NULL && opt_tls_trusted == NULL
         && opt_tls_host == NULL && opt_tls_used == true) {
-        LOG_warn("-tls_used will be ignored. No other TLS options set");
+        LOG_warn("-tls_used will be ignored since no other TLS options set");
         opt_tls_used = false;
     }
 
@@ -1227,8 +1227,8 @@ static CMP_err check_options(enum use_case use_case) {
             LOG(FL_INFO, "Given -subject '%s' overrides the subject of '%s' for 'kur'",
                 opt_subject, opt_oldcert != NULL ? opt_oldcert : opt_csr);
     } else {
-        if (opt_secret != NULL && opt_key != NULL)
-            LOG_warn("-key value will not be used for signing messages since -secret option selects PBM-based protection");
+        if (opt_secret != NULL && (opt_cert != NULL || opt_key != NULL))
+            LOG_warn("-cert and -key not used since -secret option selects PBM-based message protection");
     }
     if (!opt_unprotected_requests && opt_secret == NULL && opt_key == NULL) {
         LOG_err("Must give client credentials unless -unprotected_requests is set");

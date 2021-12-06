@@ -231,7 +231,7 @@ CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, const char *path,
                             int keep_alive, int timeout)
 {
     if (ctx == NULL) {
-        return CMP_R_NULL_ARGUMENT;
+        return CMP_R_INVALID_CONTEXT;
     }
     if (!OSSL_CMP_CTX_set1_serverPath(ctx, path) ||
         (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT, timeout)) ||
@@ -371,39 +371,47 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy)
 {
-    char uri[255 + 1], *host = uri;
-    const char *parsed_path;
+    CMP_err err = CMP_R_INVALID_PARAMETERS;
 
-    if (ctx == NULL || server == NULL) {
+    if (ctx == NULL) {
+        LOG(FL_ERR, "No ctx parameter given");
+        return CMP_R_INVALID_CONTEXT;
+    }
+    if (server == NULL) {
         return CMP_R_NULL_ARGUMENT;
     }
 #ifdef SECUTILS_NO_TLS
     if (tls != NULL) {
         LOG(FL_ERR, "TLS is not supported by this build");
-        return CMP_R_INVALID_PARAMETERS;
+        return err;
     }
 #endif
 
-    snprintf(uri, sizeof(uri), "%s", server);
-    int port = CONN_parse_uri(&host, 0, &parsed_path, "server");
-    if (port <= 0) {
-        return CMP_R_INVALID_PARAMETERS;
+    char *host, *server_port, *parsed_path;
+    int use_ssl, port;
+    if (!OSSL_HTTP_parse_url(server, &use_ssl, NULL /* puser */, &host,
+                             &server_port, &port, &parsed_path, NULL, NULL))
+        return err;
+    if (use_ssl && tls == NULL) {
+        LOG(FL_ERR, "missing TLS context since server URL indicates HTTPS");
+        goto err;
     }
-    char server_port[11];
-    snprintf(server_port, sizeof(server_port), "%d", port);
     if (!OSSL_CMP_CTX_set1_server(ctx, host) ||
         (!OSSL_CMP_CTX_set_serverPort(ctx, port))) {
+        err = CMPOSSL_error();
         goto err;
     }
     if (path == NULL)
         path = parsed_path;
-    CMP_err err = CMPclient_setup_BIO(ctx, NULL, path, keep_alive, timeout);
+    err = CMPclient_setup_BIO(ctx, NULL, path, keep_alive, timeout);
     if (err != CMP_OK)
         goto err;
 
     if (!OSSL_CMP_CTX_set1_proxy(ctx, proxy) ||
-        !OSSL_CMP_CTX_set1_no_proxy(ctx, no_proxy))
+        !OSSL_CMP_CTX_set1_no_proxy(ctx, no_proxy)) {
+        err = CMPOSSL_error();
         goto err;
+    }
     const char *proxy_host = OSSL_HTTP_adapt_proxy(proxy, no_proxy, host, tls != NULL);
 #ifndef SECUTILS_NO_TLS
     if (tls != NULL) {
@@ -416,15 +424,20 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
             /* set expected host if not already done by caller */
             if (STORE_get0_host(ts) == NULL &&
                 !STORE_set1_host_ip(ts, host_or_proxy, host_or_proxy)) {
+                err = CMPOSSL_error();
                 goto err;
             }
         }
 
-        if (!OSSL_CMP_CTX_set_http_cb(ctx, app_http_tls_cb))
+        if (!OSSL_CMP_CTX_set_http_cb(ctx, app_http_tls_cb)) {
+            err = CMPOSSL_error();
             goto err;
+        }
         APP_HTTP_TLS_INFO *info = OPENSSL_zalloc(sizeof(*info));
-        if (info == NULL)
+        if (info == NULL) {
+            err = CMPOSSL_error();
             goto err;
+        }
         APP_HTTP_TLS_INFO_free(OSSL_CMP_CTX_get_http_cb_arg(ctx));
         (void)OSSL_CMP_CTX_set_http_cb_arg(ctx, info);
         /* info will be freed along with ctx */
@@ -434,8 +447,10 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         info->port = OPENSSL_strdup(server_port);
         info->use_proxy = proxy_host != NULL;
         info->timeout = OSSL_CMP_CTX_get_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT);
-        if (!SSL_CTX_up_ref(tls))
+        if (!SSL_CTX_up_ref(tls)) {
+            err = CMPOSSL_error();
             goto err;
+        }
         info->ssl_ctx = tls;
     }
 #endif
@@ -445,10 +460,13 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     LOG(FL_INFO, "will contact http%s://%s:%d%s%s%s%s", tls != NULL ? "s" : "",
         host, port, path[0] == '/' ? "" : "/", path,
         proxy_host != NULL ? " via proxy " : "", proxy_host != NULL ? proxy_host : "");
-    return CMP_OK;
+    err = CMP_OK;
 
  err:
-    return CMPOSSL_error();
+    OPENSSL_free(host);
+    OPENSSL_free(server_port);
+    OPENSSL_free(parsed_path);
+    return err;
 }
 
 CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
@@ -460,7 +478,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
 {
     if (ctx == NULL) {
         LOG(FL_ERR, "No ctx parameter given");
-        return CMP_R_NULL_ARGUMENT;
+        return CMP_R_INVALID_CONTEXT;
     }
 
     if (old_cert != NULL && !OSSL_CMP_CTX_set1_oldCert(ctx, (X509 *)old_cert))
@@ -611,7 +629,7 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
 
     if (ctx == NULL) {
         LOG(FL_ERR, "No ctx parameter given");
-        return CMP_R_NULL_ARGUMENT;
+        return CMP_R_INVALID_CONTEXT;
     }
     if (new_creds == NULL) {
         LOG(FL_ERR, "No new_creds parameter given");
@@ -773,7 +791,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
 {
     if (ctx == NULL) {
         LOG(FL_ERR, "No ctx parameter given");
-        return CMP_R_NULL_ARGUMENT;
+        return CMP_R_INVALID_CONTEXT;
     }
 #if 0 /* as far as needed, checks are anyway done by the low-level library */
     if (cert == NULL) {
@@ -813,7 +831,7 @@ CMP_err CMPclient_reinit(OSSL_CMP_CTX *ctx)
     OSSL_CMP_CTX_print_errors(ctx /* may be NULL */);
     if (ctx == NULL) {
         LOG(FL_ERR, "No ctx parameter given");
-        return CMP_R_NULL_ARGUMENT;
+        return CMP_R_INVALID_CONTEXT;
     }
     return OSSL_CMP_CTX_reinit(ctx) ? CMP_OK : CMPOSSL_error();
 }

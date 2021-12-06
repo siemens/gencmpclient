@@ -864,7 +864,7 @@ int setup_ctx(CMP_CTX *ctx)
         STACK_OF(X509) *certs = CERTS_load(opt_extracerts, "extra certificates for CMP");
         if (certs == NULL) {
             LOG(FL_ERR, "Unable to load '%s' extra certificates for CMP", opt_extracerts);
-            err = -8;
+            err = CMP_R_LOAD_CERTS;
             goto err;
         } else {
             if (!OSSL_CMP_CTX_set1_extraCertsOut(ctx, certs)) {
@@ -969,6 +969,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
         }
         if (cmp_creds == NULL) {
             LOG(FL_ERR, "Unable to set up %s", creds_desc);
+            err = CMP_R_LOAD_CREDS;
             goto err;
         }
     } else {
@@ -976,7 +977,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
             LOG_warn("-own_trusted option is ignored since -cert and -key are not used");
     }
 
-    err = -2;
+    err = CMP_R_LOAD_CERTS;
     if (opt_srvcert != NULL && opt_trusted != NULL)
         LOG_warn("-trusted option is ignored since -srvcert option is present");
     cmp_truststore = opt_trusted == NULL ? NULL : setup_CMP_truststore();
@@ -1334,7 +1335,7 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 if ((*new_pkey = KEY_new(key_spec)) == NULL) {
                     LOG(FL_ERR, "Unable to generate new private key according to specification '%s'",
                         key_spec);
-                    return -41;
+                    return CMP_R_GENERATE_KEY;
                 }
             }
         } else {
@@ -1498,20 +1499,20 @@ CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds, enum use_case use
             STACK_OF(X509) *certs = CREDENTIALS_get_chain(new_creds);
             if (certs == NULL || opt_chainout != NULL) {
                 if (!CERT_save(cert, opt_certout, new_desc)) {
-                    return -55;
+                    return CMP_R_STORE_CREDS;
                 }
                 if (opt_chainout != NULL &&
                     CERTS_save(certs, opt_chainout, new_desc) < 0) {
-                    return -56;
+                    return CMP_R_STORE_CREDS;
                 }
             } else {
                 if (sk_X509_unshift(certs, cert) == 0) { /* prepend cert */
                     LOG(FL_ERR, "Out of memory writing certs to file '%s'", opt_certout);
-                    return -57;
+                    return CMP_R_STORE_CREDS;
                 }
                 CREDENTIALS_set_cert(new_creds, NULL);
                 if (CERTS_save(certs, opt_certout, new_desc) < 0) {
-                    return -58;
+                    return CMP_R_STORE_CREDS;
                 }
             }
         }
@@ -1624,11 +1625,33 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 
     LOG_close();
     if (err != CMP_OK) {
-        if (err < 100)
+        const char *reason;
+        switch (err) {
+        case CMP_R_LOAD_CERTS:
+            reason = "error loading certificates";
+            break;
+        case CMP_R_LOAD_CREDS:
+            reason = "error loading credentials";
+            break;
+        case CMP_R_GENERATE_KEY:
+            reason = "error generating key";
+            break;
+        case CMP_R_STORE_CREDS:
+            reason = "error storing credentials";
+            break;
+        case CMP_R_RECIPIENT:
+            reason = "error setting up recipient";
+            break;
+        case CMP_R_INVALID_CONTEXT:
+            reason = "invalid context ";
+            break;
+        default:
+            reason = ERR_reason_error_string(ERR_PACK(ERR_LIB_CMP, 0, err));
+        }
+        if (err < 100 || reason == NULL)
             LOG(FL_ERR, "CMPclient error %d", err);
         else
-            LOG(FL_ERR, "CMPclient error %d: %s", err,
-                ERR_reason_error_string(ERR_PACK(ERR_LIB_CMP, 0, err)));
+            LOG(FL_ERR, "CMPclient error %d: %s", err, reason);
     }
     return err;
 }

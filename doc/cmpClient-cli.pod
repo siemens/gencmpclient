@@ -76,10 +76,10 @@ Certificate enrollment and revocation options:
 Message transfer options:
 
 [B<-server> I<[http://]address[:port]>][/path]
-[B<-path> I<remote_path>]
 [B<-proxy> I<[http://]address[:port][/path]>]
 [B<-no_proxy> I<addresses>]
 [B<-recipient> I<name>]
+[B<-path> I<remote_path>]
 [B<-keep_alive> I<value>]
 [B<-msg_timeout> I<seconds>]
 [B<-total_timeout> I<seconds>]
@@ -522,13 +522,9 @@ Reason numbers defined in RFC 5280 are:
 
 The IP address or DNS hostname and optionally port
 of the CMP server to connect to using HTTP(S) transport.
+This option excludes I<-rspin>.
 The port defaults to 80 or 443 if the scheme is C<https>.
 If a path is included it provides the default value for the B<-path> option.
-
-=item B<-path> I<remote_path>
-
-HTTP path at the CMP server (aka CMP alias) to use for POST requests.
-Defaults to any path given with B<-server>, else C<"/">.
 
 =item B<-proxy> I<[http[s]://]address[:port][/path]>
 
@@ -561,6 +557,11 @@ as far as any of those is present, else the NULL-DN as last resort.
 
 The argument must be formatted as I</type0=value0/type1=value1/type2=...>.
 For details see the description of the B<-subject> option.
+
+=item B<-path> I<remote_path>
+
+HTTP path at the CMP server (aka CMP alias) to use for POST requests.
+Defaults to any path given with B<-server>, else C<"/">.
 
 =item B<-keep_alive> I<value>
 
@@ -828,12 +829,12 @@ Send messages without CMP-level protection.
 =item B<-tls_used>
 
 Enable using TLS (even when other TLS_related options are not set)
-when connecting to CMP server.
+for message exchange with CMP server.
 The following TLS-related options are ignored if B<-tls_used> is not given.
 
 =item B<-tls_cert> I<filename>
 
-Client's TLS certificate.
+Client's TLS certificate to use for authenticating to the TLS server.
 If the file includes further certificates,
 they are used for constructing the client cert chain provided to the TLS server.
 
@@ -851,7 +852,7 @@ Supports plain passwords preceded by "pass:" and others, see B<-newkeypass>.
 
 =item B<-tls_extra> I<filenames>
 
-Extra certificates to provide to TLS server during TLS handshake
+Extra certificates to provide to the TLS server during handshake.
 
 =item B<-tls_trusted> I<filenames>
 
@@ -904,6 +905,7 @@ As many files are written as needed to store the complete transaction.
 =item B<-rspin> I<filenames>
 
 Process sequence of CMP responses provided in file(s), skipping server.
+This option excludes I<-server>.
 
 Multiple filenames may be given, separated by commas and/or whitespace.
 As many files are read as needed for the complete transaction.

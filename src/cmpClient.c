@@ -54,9 +54,9 @@ char demo_sections[2 * (SECTION_NAME_MAX + 1)]; /* used for pattern "%s,%s" */
 long opt_verbosity;
 
 const char *opt_server;
-const char *opt_path;
 const char *opt_proxy;
 const char *opt_no_proxy;
+const char *opt_path;
 const char *opt_cdp_proxy;
 const char *opt_crl_cache_dir;
 
@@ -222,7 +222,7 @@ opt_t cmp_opts[] = {
     { "oldcert", OPT_TXT, {.txt = NULL}, { &opt_oldcert },
       "Certificate to be updated (defaulting to -cert) or to be revoked in rr;"},
     OPT_MORE("also used as reference (defaulting to -cert) for subject DN and SANs."),
-    OPT_MORE("Its issuer is used as recipient unless -srvcert, -recipient or -issuer given"),
+    OPT_MORE("Its issuer used as recipient unless -srvcert, -recipient or -issuer given"),
     { "revreason", OPT_NUM, {.num = CRL_REASON_NONE}, { (const char **) &opt_revreason },
       "Reason code to include in revocation request (rr)."},
     OPT_MORE("Values: 0..6, 8..10 (see RFC5280, 5.3.1) or -1. Default -1 = none included"),
@@ -234,17 +234,18 @@ opt_t cmp_opts[] = {
     { "server", OPT_TXT, {.txt = NULL}, { &opt_server },
       "[http[s]://]host[:port][/path] of CMP server. Default port 80 or 443."},
     OPT_MORE("host may be a DNS name or an IP address; path can be overridden by -path"),
-    { "path", OPT_TXT, {.txt = NULL}, { &opt_path },
-      "HTTP path (aka CMP alias) at the CMP server.  Default from -server, else \"/\""},
     { "proxy", OPT_TXT, {.txt = NULL}, { &opt_proxy },
       "[http[s]://]host[:port][/p] of proxy. Default port 80 or 443; p ignored."},
     OPT_MORE("Default from environment variable 'http_proxy', else 'HTTP_PROXY'"),
     { "no_proxy", OPT_TXT, {.txt = NULL}, { &opt_no_proxy },
       "List of addresses of servers not use HTTP(S) proxy for."},
     OPT_MORE("Default from environment variable 'no_proxy', else 'NO_PROXY', else none"),
+
     { "recipient", OPT_TXT, {.txt = NULL}, { &opt_recipient },
       "DN of CA. Default: -srvcert subject, -issuer, issuer of -oldcert or -cert,"},
     OPT_MORE("subject of the first -untrusted cert if any, or else the NULL-DN"),
+    { "path", OPT_TXT, {.txt = NULL}, { &opt_path },
+      "HTTP path (aka CMP alias) at the CMP server.  Default from -server, else \"/\""},
     {"keep_alive", OPT_NUM, {.num = 1 }, { (const char **)&opt_keep_alive },
      "Persistent HTTP connections. 0: no, 1 (the default): request, 2: require"},
     { "msg_timeout", OPT_NUM, {.num = 120}, { (const char **)&opt_msg_timeout },
@@ -318,7 +319,7 @@ opt_t cmp_opts[] = {
     { "tls_trusted", OPT_TXT, {.txt = NULL}, { &opt_tls_trusted },
       "File(s) with certs to trust for TLS server verification (TLS trust anchor)"},
     { "tls_host", OPT_TXT, {.txt = NULL}, { &opt_tls_host },
-      "Address (rather than -server) to be checked during TLS host name validation"},
+      "Address (rather than -server) to be checked during TLS hostname validation"},
 
     OPT_HEADER("Debugging"),
     {"reqin", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqin},
@@ -445,12 +446,17 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
         if (!STORE_set_crl_callback(tls_truststore, CRLMGMT_load_crl_cb, cmdata))
             goto err;
     } else {
-        LOG_warn("-tls_used given without -tls_trusted; will not authenticate the server");
+        LOG_warn("-tls_used given without -tls_trusted; will not authenticate the TLS server");
     }
 
-    if ((opt_tls_cert == NULL) != (opt_tls_key == NULL)) {
-        LOG_err("Must give both -tls_cert and -tls_key options or neither");
-        goto err;
+    if (opt_tls_cert != NULL || opt_tls_key != NULL || opt_tls_keypass != NULL) {
+        if (opt_tls_key == NULL) {
+            LOG_err("missing -tls_key option");
+            goto err;
+        } else if (opt_tls_cert == NULL) {
+            LOG_err("missing -tls_cert option");
+            goto err;
+        }
     }
     if (opt_tls_key != NULL) {
         tls_creds = CREDENTIALS_load(opt_tls_cert, opt_tls_key, opt_tls_keypass,
@@ -458,7 +464,7 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
         if (tls_creds == NULL)
             goto err;
     } else {
-        LOG_warn("-tls_used given without -tls_key; cannot authenticate to the server");
+        LOG_warn("-tls_used given without -tls_key; cannot authenticate to the TLS server");
     }
     static const char *tls_ciphers = NULL; /* or, e.g., "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH"; */
     const int security_level = -1;
@@ -466,7 +472,11 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     if (tls == NULL)
         goto err;
 
-    /* if we did this before TLS_new() the expected host name while checking own TLS cert would be wrong */
+    /*
+     * Enable and parameterize server hostname/IP address check.
+     * If we did this before checking our own TLS cert in TLS_new(),
+     * the expected hostname would mislead the check.
+     */
     if (tls_truststore != NULL) {
         const char *host = opt_tls_host != NULL ? opt_tls_host : opt_server;
         if (!STORE_set1_host_ip(tls_truststore, host, host))
@@ -1052,23 +1062,46 @@ int setup_transfer(CMP_CTX *ctx)
         goto err;
     }
 
+    if (opt_server == NULL) {
+        if (opt_rspin == NULL) {
+            LOG_err("missing -server or -rspin option");
+            err = -17;
+            goto err;
+        }
+        if (opt_proxy != NULL)
+            LOG_warn("ignoring -proxy option since -server is not given");
+        if (opt_no_proxy != NULL)
+            LOG_warn("ignoring -no_proxy option since -server is not given");
+        if (opt_tls_used) {
+            LOG_warn("ignoring -tls_used option since -server is not given");
+            opt_tls_used = 0;
+        }
+    } else {
+        if (opt_rspin != NULL) {
+            LOG_warn("ignoring -server option since -rspin is given");
+            opt_server = NULL;
+        }
+    }
     if (opt_tls_cert == NULL && opt_tls_key == NULL && opt_tls_keypass == NULL
-        && opt_tls_extra == NULL && opt_tls_trusted == NULL
-        && opt_tls_host == NULL && opt_tls_used == true) {
-        LOG_warn("-tls_used will be ignored since no other TLS options set");
-        opt_tls_used = false;
+            && opt_tls_extra == NULL && opt_tls_trusted == NULL
+            && opt_tls_host == NULL) {
+        if (opt_tls_used)
+            LOG_warn("-tls_used given without any other TLS options");
+    } else if (!opt_tls_used) {
+        LOG_warn("TLS options(s) are ignored since -tls_used is not given");
     }
 
     SSL_CTX *tls = NULL;
     if (opt_tls_used && (tls = setup_TLS(OSSL_CMP_CTX_get0_untrusted(ctx))) == NULL) {
         LOG_err("Unable to set up TLS for CMP client");
-        err = -17;
+        err = -18;
         goto err;
     }
 
     err = CMPclient_setup_HTTP(ctx, opt_server, opt_path,
                                (int)opt_keep_alive, (int)opt_msg_timeout,
                                tls, opt_proxy, opt_no_proxy);
+
 #ifndef SECUTILS_NO_TLS
     TLS_free(tls);
 #endif
@@ -1158,6 +1191,7 @@ static bool validate_cert(void)
     LOG(FL_DEBUG, "Target certificate read successfully:");
     LOG_cert_CDP(FL_DEBUG, target);
 
+    /* TODO combine with part of prepare_CMP_client() */
     STACK_OF(X509) *untrusted = NULL;;
     X509_STORE_CTX *ctx = X509_STORE_CTX_new();
     X509_STORE *store = STORE_load(opt_trusted, "trusted certs");
@@ -1267,7 +1301,7 @@ static CMP_err check_options(enum use_case use_case) {
 
     if (opt_extracerts_dir_format != NULL && FILES_get_format(opt_extracerts_dir_format) == FORMAT_UNDEF) {
         LOG_err("-extracerts_format not accepted");
-        return -18;
+        return -11;
     }
 
     bool crl_check = opt_crls != NULL || opt_use_cdp || opt_cdps != NULL;
@@ -1552,11 +1586,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         goto err;
     }
 
-    if (opt_tls_cert != NULL || opt_tls_key != NULL || opt_tls_keypass != NULL
-        || opt_tls_extra != NULL || opt_tls_trusted != NULL
-        || opt_tls_host != NULL)
-        if (!opt_tls_used)
-            LOG_warn("TLS options(s) are ignored since -tls_used is not given");
     if ((err = setup_transfer(ctx)) != CMP_OK)
         goto err;
 
@@ -1597,14 +1626,20 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         /* we got some response, print PKIStatusInfo */
         char buf[OSSL_CMP_PKISI_BUFLEN];
         char *string = CMPclient_snprint_PKIStatus(ctx, buf, sizeof(buf));
+        const char *from = "", *server = "";
 
+        if (opt_server != NULL) {
+            from = " from ";
+            server = opt_server;
+        }
         LOG(LOG_FUNC_FILE_LINE,
             status == OSSL_CMP_PKISTATUS_accepted
             ? LOG_INFO :
             status == OSSL_CMP_PKISTATUS_rejection
             || status == OSSL_CMP_PKISTATUS_waiting
             ? LOG_ERR : LOG_WARNING,
-            "received %s", string != NULL ? string : "<unknown PKIStatus>");
+            "received%s%s %s", from, server,
+            string != NULL ? string : "<unknown PKIStatus>");
     }
 
     if (err != CMP_OK) {

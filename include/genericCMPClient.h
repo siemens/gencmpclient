@@ -73,6 +73,7 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx,
                           bool implicit_confirm);
 
 /* must be called next if the transfer_fn is NULL and no existing connection is used */
+/* Will return error when used with OpenSSL compiled with OPENSSL_NO_SOCK. */
 CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
                              int keep_alive, int timeout, OPTIONAL SSL_CTX *tls,
                              OPTIONAL const char *proxy,
@@ -153,16 +154,19 @@ void CMPclient_finish(OPTIONAL CMP_CTX *ctx);
 /* X509_STORE helpers */
 EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
                    OPTIONAL const char *engine, OPTIONAL const char *desc);
-X509 *CERT_load(const char *file, OPTIONAL const char *pass, OPTIONAL const char *desc);
+X509 *CERT_load(const char *file, OPTIONAL const char *pass, OPTIONAL const char *desc,
+                bool warn_EE, OPTIONAL X509_VERIFY_PARAM *vpm);
 bool CERT_save(const X509 *cert, const char *file, OPTIONAL const char *desc);
-STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc);
+STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc,
+                           bool warn_EE, OPTIONAL X509_VERIFY_PARAM *vpm);
 void CERTS_free(OPTIONAL STACK_OF(X509) *certs);
 int CERTS_save(const STACK_OF(X509) *certs, const char *file, OPTIONAL const char *desc);
 X509_REQ *CSR_load(const char *file, OPTIONAL const char *desc);
 
 STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout, OPTIONAL const char *desc);
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls);
-X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc);
+X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc,
+                       OPTIONAL X509_VERIFY_PARAM *vpm);
 # ifdef LOCAL_DEFS
 #  include "genericCMPClient_imports.h"
 # else

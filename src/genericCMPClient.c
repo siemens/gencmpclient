@@ -874,10 +874,16 @@ EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
                                   pass, engine, desc);
 }
 
-inline
-X509 *CERT_load(const char *file, OPTIONAL const char *source, OPTIONAL const char *desc)
+X509 *CERT_load(const char *file, OPTIONAL const char *source,
+                OPTIONAL const char *desc,
+                bool warn_EE, OPTIONAL X509_VERIFY_PARAM *vpm)
 {
-    return FILES_load_cert(file, FILES_get_format(file), source, desc);
+    X509 *cert = FILES_load_cert(file, FILES_get_format(file), source, desc);
+    if (!UTIL_warn_cert(file, cert, warn_EE, vpm) && vpm != NULL) {
+        X509_free(cert);
+        cert = NULL;
+    }
+    return cert;
 }
 
 inline
@@ -899,10 +905,16 @@ X509_REQ *CSR_load(const char *file, OPTIONAL const char *desc)
 
 /* X509_STORE helpers */
 
-inline
-STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc)
+STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc,
+                           bool warn_EE, OPTIONAL X509_VERIFY_PARAM *vpm)
 {
-    return FILES_load_certs_multi(files, FORMAT_PEM, NULL /* password source */, desc);
+    STACK_OF(X509) *certs =
+        FILES_load_certs_multi(files, FORMAT_PEM, NULL /* pwd source */, desc);
+    if (!UTIL_warn_certs(files, certs, warn_EE, vpm) && vpm != NULL) {
+        CERTS_free(certs);
+        certs = NULL;
+    }
+    return certs;
 }
 
 inline
@@ -923,9 +935,10 @@ void CERTS_free(OPTIONAL STACK_OF(X509) *certs)
 }
 
 inline
-X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc)
+X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc,
+                       OPTIONAL X509_VERIFY_PARAM *vpm)
 {
-    return STORE_load_trusted(trusted_certs, desc, NULL);
+    return STORE_load_check(trusted_certs, desc, vpm, NULL);
 }
 
 inline

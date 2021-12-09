@@ -70,12 +70,11 @@ TBD,TBD,root expired, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trust
 1, -,untrusted, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,issuing.crt root.crt,BLANK, -unprotected_errors,BLANK,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,
 0,0,untrusted missing arg, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,,BLANK, -unprotected_errors,BLANK,,,,,,,,
-1,-,not matching untrusted cert, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,signer.crt,BLANK, -unprotected_errors,BLANK,,,,,,,,
+1,-,untrusted not matching cert, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,root.crt,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,0,untrusted empty file, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,empty.txt,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,0,untrusted random file, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,random.bin,BLANK, -unprotected_errors,BLANK,,,,,,,,
 TBD since cert file does not exist, -,untrusted expired, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,EJBCAInfrastructureIssuingCAv10_expired.crt ECCIssuingCAv10_expired.crt ExpiredIssuingCAv10.crt,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,0,untrusted file does not exist, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,idontexist,BLANK, -unprotected_errors,BLANK,,,,,,,,
-1,1,untrusted is wrong cert, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,signer.crt,BLANK, -unprotected_errors,BLANK,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,
 1,1,ignore key usage, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt,BLANK,, -ignore_keyusage, -unprotected_errors,BLANK,,,,,,,,
 TBD 0 for Mock but 1 for SimpleLra,-,ignore key usage certificate without digitalSignature, -section,, -recipient,"""",BLANK,, -srvcert,server_wrong_keyusage.crt, -trusted,"""",BLANK,, -ignore_keyusage, -unprotected_errors,BLANK,,,-path,cmp/PlaygroundECCWrong_keyusage,-server,127.0.0.1:9081,-expect_sender,""""

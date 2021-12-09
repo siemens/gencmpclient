@@ -1,7 +1,7 @@
 [default]
 batch = 1 # do not use stdin
 total_timeout = 8 # prevent, e.g., infinite polling due to error
-srvcert = trusted.crt
+trusted = trusted.crt # might also use srvcert here
 newkey = new.key
 newkeypass =
 cmd = ir

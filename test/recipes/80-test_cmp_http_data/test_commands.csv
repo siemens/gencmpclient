@@ -78,3 +78,7 @@ TBD,TBD,EJBCA does not support genm,,,,,,,,,,,,,,,
 0,0,geninfo bad int syntax: extra char, -section,, -cmd,cr,, -cert,signer.crt, -key,signer.p12, -keypass,pass:12345,BLANK,, -geninfo,1.2.3:int:987@,,,,
 ,,,,,,,,,,,,,,,,,,,,,,
 TBD,TBD,find invalid geninfo values, -section,, -cmd,cr,, -cert,signer.crt, -key,signer.p12, -keypass,pass:12345,BLANK,, -geninfo,1.2.9:int:123,BLANK,,BLANK,
+,,,,,,,,,,,,,,,,,,,
+1,no need,reqout+rspout, -section,, -cmd,ir,,-reqout,req1.der req2.der,,-rspout,rsp1.der rsp2.der,,BLANK,,BLANK,
+1,no need,reqin, -section,, -cmd,ir,,-reqin,req1.der req2.der,,BLANK,,,BLANK,,BLANK,-reqin_new_tid
+1,no need,rspin, -section,, -cmd,ir,,BLANK,,,-rspin,rsp1.der rsp2.der,,BLANK,,BLANK,

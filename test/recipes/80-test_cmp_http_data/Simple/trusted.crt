@@ -1,3 +1,4 @@
+        Subject: CN=PPKI Playground ECC Root CA v1.0, OU=Corporate Technology, OU=For internal test purposes only, O=Siemens, C=DE
 -----BEGIN CERTIFICATE-----
 MIIDCTCCAmqgAwIBAgIINj6bhzy5IVowCgYIKoZIzj0EAwQwgZMxKTAnBgNVBAMM
 IFBQS0kgUGxheWdyb3VuZCBFQ0MgUm9vdCBDQSB2MS4wMR0wGwYDVQQLDBRDb3Jw
@@ -17,6 +18,8 @@ pC0yStrdWUI7kywusIhOyfVD4iWWO6k8L8t6F08hYX/GE1ALGZBwQpwCQgCuiFc8
 ejZgwnhwfcI9MAxQt7SOGkFyVQboSPwS5EGhLibmBwg+yPkOEQ9M/gcG+S617Se3
 EfoG8JGbzVYAbb87AQ==
 -----END CERTIFICATE-----
+
+Subject: CN=PPKI Playground Infrastructure Root CA v1.0, OU=Corporate Technology, OU=For internal test purposes only, O=Siemens, C=DE
 -----BEGIN CERTIFICATE-----
 MIIHlTCCBX2gAwIBAgIIbbyx7K36MUswDQYJKoZIhvcNAQELBQAwgZ4xNDAyBgNV
 BAMMK1BQS0kgUGxheWdyb3VuZCBJbmZyYXN0cnVjdHVyZSBSb290IENBIHYxLjAx

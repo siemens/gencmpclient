@@ -28,8 +28,9 @@ STACK_OF(X509_EXTENSION) *(*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTE
 # include "genericCMPClient_use.h"
 #else
 # include <secutils/storage/files.h>
-# include <secutils/credentials/verify.h>
+# include <secutils/credentials/cert.h>
 # include <secutils/credentials/store.h>
+# include <secutils/credentials/verify.h>
 # include <secutils/connections/conn.h>
 # ifndef SECUTILS_NO_TLS
 #  include <secutils/connections/tls.h>
@@ -874,29 +875,6 @@ EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
                                   pass, engine, desc);
 }
 
-X509 *CERT_load(const char *file, OPTIONAL const char *source,
-                OPTIONAL const char *desc,
-                bool warn_EE, OPTIONAL X509_VERIFY_PARAM *vpm)
-{
-    X509 *cert = FILES_load_cert(file, FILES_get_format(file), source, desc);
-    if (!UTIL_warn_cert(file, cert, warn_EE, vpm) && vpm != NULL) {
-        X509_free(cert);
-        cert = NULL;
-    }
-    return cert;
-}
-
-inline
-bool CERT_save(const X509 *cert, const char *file, OPTIONAL const char *desc)
-{
-    file_format_t format = FILES_get_format(file);
-    if (format == FORMAT_UNDEF) {
-        LOG(FL_ERR, "Failed to determine format from file name ending of '%s'", file);
-        return false;
-    }
-    return FILES_store_cert(cert, file, format, desc);
-}
-
 inline
 X509_REQ *CSR_load(const char *file, OPTIONAL const char *desc)
 {
@@ -904,35 +882,6 @@ X509_REQ *CSR_load(const char *file, OPTIONAL const char *desc)
 }
 
 /* X509_STORE helpers */
-
-STACK_OF(X509) *CERTS_load(const char *files, OPTIONAL const char *desc,
-                           bool warn_EE, OPTIONAL X509_VERIFY_PARAM *vpm)
-{
-    STACK_OF(X509) *certs =
-        FILES_load_certs_multi(files, FORMAT_PEM, NULL /* pwd source */, desc);
-    if (!UTIL_warn_certs(files, certs, warn_EE, vpm) && vpm != NULL) {
-        CERTS_free(certs);
-        certs = NULL;
-    }
-    return certs;
-}
-
-inline
-int CERTS_save(const STACK_OF(X509) *certs, const char *file, OPTIONAL const char *desc)
-{
-    file_format_t format = FILES_get_format(file);
-    if (format == FORMAT_UNDEF) {
-        LOG(FL_ERR, "Failed to determine format from file name ending of '%s'", file);
-        return -1;
-    }
-    return FILES_store_certs(certs, file, format, desc);
-}
-
-inline
-void CERTS_free(OPTIONAL STACK_OF(X509) *certs)
-{
-    sk_X509_pop_free(certs, X509_free);
-}
 
 inline
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc,

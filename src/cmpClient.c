@@ -20,6 +20,7 @@
 #include <openssl/ssl.h>
 
 #include <secutils/config/config.h>
+#include <secutils/credentials/cert.h>
 #include <secutils/certstatus/crl_mgmt.h> /* for CRLMGMT_load_crl_cb */
 
 #ifdef LOCAL_DEFS
@@ -435,7 +436,8 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 
     X509_STORE *tls_truststore = NULL;
     if (opt_tls_trusted != NULL) {
-        tls_truststore = STORE_load(opt_tls_trusted, "trusted certs for TLS level", vpm);
+        tls_truststore = STORE_load(opt_tls_trusted, "trusted certs for TLS level",
+                                    NULL /* not using vpm to prevent strict checking */);
         if (tls_truststore == NULL)
             goto err;
         if (!STORE_set_parameters(tls_truststore, vpm,
@@ -486,7 +488,7 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     /* If present we append to the list also the certs from opt_tls_extra */
     if (opt_tls_extra != NULL) {
         STACK_OF(X509) *tls_extra =
-            CERTS_load(opt_tls_extra, "extra certificates for TLS", true, vpm);
+            CERTS_load(opt_tls_extra, "extra certificates for TLS", 1 /* CA */, vpm);
         if (tls_extra == NULL ||
             !SSL_CTX_add_extra_chain_free(tls, tls_extra)) {
             SSL_CTX_free(tls);
@@ -507,7 +509,8 @@ X509_STORE *setup_CMP_truststore(void)
     X509_STORE *cmp_truststore = NULL;
 
     const char *trusted_cert_files = opt_trusted;
-    cmp_truststore = STORE_load(trusted_cert_files, "trusted certs for CMP level", vpm);
+    cmp_truststore = STORE_load(trusted_cert_files, "trusted certs for CMP level",
+                                NULL /* not using vpm to prevent strict checking */);
     if (cmp_truststore == NULL)
         goto err;
     if (!STORE_set_parameters(cmp_truststore, vpm,
@@ -873,7 +876,7 @@ int setup_ctx(CMP_CTX *ctx)
         return err;
     if (opt_extracerts != NULL) {
         STACK_OF(X509) *certs =
-            CERTS_load(opt_extracerts, "extra certificates for CMP", true, vpm);
+            CERTS_load(opt_extracerts, "extra certificates for CMP", 1 /* CA */, vpm);
         if (certs == NULL) {
             LOG(FL_ERR, "Unable to load '%s' extra certificates for CMP", opt_extracerts);
             err = CMP_R_LOAD_CERTS;
@@ -994,7 +997,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
         LOG_warn("-trusted option is ignored since -srvcert option is present");
     cmp_truststore = opt_trusted == NULL ? NULL : setup_CMP_truststore();
     untrusted_certs = opt_untrusted == NULL ? NULL :
-        CERTS_load(opt_untrusted, "untrusted certs", true, vpm);
+        CERTS_load(opt_untrusted, "untrusted certs", 1 /* CA */, vpm);
     if ((cmp_truststore == NULL && opt_trusted != NULL)
             || (untrusted_certs == NULL && opt_untrusted != NULL))
         goto err;
@@ -1026,7 +1029,8 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
 
     if (opt_srvcert != NULL) {
         X509 *srvcert = CERT_load(opt_srvcert, NULL /* pass */,
-                                  "directly trusted CMP server certificate", false, vpm);
+                                  "directly trusted CMP server certificate",
+                                  -1 /* no type check */, vpm);
         if (srvcert == NULL || !OSSL_CMP_CTX_set1_srvCert(*pctx, srvcert))
             err = -3;
         X509_free(srvcert);
@@ -1188,7 +1192,8 @@ static bool validate_cert(void)
     LOG(FL_INFO, "Trusted certs: %s", STR_OR_NONE(opt_trusted));
     LOG(FL_INFO, "Untrusted certs: %s", STR_OR_NONE(opt_untrusted));
 
-    X509 *target = CERT_load(opt_cert, opt_keypass, "target cert", false, vpm);
+    X509 *target = CERT_load(opt_cert, opt_keypass, "target cert",
+                             -1 /* no type check */, vpm);
     if (target == NULL)
         return false;
     LOG(FL_DEBUG, "Target certificate read successfully:");
@@ -1201,7 +1206,7 @@ static bool validate_cert(void)
     if (ctx == NULL || store == NULL)
         goto err;
     if (opt_untrusted != NULL &&
-        (untrusted = CERTS_load(opt_untrusted, "untrusted certs", true, vpm)) == NULL)
+        (untrusted = CERTS_load(opt_untrusted, "untrusted certs", 1 /* CA */, vpm)) == NULL)
             goto err;
 
     if (!STORE_set_parameters(store, vpm,
@@ -1457,7 +1462,8 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
             *oldcert = CERT_load(opt_oldcert, opt_keypass,
                                  use_case == update ? "certificate to be updated" :
                                  use_case == revocation ? "certificate to be revoked" :
-                                 "reference certificate (oldcert)", false, vpm);
+                                 "reference certificate (oldcert)",
+                                 -1 /* no type check */, vpm);
             if (*oldcert == NULL || !OSSL_CMP_CTX_set1_oldCert(ctx, *oldcert))
                 return -47;
         }

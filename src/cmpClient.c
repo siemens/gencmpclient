@@ -72,6 +72,9 @@ const char *opt_recipient;
 const char *opt_expect_sender;
 bool opt_ignore_keyusage;
 bool opt_unprotected_errors;
+#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+const char *opt_srvcertout;
+#endif
 const char *opt_extracertsout;
 const char *opt_extracerts_dir;
 const char *opt_extracerts_dir_format;
@@ -268,6 +271,10 @@ opt_t cmp_opts[] = {
     { "unprotected_errors", OPT_BOOL, {.bit = false}, { (const char **) &opt_unprotected_errors },
       "Accept missing or invalid protection of regular error messages and negative"},
     OPT_MORE("certificate responses (ip/cp/kup), revocation responses (rp), and PKIConf"),
+#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+    { "srvcertout", OPT_TXT, {.txt = NULL}, { &opt_srvcertout },
+      "File to save server cert used and validated for CMP response protection"},
+#endif
     { "extracertsout", OPT_TXT, {.txt = NULL}, { &opt_extracertsout },
       "File to save extra certificates received in the extraCerts field"},
     { "extracerts_dir", OPT_TXT, {.txt = NULL}, { &opt_extracerts_dir },
@@ -1516,12 +1523,28 @@ CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
 }
 
 CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds, enum use_case use_case) {
-    int err = save_certs(OSSL_CMP_CTX_get1_caPubs(ctx), "caPubs", "CA",
-                         opt_cacertsout, opt_cacerts_dir, opt_cacerts_dir_format);
+    CMP_err err = save_certs(OSSL_CMP_CTX_get1_extraCertsIn(ctx), "extraCerts", "extra",
+                             opt_extracertsout, opt_extracerts_dir, opt_extracerts_dir_format);
     if (err != CMP_OK)
         return err;
-    err = save_certs(OSSL_CMP_CTX_get1_extraCertsIn(ctx), "extraCerts", "extra",
-                     opt_extracertsout, opt_extracerts_dir, opt_extracerts_dir_format);
+
+#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+    if (opt_srvcertout != NULL) {
+        X509 *srvcert = OSSL_CMP_CTX_get0_validatedSrvCert(ctx);
+        if (srvcert == NULL) {
+            if (unlink(opt_srvcertout) != 0 && errno != ENOENT) {
+                LOG(FL_ERR, "Failed to delete %s, which should be done to indicate there is no validated server cert", opt_srvcertout);
+                return -55;
+            }
+        } else {
+            if (!CERT_save(srvcert, opt_srvcertout, "validated server cert"))
+                return -56;
+        }
+    }
+#endif
+
+    err = save_certs(OSSL_CMP_CTX_get1_caPubs(ctx), "caPubs", "CA",
+                     opt_cacertsout, opt_cacerts_dir, opt_cacerts_dir_format);
     if (err != CMP_OK)
         return err;
 

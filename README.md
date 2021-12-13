@@ -4,6 +4,7 @@ This is the Siemens-internal cross-division generic CMP client library
 and associated CLI-based demo client, tests, and documentation.
 
 **Note:** This [inner-source repository](https://code.siemens.com/product-pki/genCMPClient) is going to retire.
+Its use is deprecated since end of 2021.
 Please switch to the OSS repository at [https://github.com/siemens/gencmpclient](https://github.com/siemens/gencmpclient).
 
 

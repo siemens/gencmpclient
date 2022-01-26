@@ -138,6 +138,26 @@ This also builds all required dependencies (such as `./libsecutils.so` and `./li
 and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
 
 
+## Building Debian packages
+
+This repository can build two Debian packages.
+
+1. `libgencmpcl` - the shared library
+2. `libgencmpcl-dev` - development headers
+
+To build the Debian packages, the following dependencies have to be installed:
+1. `libssl-dev`
+1. `libsecutils-dev`
+2. `pkg-config`
+3. `debhelper`
+
+Then the packages can be built by
+```
+dpkg-buildpackage -uc -us
+```
+On success, they are placed in the parent directory (`../`).
+
+
 ## Using the demo client
 
 The CMP demo client is implemented in [`src/cmpClient.c`](src/cmpClient.c)

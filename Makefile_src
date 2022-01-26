@@ -125,7 +125,7 @@ ifeq ($(findstring clean,$(MAKECMDGOALS)),)
 -include $(DEPS)
 endif
 
-$(OBJS): %$(OBJ): %.c | $(SECUTILS_LIB) # $(PREFIX)$(OUT_DIR)/libcmp$(DLL)
+$(OBJS): %$(OBJ): %.c # | $(SECUTILS_LIB) # $(PREFIX)$(OUT_DIR)/libcmp$(DLL)
 	 $(CC) $(CFLAGS) -c -fPIC $< -o $@
 	@$(CC) $(CFLAGS) -MM $< -MT $@ -MF $*.d
 

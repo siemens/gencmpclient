@@ -43,8 +43,6 @@ else
     # SECUTILS and SECUTILS_LIB not needed since pre-installed
 endif
 
-OUTBIN=$(OUT_DIR)/libgencmpcl$(DLL)
-
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 # $(OPENSSL_DIR) is relative path, assumed relative to ./
     OPENSSL_REVERSE_DIR=../$(OPENSSL_DIR)
@@ -100,7 +98,7 @@ CMPCAMOCK ?= -jar ./CmpCaMock.jar
 OPENSSL ?= openssl$(EXE)
 
 MAKECMDGOALS ?= default
-ifneq ($(filter-out doc start stop clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
+ifneq ($(filter-out doc start stop install uninstall clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
     OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
     ifeq ($(OPENSSL_VERSION),)
         $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
@@ -141,7 +139,7 @@ endif
 # generic CMP Client lib and client
 ################################################################
 
-.phony: default build build_no_tls build_prereq
+.phony: default build
 default: build
 
 ifndef USE_ICV
@@ -212,6 +210,7 @@ endif
 
 endif # eq ($(SECUTILS_DIR),)
 
+.phony: build_prereq build_only build_no_tls
 build_prereq: submodules
 ifdef CMP_STANDALONE
     ifneq ($(wildcard $(LIBCMP_LIB)),)
@@ -222,8 +221,10 @@ ifdef CMP_STANDALONE
     endif
 endif
 
-build: build_prereq
-	@$(MAKE) -f Makefile_src $(OUTBIN) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OUT_DIR="$(OUT_DIR)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+build: build_prereq build_only
+
+build_only:
+	@$(MAKE) -f Makefile_src build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OUT_DIR="$(OUT_DIR)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
 build_no_tls:
 	$(MAKE) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
@@ -532,19 +533,29 @@ deb:
 clean_deb:
 	rm ../libgencmpcl*.deb
 
-# installation target - append ROOTFS=<path> to install into virtual root
-# filesystem
-.phony: install headers_install uninstall
-install: $(OUTBIN)
-	install -Dm 755 $(OUTBIN) $(ROOTFS)/usr/lib/$(OUTBIN)
+# installation target - append ROOTFS=<path> to install into virtual root filesystem
+DEST_LIB=$(ROOTFS)/usr/lib
+OUTLIB=libgencmpcl$(DLL)
+DEST_BIN=$(ROOTFS)/usr/bin
+OUTBIN=cmpClient$(EXE)
+DEST_INC=$(ROOTFS)/usr/include
+GENCMPCL_HDRS=genericCMPClient.h
+.phony: install  uninstall
+install: # $(OUT_DIR)/$(OUTLIB) $(OUT_DIR)/$(OUTBIN)
+	mkdir -p $(DEST_LIB)
+	install -Dm 755 $(OUT_DIR)/$(OUTLIB) $(DEST_LIB)
 ifdef CMP_STANDALONE
-	install -Dm 755 libcmp.so $(ROOTFS)/usr/lib/libcmp.so.0
+    ifeq ($(DESTDIR)$(prefix),) # not during Debian packaging
+	install -Dm 755 libcmp.so $(DEST_LIB)/libcmp.so.0
+    endif
+	install -Dm 755 $(OUT_DIR)/$(OUTBIN) $(DEST_BIN)
 endif
-
-headers_install:
-	find include -type d -exec install -d '$(ROOTFS)/usr/{}' ';'
-	find include -type f -name '*.h' -exec install -Dm 0644 '{}' '$(ROOTFS)/usr/{}' ';'
+	find include -type f -name $(GENCMPCL_HDRS) -exec install -Dm 0644 '{}' '$(ROOTFS)/usr/{}' ';'
 
 uninstall:
-	rm -f $(ROOTFS)/usr/lib/$(OUTBIN)
-	find include -type f -name '*.h' -exec rm '$(ROOTFS)/usr/{}' ';'
+	rm -f $(DEST_LIB)/$(OUTLIB)
+    ifeq ($(DESTDIR)$(prefix),) # not during Debian packaging
+	rm -f $(DEST_LIB)/libcmp.so.0
+    endif
+	rm -f $(DEST_BIN)/$(OUTBIN)
+	find include -type f -name $(GENCMPCL_HDRS) -exec rm '$(ROOTFS)/usr/{}' ';'

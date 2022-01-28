@@ -15,7 +15,7 @@ include_directories(
     ${OpenSSL_INCLUDE_DIRS}
 )
 
-add_library(libgencmpcl SHARED
+add_library(libgencmp SHARED
     ${SRC_DIR}/genericCMPClient.c
 )
 
@@ -25,19 +25,19 @@ add_executable(cmpClientDemo
 
 target_link_libraries(cmpClientDemo
     SecUtils
-    libgencmpcl
+    libgencmp
     ${OPENSSL_LIBRARIES}
     cmp
 )
 
-set_property(TARGET libgencmpcl PROPERTY C_STANDARD 90)
+set_property(TARGET libgencmp PROPERTY C_STANDARD 90)
 set_property(TARGET cmpClientDemo PROPERTY C_STANDARD 90)
 
-set_target_properties(libgencmpcl PROPERTIES
+set_target_properties(libgencmp PROPERTIES
     VERSION ${CMPCLIENT_VERSION}
 )
 
-install(TARGETS libgencmpcl
+install(TARGETS libgencmp
     LIBRARY
         DESTINATION lib
         COMPONENT Library

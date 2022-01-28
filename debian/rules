@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-# rules for Debian packaging of libgencmpcl
+# rules for Debian packaging of libgencmp and cmpclient
 
 CC=$(DEB_HOST_GNU_TYPE)-gcc
 CXX=$(DEB_HOST_GNU_TYPE)-g++
@@ -9,21 +9,16 @@ AR=$(DEB_HOST_GNU_TYPE)-ar
 %:
 	dh $@
 
+override_dh_auto_configure:
+	touch Makefile # trigger use of 'make' in dh_auto_build and dh_auto_install
+
 override_dh_auto_build:
+#	CFLAGS="-O2 -DNDEBUG" CXXFLAGS="-O2 -DNDEBUG" DEBUG_FLAGS="" LDFLAGS=""  # can be used to avoid dependency on libasan and libubsan
 	OPENSSL_DIR=/usr CC=$(CC) CXX=$(CXX) AR=$(AR) \
-	  CFLAGS="-O2 -DNDEBUG" CXXFLAGS="-O2 -DNDEBUG" DEBUG_FLAGS="" LDFLAGS="" \
-          dh_auto_build -- build_only
+	  dh_auto_build -- build_only doc_only
 
 override_dh_auto_test:
 # do not run any tests
-
-LIBDIR=debian/tmp/usr/lib
-override_dh_auto_install:
-	OPENSSL_DIR=/usr dh_auto_install
-	@# prevent some confusing lintian errors and warnings:
-	@# mv $(LIBDIR)/libgencmpcl.so $(LIBDIR)/libgencmpcl.so.0
-	@# ln -sr $(LIBDIR)/libgencmpcl.so.0 $(LIBDIR)/libgencmpcl.so
-	#$(MAKE) headers_install DESTDIR=debian/libgencmpcl-dev ROOTFS=debian/libgencmpcl-dev
 
 #override_dh_builddeb:
 #	dh_builddeb --destdir . --

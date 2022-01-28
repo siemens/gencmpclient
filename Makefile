@@ -1,11 +1,15 @@
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
-# Optional OUT_DIR defines where libsecutils, libgencmpcl, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
+# Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
 # All these paths may be absolute or relative to the dir containing this Makefile.
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS. Also CFLAGS is passed to build goals.
 # By default, the Insta Demo CA ist used for demonstration purposes.
 
-SHELL=bash # This is needed because of a problem in "build" rule; good for supporting extended file name globbing
+SHELL=LD_PRELOAD= bash # bash is needed for supporting extended file name globbing
+# LD_PRELOAD= is used to prevent Debian packaging give spurios
+#   ERROR: ld.so: object 'libfakeroot-sysv.so' from LD_PRELOAD
+#   cannot be preloaded (cannot open shared object file): ignored.
+
 PERL=/usr/bin/perl
 
 ifeq ($(OS),Windows_NT)
@@ -23,6 +27,11 @@ else
 endif
 
 ROOTFS ?= $(DESTDIR)$(prefix)
+
+VERSION=1.0
+# must be kept in sync with latest version in debian/changelog
+# PACKAGENAME=libgencmp
+# DIRNAME=$(PACKAGENAME)-$(VERSION)
 
 ifeq ($(LPATH),)
     ifeq ($(OUT_DIR),)
@@ -99,7 +108,7 @@ CMPCAMOCK ?= -jar ./CmpCaMock.jar
 OPENSSL ?= openssl$(EXE)
 
 MAKECMDGOALS ?= default
-ifneq ($(filter-out doc start stop install uninstall clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
+ifneq ($(filter-out doc start stop install uninstall doc doc_only doc/cmpClient.md doc/cmpClient.1.gz clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
     OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
     ifeq ($(OPENSSL_VERSION),)
         $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
@@ -224,8 +233,12 @@ endif
 
 build: build_prereq build_only
 
-build_only:
-	@$(MAKE) -f Makefile_src build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OUT_DIR="$(OUT_DIR)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+OUTLIB=libgencmp$(DLL)
+$(OUT_DIR)/$(OUTLIB).$(VERSION):
+	ln -sf $(OUTLIB).$(VERSION) $(OUT_DIR)/$(OUTLIB) # doing this beforehand such that cmpClient builds fine
+	@$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" LIB_NAME="$(OUTLIB).$(VERSION)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+
+build_only: $(OUT_DIR)/$(OUTLIB).$(VERSION)
 
 build_no_tls:
 	$(MAKE) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
@@ -249,7 +262,9 @@ clean_test:
 
 clean_this: clean_test
 	$(MAKE) -f Makefile_src clean
+	rm -f doc/$(OUTDOC) doc/cmpClient.md
 
+OUTDOC=cmpClient.1.gz
 clean: clean_this
 ifeq ($(LPATH),)
 	$(MAKE) -C $(SECUTILS_DIR) clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
@@ -259,7 +274,6 @@ ifneq ("$(wildcard $(LIBCMP_DIR))","")
 endif
 #endif not relevant here
 endif
-	rm -f doc/cmpClient-cli.md
 
 ifneq ($(INSTA),)
     unreachable="cannot reach pki.certificate.fi"
@@ -457,7 +471,7 @@ else
 	@echo "\n##### All profile tests succeeded #####"
 endif
 
-.phony: all test_all test doc zip
+.phony: all test_all test doc doc_only zip
 all:	build doc
 
 test_all: test demo_EJBCA test_conformance test_profile test_Simple
@@ -465,10 +479,18 @@ test_all: test demo_EJBCA test_conformance test_profile test_Simple
 test: clean build_no_tls
 	@$(MAKE) clean build demo_Insta test_Mock test_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
 
-doc: doc/cmpClient-cli.md
+doc: doc_only
 	$(MAKE) -C $(SECUTILS_DIR) doc
 
-doc/cmpClient-cli.md: doc/cmpClient-cli.pod
+doc_only: doc/$(OUTDOC) doc/cmpClient.md
+
+%.gz: %
+	gzip $<
+
+%.1: %.pod
+	pod2man --section=1 --center="cmpClient Documentation" --release=$(VERSION) $< >$@
+
+%.md: %.pod
 	pod2markdown $< $@
 
 zip:
@@ -476,7 +498,7 @@ zip:
             LICENSE.txt *.md .gitmodules Makefile{,_src} CMakeLists.txt \
 	    OpenSSL_version.{c,mk} include/genericCMPClient.h \
 	    src/cmpClient.c src/genericCMPClient.c \
-	    cmpClient-cli.pod Generic_CMP_client_API.odt
+	    cmpClient.pod Generic_CMP_client_API.odt
 
 
 ################################################################
@@ -528,35 +550,48 @@ buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 
 .phony: deb clean_deb
 deb:
-	debuild -uc -us -I* --lintian-opts --profile debian
-	rm -r debian/tmp
+ifeq ($(LPATH),)
+	#$(MAKE) deb -C $(SECUTILS_DIR)
+#ifdef CMP_STANDALONE not relevant here
+ifneq ("$(wildcard $(LIBCMP_DIR))","")
+	#$(MAKE) deb -C $(LIBCMP_DIR)
+endif
+#endif not relevant here
+endif
+	#pkg-config --print-errors libsecutils
+	#pkg-config --print-errors libcmp
+	debuild -uc -us --lintian-opts --profile debian # --fail-on none
+# alternative:
+#	LD_LIBRARY_PATH= dpkg-buildpackage -uc -us # may prepend DH_VERBOSE=1
 
 clean_deb:
-	rm ../libgencmpcl*.deb
+	rm -rf debian/tmp debian/libgencmp{,-dev} debian/cmpclient
+	rm -f debian/{files,debhelper-build-stamp} debian/*.{log,substvars}
+	rm -f ../libgencmp{_,-}* ../cmpclient*
 
 # installation target - append ROOTFS=<path> to install into virtual root filesystem
 DEST_LIB=$(ROOTFS)/usr/lib
-OUTLIB=libgencmpcl$(DLL)
-DEST_BIN=$(ROOTFS)/usr/bin
 OUTBIN=cmpClient$(EXE)
+DEST_BIN=$(ROOTFS)/usr/bin
 DEST_INC=$(ROOTFS)/usr/include
+DEST_DOC=$(ROOTFS)/usr/share/man/man1
 GENCMPCL_HDRS=genericCMPClient.h
-.phony: install  uninstall
-install: # $(OUT_DIR)/$(OUTLIB) $(OUT_DIR)/$(OUTBIN)
-	mkdir -p $(DEST_LIB)
-	install -Dm 755 $(OUT_DIR)/$(OUTLIB) $(DEST_LIB)
-ifdef CMP_STANDALONE
-    ifeq ($(DESTDIR)$(prefix),) # not during Debian packaging
-	install -Dm 755 libcmp.so $(DEST_LIB)/libcmp.so.0
-    endif
-	install -Dm 755 $(OUT_DIR)/$(OUTBIN) $(DEST_BIN)
-endif
+.phony: install install_cli uninstall
+install: doc/$(OUTDOC) # $(OUT_DIR)/$(OUTLIB) $(OUT_DIR)/$(OUTBIN)
+	install -D $(OUT_DIR)/$(OUTLIB).$(VERSION) $(DEST_LIB)/$(OUTLIB).$(VERSION)
+	ln -sf $(OUTLIB).$(VERSION) $(DEST_LIB)/$(OUTLIB)
+#install_headers:
 	find include -type f -name $(GENCMPCL_HDRS) -exec install -Dm 0644 '{}' '$(ROOTFS)/usr/{}' ';'
+#install_bins:
+#ifdef CMP_STANDALONE
+	install -D $(OUT_DIR)/$(OUTBIN) $(DEST_BIN)/$(OUTBIN)
+#endif
+#install_doc:
+	mkdir -p $(DEST_DOC)
+	install -D doc/$(OUTDOC) $(DEST_DOC)
 
 uninstall:
-	rm -f $(DEST_LIB)/$(OUTLIB)
-    ifeq ($(DESTDIR)$(prefix),) # not during Debian packaging
-	rm -f $(DEST_LIB)/libcmp.so.0
-    endif
-	rm -f $(DEST_BIN)/$(OUTBIN)
+	rm -f $(DEST_LIB)/$(OUTLIB)*
 	find include -type f -name $(GENCMPCL_HDRS) -exec rm '$(ROOTFS)/usr/{}' ';'
+	rm -f $(DEST_BIN)/$(OUTBIN)
+	rm -f $(DEST_DOC)/$(OUTDOC)

@@ -1,7 +1,7 @@
 #!/bin/make
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
-# Optional OUT_DIR defines where libsecutils, libgencmpcl, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
+# Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
 # Optional LIBCMP_INC defines the directory of the libcmp header files, must be defined if and only if libcmp is used (CMP_STANDLONE)
 # All these paths may be absolute or relative to the dir containing this Makefile.
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS (default see below).
@@ -91,14 +91,23 @@ endif
 
 override LDFLAGS += $(DEBUG_FLAGS) # needed for -fsanitize=...
 ifeq ($(LPATH),)
-    override LDFLAGS += -L$(PREFIX)$(OUT_DIR) -Wl,-rpath=$(OUT_DIR):genCMPClient
-    override LDFLAGS += -L$(SECUTILS_DIR) -Wl,-rpath=$(SECUTILS_DIR_)
-    override LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL) -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
+    override LDFLAGS += -L$(PREFIX)$(OUT_DIR)
+    ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
+        override LDFLAGS += -Wl,-rpath=$(OUT_DIR):genCMPClient
+    endif
+    override LDFLAGS += -L$(SECUTILS_DIR)
+    ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
+        override LDFLAGS += -Wl,-rpath=$(SECUTILS_DIR_)
+    endif
+    override LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL)
+    ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
+        override LDFLAGS += -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
+    endif
 else
     override LDFLAGS += -L$(LPATH)
 endif
 
-LIBGENCMPCL=$(OUT_DIR)/libgencmpcl$(DLL)
+LIB_NAME ?= libgencmp$(DLL)
 
 OBJS = src/genericCMPClient$(OBJ) src/cmpClient$(OBJ)
 
@@ -132,11 +141,11 @@ $(OBJS): %$(OBJ): %.c # | $(SECUTILS_LIB) # $(PREFIX)$(OUT_DIR)/libcmp$(DLL)
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"
 
-$(LIBGENCMPCL): src/genericCMPClient$(OBJ)
-	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@
+$(OUT_DIR)/$(LIB_NAME): src/genericCMPClient$(OBJ)
+	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-soname,$(LIB_NAME)
 
-$(PREFIX)cmpClient$(EXE): src/cmpClient$(OBJ) | $(LIBGENCMPCL)
-	$(CC) $(LDFLAGS) $< $(LIBS) -lgencmpcl -o $@
+$(PREFIX)cmpClient$(EXE): src/cmpClient$(OBJ) | $(OUT_DIR)/$(LIB_NAME)
+	$(CC) $(LDFLAGS) $< $(LIBS) -lgencmp -o $@
 
 .PHONY: all archive
 all: build archive
@@ -147,7 +156,7 @@ archive:
 
 .PHONY: clean
 clean:
-	rm -f $(EXES) $(LIBGENCMPCL) $(DEPS) $(OBJS)
+	rm -f $(EXES) $(OUT_DIR)/$(LIB_NAME)* $(DEPS) $(OBJS)
 ifeq ($(OS),Windows_NT)
 ifeq ($(LPATH),)
 	rm -f $(PREFIX_DEST)$(OPENSSL_DLLS)

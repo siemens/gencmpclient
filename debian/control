@@ -1,21 +1,27 @@
-Source: libgencmpcl
+Source: libgencmp
 Section: libs
 Priority: optional
-Maintainer: David von Oheimb <david.von.oheimb@siemens.com>
-Build-Depends: libssl-dev, libsecutils-dev, libcmp-dev, pkg-config, debhelper (>= 9)
-Standards-Version: 4.0.0
+Maintainer: David von Oheimb <David.von.Oheimb@siemens.com>
+Build-Depends: libcmp-dev, libsecutils-dev, libssl-dev, pkg-config, debhelper (>= 9)
+Standards-Version: 4.5.1
 Homepage: https://github.com/siemens/genCMPClient
 
-Package: libgencmpcl
+Package: libgencmp
+Depends: libcmp, libsecutils, libssl1.1, ${shlibs:Depends}, ${misc:Depends}
 Architecture: any
-Depends: libssl1.1, libsecutils, libcmp
 Description: generic CMP client library
  Generic CMP client library based on CMPforOpenSSL
 
-Package: libgencmpcl-dev
+Package: libgencmp-dev
+Depends: libgencmp, libcmp-dev, libsecutils-dev, libssl-dev, ${misc:Depends}
 Section: libdevel
 Architecture: all
 Multi-Arch: foreign
-Depends: libgencmpcl, libssl-dev, libsecutils-dev, libcmp-dev
-Description: libgencmpcl C headers
+Description: libgencmp C headers
  Only needed for development
+
+Package: cmpclient
+Depends: libgencmp, ${shlibs:Depends}, ${misc:Depends}
+Architecture: any
+Description: simple command-line CMP client
+ A CLI application for exploring the use of the generic CMP client library

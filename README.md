@@ -141,7 +141,8 @@ You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL i
 export OPENSSL_DIR=/usr/local
 ```
 You may also specify using the environment variable `OUT_DIR`
-where the produced libraries (`libgencmpcl`, `libcmp`, and `libsecutils´)
+where the produced libraries
+(e.g., `libgencmp.so.1`, `libcmp.so.1`, and `libsecutils.so.1´)
 shall be placed. By default, the base directory (`.`) of `genCMPClient` is used.
 For all path variables, relative paths such as `.` are interpreted
 relative to the directory of the genCMPClient module.
@@ -155,8 +156,9 @@ make
 where the CC environment variable may be set as needed; it defaults to %'gcc'.
 Also the ROOTFS environment variable may be set, e.g., for cross compilation.
 
-The result is in, for instance, `./libgencmpcl.so`.
-This also builds all required dependencies (such as `./libsecutils.so` and `./libcmp.so`)
+The result is in, for instance, `./libgencmp.so.1`.
+This also builds all required dependencies
+(such as `./libsecutils.so.1` and `./libcmp.so.1`)
 and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
 
 **Important Note:** by default, the Security Utilities supports using the
@@ -169,20 +171,21 @@ secure storage of protection credentials for private keys and trusted certificat
 
 ## Building Debian packages
 
-This repository can build two Debian packages.
+This repository can build the following Debian packages.
 
-1. `libgencmpcl` - the shared library
-2. `libgencmpcl-dev` - development headers
+* `libgencmp` - the shared library
+* `libgencmp-dev` - development headers
+* `cmpclient` - simple command-line application
 
-To build the Debian packages, the following dependencies have to be installed:
-1. `libssl-dev`
-1. `libsecutils-dev`
-2. `pkg-config`
-3. `debhelper`
+To build the Debian packages, the following dependencies need to be installed:
+* `debhelper`
+* `libssl-dev`
+* `libsecutils-dev`
+* `libcmp-dev`
 
 Then the packages can be built by
 ```
-dpkg-buildpackage -uc -us
+make deb
 ```
 On success, they are placed in the parent directory (`../`).
 
@@ -214,7 +217,7 @@ make demo_Insta
 The Command-Line Interface (CLI) of the CMP client is implemented in
 [`src/cmpClient.c`](src/cmpClient.c).
 It supports most of the features of the genCMPClient library.
-The CLI use with the available options are documented in [`cmpClient-cli.pod`](doc/cmpClient-cli.pod).
+The CLI use with the available options are documented in [`cmpClient.pod`](doc/cmpClient.pod).
 
 CLI-based tests using the external Insta Demo CA may be invoked using
 ```
@@ -244,7 +247,7 @@ as the one used to build the standalone CMP library `libcmp`.
 
 For linking you will need to
 refer the linker to the CMP and Security Utilities libraries,
-e.g., `-lsecutils -lcmp -lgencmpcl`.
+e.g., `-lsecutils -lcmp -lgencmp`.
 Unless using OpenSSL 3.0, `-lcmp` is needed as well.
 Add the directories (e.g., with the linker option `-L`) where they can be found.
 See also the environment variable `OUT_DIR`.
@@ -254,7 +257,7 @@ it is recommended to set also linker options like `-Wl,-rpath=.`.
 Also make sure that the OpenSSL libraries (typically referred to via `-lssl -lcrypto`) are in your library path and
 (the version) of the libraries found there by the linker match the header files found by the compiler.
 
-For building your application you will need to `#include` the header file [`genericCMPClient.h`](include/genericCMPClient.h) and link using `-lgencmpcl`.
+For building your application you will need to `#include` the header file [`genericCMPClient.h`](include/genericCMPClient.h) and link using `-lgencmp`.
 
 All this is already done for the cmp client application.
 

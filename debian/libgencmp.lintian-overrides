@@ -1,0 +1,2 @@
+# prevent false positive: E: libgencmp: library-not-linked-against-libc usr/lib/libgencmp.so.1.0
+library-not-linked-against-libc

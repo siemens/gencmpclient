@@ -65,6 +65,7 @@ CMP_err CMPclient_init(OPTIONAL const char* name, OPTIONAL LOG_cb_t log_fn)
         name = CMPCLIENT_MODULE_NAME;
     LOG_set_name(name);
     LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
+    LOG_set_verbosity(LOG_INFO);
     UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, NULL);
     if (!STORE_EX_check_index()) {
         LOG(FL_ERR, "failed to initialize STORE_EX index\n");

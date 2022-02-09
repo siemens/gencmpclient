@@ -266,12 +266,14 @@ clean_this: clean_test
 OUTDOC=cmpClient.1.gz
 clean: clean_this
 ifeq ($(LPATH),)
+    ifneq ("$(wildcard $(SECUTILS_DIR))","")
 	$(MAKE) -C $(SECUTILS_DIR) clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
-#ifdef CMP_STANDALONE not relevant here
-ifneq ("$(wildcard $(LIBCMP_DIR))","")
+    endif
+    #ifdef CMP_STANDALONE not relevant here
+    ifneq ("$(wildcard $(LIBCMP_DIR))","")
 	$(MAKE) -C $(LIBCMP_DIR) clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
-endif
-#endif not relevant here
+    endif
+    #endif not relevant here
 endif
 
 ifneq ($(INSTA),)

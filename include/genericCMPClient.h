@@ -50,6 +50,7 @@ typedef int CMP_err;
 #  include "genericCMPClient_imports.h"
 # else
 #  include <secutils/credentials/credentials.h>
+#  include <secutils/credentials/cert.h>
 #  include <secutils/util/log.h>
 # endif
 

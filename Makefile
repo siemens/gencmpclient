@@ -110,7 +110,7 @@ MAKECMDGOALS ?= default
 ifneq ($(filter-out doc start stop install uninstall doc doc_only doc/cmpClient.md doc/cmpClient.1.gz clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
     OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
     ifeq ($(OPENSSL_VERSION),)
-        $(warning cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
+        $(warning WARNING: cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
         OPENSSL_VERSION=1.1.1
     endif
     $(info detected OpenSSL version $(OPENSSL_VERSION).x)
@@ -145,7 +145,7 @@ else
 endif
 
 ################################################################
-# generic CMP Client lib and client
+# generic CMP Client library and CLI-based client
 ################################################################
 
 .phony: default build
@@ -189,7 +189,7 @@ $(SECUTILS_LIB):
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)
 build_secutils: # not: update_secutils
-	@$(MAKE) -C $(SECUTILS_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 
 ifdef CMP_STANDALONE
 $(LIBCMP_DIR)/include: # not: update_cmpossl
@@ -208,7 +208,7 @@ update_cmpossl:
 build_cmpossl: # not: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 ifdef CMP_STANDALONE
-	@$(MAKE) -C $(LIBCMP_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 
 clean_submodules:
@@ -225,7 +225,7 @@ ifdef CMP_STANDALONE
     ifneq ($(wildcard $(LIBCMP_LIB)),)
 	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="$(LIBCMP_LIB)"` && \
 	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
-	    (echo "WARNING: OpenSSL version '$$LIBCMP_OPENSSL_VERSION' used for building libcmp does not match '$(OPENSSL_VERSION)' to be used for building client"; true); \
+	    (echo "WARNING: OpenSSL version '$$LIBCMP_OPENSSL_VERSION' used for building libcmp does not match '$(OPENSSL_VERSION)' to be used f>
 	fi
     endif
 endif
@@ -330,6 +330,9 @@ endif
 ifeq ($(EJBCA_ENABLED)$(INSTA),)
 	$(warning "### skipping demo_EJBCA since not supported in this environment ###")
 else
+    ifeq ($(shell which $(OPENSSL)),)
+        $(error cannot find $(OPENSSL), please install it)
+    endif
 	@/bin/echo -e "\n##### running cmpClient demo #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
@@ -388,6 +391,9 @@ conformance_cmpclient: build
 conformance_openssl: newkey
 	@CMPCL="$(CMPOSSL)" make conformance $(EJBCA_ENV)
 newkey:
+    ifeq ($(shell which $(OPENSSL)),)
+        $(error cannot find $(OPENSSL), please install it)
+    endif
 	$(OPENSSL) ecparam -genkey -name secp521r1 -out creds/manufacturer.pem
 	$(OPENSSL) ecparam -genkey -name prime256v1 -out creds/operational.pem
 conformance:
@@ -403,6 +409,9 @@ test_cli: build
 ifeq ($(filter-out EJBCA Simple,$(OPENSSL_CMP_SERVER))$(EJBCA_ENABLED),)
 	$(warning "### skipping test_$(OPENSSL_CMP_SERVER) since not supported in this environment ###")
 else
+    ifeq ($(shell which $(PERL)),)
+        $(error cannot find Perl, maybe need to install it)
+    endif
 	@echo -en "\n#### running CLI-based tests #### "
 	@if [ -n "$$OPENSSL_CMP_SERVER" ]; then echo -en "with server=$$OPENSSL_CMP_SERVER"; else echo -n "without server"; fi
 	@echo -e " in test/recipes/80-test_cmp_http_data/$$OPENSSL_CMP_SERVER"
@@ -486,12 +495,21 @@ doc: doc_only
 doc_only: doc/$(OUTDOC) doc/cmpClient.md
 
 %.gz: %
-	gzip $<
+ifeq ($(shell which gzip),)
+    $(error cannot find gzip, please install it)
+endif
+	gzip -f $<
 
 %.1: %.pod
+ifeq ($(shell which pod2man),)
+    $(error cannot find pod2man, please install perl)
+endif
 	pod2man --section=1 --center="cmpClient Documentation" --release=$(VERSION) $< >$@
 
 %.md: %.pod
+ifeq ($(shell which pod2markdown),)
+    $(error cannot find pod2markdown, please install libpod-markdown-perl)
+endif
 	pod2markdown $< $@
 
 zip:

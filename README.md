@@ -39,9 +39,10 @@ also on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs
 
 The following network and development tools are needed or recommended.
 * Git (for getting the software, tested with versions 2.7.2, 2.11.0, 2.20, 2.30.2)
-* wget (for running the demo, tested with versions 1.17, 1.18, 1.20, 1.21)
 * GNU make (tested with versions 4.1, 4.2.1, 4.3)
+* Perl (used by the Makefile and tests, tested with version 5.32.1)
 * GNU C compiler (gcc, tested with versions 5.4.0, 7.3.0, 8.3.0, 10.0.1, 10.2.1)
+* wget (for running the demo, tested with versions 1.17, 1.18, 1.20, 1.21)
 
 The following OSS components are used.
 * OpenSSL development edition (tested with versions 1.0.2, 1.1.0, 1.1.1, 3.0)

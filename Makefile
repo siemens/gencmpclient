@@ -195,7 +195,7 @@ $(SECUTILS_LIB):
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)
 build_secutils: # not: update_secutils
-	$(MAKE) -C $(SECUTILS_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+	$(MAKE) -s -C $(SECUTILS_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 
 ifdef CMP_STANDALONE
 $(LIBCMP_DIR)/include: # not: update_cmpossl
@@ -214,7 +214,7 @@ update_cmpossl:
 build_cmpossl: # not: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 ifdef CMP_STANDALONE
-	$(MAKE) -C $(LIBCMP_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	$(MAKE) -s -C $(LIBCMP_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 
 clean_submodules:
@@ -238,7 +238,7 @@ endif
 
 OUTLIB=libgencmp$(DLL)
 $(OUT_DIR)/$(OUTLIB).$(VERSION):
-	ln -sf $(OUTLIB).$(VERSION) $(OUT_DIR)/$(OUTLIB) # doing this beforehand such that cmpClient builds fine
+	@ln -sf $(OUTLIB).$(VERSION) $(OUT_DIR)/$(OUTLIB) # doing this beforehand such that cmpClient builds fine
 	@$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" LIB_NAME="$(OUTLIB).$(VERSION)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
 build_only: $(OUT_DIR)/$(OUTLIB).$(VERSION)
@@ -250,32 +250,32 @@ build_no_tls:
 
 ifeq ($(LPATH),)
 clean_uta:
-	$(MAKE) -C $(SECUTILS_DIR) clean_uta
+	$(MAKE) -s -C $(SECUTILS_DIR) clean_uta
 endif
 
 clean_test:
-	rm -f creds/{manufacturer,operational*}.*
-	rm -f creds/{cacerts,extracerts}.pem
-	rm -f creds/*_????????-????????-????????-????????-????????.pem
-	rm -fr creds/crls
-	rm -f test/recipes/80-test_cmp_http_data/*/test.*cert*.pem
-	rm -f test/recipes/80-test_cmp_http_data/*/{req,rsp}*.der
-	rm -f test/faillog_*.txt
-	rm -fr test/{Upstream,Downstream}
+	@rm -f creds/{manufacturer,operational*}.*
+	@rm -f creds/{cacerts,extracerts}.pem
+	@rm -f creds/*_????????-????????-????????-????????-????????.pem
+	@rm -fr creds/crls
+	@rm -f test/recipes/80-test_cmp_http_data/*/test.*cert*.pem
+	@rm -f test/recipes/80-test_cmp_http_data/*/{req,rsp}*.der
+	@rm -f test/faillog_*.txt
+	@rm -fr test/{Upstream,Downstream}
 
 clean_this: clean_test
-	$(MAKE) -f Makefile_src clean
-	rm -f doc/$(OUTDOC) doc/cmpClient.md
+	$(MAKE) -s -f Makefile_src clean
+	@rm -f doc/$(OUTDOC) doc/cmpClient.md
 
 OUTDOC=cmpClient.1.gz
 clean: clean_this
 ifeq ($(LPATH),)
     ifneq ("$(wildcard $(SECUTILS_DIR))","")
-	$(MAKE) -C $(SECUTILS_DIR) clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
+	$(MAKE) -s -C $(SECUTILS_DIR) clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
     endif
     #ifdef CMP_STANDALONE not relevant here
     ifneq ("$(wildcard $(LIBCMP_DIR))","")
-	$(MAKE) -C $(LIBCMP_DIR) clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	$(MAKE) -s -C $(LIBCMP_DIR) clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
     endif
     #endif not relevant here
 endif
@@ -494,7 +494,7 @@ test: clean build_no_tls
 	@$(MAKE) clean build demo_Insta test_Mock test_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
 
 doc: doc_only
-	$(MAKE) -C $(SECUTILS_DIR) doc
+	$(MAKE) -s -C $(SECUTILS_DIR) doc
 
 doc_only: doc/$(OUTDOC) doc/cmpClient.md
 

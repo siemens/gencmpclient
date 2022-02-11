@@ -84,6 +84,7 @@ endif
 
 ifneq ($(EJBCA_ENABLED),)
 EJBCA_ENV= \
+	DID= \
 	EJBCA_HOST="ppki-playground.ct.siemens.com" \
 	EJBCA_OCSP_URL="http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp" \
 	 EJBCA_CDP_URL_PREFIX="http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+" \

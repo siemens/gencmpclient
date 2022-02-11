@@ -212,3 +212,34 @@ userNotice.1 = @notice
 
 [notice]
 explicitText=policy text
+
+[did]
+cmd = ir
+cert =
+key =
+subject = /CN=DID demo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE
+newkey = creds/did.pem
+newkeytype =
+newkeypass =
+digest = sha256 # (default)
+reqexts = did-reqexts
+certout = creds/did.crt
+extracertsout =
+extracerts_dir =
+cacertsout =
+cacerts_dir =
+disable_confirm = 1
+crls =
+cdps =
+use_cdp = 0
+use_aia = 0
+ocsp =
+
+[did-reqexts]
+#basicConstraints = CA:FASE
+keyUsage = "digitalSignature"   # is ignored by EJBCA
+#extendedKeyUsage = "clientAuth" # is ignored by EJBCA
+subjectAltName = @did-alt_names
+
+[did-alt_names]
+URI.0 = ${ENV::DID} # did:example:123456789abcdefghi

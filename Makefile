@@ -5,10 +5,16 @@
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS. Also CFLAGS is passed to build goals.
 # By default, the Insta Demo CA ist used for demonstration purposes.
 
-SHELL=LD_PRELOAD= bash # bash is needed for supporting extended file name globbing
-# LD_PRELOAD= is used to prevent Debian packaging give spurios
-#   ERROR: ld.so: object 'libfakeroot-sysv.so' from LD_PRELOAD
-#   cannot be preloaded (cannot open shared object file): ignored.
+ifeq ($(DEB_BUILD_ARCH),)
+    SHELL=bash # bash is needed for supporting extended file name globbing
+else # within Debian packaging
+    SHELL=LD_PRELOAD= bash
+    # LD_PRELOAD= is used to prevent Debian packaging give spurios
+    #   ERROR: ld.so: object 'libfakeroot-sysv.so' from LD_PRELOAD
+    #   cannot be preloaded (cannot open shared object file): ignored.
+    # Unfortunately, cannot do this trick generally because otherwise,
+    # multi-line shell commands in rules with '\' will throw weird syntax error
+endif
 
 PERL=/usr/bin/perl
 
@@ -221,16 +227,14 @@ endif # eq ($(SECUTILS_DIR),)
 
 .phony: build_prereq build_only build_no_tls
 build_prereq: submodules
-ifdef CMP_STANDALONE
-    ifneq ($(wildcard $(LIBCMP_LIB)),)
-	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="$(LIBCMP_LIB)"` && \
-	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
-	    (echo "WARNING: OpenSSL version '$$LIBCMP_OPENSSL_VERSION' used for building libcmp does not match '$(OPENSSL_VERSION)' to be used f>
-	fi
-    endif
-endif
 
 build: build_prereq build_only
+ifdef CMP_STANDALONE
+	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="$(LIBCMP_LIB)"` && \
+	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
+	    echo "WARNING: OpenSSL version '$$LIBCMP_OPENSSL_VERSION' used for building libcmp does not match '$(OPENSSL_VERSION)' to be used for building client"; \
+	fi
+endif
 
 OUTLIB=libgencmp$(DLL)
 $(OUT_DIR)/$(OUTLIB).$(VERSION):

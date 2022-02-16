@@ -114,7 +114,8 @@ CMPCAMOCK ?= -jar ./CmpCaMock.jar
 OPENSSL ?= openssl$(EXE)
 
 MAKECMDGOALS ?= default
-ifneq ($(filter-out doc start stop install uninstall doc doc_only doc/cmpClient.md doc/cmpClient.1.gz clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
+ifneq ($(filter-out doc start stop install uninstall doc doc_only doc/cmpClient.md doc/cmpClient.1.gz \
+    clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
     OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
     ifeq ($(OPENSSL_VERSION),)
         $(warning WARNING: cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
@@ -269,10 +270,10 @@ clean_this: clean_test
 	@rm -f doc/$(OUTDOC) doc/cmpClient.md
 
 OUTDOC=cmpClient.1.gz
-clean: clean_this
+clean: clean_this clean_deb
 ifeq ($(LPATH),)
     ifneq ("$(wildcard $(SECUTILS_DIR))","")
-	$(MAKE) -s -C $(SECUTILS_DIR) clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
+	$(MAKE) -s -C $(SECUTILS_DIR) clean_all OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
     endif
     #ifdef CMP_STANDALONE not relevant here
     ifneq ("$(wildcard $(LIBCMP_DIR))","")

@@ -336,9 +336,7 @@ endif
 ifeq ($(EJBCA_ENABLED)$(INSTA),)
 	$(warning "### skipping demo_EJBCA since not supported in this environment ###")
 else
-    ifeq ($(shell which $(OPENSSL)),)
-        $(error cannot find $(OPENSSL), please install it)
-    endif
+	@which $(OPENSSL) || (echo "cannot find $(OPENSSL), please install it"; false)
 	@/bin/echo -e "\n##### running cmpClient demo #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
@@ -397,9 +395,7 @@ conformance_cmpclient: build
 conformance_openssl: newkey
 	@CMPCL="$(CMPOSSL)" make conformance $(EJBCA_ENV)
 newkey:
-    ifeq ($(shell which $(OPENSSL)),)
-        $(error cannot find $(OPENSSL), please install it)
-    endif
+	@which $(OPENSSL) || (echo "cannot find $(OPENSSL), please install it"; false)
 	$(OPENSSL) ecparam -genkey -name secp521r1 -out creds/manufacturer.pem
 	$(OPENSSL) ecparam -genkey -name prime256v1 -out creds/operational.pem
 conformance:
@@ -415,9 +411,7 @@ test_cli: build
 ifeq ($(filter-out EJBCA Simple,$(OPENSSL_CMP_SERVER))$(EJBCA_ENABLED),)
 	$(warning "### skipping test_$(OPENSSL_CMP_SERVER) since not supported in this environment ###")
 else
-    ifeq ($(shell which $(PERL)),)
-        $(error cannot find Perl, maybe need to install it)
-    endif
+	@which $(PERL) || (echo "cannot find Perl, please install it"; false)
 	@echo -en "\n#### running CLI-based tests #### "
 	@if [ -n "$$OPENSSL_CMP_SERVER" ]; then echo -en "with server=$$OPENSSL_CMP_SERVER"; else echo -n "without server"; fi
 	@echo -e " in test/recipes/80-test_cmp_http_data/$$OPENSSL_CMP_SERVER"
@@ -501,21 +495,15 @@ doc: doc_only
 doc_only: doc/$(OUTDOC) doc/cmpClient.md
 
 %.gz: %
-ifeq ($(shell which gzip),)
-    $(error cannot find gzip, please install it)
-endif
+	@which gzip || (echo "cannot find gzip, please install it"; false)
 	gzip -f $<
 
 %.1: %.pod
-ifeq ($(shell which pod2man),)
-    $(error cannot find pod2man, please install perl)
-endif
+	@which pod2man || (echo "cannot find pod2man, please install perl"; false)
 	pod2man --section=1 --center="cmpClient Documentation" --release=$(VERSION) $< >$@
 
 %.md: %.pod
-ifeq ($(shell which pod2markdown),)
-    $(error cannot find pod2markdown, please install libpod-markdown-perl)
-endif
+	@which pod2markdown || (echo "cannot find pod2markdown, please install libpod-markdown-perl"; false)
 	pod2markdown $< $@
 
 zip:

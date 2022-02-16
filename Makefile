@@ -68,7 +68,11 @@ endif
 
 ifeq ($(shell echo $(OUT_DIR) | grep "^/"),)
 # $(OUT_DIR) is relative path, assumed relative to ./
-    OUT_DIR_REVERSE_DIR=../$(OUT_DIR)
+    ifeq ($(OUT_DIR),.)
+        OUT_DIR_REVERSE_DIR=..
+    else
+        OUT_DIR_REVERSE_DIR=../$(OUT_DIR)
+    endif
 else
 # $(OUT_DIR) is absolute path
     OUT_DIR_REVERSE_DIR=$(OUT_DIR)
@@ -239,11 +243,10 @@ ifdef CMP_STANDALONE
 endif
 
 OUTLIB=libgencmp$(DLL)
-$(OUT_DIR)/$(OUTLIB).$(VERSION):
-	@ln -sf $(OUTLIB).$(VERSION) $(OUT_DIR)/$(OUTLIB) # doing this beforehand such that cmpClient builds fine
-	@$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" LIB_NAME="$(OUTLIB).$(VERSION)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+OUTBIN=cmpClient$(EXE)
 
-build_only: $(OUT_DIR)/$(OUTLIB).$(VERSION)
+build_only:
+	@$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 
 build_no_tls:
 	$(MAKE) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
@@ -266,7 +269,7 @@ clean_test:
 	@rm -fr test/{Upstream,Downstream}
 
 clean_this: clean_test
-	$(MAKE) -s -f Makefile_src clean
+	$(MAKE) -s -f Makefile_src clean LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)"
 	@rm -f doc/$(OUTDOC) doc/cmpClient.md
 
 OUTDOC=cmpClient.1.gz
@@ -325,7 +328,7 @@ demo_Insta:
 demo_EJBCA:
 	$(MAKE) run_demo INSTA=  $(EJBCA_ENV)
 
-CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH=. ./cmpClient$(EXE)
+CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH=. ./$(OUTBIN)
 GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345 2>/dev/null
 .phony: run_demo
 ifeq ($(INSTA),)
@@ -385,7 +388,7 @@ stop:
 
 .phony: test_conformance_cmpclient test_conformance_openssl test_conformance
 .phony: conformance_cmpclient conformance_openssl conformance
-CMPCLNT = LD_LIBRARY_PATH=. ./cmpClient$(EXE) -section CmpRa,
+CMPCLNT = LD_LIBRARY_PATH=. ./(OUTBIN) -section CmpRa,
 CMPOSSL = $(OPENSSL) cmp -config config/demo.cnf -section CmpRa,
 test_conformance: start conformance_cmpclient conformance_openssl stop
 test_conformance_openssl: start conformance_openssl stop
@@ -584,7 +587,6 @@ clean_deb:
 
 # installation target - append ROOTFS=<path> to install into virtual root filesystem
 DEST_LIB=$(ROOTFS)/usr/lib
-OUTBIN=cmpClient$(EXE)
 DEST_BIN=$(ROOTFS)/usr/bin
 DEST_INC=$(ROOTFS)/usr/include
 DEST_DOC=$(ROOTFS)/usr/share/man/man1

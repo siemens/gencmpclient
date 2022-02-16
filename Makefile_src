@@ -141,8 +141,11 @@ $(OBJS): %$(OBJ): %.c # | $(SECUTILS_LIB) # $(PREFIX)$(OUT_DIR)/libcmp$(DLL)
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"
 
-$(OUT_DIR)/$(LIB_NAME): src/genericCMPClient$(OBJ)
-	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-soname,$(LIB_NAME)
+$(OUT_DIR)/$(LIB_NAME).$(VERSION): src/genericCMPClient$(OBJ)
+	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-soname,$(LIB_NAME).$(VERSION)
+
+$(OUT_DIR)/$(LIB_NAME): $(OUT_DIR)/$(LIB_NAME).$(VERSION)
+	ln -sf $(LIB_NAME).$(VERSION) $(OUT_DIR)/$(LIB_NAME)
 
 $(PREFIX)cmpClient$(EXE): src/cmpClient$(OBJ) | $(OUT_DIR)/$(LIB_NAME)
 	$(CC) $(LDFLAGS) $< $(LIBS) -lgencmp -o $@
@@ -156,7 +159,7 @@ archive:
 
 .PHONY: clean
 clean:
-	rm -f $(EXES) $(OUT_DIR)/$(LIB_NAME)* $(DEPS) $(OBJS)
+	rm -f $(EXES) $(OUT_DIR)/$(LIB_NAME) $(OUT_DIR)/$(LIB_NAME).$(VERSION) $(DEPS) $(OBJS)
 ifeq ($(OS),Windows_NT)
 ifeq ($(LPATH),)
 	rm -f $(PREFIX_DEST)$(OPENSSL_DLLS)

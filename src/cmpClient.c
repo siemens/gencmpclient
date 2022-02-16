@@ -179,7 +179,7 @@ opt_t cmp_opts[] = {
       "Generate key for ir/cr/kur of given type, e.g., EC:secp256r1 or RSA-2048"},
     /* TODO: OPT_MORE("On 'central:', server-side key generation is requested, implies -popo -1"), */
     { "newkey", OPT_TXT, {.txt = NULL}, { &opt_newkey },
-      "Key to use for ir/cr/kur (defaulting to pubkey of -csr) if -newkeytype not given."},
+      "Private or public key for for ir/cr/kur (defaulting to pubkey of -csr) if -newkeytype not given."},
     OPT_MORE("File to save new generated key if -newkeytype is given"),
     { "newkeypass", OPT_TXT, {.txt = NULL}, { &opt_newkeypass },
       "Pass phrase source for -newkey"},
@@ -1386,10 +1386,20 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 LOG_err("Missing -newkeytype or -newkey option");
                 return -42;
             }
-            *new_pkey = KEY_load(opt_newkey, opt_newkeypass, NULL /* engine */,
-                                 "private key to use for certificate request");
+            const char *file = opt_newkey;
+            const char *pass = opt_newkeypass;
+            const char *desc = "private key to use for certificate request";
+            *new_pkey = KEY_load(file, pass, NULL /* engine */, desc);
             if (*new_pkey == NULL) {
-                return -43;
+                ERR_clear_error();
+                desc = opt_csr == NULL
+                    ? "fallback public key for cert to be enrolled"
+                    : "public key for checking cert resulting from p10cr";
+                EVP_PKEY *pubkey = FILES_load_pubkey_autofmt(file, FORMAT_PEM, pass, desc);
+                if (pubkey == NULL || !OSSL_CMP_CTX_set0_newPkey(ctx, 0, pubkey)) {
+                    EVP_PKEY_free(pubkey);
+                    return -43;
+                }
             }
         }
     }

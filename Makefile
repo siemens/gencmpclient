@@ -567,10 +567,12 @@ buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 .phony: deb clean_deb
 deb:
 ifeq ($(LPATH),)
-	#$(MAKE) deb -C $(SECUTILS_DIR)
+	$(MAKE) deb -C $(SECUTILS_DIR)
+	sudo dpkg -i libsecutils{,-dev}_*.deb
 #ifdef CMP_STANDALONE not relevant here
 ifneq ("$(wildcard $(LIBCMP_DIR))","")
-	#$(MAKE) deb -C $(LIBCMP_DIR)
+	$(MAKE) deb -C $(LIBCMP_DIR)
+	sudo dpkg -i libcmp{,-dev}_*.deb
 endif
 #endif not relevant here
 endif

@@ -302,8 +302,8 @@ The key will be saved in the file specified with the B<-newkey> option.
 The file to save the newly generated key (in case  B<-newkeytype> is given).
 Otherwise the file to read the private or public key from
 for the certificate requested in IR, CR or KUR.
-Default is the public key in the PKCS#10 CSR given with the B<-csr> option,
-if any.
+Defaults to the public key in the PKCS#10 CSR given with the B<-csr> option,
+the public key of the reference certificate, or the current client key.
 
 =item B<-newkeypass> I<arg>
 
@@ -327,7 +327,7 @@ otherwise the subject of the B<-oldcert>, if provided.
 This default is used for IR and CR only if no SANs are set.
 If the NULL-DN (C</>) is given then no subject is placed in the template.
 
-If provided and B<-oldcert> and B<-csr> are not given,
+If provided and neither of B<-cert>, B<-oldcert>, or B<-csr> is given,
 the subject DN is used as fallback sender of outgoing CMP messages.
 
 Special characters may be escaped by C<\> (backslash); whitespace is retained.
@@ -363,6 +363,8 @@ validity period starts from the current time (as seen by the host).
 =item B<-reqexts> I<name>
 
 Name of section in OpenSSL config file defining certificate request extensions.
+If the B<-csr> option is present, these extensions augment the extensions
+contained the given PKCS#10 CSR, overriding any extensions with same OIDs.
 
 =item B<-sans> I<spec>
 
@@ -480,7 +482,8 @@ this option is ignored.
 
 The certificate to be updated (i.e., renewed or re-keyed) in Key Update Request
 (KUR) messages or to be revoked in Revocation Request (RR) messages.
-For KUR the certificate to be updated is called I<reference certificate>.
+For KUR the certificate to be updated defaults to B<-cert>,
+and the resulting certificate is called I<reference certificate>.
 For RR the certificate to be revoked can also be specified using B<-csr>.
 
 The reference certificate, if any, is also used for

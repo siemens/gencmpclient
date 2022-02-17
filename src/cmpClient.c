@@ -1386,11 +1386,7 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                     return CMP_R_GENERATE_KEY;
                 }
             }
-        } else if (use_case != genm) {
-            if (opt_newkey == NULL) {
-                LOG_err("Missing -newkeytype or -newkey option");
-                return -42;
-            }
+        } else if (opt_newkey != NULL) {
             const char *file = opt_newkey;
             const char *pass = opt_newkeypass;
             const char *desc = "private key to use for certificate request";
@@ -1406,6 +1402,9 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                     return -43;
                 }
             }
+        } else if (opt_csr == NULL) {
+            LOG_err("Missing -newkeytype or -newkey option");
+            return -42;
         }
     }
 
@@ -1489,6 +1488,8 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
         } else {
             if ((*csr = CSR_load(opt_csr, "PKCS#10 CSR")) == NULL)
                 return -48;
+            if (!OSSL_CMP_CTX_set1_p10CSR(ctx, *csr))
+                return -49;
         }
     }
     return CMP_OK;

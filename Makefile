@@ -87,30 +87,12 @@ else
 endif
 
 ifneq ($(EJBCA_ENABLED),)
-EJBCA_ENV= \
-	DID= \
-	EJBCA_HOST="ppki-playground.ct.siemens.com" \
-	EJBCA_OCSP_URL="http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp" \
-	EJBCA_CDP_URL_PREFIX="http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+" \
-	EJBCA_CDPS="Infrastructure+Root+CA+v1.0 Infrastructure+Issuing+CA+v1.0 ECC+Root+CA+v1.0 RSA+Root+CA+v1.0" \
-	EJBCA_CDP_URL_POSTFIX="%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE" \
-	EJBCA_CMP_ISSUER="creds/PPKI_Playground_ECCIssuingCAv10.crt" \
-	EJBCA_CMP_CLIENT="creds/PPKI_Playground_CMP.p12" \
-	EJBCA_TLS_CLIENT="creds/PPKI_Playground_TLS.p12" \
-	EJBCA_CMP_TRUSTED="creds/PPKI_Playground_ECCRootCAv10.crt" \
-	EJBCA_TRUSTED="creds/PPKI_Playground_InfrastructureRootCAv10.crt" \
-	EJBCA_UNTRUSTED="creds/PPKI_Playground_InfrastructureIssuingCAv10.crt" \
-	EJBCA_CMP_RECIPIENT="/CN=PPKI Playground ECC Issuing CA v1.0/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
-	EJBCA_CMP_SERVER="/CN=Product PKI Playground CMP Signer/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
-	EJBCA_CMP_SUBJECT="/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
-	EJBCA_CMP_SUBJECT_ECC="/CN=ECC-EE/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
-	EJBCA_ENABLED=1
-# optional SET_PROXY variable can be set to override default proxy settings (for use with INSTA)
-    SET_PROXY ?= no_proxy=localhost,127.0.0.1,ppki-playground.ct.siemens.com \
-    http_proxy=http://de.coia.siemens.net:9400 https_proxy=$$http_proxy # or, e.g., tsy1.coia.siemens.net.9400 or 194.145.60.250:9400
+    include config/EJBCA.env
 else
-    SET_PROXY ?= no_proxy=localhost,127.0.0.1
+    include config/empty.env
 endif
+# optional SET_PROXY variable can be set to override default proxy settings
+SET_PROXY ?= no_proxy=localhost,127.0.0.1
 
 # defaults for test_conformance:
 LIGHTWEIGHTCMPRA ?= -Dorg.slf4j.simpleLogger.log.com.siemens.pki.lightweightcmpra=error -jar ./LightweightCmpRa.jar
@@ -286,15 +268,15 @@ ifeq ($(LPATH),)
 endif
 
 ifneq ($(INSTA),)
-    unreachable="cannot reach pki.certificate.fi"
     CA_SECTION=Insta
+    unreachable="cannot reach pki.certificate.fi"
     OCSP_CHECK= #$(OPENSSL) ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
     override EXTRA_OPTS += -path pkix/ -newkeytype rsa:1024
 else
-    unreachable="cannot reach EJBCA at $$EJBCA_HOST"
     CA_SECTION=EJBCA
-    OCSP_CHECK=$(OPENSSL) ocsp -url $$EJBCA_OCSP_URL \
-               -CAfile $$EJBCA_CMP_TRUSTED -issuer $$EJBCA_CMP_ISSUER \
+    unreachable="cannot reach EJBCA at $(EJBCA_HOST)"
+    OCSP_CHECK=$(OPENSSL) ocsp -url $(EJBCA_OCSP_URL) \
+               -CAfile $(EJBCA_CMP_TRUSTED) -issuer $(EJBCA_CMP_ISSUER) \
                -cert creds/operational.crt
     override EXTRA_OPTS +=
 endif
@@ -304,29 +286,27 @@ creds/crls:
 
 get_EJBCA_crls: | creds/crls
 ifneq ($(EJBCA_ENABLED),)
-	@ # ping >/dev/null $(PINGCOUNTOPT) 1 $(EJBCA_HOST)
-	@ # || echo $(unreachable); exit 1
-	@for CA in $$EJBCA_CDPS; \
+	@ # ping >/dev/null $(PINGCOUNTOPT) 1 $(EJBCA_HOST) || echo $(unreachable); exit 1
+	@for CA in $(EJBCA_CDPS); \
 	do \
 		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
-		wget -q "$$EJBCA_CDP_URL_PREFIX$$CA$$EJBCA_CDP_URL_POSTFIX" -O "creds/crls/EJBCA-$$ca.crl"; \
+		wget -q "$(EJBCA_CDP_URL_PREFIX)$$CA$(EJBCA_CDP_URL_POSTFIX)" -O "creds/crls/EJBCA-$$ca.crl"; \
 	done
 endif
 
 get_Insta_crls: | creds/crls
 	@ #curl -m 2 -s pki.certificate.fi ...
 	$(SET_PROXY) wget -O /dev/null --tries=1 --max-redirect=0 --timeout=2 https://www.insta.fi/ --no-verbose
-	@ # | fgrep "301 Moved Permanently" -q
-	@ # || (echo $(unreachable); exit 1)
+	@ # | fgrep "301 Moved Permanently" -q || (echo $(unreachable); exit 1)
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	$(SET_PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl?id=633"
 
 .phony: demo demo_Insta demo_EJBCA
 demo: demo_EJBCA
 demo_Insta:
-	$(MAKE) run_demo INSTA=1 $(EJBCA_ENV)
+	$(MAKE) run_demo INSTA=1
 demo_EJBCA:
-	$(MAKE) run_demo INSTA=  $(EJBCA_ENV)
+	$(MAKE) run_demo INSTA= EJBCA_ENABLED=1
 
 CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH=. ./$(OUTBIN)
 GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345 2>/dev/null
@@ -337,16 +317,16 @@ else
 run_demo: build get_Insta_crls
 endif
 ifeq ($(EJBCA_ENABLED)$(INSTA),)
-	$(warning "### skipping demo_EJBCA since not supported in this environment ###")
+	$(warning "### skipping demo since not supported in this environment ###")
 else
 	@which $(OPENSSL) || (echo "cannot find $(OPENSSL), please install it"; false)
 	@/bin/echo -e "\n##### running cmpClient demo #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
     ifeq ($(INSTA),)
-	$(CMPCLIENT) validate -section validate -cert $$EJBCA_CMP_CLIENT -tls_cert "" -own_trusted $$EJBCA_TRUSTED -untrusted $$EJBCA_UNTRUSTED
+	$(CMPCLIENT) validate -section validate -cert $(EJBCA_CMP_CLIENT) -tls_cert "" -own_trusted $(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
 	@/bin/echo -e "\nValidating own TLS client cert"
-	$(CMPCLIENT) validate -section validate -tls_cert $$EJBCA_TLS_CLIENT -tls_trusted $$EJBCA_TRUSTED -untrusted $$EJBCA_UNTRUSTED
+	$(CMPCLIENT) validate -section validate -tls_cert $(EJBCA_TLS_CLIENT) -tls_trusted $(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
     else
 	$(CMPCLIENT) validate -section Insta -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/InstaDemoCA.crt # -no_check_time
     endif
@@ -398,9 +378,9 @@ test_conformance: start conformance_cmpclient conformance_openssl stop
 test_conformance_openssl: start conformance_openssl stop
 test_conformance_cmpclient: start conformance_cmpclient stop
 conformance_cmpclient: build
-	@CMPCL="$(CMPCLNT)" make conformance $(EJBCA_ENV)
+	@CMPCL="$(CMPCLNT)" make conformance
 conformance_openssl: newkey
-	@CMPCL="$(CMPOSSL)" make conformance $(EJBCA_ENV)
+	@CMPCL="$(CMPOSSL)" make conformance
 newkey:
 	@which $(OPENSSL) || (echo "cannot find $(OPENSSL), please install it"; false)
 	$(OPENSSL) ecparam -genkey -name secp521r1 -out creds/manufacturer.pem
@@ -425,13 +405,13 @@ else
 	@ :
 	( HARNESS_ACTIVE=1 \
 	  HARNESS_VERBOSE=$(V) \
-          HARNESS_FAILLOG=../test/faillog_$$OPENSSL_CMP_SERVER.txt \
+	  HARNESS_FAILLOG=../test/faillog_$$OPENSSL_CMP_SERVER.txt \
 	  SRCTOP=. \
 	  BLDTOP=. \
 	  BIN_D=. \
 	  EXE_EXT= \
 	  LD_LIBRARY_PATH=$(BIN_D) \
-          OPENSSL_CMP_CONFIG=test_config.cnf \
+	  OPENSSL_CMP_CONFIG=test_config.cnf \
 	  $(PERL) test/recipes/80-test_cmp_http.t )
 	@ :
 endif
@@ -440,31 +420,31 @@ test_Mock:
 ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # OpenSSL <1.1 does not support -no_check_time nor OCSP
 	$(warning skipping test_Mock since OpenSSL <1.1 does not support -no_check_time nor OCSP)
 else
-	make test_cli OPENSSL_CMP_SERVER=Mock $(EJBCA_ENV)
+	make test_cli OPENSSL_CMP_SERVER=Mock
 endif
 
 .phony: test_Insta test_EJBCA-AWS
 test_Insta: get_Insta_crls
-	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=Insta $(EJBCA_ENV)
+	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=Insta
 test_EJBCA-AWS: get_EJBCA_crls
-	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=EJBCA $(EJBCA_ENV)
+	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=EJBCA
 
 # do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
 test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple
 ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # OpenSSL <1.1 does not support OCSP
 	$(warning skipping certstatus aspect since OpenSSL <1.1 does not support OCSP)
-	make test_cli OPENSSL_CMP_SERVER=Simple $(EJBCA_ENV) OPENSSL_CMP_ASPECTS="connection verification credentials commands enrollment"
+	make test_cli OPENSSL_CMP_SERVER=Simple OPENSSL_CMP_ASPECTS="connection verification credentials commands enrollment"
 else
-	make test_cli OPENSSL_CMP_SERVER=Simple $(EJBCA_ENV)
+	make test_cli OPENSSL_CMP_SERVER=Simple
 endif
 
 .phony: test_profile profile_Simple profile_EJBCA
 test_profile: profile_Simple profile_EJBCA
 # do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
 profile_Simple:
-	PROFILE=Simple make profile $(EJBCA_ENV)
+	PROFILE=Simple make profile
 profile_EJBCA:
-	PROFILE=EJBCA make profile $(EJBCA_ENV)
+	PROFILE=EJBCA make profile
 profile: build
 ifeq ($(EJBCA_ENABLED),)
 	$(warning "### skipping test_profile since not supported in this environment ###")

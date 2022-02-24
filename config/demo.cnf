@@ -1,6 +1,7 @@
 # For full documentation of the options, see ../doc/cmpClient-cli.{pod,md}
 
 [default]
+
 #verbosity = 6 # means INFO (default)
 #tls_used = 0 # (default)
 #keep_alive = 1 # means preferring to keep the connection open (default)
@@ -25,6 +26,24 @@ unprotected_errors = 1
 cacertsout = creds/cacerts.pem
 extracertsout = creds/extracerts.pem
 extracerts_dir = creds/
+
+# workarounds in case the environment variables referenced via ${ENV::...} are not set
+EJBCA_HOST =
+EJBCA_OCSP_URL =
+EJBCA_CDP_URL_PREFIX =
+EJBCA_CDPS =
+EJBCA_CDP_URL_POSTFIX =
+EJBCA_CMP_ISSUER =
+EJBCA_CMP_CLIENT =
+EJBCA_TLS_CLIENT =
+EJBCA_CMP_TRUSTED =
+EJBCA_TRUSTED =
+EJBCA_UNTRUSTED =
+EJBCA_CMP_SERVER =
+EJBCA_CMP_RECIPIENT =
+EJBCA_CMP_SUBJECT =
+EJBCA_CMP_SUBJECT_ECC =
+DID = did:example:123456789abcdefghi
 
 [EJBCA]
 server = ${ENV::EJBCA_HOST}:443

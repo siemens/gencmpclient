@@ -1,8 +1,17 @@
 #! /usr/bin/bash
 
+DID=${1:-did:example:123456789abcdefghi} # optional arg: DID to include
+KEY=${2:-creds/did.pem}                  # optional arg: private key file to use
+CERT=${3:-creds/did.crt}                 # optional arg: cert output file to use
+
+CA=EJBCA
+# CA=Insta # alternative
+SUBJ="/CN=DID demo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
+
+# decls needed for being able to use demo.cnf:
 export  EJBCA_HOST="ppki-playground.ct.siemens.com" \
 	EJBCA_OCSP_URL="http://ppki-playground.ct.siemens.com/ejbca/publicweb/status/ocsp" \
-	 EJBCA_CDP_URL_PREFIX="http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+" \
+	EJBCA_CDP_URL_PREFIX="http://ppki-playground.ct.siemens.com/ejbca/publicweb/webdist/certdist?cmd=crl&format=DER&issuer=CN=PPKI+Playground+" \
 	EJBCA_CDPS="Infrastructure+Root+CA+v1.0 Infrastructure+Issuing+CA+v1.0 ECC+Root+CA+v1.0 RSA+Root+CA+v1.0" \
 	EJBCA_CDP_URL_POSTFIX="%2cOU=Corporate+Technology%2cOU=For+internal+test+purposes+only%2cO=Siemens%2cC=DE" \
 	EJBCA_CMP_ISSUER="creds/PPKI_Playground_ECCIssuingCAv10.crt" \
@@ -17,13 +26,6 @@ export  EJBCA_HOST="ppki-playground.ct.siemens.com" \
 	EJBCA_CMP_SUBJECT_ECC="/CN=ECC-EE/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE" \
 	EJBCA_ENABLED=1
 
-DID=${1:-did:example:123456789abcdefghi}
-KEY=${2:-creds/did.pem}
-CERT=${3:-creds/did.crt}
-
-CA=EJBCA
-# CA=Insta # alternative
-SUBJ="/CN=DID demo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
 
 openssl ecparam -genkey -name prime256v1 -out "$KEY"
 # openssl genrsa -out "$KEY" 2048 # alternative

@@ -62,17 +62,11 @@ git clone git@github.com:siemens/genCMPClient.git
 cd genCMPClient
 make -f OpenSSL_version.mk
 ```
-In order for this to work, you may need to set OPENSSL_DIR as described below,
-e.g.,
-```
-export OPENSSL_DIR=/usr/local
-```
 
 This should output on the console something like
 ```
-cc [...] OpenSSL_version.c -lcrypto -o OpenSSL_version
+cc OpenSSL_version.c -lcrypto -o OpenSSL_version
 OpenSSL 1.1.1k  25 Mar 2021 (0x101010bf)
-rm -f OpenSSL_version
 ```
 
 
@@ -113,7 +107,12 @@ The generic CMP client (and also its underlying CMP and Security Utilitieslibrar
 assumes that OpenSSL (with any version >= 1.1.0) is already installed,
 including the C header files needed for development
 (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
-By default the OpenSSL headers will be searched for in `/usr/include`
+
+By default the Makefile behaves as if
+```
+OPENSSL_DIR=/usr
+```
+was given, such that the OpenSSL headers will be searched for in `/usr/include`
 and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
 You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation, e.g.:
 ```

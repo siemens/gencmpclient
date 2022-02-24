@@ -154,11 +154,12 @@ To build the Debian packages, the following dependencies need to be installed:
 * `libsecutils-dev`
 * `libcmp-dev`
 
-Then the packages can be built by
+Then the packages can be built and installed by
 ```
 make deb
 ```
 On success, they are placed in the parent directory (`../`).
+Installation typically will require root privileges.
 
 
 ## Using the demo client

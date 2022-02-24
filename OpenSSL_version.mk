@@ -33,7 +33,7 @@ show:	build
 	@./OpenSSL_version$(EXE)
 
 clean:
-	rm -f OpenSSL_version$(EXE)
+	@rm -f OpenSSL_version$(EXE)
 
 
 else ifeq ($(LIB),header)

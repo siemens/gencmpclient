@@ -233,6 +233,7 @@ OUTBIN=cmpClient$(EXE)
 
 build_only:
 	@$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+	@# CFLAGS="-Idebian/temp/usr/include $(CFLAGS)" LDFLAGS="-Ldebian/temp/usr/lib -Wl,-rpath=debian/temp/usr/lib"
 
 build_no_tls:
 	$(MAKE) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
@@ -247,6 +248,7 @@ endif
 clean_test:
 	@rm -f creds/{manufacturer,operational*}.*
 	@rm -f creds/{cacerts,extracerts}.pem
+	@rm -f creds/InstaDemoCA_client.pem
 	@rm -f creds/*_????????-????????-????????-????????-????????.pem
 	@rm -fr creds/crls
 	@rm -f test/recipes/80-test_cmp_http_data/*/test.*cert*.pem
@@ -480,7 +482,7 @@ test_all: test demo_EJBCA test_conformance test_profile test_Simple
 test: clean build_no_tls
 	@$(MAKE) clean build demo_Insta test_Mock test_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
 
-doc: doc_only
+doc: doc_only get_submodules
 	$(MAKE) -s -C $(SECUTILS_DIR) doc
 
 doc_only: doc/$(OUTDOC) doc/cmpClient.md
@@ -553,27 +555,35 @@ buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 
 
 .phony: deb clean_deb
-deb:
+deb: get_submodules
 ifeq ($(LPATH),)
+	@# mkdir -p debian/temp
 	$(MAKE) deb -C $(SECUTILS_DIR)
+	@# dpkg --force-not-root --force-depends --root debian/temp -i libsecutils{,-dev}_*.deb
 	sudo dpkg -i libsecutils{,-dev}_*.deb
 #ifdef CMP_STANDALONE not relevant here
-ifneq ("$(wildcard $(LIBCMP_DIR))","")
+    ifneq ("$(wildcard $(LIBCMP_DIR))","")
 	$(MAKE) deb -C $(LIBCMP_DIR)
+	@# dpkg --force-not-root --force-depends --root debian/temp -i libcmp{,-dev}_*.deb
 	sudo dpkg -i libcmp{,-dev}_*.deb
-endif
+    endif
 #endif not relevant here
 endif
 	#pkg-config --print-errors libsecutils
 	#pkg-config --print-errors libcmp
 	debuild -uc -us --lintian-opts --profile debian # --fail-on none
 # alternative:
-#	LD_LIBRARY_PATH= dpkg-buildpackage -uc -us # may prepend DH_VERBOSE=1
+#	LD_LIBRARY_PATH= dpkg-buildpackage -d -uc -us # may prepend DH_VERBOSE=1
+	@# dpkg --contents ../libgencmp{,-dev}_*.deb
+	@# dpkg --contents ../cmpclient_*.deb
+	sudo dpkg -i ../libgencmp{,-dev}_*.deb ../cmpclient_*.deb
 
 clean_deb:
 	rm -rf debian/tmp debian/libgencmp{,-dev} debian/cmpclient
+	@# rm -rf debian/temp
 	rm -f debian/{files,debhelper-build-stamp} debian/*.{log,substvars}
 	rm -f ../libgencmp{_,-}* ../cmpclient*
+	@# sudo dpkg -r cmpclient lib{gen,}cmp{,-dev} libsecutils{,-dev}
 
 # installation target - append ROOTFS=<path> to install into virtual root filesystem
 DEST_LIB=$(ROOTFS)/usr/lib
@@ -596,7 +606,7 @@ install: doc/$(OUTDOC) # $(OUT_DIR)/$(OUTLIB) $(OUT_DIR)/$(OUTBIN)
 	install -D doc/$(OUTDOC) $(DEST_DOC)
 
 uninstall:
-	rm -f $(DEST_LIB)/$(OUTLIB)*
+	rm -f $(DEST_LIB)/$(OUTLIB){,.$(VERSION)}
 	find include -type f -name $(GENCMPCL_HDRS) -exec rm '$(ROOTFS)/usr/{}' ';'
 	rm -f $(DEST_BIN)/$(OUTBIN)
 	rm -f $(DEST_DOC)/$(OUTDOC)

@@ -370,7 +370,7 @@ stop:
 
 .phony: test_conformance_cmpclient test_conformance_openssl test_conformance
 .phony: conformance_cmpclient conformance_openssl conformance
-CMPCLNT = LD_LIBRARY_PATH=. ./(OUTBIN) -section CmpRa,
+CMPCLNT = LD_LIBRARY_PATH=. ./$(OUTBIN) -section CmpRa,
 CMPOSSL = $(OPENSSL) cmp -config config/demo.cnf -section CmpRa,
 test_conformance: start conformance_cmpclient conformance_openssl stop
 test_conformance_openssl: start conformance_openssl stop

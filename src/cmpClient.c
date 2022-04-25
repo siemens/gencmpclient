@@ -21,6 +21,7 @@
 
 #include <secutils/config/config.h>
 #include <secutils/credentials/cert.h>
+#include <secutils/credentials/verify.h>
 #include <secutils/certstatus/crl_mgmt.h> /* for CRLMGMT_load_crl_cb */
 
 #ifdef LOCAL_DEFS
@@ -1201,9 +1202,8 @@ static bool validate_cert(void)
 
     /* TODO combine with part of prepare_CMP_client() */
     STACK_OF(X509) *untrusted = NULL;;
-    X509_STORE_CTX *ctx = X509_STORE_CTX_new();
-    X509_STORE *store = STORE_load(opt_trusted, "trusted certs", vpm);
-    if (ctx == NULL || store == NULL)
+    X509_STORE *store = STORE_load(opt_trusted, "trusted certs for validating certificate", vpm);
+    if (store == NULL)
         goto err;
     if (opt_untrusted != NULL &&
         (untrusted = CERTS_load(opt_untrusted, "untrusted certs", 1 /* CA */, vpm)) == NULL)
@@ -1218,25 +1218,13 @@ static bool validate_cert(void)
     if (!STORE_set_crl_callback(store, CRLMGMT_load_crl_cb, cmdata))
         goto err;
 
-    LOG(FL_DEBUG, "Initializing store context");
-    if (!X509_STORE_CTX_init(ctx, store, target, untrusted))
-        goto err;
-
-    LOG(FL_DEBUG, "Starting certificate verification");
-    ret = X509_verify_cert(ctx) > 0;
-
-    /* check for errors and clean up */
-    if (ret) {
+    ret = CREDENTIALS_verify_cert(NULL /* uta_ctx */, target, untrusted, store) > 0;
+    if (ret)
         LOG(FL_INFO, "Certificate verification finished successfully");
-    } else {
-        int err = X509_STORE_CTX_get_error(ctx);
-        int depth = X509_STORE_CTX_get_error_depth(ctx);
-        LOG(FL_ERR, "Certificate verification failed at depth=%d err=%d: %s", depth,
-            err, X509_verify_cert_error_string(err));
-    }
+    else
+        LOG(FL_ERR, "Certificate verification failed");
 
 err:
-    X509_STORE_CTX_free(ctx);
     X509_STORE_free(store);
     CERTS_free(untrusted);
     X509_free(target);
@@ -1832,7 +1820,7 @@ int main(int argc, char *argv[])
     CRLMGMT_DATA_set_crl_max_download_size(cmdata, opt_crl_maxdownload_size);
     CRLMGMT_DATA_set_crl_cache_dir(cmdata, opt_crl_cache_dir);
     CRLMGMT_DATA_set_note(cmdata, use_case == validate ? "validation" :
-                          "tls or cmp connection or new certificates");
+                          "tls or cmp connection or new certificate");
 
     /* handle here to start correct demo use case */
     if (opt_cmd != NULL) {

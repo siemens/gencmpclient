@@ -112,7 +112,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
     if ((ctx = OSSL_CMP_CTX_new(/* TODO libctx */NULL, NULL)) == NULL ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn != NULL ? (OSSL_CMP_log_cb_t)log_fn :
                                  /* difference is in 'int' vs. 'bool' and additional TRACE value */
-                                 (OSSL_CMP_log_cb_t)LOG_default)) {
+                                 (OSSL_CMP_log_cb_t)LOG_console)) {
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
     }
     if (cmp_truststore != NULL

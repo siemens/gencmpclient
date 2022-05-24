@@ -143,8 +143,11 @@ export OPENSSL_DIR=/usr/local
 ```
 You may also specify using the environment variable `OUT_DIR`
 where the produced libraries
-(e.g., `libgencmp.so.1`, `libcmp.so.1`, and `libsecutils.so.1´)
-shall be placed. By default, the base directory (`.`) of `genCMPClient` is used.
+(e.g., `libgencmp.so.1`, `libcmp.so.1`, and `libsecutils.so.1`)
+shall be placed. It defaults to `.`.
+If the environment variable `BIN_DIR` is not empty, the
+the CLI application `cmpClient` will be built and placed in `BIN_DIR`.
+If the variable is unset, `.` is used by default.
 For all path variables, relative paths such as `.` are interpreted
 relative to the directory of the genCMPClient module.
 For further details on optional environment variables,

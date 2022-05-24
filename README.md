@@ -204,10 +204,15 @@ in order to reach the Insta Demo CA.
 
 ## Using the library in own applications
 
+For building the library (and optionally the CLI application)
+as part of other builds, it is recommended to call the [`Makefile`](Makefile),
+for instance as given in the example outer [`Makefile.mk`](Makefile.mk).
+
 For compiling applications using the library,
-you will need to add the directories [`include`](include/) and
+you will need to `#include` the header file [`genericCMPClient.h`](include/genericCMPClient.h)
+and add the directories [`include`](include/) and
 [`libsecutils/include`](https://github.com/siemens/libsecutils/blob/master/include/) to your C headers path.
-Unless using OpenSSL 3.0, you need to
+Wenn using OpenSSL 1.x, you need to
 add also the directory [`cmpossl/include_cmp`](https://github.com/mpeylo/cmpossl/tree/cmp/include/),
 define the C macro `CMP_STANDALONE`, and
 make sure that any OpenSSL header files included have the same version
@@ -216,16 +221,14 @@ as the one used to build the standalone CMP library `libcmp`.
 For linking you will need to
 refer the linker to the CMP and Security Utilities libraries,
 e.g., `-lsecutils -lcmp -lgencmp`.
-Unless using OpenSSL 3.0, `-lcmp` is needed as well.
+When using OpenSSL 1.x, `-lcmp` is needed additionally.
 Add the directories (e.g., with the linker option `-L`) where they can be found.
 See also the environment variable `OUT_DIR`.
 For helping the Linux loader to find the libraries at run time,
 it is recommended to set also linker options like `-Wl,-rpath=.`.
 
 Also make sure that the OpenSSL libraries (typically referred to via `-lssl -lcrypto`) are in your library path and
-(the version) of the libraries found there by the linker match the header files found by the compiler.
-
-For building your application you will need to `#include` the header file [`genericCMPClient.h`](include/genericCMPClient.h) and link using `-lgencmp`.
+(the version of) the libraries found there by the linker match the header files found by the compiler.
 
 All this is already done for the cmp client application.
 

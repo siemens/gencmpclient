@@ -2,10 +2,11 @@
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
 # Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
-# Optional LIBCMP_INC defines the directory of the libcmp header files, must be defined if and only if libcmp is used (CMP_STANDLONE)
+# BIN_DIR defines where the CLI application shall be placed, unless it is empty or unset.
+# Optional LIBCMP_INC defines the directory of the libcmp header files, must be defined if and only if libcmp is used (CMP_STANDLONE).
 # All these paths may be absolute or relative to the dir containing this Makefile.
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS (default see below).
-# OSSL_VERSION_QUIRKS maybe be needed to provide for setting OpenSSL compilation version quirks
+# OSSL_VERSION_QUIRKS maybe be needed to provide for setting OpenSSL compilation version quirks.
 
 PREFIX=
 PREFIX_DEST = $(PREFIX)
@@ -115,12 +116,18 @@ SRCS = $(OBJS:$(OBJ)=.c)
 
 DEPS = $(SRCS:.c=.d)
 
-EXES = $(PREFIX)cmpClient$(EXE)
+CMPCLIENT = $(PREFIX)$(BIN_DIR)/cmpClient$(EXE)
+
+ifeq ($(BIN_DIR),)
+BINARIES =
+else
+BINARIES = $(CMPCLIENT)
+endif
 
 ########## rules and targets
 
 .PHONY: build
-build:	$(EXES)
+build:  $(OUT_DIR)/$(LIB_NAME) $(BINARIES)
 ifeq ($(OS),Windows_NT)
 ifeq ($(LPATH),)
 	@echo "Copying OpenSSL DLLs to base directory for convenient use with Windows"
@@ -147,19 +154,21 @@ $(OUT_DIR)/$(LIB_NAME).$(VERSION): src/genericCMPClient$(OBJ)
 $(OUT_DIR)/$(LIB_NAME): $(OUT_DIR)/$(LIB_NAME).$(VERSION)
 	ln -sf $(LIB_NAME).$(VERSION) $(OUT_DIR)/$(LIB_NAME)
 
-$(PREFIX)cmpClient$(EXE): src/cmpClient$(OBJ) | $(OUT_DIR)/$(LIB_NAME)
+$(CMPCLIENT): src/cmpClient$(OBJ)
 	$(CC) $(LDFLAGS) $< $(LIBS) -lgencmp -o $@
 
 .PHONY: all archive
 all: build archive
 
+ifneq ($(BIN_DIR),)
 archive:
 	@mkdir 2>/dev/null $(ARCHIVEDIR) || true
-	@cp --preserve=timestamps $(EXES) $(ARCHIVE)
+	@cp --preserve=timestamps $(BINARIES) $(ARCHIVE)
+endif
 
 .PHONY: clean
 clean:
-	rm -f $(EXES) $(OUT_DIR)/$(LIB_NAME) $(OUT_DIR)/$(LIB_NAME).$(VERSION) $(DEPS) $(OBJS)
+	rm -f $(BINARIES) $(OUT_DIR)/$(LIB_NAME) $(OUT_DIR)/$(LIB_NAME).$(VERSION) $(DEPS) $(OBJS)
 ifeq ($(OS),Windows_NT)
 ifeq ($(LPATH),)
 	rm -f $(PREFIX_DEST)$(OPENSSL_DLLS)

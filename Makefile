@@ -1,6 +1,7 @@
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
 # Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
+# Optional BIN_DIR defines where the CLI application shall be placed unless it is empty. It defaults to '.' if unset.
 # All these paths may be absolute or relative to the dir containing this Makefile.
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS. Also CFLAGS is passed to build goals.
 # By default, the Insta Demo CA ist used for demonstration purposes.
@@ -43,6 +44,7 @@ ifeq ($(LPATH),)
     ifeq ($(OUT_DIR),)
         override OUT_DIR = .
     endif
+    BIN_DIR ?= .
 #   ifneq ($(wildcard $(ROOTFS)/usr/local/include/openssl),)
 #       OPENSSL_DIR ?= $(ROOTFS)/usr/local
 #   else
@@ -54,6 +56,7 @@ else
     ifeq ($(OUT_DIR),)
         override OUT_DIR = $(LPATH)
     endif
+    BIN_DIR ?= $(LPATH)
     OPENSSL_DIR ?= $(LPATH)/..
     # SECUTILS and SECUTILS_LIB not needed since pre-installed
 endif
@@ -228,7 +231,7 @@ OUTLIB=libgencmp$(DLL)
 OUTBIN=cmpClient$(EXE)
 
 build_only:
-	@$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+	@$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
 	@# CFLAGS="-Idebian/temp/usr/include $(CFLAGS)" LDFLAGS="-Ldebian/temp/usr/lib -Wl,-rpath=debian/temp/usr/lib"
 
 build_no_tls:
@@ -253,7 +256,7 @@ clean_test:
 	@rm -fr test/{Upstream,Downstream}
 
 clean_this: clean_test
-	$(MAKE) -s -f Makefile_src clean LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)"
+	$(MAKE) -s -f Makefile_src clean OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)"
 	@rm -f doc/$(OUTDOC) doc/cmpClient.md
 
 OUTDOC=cmpClient.1.gz

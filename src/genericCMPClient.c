@@ -67,7 +67,22 @@ CMP_err CMPclient_init(OPTIONAL const char *name, OPTIONAL LOG_cb_t log_fn)
     LOG_set_name(name);
     LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
     LOG_set_verbosity(LOG_INFO);
-    UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, NULL);
+
+    UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, name);
+#if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
+#define MAJOR_MINOR_MASK 0xfffff000L
+#else
+#define MAJOR_MINOR_MASK 0xfff00000L
+#endif
+    if ((MAJOR_MINOR_MASK & OpenSSL_version_num()) !=
+        (MAJOR_MINOR_MASK & OPENSSL_VERSION_NUMBER))
+    {
+        LOG(FL_FATAL, "OpenSSL runtime version 0x%lx does not match version 0x%lx used for compiling %s",
+            OpenSSL_version_num(), OPENSSL_VERSION_NUMBER, name);
+        exit(EXIT_FAILURE);
+    }
+
+
     if (!STORE_EX_check_index()) {
         LOG(FL_ERR, "failed to initialize STORE_EX index\n");
         return ERR_R_INIT_FAIL;
@@ -350,7 +365,7 @@ static BIO *app_http_tls_cb(BIO *bio, void *arg, int connect, int detail)
             if ((hint = tls_error_hint()) != NULL)
                 ERR_add_error_data(2, " : ", hint);
         }
-# if OPENSSL_VERSION_NUMBER < 0x30000000L
+# if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
         BIO *cbio;
         (void)ERR_set_mark();
         BIO_ssl_shutdown(bio);
@@ -550,7 +565,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
     return CMPOSSL_error();
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L /* TODO remove decls when exported by OpenSSL */
+#if OPENSSL_VERSION_NUMBER >= OPENSSL_V_3_0_0 /* TODO remove decls when exported by OpenSSL */
 int ossl_x509_add_cert_new(STACK_OF(X509) **p_sk, X509 *cert, int flags)
 {
     if (*p_sk == NULL && (*p_sk = sk_X509_new_null()) == NULL) {

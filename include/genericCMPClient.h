@@ -43,7 +43,7 @@ typedef int CMP_err;
 # define CMP_CR    2 /* OSSL_CMP_PKIBODY_CR */
 # define CMP_P10CR 4 /* OSSL_CMP_PKIBODY_P10CR */
 # define CMP_KUR   7 /* OSSL_CMP_PKIBODY_KUR */
-# define CMP_RR   11 /* OSSL_CMP_PKIBODY_RR */
+# define CMP_RR    11 /* OSSL_CMP_PKIBODY_RR */
 
 /* # define LOCAL_DEFS */
 # ifdef LOCAL_DEFS
@@ -56,7 +56,7 @@ typedef int CMP_err;
 
 /* CMP client core functions */
 /* should be called once, as soon as the application starts */
-CMP_err CMPclient_init(OPTIONAL const char* name, OPTIONAL LOG_cb_t log_fn);
+CMP_err CMPclient_init(OPTIONAL const char *name, OPTIONAL LOG_cb_t log_fn);
 
 /* must be called first */
 CMP_err CMPclient_prepare(CMP_CTX **pctx,

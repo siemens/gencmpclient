@@ -175,6 +175,7 @@ endif
 update: update_secutils update_cmpossl
 	git fetch
 	git rebase
+	git submodule update
 
 $(SECUTILS_DIR)/include: # not: update_secutils
 	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)

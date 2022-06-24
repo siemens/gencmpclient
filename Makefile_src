@@ -76,6 +76,10 @@ override CFLAGS += -I$(PREFIX)include
 override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
 override CFLAGS += $(OSSL_VERSION_QUIRKS)
 
+ifdef LIBCMP_INC
+    override LIBS += -lcmp
+endif
+# placing libcmp before libcrypto such that its contents are preferred
 override LIBS += -lcrypto
 ifdef SECUTILS_USE_UTA
     override LIBS += -luta
@@ -86,9 +90,6 @@ else
     override LIBS += -lssl
 endif
 override LIBS += -lsecutils
-ifdef LIBCMP_INC
-    override LIBS += -lcmp
-endif
 
 override LDFLAGS += $(DEBUG_FLAGS) # needed for -fsanitize=...
 ifeq ($(LPATH),)

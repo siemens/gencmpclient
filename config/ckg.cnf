@@ -67,7 +67,6 @@ tls_used = 0
 [imprint]
 server = http://md1raekc:6002/lrawithmacprotection
 secret = pass:myPresharedSecret
-untrusted = creds/trusted/CMP_LRA_DOWNSTREAM_EE.pem
 cmd = ir
 cert =
 key =

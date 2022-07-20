@@ -2,13 +2,22 @@
 
 We welcome contributions in several forms, e.g.
 
-* Sponsoring
+* Coding
 * Documenting
 * Testing / Bug reports
-* Coding
+* Sponsoring
 * etc.
 
-Please read [14 Ways to Contribute to Open Source without Being a Programming Genius or a Rock Star](https://smartbear.com/blog/test-and-monitor/14-ways-to-contribute-to-open-source-without-being/).
+You may have a look at [14 Ways to Contribute to Open Source without Being
+a Programming Genius or a Rock Star]
+(https://smartbear.com/blog/test-and-monitor/14-ways-to-contribute-to-open-source-without-being/).
+
+When planning for major code contributions to this repository,
+please first discuss the changes you wish to make via issue, email,
+or any other method with the owners of this repository beforehand.
+
+Please note that we have a [code of conduct](CODE_OF_CONDUCT.md);
+please follow it in all your interactions with the project.
 
 ## Developer Certificate of Origin
 
@@ -46,9 +55,14 @@ you declare the following:
 
 ## Workflow
 
-We appreciate any contributions, so please use the
-[Forking Workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/forking-workflow)
-and send us `Merge Requests`.
+Please use the [Forking Workflow]
+(https://www.atlassian.com/git/tutorials/comparing-workflows/forking-workflow)
+and send us Pull Requests.
+
+You may merge a Pull Request in
+once you have the sign-off of two other developers,
+or if you do not have permission to do that,
+you may request the second reviewer to merge it for you.
 
 ### Commit Message
 
@@ -62,8 +76,8 @@ Commit messages shall follow the conventions defined by
 
 ### What to use as scope
 
-In most cases the changed component is a good choice as scope
-e.g. if the change is done in the documentation, the scope should be *doc*.
+In most cases the changed component is a good choice as scope,
+e.g., if the change is done in the documentation, the scope should be *doc*.
 
-For documentation changes the section that was changed makes a good scope name
-e.g. use *FAQ* if you changed that section.
+For documentation changes the section that was changed makes a good scope name,
+e.g., use *FAQ* if you changed that section.

@@ -18,8 +18,6 @@
 
 (Write out any suggestons how to solve the issue.)
 
-<!--
-
 If relevant, please mention in which version
 or for which git commit you found the issue.
 
@@ -39,4 +37,3 @@ any commands plus output and code, like this:
         printf("%d\n", foo);
     }
     ```
--->

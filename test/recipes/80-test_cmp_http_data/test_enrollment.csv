@@ -87,7 +87,7 @@ TBD,TBD,days 36525, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BL
 1,1,disable_confirm, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -disable_confirm,, -certout,test.cert.pem,, -out_trusted,root.crt,,BLANK,,BLANK,,,
 0,0,disable_confirm with parameter, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -disable_confirm,abc, -certout,test.cert.pem,, -out_trusted,root.crt,,BLANK,,BLANK,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-0,0,no certout, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,, -out_trusted,root.crt,,BLANK,,BLANK,,,
+0,0,no certout, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -certout,"""",, -out_trusted,root.crt,,BLANK,,BLANK,,,
 0,0,certout missing arg, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -certout,,, -out_trusted,root.crt,,BLANK,,BLANK,,,
 0,0,certout is non-existing directory and file, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -certout,idontexist/idontexist,, -out_trusted,root.crt,,BLANK,,BLANK,,,
 0,0,certout too many parameters, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -certout,abc,def, -out_trusted,root.crt,,BLANK,,BLANK,,,

@@ -156,7 +156,7 @@ sub test_cmp_http {
     my $params = shift;
     my $expected_result = shift;
     $params = [ '-server', "127.0.0.1:$server_port", @$params ]
-        unless grep { $_ eq '-server' } @$params;
+        if ($server_name eq "Mock" && !(grep { $_ eq '-server' } @$params));
     my $cmd = app([@app, @$params]);
 
     $expected_result = 1 if $server_name eq "Mock" && $title =~ m/- ok for Mock/;

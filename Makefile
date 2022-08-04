@@ -435,7 +435,7 @@ test_Insta: get_Insta_crls
 test_EJBCA-AWS: get_EJBCA_crls
 	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=EJBCA
 
-# do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
+# do before: cd SimpleLra && ./RunLra.sh
 test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple
 ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # OpenSSL <1.1 does not support OCSP
 	$(warning skipping certstatus aspect since OpenSSL <1.1 does not support OCSP)
@@ -446,7 +446,7 @@ endif
 
 .phony: test_profile profile_Simple profile_EJBCA
 test_profile: profile_Simple profile_EJBCA
-# do before: cd ~/p/genCMPClient/SimpleLra/ && ./RunLra.sh
+# do before: cd SimpleLra && ./RunLra.sh
 profile_Simple:
 	PROFILE=Simple make profile
 profile_EJBCA:

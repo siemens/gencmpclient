@@ -13,8 +13,10 @@ cdps =
 use_aia = 0
 ocsp =
 
-[CmpRa] # LightweightCmpRa
+[CmpRa] # lightweightcmpra-cmpracomponentwrapper
 server = http://localhost:6000/onlinelra
+server = http://localhost:6011/ckgagree
+recipient = / # suppress warning
 secret = pass:myPresharedSecret
 cert = creds/CMP_EE_Keystore.p12
 key = $cert
@@ -24,10 +26,11 @@ cert = creds/CMP_EE_Chain.pem # workaround for cmpossl
 #asn1_item_embed_d2i:crypto/asn1/tasn_dec.c:322:CMP error: nested asn1 error:Type=EC_PRIVATEKEY
 key = creds/CMP_EE_Key.pem # workaround for cmpossl
 keypass = pass:Password
-subject = "/CN=test-genCMPClientDemo"
-untrusted = creds/ENROLL_Chain.pem
+subject = "/CN=test-genCMPClientDemo/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE"
+#untrusted = creds/ENROLL_Chain.pem
 trusted = creds/trusted/CMP_LRA_DOWNSTREAM_Root.pem
-out_trusted = creds/trusted/ENROLL_Root.pem
+#out_trusted = creds/trusted/ENROLL_Root.pem
+out_trusted = creds/PPKI_Playground_ECCRootCAv10.crt
 #tls_trusted =
 #tls_host = $server
 #tls_cert = ${ENV::EJBCA_TLS_CLIENT}
@@ -70,41 +73,36 @@ secret = pass:myPresharedSecret
 cmd = ir
 cert =
 key =
-newkeytype = central:
-newkeytype = central:EC:secp521r1  # specifies type of key to request
+newkeytype = EC:secp521r1
 newkey = creds/manufacturer.pem # fallback for cmpossl
 newkeypass = pass:12345
 reqexts = reqexts
 policies = certificatePolicies
 certout = creds/manufacturer.crt
 
+[ckg]
+server = http://localhost:6011/ckgagree
+centralkeygen = 1
+secret = pass:myPresharedSecret # workaround for CkgPasswordContext being configured first
+#untrusted =
+
 [bootstrap]
 cmd = cr
 secret =
 newkey = creds/operational.pem # fallback for cmpossl
 newkeypass = pass:12345
-newkeytype = central:
-newkey = creds/manufacturer.pem # fallback for cmpossl
+newkeytype = EC:prime256v1 # an alias of EC:secp256r1
 newkeypass = pass:12345
 reqexts = reqexts
 policies = certificatePolicies
 san_nodefault = 1
 certout = creds/operational.crt
 
-[bootstraprsa]
-cmd = cr
-secret =
-newkey = creds/operational.pem # fallback for cmpossl
-newkeypass = pass:12345
-newkeytype = central:
-newkey = creds/manufacturer.pem # fallback for cmpossl
-newkeypass = pass:12345
-reqexts = reqexts
-policies = certificatePolicies
-san_nodefault = 1
-certout = creds/operational.crt
+[rsa]
+newkeytype = RSA2048
 cert = creds/CMP_EE_Chain_RSA.pem # workaround for cmpossl
 key = creds/CMP_EE_Key_RSA.pem # workaround for cmpossl
+out_trusted = creds/PPKI_Playground_RSARootCAv10.crt
 
 [update]
 path = ejbca/publicweb/cmp/PlaygroundCMPSigning

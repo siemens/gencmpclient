@@ -13,9 +13,9 @@ cdps =
 use_aia = 0
 ocsp =
 
-[CmpRa] # lightweightcmpra-cmpracomponentwrapper
+[CmpRa] # lightweightcmpra
 server = http://localhost:6000/onlinelra
-server = http://localhost:6011/ckgagree
+#server = http://localhost:6011/ckgagree
 recipient = / # suppress warning
 secret = pass:myPresharedSecret
 cert = creds/CMP_EE_Keystore.p12
@@ -68,8 +68,7 @@ tls_used = 0
 #tls_key = $key
 
 [imprint]
-server = http://localhost:6002/lrawithmacprotection
-secret = pass:myPresharedSecret
+#server = http://localhost:6002/lrawithmacprotection
 cmd = ir
 cert =
 key =
@@ -81,7 +80,7 @@ policies = certificatePolicies
 certout = creds/manufacturer.crt
 
 [ckg]
-server = http://localhost:6011/ckgagree
+#server = http://localhost:6011/ckgagree
 centralkeygen = 1
 secret = pass:myPresharedSecret # workaround for CkgPasswordContext being configured first
 #untrusted =
@@ -99,13 +98,14 @@ san_nodefault = 1
 certout = creds/operational.crt
 
 [rsa]
+#path = ejbca/publicweb/cmp/PlaygroundRSA
 newkeytype = RSA2048
 cert = creds/CMP_EE_Chain_RSA.pem # workaround for cmpossl
 key = creds/CMP_EE_Key_RSA.pem # workaround for cmpossl
 out_trusted = creds/PPKI_Playground_RSARootCAv10.crt
 
 [update]
-path = ejbca/publicweb/cmp/PlaygroundCMPSigning
+#path = ejbca/publicweb/cmp/PlaygroundCMPSigning
 cmd = kur
 secret =
 cert = $bootstrap::certout
@@ -116,19 +116,19 @@ newkey = $bootstrap::newkey # fallback for cmpossl
 newkeypass = $bootstrap::newkeypass
 reqexts = ""
 policies = ""
-#oldcert = $bootstrap::certout
+oldcert = $bootstrap::certout
 subject = ""
 implicit_confirm = 1
 certout = $bootstrap::certout
 
 [revoke]
-path = ejbca/publicweb/cmp/PlaygroundCMPSigning
+#path = ejbca/publicweb/cmp/PlaygroundCMPSigning
 cmd = rr
 secret =
 cert = $bootstrap::certout
 key = $bootstrap::newkey
 keypass = $bootstrap::newkeypass
-oldcert = $update::certout
+oldcert = $bootstrap::certout
 revreason = 5 #CRL_REASON_CESSATION_OF_OPERATION
 subject =
 

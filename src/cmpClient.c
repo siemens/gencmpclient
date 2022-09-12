@@ -99,6 +99,7 @@ static int infotype = NID_undef;
 char *opt_geninfo;
 
 const char *opt_newkeytype;
+bool opt_centralkeygen;
 const char *opt_newkey;
 const char *opt_newkeypass;
 const char *opt_subject;
@@ -178,11 +179,13 @@ opt_t cmp_opts[] = {
 
     OPT_HEADER("Certificate enrollment"),
     { "newkeytype", OPT_TXT, {.txt = NULL}, { &opt_newkeytype },
-      "Generate key for ir/cr/kur of given type, e.g., EC:secp256r1 or RSA-2048"},
-    /* TODO: OPT_MORE("On 'central:', server-side key generation is requested, implies -popo -1"), */
+      "Generate or request key for ir/cr/kur of given type, e.g., EC:secp521r1"},
+    { "centralkeygen", OPT_BOOL, {.bit = false},
+      { (const char **) &opt_centralkeygen},
+      "Request central (server-side) key generation. Default is local generation"},
     { "newkey", OPT_TXT, {.txt = NULL}, { &opt_newkey },
       "Private or public key for for ir/cr/kur (defaulting to pubkey of -csr) if -newkeytype not given."},
-    OPT_MORE("File to save new generated key if -newkeytype is given"),
+    OPT_MORE("File to save new key if -newkeytype is given"),
     { "newkeypass", OPT_TXT, {.txt = NULL}, { &opt_newkeypass },
       "Pass phrase source for -newkey"},
     { "subject", OPT_TXT, {.txt = NULL}, { &opt_subject },
@@ -1307,6 +1310,18 @@ err:
 
 static CMP_err check_options(enum use_case use_case)
 {
+    if (opt_centralkeygen) {
+        if (opt_popo > OSSL_CRMF_POPO_NONE) {
+            LOG(FL_ERR, "-popo value %ld is inconsistent with -centralkeygen",
+                opt_popo);
+            return -13;
+        }
+        opt_popo = OSSL_CRMF_POPO_NONE;
+        /* TODO document the use of OSSL_CRMF_POPO_NONE for central key generation */
+    }
+    if (opt_popo == OSSL_CRMF_POPO_NONE)
+        opt_centralkeygen = true;
+
     if (opt_infotype != NULL) {
         char id_buf[100] = "id-it-";
 
@@ -1423,6 +1438,8 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
 
         if (opt_newkeytype != NULL)
             LOG(FL_WARN, "-newkeytype %s", msg);
+        if (opt_centralkeygen)
+            LOG(FL_WARN, "-popo -1 or -centralkeygen %s", msg);
         if (opt_newkeypass != NULL)
             LOG(FL_WARN, "-newkeypass %s", msg);
         if (opt_newkey != NULL)
@@ -1432,15 +1449,16 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
         if (opt_popo != OSSL_CRMF_POPO_NONE - 1)
             LOG(FL_WARN, "-popo %s", msg);
     } else {
-        if (opt_newkeytype != NULL) {
+        if (opt_newkeytype != NULL || opt_centralkeygen) {
             if (opt_newkey == NULL) {
                 LOG_err("Missing -newkey option specifying the file to save the new key");
                 return -40;
             }
-            const char *key_spec = strcmp(opt_newkeytype, "ECC") == 0
-                ? "EC:secp256r1" : opt_newkeytype;
-            /* TODO: if (strncmp(opt_newkeytype, "central:", 8) == 0) {
-               } else */ {
+            if (opt_newkeytype != NULL && *opt_newkeytype != '\0') {
+                /* TODO replace hack: gen preliminary key also when central key gen is requested to quickly get key algorithm identifier */
+                const char *key_spec = strcmp(opt_newkeytype, "ECC") == 0
+                    ? "EC:secp256r1" : opt_newkeytype;
+
                 if ((*new_pkey = KEY_new(key_spec)) == NULL) {
                     LOG(FL_ERR, "Unable to generate new private key according to specification '%s'",
                         key_spec);
@@ -1466,7 +1484,7 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 }
             }
         } else if (opt_csr == NULL) {
-            LOG_err("Missing -newkeytype or -newkey option");
+            LOG_err("Missing -newkeytype or -centralkeygen or -newkey option");
             return -42;
         }
     }
@@ -1640,7 +1658,8 @@ CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds,
         return err;
 
     if (use_case != revocation && use_case != genm && use_case != validate) {
-        if (use_case != pkcs10 && opt_newkey != NULL && opt_newkeytype != NULL) {
+        if (use_case != pkcs10 && opt_newkey != NULL
+            && (opt_newkeytype != NULL || opt_centralkeygen)) {
             if (opt_chainout != NULL)
                 LOG_warn("-chainout option is ignored");
 

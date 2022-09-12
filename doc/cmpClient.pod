@@ -46,6 +46,7 @@ Generic message options:
 Certificate enrollment options:
 
 [B<-newkeytype> EC:I<curve>|RSA-I<len>]
+[B<-centralkeygen>]
 [B<-newkey> I<filename>]
 [B<-newkeypass> I<arg>]
 [B<-subject> I<name>]
@@ -301,13 +302,21 @@ e.g., C<'1.2.3.4:int:56789, id-kp:str:name'>.
 =item B<-newkeytype> I<spec>
 
 In case of IR, CR, or KUR,
-generate a new key of the given type for the requested certifiate.
-The I<spec> may be of the form C<EC:>I<curve> or C<RSA->I<length>".
+generate or request a new key of the given type for the requested certifiate.
+The I<spec> may be of the form C<EC:>I<curve> or C<RSA->I<length>.
 The key will be saved in the file specified with the B<-newkey> option.
+
+=item B<-centralkeygen>
+
+Request central (server-side) key generation.
+This implies B<-popo> C<-1> = NONE.
+All other B<-popo> values are not consistent with this option.
+Default is local key generation.
 
 =item B<-newkey> I<filename>
 
-The file to save the newly generated key (in case  B<-newkeytype> is given).
+The file to save the newly generated key
+in case B<-newkeytype> or B<-centralkeygen> is given.
 Otherwise the file to read the private or public key from
 for the certificate requested in IR, CR or KUR.
 Defaults to the public key in the PKCS#10 CSR given with the B<-csr> option,
@@ -380,7 +389,7 @@ One or more IP addresses, email addresses, DNS names, or URIs
 separated by commas or whitespace
 (where in the latter case the whole argument must be enclosed in "...")
 to add as Subject Alternative Name(s) (SAN) certificate request extension.
-If the special element "critical" is given the SANs are flagged as critical.
+If the special element C<critical> is given the SANs are flagged as critical.
 Cannot be used if any Subject Alternative Name extension is set via B<-reqexts>.
 
 =item B<-san_nodefault>
@@ -409,7 +418,8 @@ Flag the policies given with B<-policy_oids> as critical.
 =item B<-popo> I<number>
 
 Proof-of-Possession (POPO) method to use for IR/CR/KUR; values: C<-1>..<2> where
-C<-1> = NONE, C<0> = RAVERIFIED, C<1> = SIGNATURE (default), C<2> = KEYENC.
+C<-1> = NONE, which implies central key generation,
+C<0> = RAVERIFIED, C<1> = SIGNATURE (default), C<2> = KEYENC.
 
 Note that a signature-based POPO can only produced if a private key
 is provided via the B<-newkey> option.
@@ -469,15 +479,16 @@ B<WARNING:> This leads to behavior violating RFC 4210.
 =item B<-certout> I<filename>
 
 The file where the newly enrolled certificate should be saved.
-If B<-newkey> and B<-newkeytype> are given and B<-cmd> is not I<p10cr>
+If B<-newkey> and B<-newkeytype> or B<-centralkeygen> are given
+and B<-cmd> is not I<p10cr>
 then the related chain and key are stored in this file as well,
 else if B<-chainout> is not given the the related chain is stored here as well.
 
 =item B<-chainout> I<filename>
 
 The file where the chain of the newly enrolled certificate should be saved.
-If B<-newkey> and B<-newkeytype> are given and B<-cmd> is not I<p10cr>
-this option is ignored.
+If B<-newkey> and B<-newkeytype> or B<-centralkeygen> are given
+and B<-cmd> is not I<p10cr> then this option is ignored.
 
 =back
 
@@ -719,7 +730,7 @@ If given, the name must end with the (potentally platform-specific) path separat
 =item B<-extracerts_dir_format> <I<PEM|DER|P12|extension>
 
 Certificate file format to use when when the B<-extracerts_dir> option is given.
-It may be given in the form of a file name extension, e.g., "crt".
+It may be given in the form of a file name extension, e.g., C<crt>.
 Default is C<pem>.
 
 =item B<-cacertsout> I<filename>
@@ -734,7 +745,7 @@ If given, the name must end with the (potentally platform-specific) path separat
 =item B<-cacerts_dir_format> <I<PEM|DER|P12|extension>
 
 Certificate file format to use when when the B<-cacerts_dir> option is given.
-It may be given in the form of a file name extension, e.g., "crt".
+It may be given in the form of a file name extension, e.g., C<crt>.
 Default is C<pem>.
 
 =back
@@ -758,7 +769,7 @@ and (as far as needed) for verifying PBM-based protection of incoming messages.
 PBM stands for Password-Based Message Authentication Code.
 This takes precedence over the B<-cert> and B<-key> options.
 
-Supports plain passwords preceded by "pass:" and others, see B<-newkeypass>.
+Supports plain passwords preceded by C<pass:> and others, see B<-newkeypass>.
 
 =item B<-cert> I<filename>
 
@@ -803,7 +814,7 @@ Pass phrase source for the private key given with the B<-key> option.
 Also used for B<-cert> and B<-oldcert> in case it is an encrypted PKCS#12 file.
 If not given here, the password will be prompted for if needed.
 
-Supports plain passwords preceded by "pass:" and others, see B<-newkeypass>.
+Supports plain passwords preceded by C<pass:> and others, see B<-newkeypass>.
 
 =item B<-digest> I<name>
 
@@ -864,7 +875,7 @@ Pass phrase source for client's private TLS key B<-tls_key>.
 Also used for B<-tls_cert> in case it is an encrypted PKCS#12 file.
 If not given here, the password will be prompted for if needed.
 
-Supports plain passwords preceded by "pass:" and others, see B<-newkeypass>.
+Supports plain passwords preceded by C<pass:> and others, see B<-newkeypass>.
 
 =item B<-tls_extra> I<filenames>
 

@@ -962,16 +962,30 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
 
     if (opt_secret != NULL || opt_key != NULL) {
         const char *const creds_desc = "credentials for CMP level";
+
+        cmp_creds = CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
+        if (cmp_creds == NULL) {
+            LOG(FL_ERR, "Unable to set up %s", creds_desc);
+            err = CMP_R_LOAD_CREDS;
+            goto err;
+        }
         if (opt_secret != NULL) {
             /* use PBM except for kur and rr if secret is present */
-            char *secret = FILES_get_pass(opt_secret, "PBM-based message protection");
-            cmp_creds = CREDENTIALS_new(NULL, NULL, NULL, secret, opt_ref);
-            UTIL_cleanse_free(secret);
-            if (opt_own_trusted != NULL)
-                LOG_warn("-own_trusted option is ignored since -secret is used");
-        } else {
-            cmp_creds = CREDENTIALS_load(opt_cert, opt_key, opt_keypass, creds_desc);
-            if (opt_own_trusted != NULL) {
+            char *secret = FILES_get_pass(opt_secret,
+                                          "PBM-based message protection");
+            if (secret == NULL) {
+                LOG(FL_ERR, "Unable to set up secret part of %s", creds_desc);
+                err = CMP_R_LOAD_CREDS;
+                goto err;
+            }
+            (void)CREDENTIALS_set_pwd(cmp_creds, secret);
+        }
+        if (opt_ref != NULL)
+            (void)CREDENTIALS_set_pwdref(cmp_creds, OPENSSL_strdup(opt_ref));
+        if (opt_own_trusted != NULL) {
+            if (opt_cert == NULL)
+                LOG_warn("-own_trusted option is ignored since -cert not givend");
+            else {
                 LOG(FL_TRACE, "Using '%s' as trust store for validating own CMP signer cert", opt_own_trusted);
                 own_truststore = STORE_load(opt_own_trusted, "trusted certs for validating own CMP signer cert", vpm);
                 err = -7;
@@ -985,11 +999,6 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case, OPTIONAL LOG_
                                           false, NULL, -1))
                     goto err;
             }
-        }
-        if (cmp_creds == NULL) {
-            LOG(FL_ERR, "Unable to set up %s", creds_desc);
-            err = CMP_R_LOAD_CREDS;
-            goto err;
         }
     } else {
         if (opt_own_trusted != NULL)

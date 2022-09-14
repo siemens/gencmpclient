@@ -189,9 +189,9 @@ to update or revoke them, and to perform other CMP requests.
 
 =item B<imprint|bootstrap|pkcs10|update|revoke|genm>
 
-Select demo C<use_case> of the cmpClient application. The corresponding CMP request
-will be executed with default settings. These settings could be adapted via the
-file 'config/demo.cnf'.
+Select demo C<use_case> of the cmpClient application.
+The corresponding CMP request will be executed with default settings.
+These settings could be adapted via the file 'config/demo.cnf'.
 
 =item List of options available for the C<cmpClient> application:
 
@@ -714,7 +714,8 @@ of response messages.
 
 Directory to save extra certificates received in the extraCerts field
 that are not self-issued.
-If given, the name must end with the (potentally platform-specific) path separator.
+If given,
+the name must end with the (potentally platform-specific) path separator.
 
 =item B<-extracerts_dir_format> <I<PEM|DER|P12|extension>
 
@@ -728,8 +729,10 @@ The file where to save any CA certificates received in the caPubs field.
 
 =item B<-cacerts_dir> I<dirname>
 
-Directory to save self-issued (root CA) certificates received in the caPubs field.
-If given, the name must end with the (potentally platform-specific) path separator.
+Directory to save self-issued (root CA) certificates
+received in the caPubs field.
+If given,
+the name must end with the (potentally platform-specific) path separator.
 
 =item B<-cacerts_dir_format> <I<PEM|DER|P12|extension>
 
@@ -794,8 +797,8 @@ have no effect on the certificate verification enabled via this option.
 
 The corresponding private key file for the client's certificate given in
 the B<-cert> option.
-This will be used for signature-based message protection
-unless the B<-secret> option indicating PBM or B<-unprotected_requests> is given.
+This will be used for signature-based message protection unless
+the B<-secret> option indicating PBM or B<-unprotected_requests> is given.
 
 =item B<-keypass> I<arg>
 
@@ -1001,7 +1004,8 @@ or to send issuer Distinguished Names (DNs) to in the form C<url?issuer=DN>.
 =item B<-crl_cache_dir> I<dirname>
 
 Directory where to cache CRLs downloaded during verification.
-If given, the name must end with the (potentally platform-specific) path separator.
+If given, the name must end with the (potentally platform-specific)
+path separator.
 Then downloaded CRLs will be stored at the given location
 using files names uniquely derived from the URL of the CRL distribution point.
 

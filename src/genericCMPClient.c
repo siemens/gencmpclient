@@ -70,18 +70,16 @@ CMP_err CMPclient_init(OPTIONAL const char *name, OPTIONAL LOG_cb_t log_fn)
 
     UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, name);
 #if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
-#define MAJOR_MINOR_MASK 0xfffff000L
+# define MAJOR_MINOR_MASK 0xfffff000L
 #else
-#define MAJOR_MINOR_MASK 0xfff00000L
+# define MAJOR_MINOR_MASK 0xfff00000L
 #endif
     if ((MAJOR_MINOR_MASK & OpenSSL_version_num()) !=
-        (MAJOR_MINOR_MASK & OPENSSL_VERSION_NUMBER))
-    {
+        (MAJOR_MINOR_MASK & OPENSSL_VERSION_NUMBER)) {
         LOG(FL_FATAL, "OpenSSL runtime version 0x%lx does not match version 0x%lx used for compiling %s",
             OpenSSL_version_num(), OPENSSL_VERSION_NUMBER, name);
         exit(EXIT_FAILURE);
     }
-
 
     if (!STORE_EX_check_index()) {
         LOG(FL_ERR, "failed to initialize STORE_EX index\n");

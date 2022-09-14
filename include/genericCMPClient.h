@@ -27,14 +27,14 @@ typedef OSSL_CMP_severity severity;
 # define CMPCLIENT_MODULE_NAME "genCMPClient"
 
 typedef int CMP_err;
-# define CMP_OK 0
-# define CMP_R_OTHER_LIB_ERR 99
-# define CMP_R_LOAD_CERTS   255
-# define CMP_R_LOAD_CREDS   254
-# define CMP_R_GENERATE_KEY 253
-# define CMP_R_STORE_CREDS  252
-# define CMP_R_RECIPIENT    251
-# define CMP_R_INVALID_CONTEXT 250
+# define CMP_OK                   0
+# define CMP_R_OTHER_LIB_ERR      99
+# define CMP_R_LOAD_CERTS         255
+# define CMP_R_LOAD_CREDS         254
+# define CMP_R_GENERATE_KEY       253
+# define CMP_R_STORE_CREDS        252
+# define CMP_R_RECIPIENT          251
+# define CMP_R_INVALID_CONTEXT    250
 # define CMP_R_INVALID_PARAMETERS CMP_R_INVALID_ARGS
 
 /* further error codes are defined in ../cmpossl/include/openssl/cmperr.h */
@@ -43,7 +43,6 @@ typedef int CMP_err;
 # define CMP_CR    2 /* OSSL_CMP_PKIBODY_CR */
 # define CMP_P10CR 4 /* OSSL_CMP_PKIBODY_P10CR */
 # define CMP_KUR   7 /* OSSL_CMP_PKIBODY_KUR */
-# define CMP_RR    11 /* OSSL_CMP_PKIBODY_RR */
 
 /* # define LOCAL_DEFS */
 # ifdef LOCAL_DEFS
@@ -73,13 +72,13 @@ CMP_err CMPclient_prepare(CMP_CTX **pctx,
                           OPTIONAL X509_STORE *new_cert_truststore,
                           bool implicit_confirm);
 
-/* must be called next if the transfer_fn is NULL and no existing connection is used */
+/* call next if the transfer_fn is NULL and no existing connection is used */
 /* Will return error when used with OpenSSL compiled with OPENSSL_NO_SOCK. */
 CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
                              int keep_alive, int timeout, OPTIONAL SSL_CTX *tls,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy);
-/* must be called alternatively if transfer_fn is NULL and existing connection is used */
+/* call alternatively if transfer_fn is NULL and existing connection is used */
 CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, const char *path,
                             int keep_alive, int timeout);
 
@@ -87,14 +86,18 @@ CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, const char *path,
  * @brief fill the cert template used for certificate requests (ir/cr/p10cr/kur)
  *
  * @param |ctx| CMP context to be used for implicit parameters, may get updated
- * @param |new_key| key pair to be certified; defaults to key in |csr| or |creds->key|
- * @param |old_cert| reference cert to be updated (kur), defaults to data in |csr| or |creds->cert|
- * @param |subject| to use; defaults to subject of |csr| or of reference cert for KUR,
- *        while this default is is not used for IR and CR if the |exts| or |csr| contain SANs.
- * @param |exts| X.509v3 extensions to use.
- *        Extensions provided via the |csr| parameter are augmented or overridden individually.
+ * @param |new_key| key pair to be certified;
+ *        defaults to key in |csr| or |creds->key|
+ * @param |old_cert| reference cert to be updated (kur),
+ *        defaults to data in |csr| or |creds->cert|
+ * @param |subject| to use; defaults to subject of |csr| or
+ *        of reference cert for KUR, while this default is is not used for IR
+ *        and CR if the |exts| or |csr| contain SANs.
+ * @param |exts| X.509v3 extensions to use.  Extensions provided via
+ *        the |csr| parameter are augmented or overridden individually.
  *        SANs default to SANs contained in the reference cert |old_cert|.
- * @param |csr| PKCS#10 structure directly used for P10CR command, else its contents are transformed.
+ * @param |csr| PKCS#10 structure directly used for P10CR command,
+ *        else its contents are transformed.
  * @note All 'const' parameters are copied (and need to be freed by the caller).
  * @return CMP_OK on success, else CMP error code
  */
@@ -115,8 +118,10 @@ CMP_err CMPclient_setup_certreq(CMP_CTX *ctx,
  * @brief perform the given type of certificate request (ir/cr/p10cr/kur)
  *
  * @param |ctx| CMP context to be used for implicit parameters, may get updated
- * @param |new_creds| pointer to variable where to store new credentials including enrolled certificate
- * @param |cmd| the type of request to be performed: CMP_IR, CMP_CR, CMP_P10CR, or CMP_KUR
+ * @param |new_creds| pointer to variable where to store new credentials
+ *        including enrolled certificate
+ * @param |cmd| the type of request to be performed:
+ *        CMP_IR, CMP_CR, CMP_P10CR, or CMP_KUR
  * @return CMP_OK on success, else CMP error code
  */
 CMP_err CMPclient_enroll(CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd);
@@ -131,7 +136,8 @@ CMP_err CMPclient_pkcs10(CMP_CTX *ctx, CREDENTIALS **new_creds,
 CMP_err CMPclient_update(CMP_CTX *ctx, CREDENTIALS **new_creds,
                          const EVP_PKEY *new_key);
 CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
-                                 OPTIONAL const X509 *old_cert, const EVP_PKEY *new_key);
+                                 OPTIONAL const X509 *old_cert,
+                                 const EVP_PKEY *new_key);
 
 /* reason codes are defined in openssl/x509v3.h */
 CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr, */ int reason);
@@ -157,7 +163,8 @@ EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
                    OPTIONAL const char *engine, OPTIONAL const char *desc);
 X509_REQ *CSR_load(const char *file, OPTIONAL const char *desc);
 
-STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout, OPTIONAL const char *desc);
+STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout,
+                              OPTIONAL const char *desc);
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls);
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc,
                        OPTIONAL X509_VERIFY_PARAM *vpm);

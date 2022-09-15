@@ -33,6 +33,7 @@ bin/
 build/
 certs/
 doc/
+!doc/cmpClient.pod
 lib/
 run/
 share/

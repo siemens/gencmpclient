@@ -100,6 +100,10 @@ Server authentication options:
 [B<-cacertsout> I<filename>]
 [B<-cacerts_dir> I<dirname>]
 [B<-cacerts_dir_format> <I<PEM|DER|P12|extension>]
+[B<-oldwithold> I<filename>]
+[B<-newwithnew> I<filename>]
+[B<-newwithold> I<filename>]
+[B<-oldwithnew> I<filename>]
 
 Client authentication and protection options:
 
@@ -284,7 +288,8 @@ ITAV B<infoType>s is printed to stdout.
 
 Set InfoType name to use for requesting specific info in B<genm>,
 e.g., C<signKeyPairTypes>.
-So far, there is specific support for C<caCerts>.
+
+So far, there is specific support for C<caCerts> and C<rootCaCert>.
 
 =item B<-geninfo> I<values>
 
@@ -716,6 +721,7 @@ with a signature key."
 
 The file where to save the successfully validated certificate, if any,
 that the CMP server used for signature-based response message protection.
+If there is no such certificate, this is indicated by deleting the file.
 
 =item B<-extracertsout> I<filename>
 
@@ -755,6 +761,43 @@ the name must end with the (potentally platform-specific) path separator.
 Certificate file format to use when when the B<-cacerts_dir> option is given.
 It may be given in the form of a file name extension, e.g., C<crt>.
 Default is C<pem>.
+
+=item B<-oldwithold> I<filename>
+
+The root CA certificate to include in a genm request with id-it-rootCaCert.
+If present and the optional oldWithNew certificate is received,
+it is verified using the newWithNew certificate as the (only) trust anchor.
+
+=item B<-newwithnew> I<filename>
+
+This option must be provided when B<-infotype> I<rootCaCert> is given.
+It specifies the file to save the newWithNew certificate
+received in a genp response with id-it-rootCaKeyUpdate.
+If no such certificate is received, this the file (if present) is deleted
+to indicate that the requested root CA certificate update is not available.
+
+Any received newWithNew certificate is verified
+using any received newWithOld certificate as untrusted intermediate certificate
+and the certificate provided with B<-oldwithold> as the (only) trust anchor,
+or if not provided, using the certificates given with the B<-trusted> option.
+
+B<WARNING:>
+The newWithNew certificate is meant to be certificate that will be trusted.
+The trust placed in it cannot be stronger than the trust placed in the
+B<-oldwithold> certificate if present, otherwise it cannot be stronger than
+the weakest trust placed in any of the B<-trusted> certificates.
+
+=item B<-newwithold> I<filename>
+
+The file to save any newWithOld certificate
+received in a genp response with id-it-rootCaKeyUpdate.
+If no such certificate received, this is indicated by deleting the file.
+
+=item B<-oldwithnew> I<filename>
+
+The file to save any oldWithNew certificate
+received in a genp response with id-it-rootCaKeyUpdate.
+If no such certificate is received, this is indicated by deleting the file.
 
 =back
 

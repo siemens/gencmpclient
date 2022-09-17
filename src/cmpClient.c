@@ -80,6 +80,10 @@ const char *opt_extracerts_dir_format;
 const char *opt_cacertsout;
 const char *opt_cacerts_dir;
 const char *opt_cacerts_dir_format;
+const char *opt_oldwithold;
+const char *opt_newwithnew;
+const char *opt_newwithold;
+const char *opt_oldwithnew;
 
 const char *opt_ref;
 const char *opt_secret;
@@ -298,6 +302,14 @@ opt_t cmp_opts[] = {
     { "cacerts_dir_format", OPT_TXT, {.txt = "pem"},
       { &opt_cacerts_dir_format },
       "Format to use for saving those certs. Default \"pem\""},
+    { "oldwithold", OPT_TXT, {.txt = NULL}, { &opt_oldwithold },
+      "Root CA certificate to request update for in genm with id-it-rootCaCert"},
+    { "newwithnew", OPT_TXT, {.txt = NULL}, { &opt_newwithnew },
+      "File to save NewWithNew cert received in genp with id-it-rootCaKeyUpdate"},
+    { "newwithold", OPT_TXT, {.txt = NULL}, { &opt_newwithold },
+      "File to save NewWithOld cert received in genp with id-it-rootCaKeyUpdate"},
+    { "oldwithnew", OPT_TXT, {.txt = NULL}, { &opt_oldwithnew },
+      "File to save OldWithNew cert received in genp with id-it-rootCaKeyUpdate"},
 
     OPT_HEADER("Client authentication and protection"),
     { "ref", OPT_TXT, {.txt = NULL}, { &opt_ref },
@@ -1346,6 +1358,19 @@ static CMP_err check_options(enum use_case use_case)
             return -31;
         }
     }
+    if (use_case != genm
+        || (opt_infotype != NULL && strcmp(opt_infotype, "rootCaCert") != 0)) {
+        const char *msg = "option is ignored unless -cmd 'genm' and -infotype 'rootCaCert' is given";
+
+        if (opt_oldwithold != NULL)
+            LOG(FL_WARN, "-oldwithold %s", msg);
+        if (opt_newwithnew != NULL)
+            LOG(FL_WARN, "-newwithnew %s", msg);
+        if (opt_newwithold != NULL)
+            LOG(FL_WARN, "-newwithold %s", msg);
+        if (opt_oldwithnew != NULL)
+            LOG(FL_WARN, "-oldwithnew %s", msg);
+    }
 
     if (!opt_secret && ((opt_cert == NULL) != (opt_key == NULL))) {
         LOG_err("Must give both -cert and -key options or neither");
@@ -1596,6 +1621,27 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
     return CMP_OK;
 }
 
+static int delete_file(const char *file, const char *desc)
+{
+    if (file == NULL)
+        return 1;
+    LOG(FL_INFO, "deleting file '%s' because there is no %s", file, desc);
+    if (unlink(file) == 0 || errno == ENOENT)
+        return 1;
+    LOG(FL_ERR, "Failed to delete %s, which should be done to indicate there is no %s",
+        file, desc);
+    return 0;
+}
+
+static int save_cert_or_delete(X509 *cert, const char *file, const char *desc)
+{
+    if (file == NULL)
+        return 1;
+    if (cert == NULL)
+        return delete_file(file, desc);
+    return CERT_save(cert, file, desc);
+}
+
 CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
                    const char *file, const char *dir, const char *format)
 {
@@ -1654,20 +1700,9 @@ CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds,
     if (err != CMP_OK)
         return err;
 
-    if (opt_srvcertout != NULL) {
-        X509 *srvcert = OSSL_CMP_CTX_get0_validatedSrvCert(ctx);
-
-        if (srvcert == NULL) {
-            if (unlink(opt_srvcertout) != 0 && errno != ENOENT) {
-                LOG(FL_ERR, "Failed to delete %s, which should be done to indicate there is no validated server cert",
-                    opt_srvcertout);
-                return -55;
-            }
-        } else {
-            if (!CERT_save(srvcert, opt_srvcertout, "validated server cert"))
-                return -56;
-        }
-    }
+    if (!save_cert_or_delete(OSSL_CMP_CTX_get0_validatedSrvCert(ctx),
+                             opt_srvcertout, "validated server cert"))
+        return -52;
 
     err = save_certs(OSSL_CMP_CTX_get1_caPubs(ctx), "caPubs", "CA",
                      opt_cacertsout, opt_cacerts_dir, opt_cacerts_dir_format);
@@ -1773,6 +1808,52 @@ static CMP_err do_genm(CMP_CTX *ctx)
         }
         CERTS_free(cacerts);
         return err;
+#endif
+#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+    case NID_id_it_rootCaCert:
+        if (opt_newwithnew == NULL) {
+            LOG(FL_ERR, "Missing -newwithnew option for -infotype rootCaCert");
+            return -26;
+        }
+        {
+            X509 *oldwithold = NULL;
+            X509 *newwithnew = NULL;
+            X509 *newwithold = NULL;
+            X509 *oldwithnew = NULL;
+            CMP_err err = -27;
+
+            if (opt_oldwithold == NULL) {
+                LOG(FL_WARN, "No -oldwithold given, will use all certs given with -trusted as trust anchors for verifying the newWithNew cert");
+            } else {
+                oldwithold = CERT_load(opt_oldwithold, NULL,
+                                       "OldWithOld cert for genm with -infotype rootCaCert",
+                                       1 /* CA */, NULL /* vpm */);
+                if (oldwithold == NULL)
+                    goto end_upd;
+            }
+            err = CMPclient_rootCaCert(ctx, oldwithold, &newwithnew,
+                                       &newwithold, &oldwithnew);
+            if (err != CMP_OK)
+                goto end_upd;
+
+            /* TODO possibly check authorization of sender/origin */
+            if (newwithnew == NULL)
+                LOG_info("no root CA certificate update available");
+            if (!save_cert_or_delete(newwithnew, opt_newwithnew,
+                                     "NewWithNew cert from genp")
+                || !save_cert_or_delete(newwithold, opt_newwithold,
+                                        "NewWithOld cert from genp")
+                || !save_cert_or_delete(oldwithnew, opt_oldwithnew,
+                                        "OldWithNew cert from genp"))
+                err = -28;
+
+            X509_free(newwithnew);
+            X509_free(newwithold);
+            X509_free(oldwithnew);
+        end_upd:
+            X509_free(oldwithold);
+            return err;
+        }
 #endif
     default:
         if (infotype != NID_undef) {

@@ -1003,6 +1003,155 @@ CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out)
 }
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+int selfsigned_verify_cb(int ok, X509_STORE_CTX *store_ctx)
+{
+    if (ok == 0 && store_ctx != NULL
+        && X509_STORE_CTX_get_error_depth(store_ctx) == 0
+        && X509_STORE_CTX_get_error(store_ctx)
+        == X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) {
+        int i;
+        STACK_OF(X509) *trust;
+        STACK_OF(X509) *chain = X509_STORE_CTX_get0_chain(store_ctx);
+        STACK_OF(X509) *untrusted = X509_STORE_CTX_get0_untrusted(store_ctx);
+        X509_STORE_CTX_check_issued_fn check_issued =
+            X509_STORE_CTX_get_check_issued(store_ctx);
+        X509 *cert = sk_X509_value(chain, 0); /* target cert */
+        X509 *issuer;
+
+        for (i = 0; i < sk_X509_num(untrusted); i++) {
+            cert = sk_X509_value(untrusted, i);
+            if (!X509_up_ref(cert) || !sk_X509_push(chain, cert))
+                return 0;
+        }
+
+        trust = X509_STORE_get1_all_certs(X509_STORE_CTX_get0_store(store_ctx));
+        for (i = 0; i < sk_X509_num(trust); i++) {
+            issuer = sk_X509_value(trust, i);
+            if ((*check_issued)(store_ctx, cert, issuer)) {
+                if (X509_up_ref(cert) && sk_X509_push(chain, cert))
+                    ok = 1;
+                break;
+            }
+        }
+        sk_X509_pop_free(trust, X509_free);
+        return ok;
+    } else {
+        X509_STORE *ts = X509_STORE_CTX_get0_store(store_ctx);
+        X509_STORE_CTX_verify_cb verify_cb;
+
+        if (ts == NULL
+            || (verify_cb = X509_STORE_get_verify_cb(ts)) == NULL)
+            return ok;
+        return (*verify_cb)(ok, store_ctx);
+    }
+}
+
+static int validate_ss_cert(OSSL_LIB_CTX *libctx, const char *propq,
+                            X509_STORE *ts, STACK_OF(X509) *untrusted,
+                            X509 *target)
+{
+    X509_STORE_CTX *csc = NULL;
+    int ok = 0;
+
+    if (ts == NULL || target == NULL) {
+        ERR_raise(ERR_LIB_X509, ERR_R_PASSED_NULL_PARAMETER);
+        return 0;
+    }
+
+    if ((csc = X509_STORE_CTX_new_ex(libctx, propq)) == NULL
+            || !X509_STORE_CTX_init(csc, ts, target, untrusted))
+        goto err;
+    X509_STORE_CTX_set_verify_cb(csc, selfsigned_verify_cb);
+    ok = X509_verify_cert(csc) > 0;
+
+ err:
+    X509_STORE_CTX_free(csc);
+    return ok;
+}
+
+static int verify_cert1(CMP_CTX *ctx, X509 *trusted, X509 *trans,
+                        X509 *target, const char *desc)
+{
+    X509_STORE *ts = OSSL_CMP_CTX_get0_trusted(ctx);
+    STACK_OF(X509) *untrusted = NULL;
+    int res = 0;
+
+    if (trusted != NULL && (ts = STORE_create(NULL, trusted, NULL)) == NULL)
+        goto err;
+
+    if (trans != NULL
+            && !ossl_x509_add_cert_new(&untrusted, trans, X509_ADD_FLAG_UP_REF))
+        goto err;
+
+    res = validate_ss_cert(NULL/* TODO libctx */, NULL/* TODO propq */,
+                           ts, untrusted, target);
+    if (res <= 0)
+        LOG(FL_ERR, "Verifying %s certificate received in genp failed", desc);
+
+ err:
+    sk_X509_pop_free(untrusted, X509_free);
+    if (trusted != NULL)
+        STORE_free(ts);
+    return res;
+}
+
+CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
+                             X509 *oldWithOld, X509 **newWithNew,
+                             X509 **newWithOld, X509 **oldWithNew)
+{
+    OSSL_CMP_ITAV *req, *itav;
+    CMP_err err = CMP_OK;
+
+    if (newWithNew == NULL) {
+        LOG(FL_ERR, "No newWithNew output parameter given");
+        return CMP_R_NULL_ARGUMENT;
+    }
+    *newWithNew = NULL;
+
+    if ((req = OSSL_CMP_ITAV_new_rootCaCert(oldWithOld)) == NULL) {
+        LOG(FL_ERR, "Failed to create ITAV for genm requesting rootCaKeyUpdate");
+        return CMPOSSL_error();
+    }
+    itav = get_genm_itav(ctx, req, NID_id_it_rootCaKeyUpdate, "rootCaCert");
+    if (itav == NULL)
+        return CMP_R_GET_ITAV;
+
+    if (!OSSL_CMP_ITAV_get0_rootCaKeyUpdate(itav, newWithNew,
+                                            newWithOld, oldWithNew)) {
+        err = CMPOSSL_error();
+        goto end;
+    }
+
+    if (*newWithNew == NULL) /* no root CA cert update available */
+        goto end;
+    if (!verify_cert1(ctx, oldWithOld, *newWithOld,
+                      *newWithNew, "newWithNew")) {
+        err = CMP_R_INVALID_ROOTCAUPD;
+        goto end;
+    }
+    if (*oldWithNew != NULL) {
+        if (oldWithOld == NULL) {
+            LOG(FL_WARN, "oldWithNew certificate received in genp for verifying oldWithOld, but oldWithOld was not provided");
+        } else if (!verify_cert1(ctx, *newWithNew, *oldWithNew,
+                                 oldWithOld, "oldWithOld")) {
+            err = CMP_R_INVALID_ROOTCAUPD;
+            goto end;
+        }
+    }
+
+    X509_up_ref(*newWithNew);
+    if (newWithOld != NULL && *newWithOld != NULL)
+        X509_up_ref(*newWithOld);
+    if (oldWithNew != NULL && *oldWithNew != NULL)
+        X509_up_ref(*oldWithNew);
+
+ end:
+    OSSL_CMP_ITAV_free(itav);
+    return err;
+}
+#endif
+
 char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx, char *buf,
                                   size_t bufsize)
 {

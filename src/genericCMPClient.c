@@ -515,6 +515,63 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     return err;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+static int ossl_cmp_sk_ASN1_UTF8STRING_push_str(STACK_OF(ASN1_UTF8STRING) *sk,
+                                                const char *text, int len)
+{
+    ASN1_UTF8STRING *utf8string;
+
+    if (sk == NULL || text == NULL) {
+        ERR_raise(ERR_LIB_CMP, CMP_R_NULL_ARGUMENT);
+        return 0;
+    }
+    if ((utf8string = ASN1_UTF8STRING_new()) == NULL)
+        return 0;
+    if (!ASN1_STRING_set(utf8string, text, len))
+        goto err;
+    if (!sk_ASN1_UTF8STRING_push(sk, utf8string))
+        goto err;
+    return 1;
+
+ err:
+    ASN1_UTF8STRING_free(utf8string);
+    return 0;
+}
+
+CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name)
+{
+    if (ctx == NULL) {
+        LOG(FL_ERR, "No ctx parameter given");
+        return CMP_R_INVALID_CONTEXT;
+    }
+
+    if (name == NULL) {
+        if (!OSSL_CMP_CTX_reset_geninfo_ITAVs(ctx))
+            goto err;
+    } else {
+        OSSL_CMP_ITAV *itav = NULL;
+        STACK_OF(ASN1_UTF8STRING) *sk = sk_ASN1_UTF8STRING_new_reserve(NULL, 1);
+
+        if (sk == NULL)
+            goto err;
+        if (!ossl_cmp_sk_ASN1_UTF8STRING_push_str(sk, name, (int)strlen(name))
+                || (itav = OSSL_CMP_ITAV_new0_certProfile(sk)) == NULL) {
+            sk_ASN1_UTF8STRING_pop_free(sk, ASN1_UTF8STRING_free);
+            goto err;
+        }
+        if (!OSSL_CMP_CTX_push0_geninfo_ITAV(ctx, itav)) {
+            OSSL_CMP_ITAV_free(itav);
+            goto err;
+        }
+    }
+
+    return CMP_OK;
+
+ err:
+    return CMPOSSL_error();
+}
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30100000L */
+
 CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                 OPTIONAL const EVP_PKEY *new_key,
                                 OPTIONAL const X509 *old_cert,

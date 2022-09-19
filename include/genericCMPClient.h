@@ -86,6 +86,12 @@ CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
 CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, const char *path,
                             int keep_alive, int timeout);
 
+# if OPENSSL_VERSION_NUMBER >= 0x30100000L
+/* call optionally before requests; name may be UTF8-encoded string */
+/* This calls OSSL_CMP_CTX_reset_geninfo_ITAVs() if name == NULL */
+CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name);
+# endif
+
 /*-
  * @brief fill the cert template used for certificate requests (ir/cr/p10cr/kur)
  *
@@ -146,17 +152,17 @@ CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 /* reason codes are defined in openssl/x509v3.h */
 CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr, */ int reason);
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# if OPENSSL_VERSION_NUMBER >= 0x30000000L
 /* get CA certs, discard duplicates, and verify they are non-expired CA certs */
 CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out);
-#endif
+# endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+# if OPENSSL_VERSION_NUMBER >= 0x30100000L
 /* get root CA key update certs and verify it (also as non-expired) */
 CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
                              X509 *oldWithOld, X509 **newWithNew,
                              X509 **newWithOld, X509 **oldWithNew);
-#endif
+# endif
 
 /* must be called between any of the above certificate management activities */
 CMP_err CMPclient_reinit(CMP_CTX *ctx);

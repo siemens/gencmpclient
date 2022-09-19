@@ -100,6 +100,7 @@ bool opt_unprotected_requests;
 const char *opt_cmd;
 const char *opt_infotype;
 static int infotype = NID_undef;
+const char *opt_profile;
 char *opt_geninfo;
 
 const char *opt_newkeytype;
@@ -177,6 +178,8 @@ opt_t cmp_opts[] = {
       "CMP request to send: ir/cr/p10cr/kur/rr/genm. Overrides 'use_case' if given"},
     { "infotype", OPT_TXT, {.txt = NULL}, { &opt_infotype },
       "InfoType name for requesting specific info in genm, e.g. 'caCerts'"},
+    { "profile", OPT_TXT, {.txt = NULL}, { &opt_profile },
+      "Cert profile name to place in generalInfo field of PKIHeader of requests"},
     { "geninfo", OPT_TXT, {.txt = NULL}, { (const char **)&opt_geninfo },
       "Comma-separated list of OID and value to place in generalInfo PKIHeader"},
     OPT_MORE("of form <OID>:int:<n> or <OID>:str:<s>, e.g. \'1.2.3.4:int:56789, id-kp:str:name'"),
@@ -975,6 +978,16 @@ int setup_ctx(CMP_CTX *ctx)
         goto err;
     }
 
+    if (opt_profile != NULL) {
+#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+        err = CMPclient_add_certProfile(ctx, opt_profile);
+#else
+        LOG_err("-profile option not supported by OpenSSL < 3.1");
+        err = -30;
+#endif
+        if (err!= CMP_OK)
+            goto err;
+    }
     if (opt_geninfo != NULL && (err = handle_opt_geninfo(ctx)) != CMP_OK)
         goto err;
     err = CMP_OK;

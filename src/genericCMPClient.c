@@ -108,7 +108,9 @@ X509_NAME *parse_DN(const char *str, const char *desc)
     return name;
 }
 
-CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
+CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
+                          OSSL_LIB_CTX *libctx, const char *propq,
+                          OPTIONAL LOG_cb_t log_fn,
                           OPTIONAL X509_STORE *cmp_truststore,
                           OPTIONAL const char *recipient,
                           OPTIONAL const STACK_OF(X509) *untrusted,
@@ -126,7 +128,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx, OPTIONAL LOG_cb_t log_fn,
     if (pctx == NULL) {
         return CMP_R_NULL_ARGUMENT;
     }
-    if ((ctx = OSSL_CMP_CTX_new(/* TODO libctx */NULL, NULL)) == NULL ||
+    if ((ctx = OSSL_CMP_CTX_new(libctx, propq)) == NULL ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn != NULL ?
                                  (OSSL_CMP_log_cb_t)log_fn :
                                  /* difference is in 'int' vs. 'bool' and additional TRACE value */
@@ -718,7 +720,8 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
         OSSL_CMP_CTX_get0_untrusted(ctx); /* includes extraCerts */
     STACK_OF(X509) *chain = X509_build_chain(newcert, untrusted,
                                              new_cert_truststore /* may NULL */,
-                                             0, /* TODO libctx */NULL, NULL);
+                                             0, OSSL_CMP_CTX_get0_libctx(ctx),
+                                             OSSL_CMP_CTX_get0_propq(ctx));
     if (sk_X509_num(chain) > 0)
         X509_free(sk_X509_shift(chain)); /* remove leaf (EE) cert */
     if (new_cert_truststore != NULL) {
@@ -1084,7 +1087,8 @@ static int verify_cert1(CMP_CTX *ctx, X509 *trusted, X509 *trans,
             && !ossl_x509_add_cert_new(&untrusted, trans, X509_ADD_FLAG_UP_REF))
         goto err;
 
-    res = validate_ss_cert(NULL/* TODO libctx */, NULL/* TODO propq */,
+    res = validate_ss_cert(OSSL_CMP_CTX_get0_libctx(ctx),
+                           OSSL_CMP_CTX_get0_propq(ctx),
                            ts, untrusted, target);
     if (res <= 0)
         LOG(FL_ERR, "Verifying %s certificate received in genp failed", desc);

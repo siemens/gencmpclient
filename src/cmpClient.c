@@ -670,7 +670,7 @@ static int write_PKIMESSAGE(const OSSL_CMP_MSG *msg, char **filenames)
 }
 
 /* read DER-encoded OSSL_CMP_MSG from the specified file name item */
-static OSSL_CMP_MSG *read_PKIMESSAGE(char **filenames)
+static OSSL_CMP_MSG *read_PKIMESSAGE(OSSL_CMP_CTX *ctx, char **filenames)
 {
     char *file;
     OSSL_CMP_MSG *ret;
@@ -687,7 +687,8 @@ static OSSL_CMP_MSG *read_PKIMESSAGE(char **filenames)
     file = *filenames;
     *filenames = UTIL_next_item(file);
 
-    ret = OSSL_CMP_MSG_read(file, /* TODO libctx */NULL, NULL /* propq */);
+    ret = OSSL_CMP_MSG_read(file, OSSL_CMP_CTX_get0_libctx(ctx),
+                            OSSL_CMP_CTX_get0_propq(ctx));
     if (ret == NULL)
         LOG(FL_ERR, "Cannot read PKIMessage from file '%s'", file);
     return ret;
@@ -710,7 +711,7 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
     if (opt_reqout != NULL && !write_PKIMESSAGE(req, &opt_reqout))
         goto err;
     if (opt_reqin != NULL && opt_rspin == NULL) {
-        if ((req_new = read_PKIMESSAGE(&opt_reqin)) == NULL)
+        if ((req_new = read_PKIMESSAGE(ctx, &opt_reqin)) == NULL)
             goto err;
         /*-
          * The transaction ID in req_new read from opt_reqin may not be fresh.
@@ -723,7 +724,7 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
     }
 
     if (opt_rspin != NULL) {
-        res = read_PKIMESSAGE(&opt_rspin);
+        res = read_PKIMESSAGE(ctx, &opt_rspin);
     } else {
         const OSSL_CMP_MSG *actual_req = opt_reqin != NULL ? req_new : req;
 
@@ -1095,7 +1096,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
         LOG_err("Only non-negative values allowed for -total_timeout");
         goto err;
     }
-    err = CMPclient_prepare(pctx, log_fn,
+    err = CMPclient_prepare(pctx, NULL /* libctx */, NULL /* propq */, log_fn,
                             cmp_truststore, opt_recipient,
                             untrusted_certs,
                             cmp_creds, own_truststore,

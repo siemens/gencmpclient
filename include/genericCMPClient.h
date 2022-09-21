@@ -62,6 +62,7 @@ CMP_err CMPclient_init(OPTIONAL const char *name, OPTIONAL LOG_cb_t log_fn);
 
 /* must be called first */
 CMP_err CMPclient_prepare(CMP_CTX **pctx,
+                          OSSL_LIB_CTX *libctx, const char *propq,
                           OPTIONAL LOG_cb_t log_fn,
                           OPTIONAL X509_STORE *cmp_truststore,
                           OPTIONAL const char *recipient,

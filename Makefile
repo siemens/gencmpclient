@@ -51,7 +51,7 @@ ifeq ($(LPATH),)
         OPENSSL_DIR ?= $(ROOTFS)/usr
 #   endif
     SECUTILS_DIR=libsecutils
-    SECUTILS_LIB=$(SECUTILS_DIR)/libsecutils$(DLL)
+    SECUTILS_LIB=libsecutils$(DLL)
 else
     ifeq ($(OUT_DIR),)
         override OUT_DIR = $(LPATH)
@@ -103,7 +103,7 @@ CMPCAMOCK ?= -jar ./CmpCaMock.jar
 OPENSSL ?= openssl$(EXE)
 
 MAKECMDGOALS ?= default
-ifneq ($(filter-out doc start stop install uninstall doc doc_only doc/cmpClient.md doc/cmpClient.1.gz \
+ifneq ($(filter-out doc start stop doc doc_only doc/cmpClient.md doc/cmpClient.1.gz \
     clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
     OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
     ifeq ($(OPENSSL_VERSION),)
@@ -195,8 +195,8 @@ $(LIBCMP_DIR)/include: # not: update_cmpossl
 endif
 
 ifdef CMP_STANDALONE
-LIBCMP_LIB=$(OUT_DIR)/libcmp$(DLL)
-$(LIBCMP_LIB): $(LIBCMP_INC)
+LIBCMP_LIB=libcmp$(DLL)
+$(OUT_DIR)/$(LIBCMP_LIB): $(LIBCMP_INC)
 	build_cmpossl
 endif
 
@@ -210,9 +210,9 @@ ifdef CMP_STANDALONE
 endif
 
 clean_submodules:
-	rm -rf $(SECUTILS_DIR) $(SECUTILS_LIB)
+	rm -rf $(SECUTILS_DIR) $(SECUTILS_LIB)*
 ifdef CMP_STANDALONE
-	rm -rf cmpossl $(LIBCMP_LIB)
+	rm -rf cmpossl $(OUT_DIR)/$(LIBCMP_LIB)*
 endif
 
 endif # eq ($(SECUTILS_DIR),)
@@ -222,7 +222,7 @@ build_prereq: submodules
 
 build: build_prereq build_only
 ifdef CMP_STANDALONE
-	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="$(LIBCMP_LIB)"` && \
+	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="$(OUT_DIR)/$(LIBCMP_LIB)"` && \
 	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
 	    echo "WARNING: OpenSSL version '$$LIBCMP_OPENSSL_VERSION' used for building libcmp does not match '$(OPENSSL_VERSION)' to be used for building client"; \
 	fi
@@ -594,9 +594,13 @@ DEST_INC=$(ROOTFS)/usr/include
 DEST_DOC=$(ROOTFS)/usr/share/man/man1
 GENCMPCL_HDRS=genericCMPClient.h
 .phony: install install_cli uninstall
-install: doc/$(OUTDOC) # $(OUT_DIR)/$(OUTLIB) $(OUT_DIR)/$(OUTBIN)
-	install -D $(OUT_DIR)/$(OUTLIB).$(VERSION) $(DEST_LIB)/$(OUTLIB).$(VERSION)
-	ln -sf $(OUTLIB).$(VERSION) $(DEST_LIB)/$(OUTLIB)
+install: doc/$(OUTDOC) build # $(OUT_DIR)/$(OUTLIB) $(OUT_DIR)/$(OUTBIN)
+	install -D $(OUT_DIR)/$(OUTLIB) $(DEST_LIB)/
+	install $(SECUTILS_LIB).* $(DEST_LIB)/
+ifdef CMP_STANDALONE
+	install $(OUT_DIR)/$(LIBCMP_LIB).* $(DEST_LIB)/
+endif
+	ln -sf $(OUTLIB) $(DEST_LIB)/$(OUTLIB).$(VERSION)
 #install_headers:
 	find include -type f -name $(GENCMPCL_HDRS) -exec install -Dm 0644 '{}' '$(ROOTFS)/usr/{}' ';'
 #install_bins:
@@ -609,6 +613,10 @@ install: doc/$(OUTDOC) # $(OUT_DIR)/$(OUTLIB) $(OUT_DIR)/$(OUTBIN)
 
 uninstall:
 	rm -f $(DEST_LIB)/$(OUTLIB){,.$(VERSION)}
+	rm -f $(DEST_LIB)/$(SECUTILS_LIB).*
+ifdef CMP_STANDALONE
+	rm -f $(DEST_LIB)/$(LIBCMP_LIB).*
+endif
 	find include -type f -name $(GENCMPCL_HDRS) -exec rm '$(ROOTFS)/usr/{}' ';'
 	rm -f $(DEST_BIN)/$(OUTBIN)
 	rm -f $(DEST_DOC)/$(OUTDOC)

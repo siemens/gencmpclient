@@ -979,13 +979,13 @@ int setup_ctx(CMP_CTX *ctx)
     }
 
     if (opt_profile != NULL) {
-#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+#if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L
         err = CMPclient_add_certProfile(ctx, opt_profile);
 #else
-        LOG_err("-profile option not supported by OpenSSL < 3.1");
+        LOG_err("-profile option is not supported for OpenSSL < 3.0");
         err = -30;
 #endif
-        if (err!= CMP_OK)
+        if (err != CMP_OK)
             goto err;
     }
     if (opt_geninfo != NULL && (err = handle_opt_geninfo(ctx)) != CMP_OK)
@@ -1334,6 +1334,57 @@ err:
     return ret;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# if OPENSSL_VERSION_NUMBER < 0x30200000L
+static int add_object(unsigned char *data, int len, int nid, const char *name)
+{
+    ASN1_OBJECT *obj;
+    int res;
+
+    ERR_set_mark();
+    res = OBJ_nid2obj(nid) != NULL;
+    ERR_pop_to_mark();
+    if (res)
+        return 1;
+
+    if ((obj = ASN1_OBJECT_create(nid, data, len, name, name)) == NULL)
+        return 0;
+    res = OBJ_add_object(obj) != NID_undef;
+    ASN1_OBJECT_free(obj);
+    if (!res)
+        LOG(FL_ERR, "Error adding info for ASN.1 object %s", name);
+    return res;
+}
+# endif
+#endif
+
+/* Add any missing OIDs needed for genm */
+static int complete_genm_asn1_objects(void)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# if OPENSSL_VERSION_NUMBER < 0x30200000L
+    static unsigned char so_rootCaCert[] =
+        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x14 };
+    static unsigned char so_certProfile[] =
+        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x15 };
+#  if OPENSSL_VERSION_NUMBER < 0x30000000L
+    static unsigned char so_rootCaKeyUpdate[] =
+        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x12 };
+
+    if (!add_object(so_rootCaKeyUpdate, sizeof(so_rootCaKeyUpdate),
+                    NID_id_it_rootCaKeyUpdate, "id-it-rootCaKeyUpdate"))
+        return -29;
+#  endif
+    if (!add_object(so_rootCaCert, sizeof(so_rootCaCert),
+                    NID_id_it_rootCaCert, "id-it-rootCaCert")
+        || !add_object(so_certProfile, sizeof(so_certProfile),
+                       NID_id_it_certProfile, "id-it-certProfile"))
+        return -29;
+# endif
+#endif
+    return CMP_OK;
+}
+
 static CMP_err check_options(enum use_case use_case)
 {
     if (opt_centralkeygen) {
@@ -1362,12 +1413,14 @@ static CMP_err check_options(enum use_case use_case)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
             if (strcmp(opt_infotype, "caCerts") == 0
                 || strcmp(opt_infotype, "certReqTemplate") == 0)
-                LOG_info("caCerts and certReqTemplate are not supported by OpenSSL < 3.0");
+                LOG(FL_INFO, "infoType %s is not supported for OpenSSL < 3.0",
+                    opt_infotype);
 #endif
-#if OPENSSL_VERSION_NUMBER < 0x30100000L
+#if OPENSSL_VERSION_NUMBER < 0x30200000L && OPENSSL_VERSION_NUMBER < 0x30000000L
             if (strcmp(opt_infotype, "rootCaCert") == 0
                 || strcmp(opt_infotype, "crlStatusList") == 0)
-            LOG_info("rootCaCert and crlStatusList are not supported by OpenSSL < 3.1");
+                LOG(FL_INFO, "infoType %s is not supported for OpenSSL < 3.0",
+                    opt_infotype);
 #endif
             return -31;
         }
@@ -1614,8 +1667,8 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
             LOG_warn("-oldcert option is ignored for 'genm' command");
         } else {
             *oldcert = CERT_load(opt_oldcert, opt_keypass,
-                                 use_case == update ? "certificate to be updated" :
-                                 use_case == revocation ? "certificate to be revoked" :
+                                 use_case == update ? "cert to be updated" :
+                                 use_case == revocation ? "cert to be revoked" :
                                  "reference certificate (oldcert)",
                                  -1 /* no type check */, vpm);
             if (*oldcert == NULL || !OSSL_CMP_CTX_set1_oldCert(ctx, *oldcert))
@@ -1813,8 +1866,7 @@ static CMP_err do_genm(CMP_CTX *ctx)
                 LOG_warn("no CA certificate available");
                 cacerts = sk_X509_new_null();
             }
-            if (CERTS_save(cacerts, opt_cacertsout,
-                                  "caCerts from genp") < 0) {
+            if (CERTS_save(cacerts, opt_cacertsout, "caCerts from genp") < 0) {
                 LOG(FL_ERR, "Failed to store caCerts from genp in %s",
                     opt_cacertsout);
                 err = -25;
@@ -1823,7 +1875,7 @@ static CMP_err do_genm(CMP_CTX *ctx)
         CERTS_free(cacerts);
         return err;
 #endif
-#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+#if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L
     case NID_id_it_rootCaCert:
         if (opt_newwithnew == NULL) {
             LOG(FL_ERR, "Missing -newwithnew option for -infotype rootCaCert");
@@ -1874,7 +1926,7 @@ static CMP_err do_genm(CMP_CTX *ctx)
             OSSL_CMP_ITAV *req =
                 OSSL_CMP_ITAV_create(OBJ_nid2obj(infotype), NULL);
 
-            LOG(FL_WARN, "No specific support for -infotype %s avaiable",
+            LOG(FL_WARN, "No specific support for -infotype %s available",
                 opt_infotype);
             if (req == NULL || !OSSL_CMP_CTX_push0_genm_ITAV(ctx, req)) {
                 LOG(FL_ERR, "Failed to create ITAV for genm");
@@ -1905,6 +1957,8 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     X509 *oldcert = NULL;
     X509_REQ *csr = NULL;
 
+    if ((err = complete_genm_asn1_objects()) != CMP_OK)
+        goto err;
     if ((err = check_options(use_case)) != CMP_OK)
         goto err;
     if ((err = prepare_CMP_client(&ctx, use_case, log_fn)) != CMP_OK) {

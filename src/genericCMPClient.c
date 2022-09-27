@@ -515,7 +515,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     return err;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+#if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L
 static int ossl_cmp_sk_ASN1_UTF8STRING_push_str(STACK_OF(ASN1_UTF8STRING) *sk,
                                                 const char *text, int len)
 {
@@ -570,7 +570,7 @@ CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name)
  err:
     return CMPOSSL_error();
 }
-#endif /* OPENSSL_VERSION_NUMBER >= 0x30100000L */
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L */
 
 CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                 OPTIONAL const EVP_PKEY *new_key,
@@ -1063,7 +1063,7 @@ CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out)
 }
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+#if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L
 int selfsigned_verify_cb(int ok, X509_STORE_CTX *store_ctx)
 {
     if (ok == 0 && store_ctx != NULL

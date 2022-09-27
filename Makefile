@@ -115,7 +115,7 @@ ifneq ($(filter-out doc start stop doc doc_only doc/cmpClient.md doc/cmpClient.1
         $(info enabling compilation quirks for OpenSSL 1.0.2)
         OSSL_VERSION_QUIRKS+=-Wno-discarded-qualifiers -Wno-unused-parameter
     endif
-    ifeq ($(shell expr "$(OPENSSL_VERSION)" \<= 3.1),1)
+    ifeq ($(shell expr "$(OPENSSL_VERSION)" \<= 3.2),1)
         $(info enabling compilation with standalone CMP library)
         CMP_STANDALONE=1
     endif

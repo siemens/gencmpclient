@@ -86,7 +86,7 @@ CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
 CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, const char *path,
                             int keep_alive, int timeout);
 
-# if OPENSSL_VERSION_NUMBER >= 0x30100000L
+# if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L
 /* call optionally before requests; name may be UTF8-encoded string */
 /* This calls OSSL_CMP_CTX_reset_geninfo_ITAVs() if name == NULL */
 CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name);
@@ -157,7 +157,7 @@ CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr,
 CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out);
 # endif
 
-# if OPENSSL_VERSION_NUMBER >= 0x30100000L
+# if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L
 /* get root CA key update certs and verify it (also as non-expired) */
 CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
                              X509 *oldWithOld, X509 **newWithNew,

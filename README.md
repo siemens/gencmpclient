@@ -45,7 +45,7 @@ The following network and development tools are needed or recommended.
 * wget (for running the demo, tested with versions 1.17, 1.18, 1.20, 1.21)
 
 The following OSS components are used.
-* OpenSSL development edition (tested with versions 1.0.2, 1.1.0, 1.1.1, 3.0)
+* OpenSSL development edition; supported versions: 1.1.1, 3.0, 3.1
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
 * [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
   a CMP+HTTP extension to OpenSSL, needed at least when using OpenSSL 1.x

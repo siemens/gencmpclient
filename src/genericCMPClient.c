@@ -1061,6 +1061,36 @@ CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out)
     OSSL_CMP_ITAV_free(itav);
     return err;
 }
+
+CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
+                                  OSSL_CRMF_CERTTEMPLATE **certTemplate,
+                                  OSSL_CMP_ATAVS **keySpec)
+{
+    OSSL_CMP_ITAV *req, *itav;
+    CMP_err err = CMP_OK;
+
+    if (keySpec != NULL)
+        *keySpec = NULL;
+    if (certTemplate == NULL) {
+        LOG(FL_ERR, "No certTemplate parameter given");
+        return CMP_R_NULL_ARGUMENT;
+    }
+    *certTemplate = NULL;
+
+    if ((req = OSSL_CMP_ITAV_new0_certReqTemplate(NULL, NULL)) == NULL) {
+        LOG(FL_ERR, "Failed to create ITAV for genm requesting certReqTemplate");
+        return CMPOSSL_error();
+    }
+    itav = get_genm_itav(ctx, req, NID_id_it_certReqTemplate, "certReqTemplate");
+    if (itav == NULL)
+        return CMP_R_GET_ITAV;
+
+    if (!OSSL_CMP_ITAV_get1_certReqTemplate(itav, certTemplate, keySpec))
+        err = CMPOSSL_error();
+
+    OSSL_CMP_ITAV_free(itav);
+    return err;
+}
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L

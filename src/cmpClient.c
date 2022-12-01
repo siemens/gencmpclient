@@ -84,6 +84,7 @@ const char *opt_oldwithold;
 const char *opt_newwithnew;
 const char *opt_newwithold;
 const char *opt_oldwithnew;
+const char *opt_template;
 
 const char *opt_ref;
 const char *opt_secret;
@@ -183,6 +184,8 @@ opt_t cmp_opts[] = {
     { "geninfo", OPT_TXT, {.txt = NULL}, { (const char **)&opt_geninfo },
       "Comma-separated list of OID and value to place in generalInfo PKIHeader"},
     OPT_MORE("of form <OID>:int:<n> or <OID>:str:<s>, e.g. \'1.2.3.4:int:56789, id-kp:str:name'"),
+    { "template", OPT_TXT, {.txt = NULL}, { &opt_template },
+      "File to save certTemplate received in genp with id-it-certReqTemplate"},
 
     OPT_HEADER("Certificate enrollment"),
     { "newkeytype", OPT_TXT, {.txt = NULL}, { &opt_newkeytype },
@@ -1367,18 +1370,30 @@ static int complete_genm_asn1_objects(void)
         { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x14 };
     static unsigned char so_certProfile[] =
         { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x15 };
+    static unsigned char so_algId[] =
+        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x05, 0x01, 0x0B };
+    static unsigned char so_rsaKeyLen[] =
+        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x05, 0x01, 0x0C };
 #  if OPENSSL_VERSION_NUMBER < 0x30000000L
     static unsigned char so_rootCaKeyUpdate[] =
         { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x12 };
+    static unsigned char so_certReqTemplate[] =
+        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x13 };
 
     if (!add_object(so_rootCaKeyUpdate, sizeof(so_rootCaKeyUpdate),
                     NID_id_it_rootCaKeyUpdate, "id-it-rootCaKeyUpdate"))
+        || !add_object(so_certReqTemplate, sizeof(so_certReqTemplate),
+                       NID_id_it_certReqTemplate, "id-it-certReqTemplate"))
         return -29;
 #  endif
     if (!add_object(so_rootCaCert, sizeof(so_rootCaCert),
                     NID_id_it_rootCaCert, "id-it-rootCaCert")
         || !add_object(so_certProfile, sizeof(so_certProfile),
-                       NID_id_it_certProfile, "id-it-certProfile"))
+                       NID_id_it_certProfile, "id-it-certProfile")
+        || !add_object(so_algId, sizeof(so_algId),
+                       NID_id_regCtrl_algId, "id-regCtrl-algId")
+        || !add_object(so_rsaKeyLen, sizeof(so_rsaKeyLen),
+                       NID_id_regCtrl_rsaKeyLen, "id-regCtrl-rsaKeyLen"))
         return -29;
 # endif
 #endif
@@ -1437,6 +1452,13 @@ static CMP_err check_options(enum use_case use_case)
             LOG(FL_WARN, "-newwithold %s", msg);
         if (opt_oldwithnew != NULL)
             LOG(FL_WARN, "-oldwithnew %s", msg);
+    }
+    if (use_case != genm
+        || (opt_infotype != NULL && strcmp(opt_infotype, "certReqTemplate") != 0)) {
+        const char *msg = "option is ignored unless -cmd 'genm' and -infotype 'certReqTemplate' is given";
+
+        if (opt_template != NULL)
+            LOG(FL_WARN, "-template %s", msg);
     }
 
     if (!opt_secret && ((opt_cert == NULL) != (opt_key == NULL))) {
@@ -1847,6 +1869,41 @@ static int print_itavs(const STACK_OF(OSSL_CMP_ITAV) *itavs)
     return ret;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static int save_template(const char *file, const OSSL_CRMF_CERTTEMPLATE *tmpl)
+{
+    BIO *bio = BIO_new_file(file, "wb");
+    CMP_err res = CMP_OK;
+
+    if (bio == NULL) {
+        LOG(FL_ERR, "error saving certTemplate from genp: cannot open file %s",
+            file);
+        return -53;
+    }
+    if (!ASN1_i2d_bio_of(OSSL_CRMF_CERTTEMPLATE, i2d_OSSL_CRMF_CERTTEMPLATE,
+                         bio, tmpl)) {
+        LOG(FL_ERR, "error saving certTemplate from genp: cannot write file %s",
+            file);
+        res = -53;;
+    } else {
+        LOG(FL_INFO, "stored certTemplate from genp to file '%s'", file);
+    }
+    BIO_free(bio);
+    return res;
+}
+
+static const char *nid_name(int nid)
+{
+    const char *name = OBJ_nid2ln(nid);
+
+    if (name == NULL)
+        name = OBJ_nid2sn(nid);
+    if (name == NULL)
+        name = "<unknown OID>";
+    return name;
+}
+#endif
+
 static CMP_err do_genm(CMP_CTX *ctx)
 {
     switch (infotype) {
@@ -1920,7 +1977,88 @@ static CMP_err do_genm(CMP_CTX *ctx)
             X509_free(oldwithold);
             return err;
         }
+
+
+    case NID_id_it_certReqTemplate:
+        if (opt_template == NULL) {
+            LOG(FL_ERR, "Missing -template option for -infotype certReqTemplate");
+            return -24;
+        }
+
+        OSSL_CRMF_CERTTEMPLATE *certTemplate;
+        OSSL_CMP_ATAVS *keySpec;
+        err = CMPclient_certReqTemplate(ctx, &certTemplate, &keySpec);
+
+        if (err != CMP_OK)
+            return err;
+        if (certTemplate == NULL) {
+            LOG_warn("no certificate request template available");
+            if (!delete_file(opt_template, "certTemplate from genp"))
+                return -52;
+            return CMP_OK;
+        }
+        err = save_template(opt_template, certTemplate);
+        OSSL_CRMF_CERTTEMPLATE_free(certTemplate);
+        if (err != CMP_OK || keySpec == NULL)
+            goto tmpl_end;
+
+        const char *desc = "specifications contained in keySpec from genp";
+        BIO *mem = BIO_new(BIO_s_mem());
+        if (mem == NULL) {
+            LOG(FL_ERR, "Out of memory - cannot dump key %s", desc);
+            goto tmpl_end;
+        }
+        BIO_printf(mem, "Key %s:\n", desc);
+
+        int i, n = sk_OSSL_CMP_ATAV_num(keySpec);
+        for (i = 0; i < n; i++) {
+            OSSL_CMP_ATAV *atav = sk_OSSL_CMP_ATAV_value(keySpec, i);
+            ASN1_OBJECT *type = OSSL_CMP_ATAV_get0_type(atav /* may be NULL */);
+            int nid = OBJ_obj2nid(type);
+
+            switch (nid) {
+            case NID_id_regCtrl_algId:
+                {
+                    X509_ALGOR *alg = OSSL_CMP_ATAV_get0_algId(atav);
+                    const ASN1_OBJECT *oid;
+                    int paramtype;
+                    const void *param;
+
+                    X509_ALGOR_get0(&oid, &paramtype, &param, alg);
+                    BIO_printf(mem, "Key algorithm: ");
+                    i2a_ASN1_OBJECT(mem, oid);
+                    if (paramtype == V_ASN1_UNDEF || alg->parameter == NULL) {
+                        BIO_printf(mem, "\n");
+                    } else {
+                        BIO_printf(mem, " - ");
+                        ASN1_item_print(mem, (const ASN1_VALUE *)alg,
+                                        0, ASN1_ITEM_rptr(X509_ALGOR), NULL);
+                    }
+                }
+                break;
+            case NID_id_regCtrl_rsaKeyLen:
+                BIO_printf(mem, "Key algorithm: RSA %d bit\n",
+                           OSSL_CMP_ATAV_get_rsaKeyLen(atav));
+                break;
+            default:
+                BIO_printf(mem, "Invalid key spec: %s\n", nid_name(nid));
+                break;
+            }
+        }
+        BIO_printf(mem, "End of key %s", desc);
+
+        const char *p;
+        long len = BIO_get_mem_data(mem, &p);
+        if (len > INT_MAX)
+            LOG(FL_ERR, "Info too large - cannot dump key %s", desc);
+        else
+            LOG(FL_INFO, "%.*s", (int)len, p);
+        BIO_free(mem);
+    tmpl_end:
+        sk_OSSL_CMP_ATAV_pop_free(keySpec, OSSL_CMP_ATAV_free);
+        return err;
 #endif
+
     default:
         if (infotype != NID_undef) {
             OSSL_CMP_ITAV *req =

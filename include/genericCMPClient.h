@@ -155,6 +155,10 @@ CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr,
 # if OPENSSL_VERSION_NUMBER >= 0x30000000L
 /* get CA certs, discard duplicates, and verify they are non-expired CA certs */
 CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out);
+/* get certificate request template and related key specifications */
+CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
+                                  OSSL_CRMF_CERTTEMPLATE **certTemplate,
+                                  OSSL_CMP_ATAVS **keySpec);
 # endif
 
 # if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L

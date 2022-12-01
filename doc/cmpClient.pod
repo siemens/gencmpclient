@@ -43,6 +43,7 @@ Generic message options:
 [B<-infotype> I<name>]
 [B<-profile> I<name>]
 [B<-geninfo> I<OID:int:N>]
+[B<-template> I<filename>]
 
 Certificate enrollment options:
 
@@ -290,7 +291,8 @@ ITAV B<infoType>s is printed to stdout.
 Set InfoType name to use for requesting specific info in B<genm>,
 e.g., C<signKeyPairTypes>.
 
-So far, there is specific support for C<caCerts> and C<rootCaCert>.
+So far, there is specific support for C<caCerts>, C<rootCaCert>,
+and C<certReqTemplate>.
 
 =item  B<-profile> I<name>
 
@@ -304,6 +306,13 @@ the PKIHeader of requests messages.
 Each InfoTypeAndValue gives an OID and an integer or string value of the form
 I<OID>:int:I<number> or I<OID>:str:I<text>,
 e.g., C<'1.2.3.4:int:56789, id-kp:str:name'>.
+
+=item B<-template> I<filename>
+
+The file to save any CRMF certTemplate in DER format
+received in a genp message with id-it-certReqTemplate.
+
+Note: any keySpec field contents received are logged as INFO.
 
 =back
 

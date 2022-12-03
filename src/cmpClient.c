@@ -85,6 +85,8 @@ const char *opt_newwithnew;
 const char *opt_newwithold;
 const char *opt_oldwithnew;
 const char *opt_template;
+const char *opt_oldcrl;
+const char *opt_crlout;
 
 const char *opt_ref;
 const char *opt_secret;
@@ -185,7 +187,7 @@ opt_t cmp_opts[] = {
       "Comma-separated list of OID and value to place in generalInfo PKIHeader"},
     OPT_MORE("of form <OID>:int:<n> or <OID>:str:<s>, e.g. \'1.2.3.4:int:56789, id-kp:str:name'"),
     { "template", OPT_TXT, {.txt = NULL}, { &opt_template },
-      "File to save certTemplate received in genp with id-it-certReqTemplate"},
+      "File to save certTemplate received in genp of type certReqTemplate"},
 
     OPT_HEADER("Certificate enrollment"),
     { "newkeytype", OPT_TXT, {.txt = NULL}, { &opt_newkeytype },
@@ -244,6 +246,7 @@ opt_t cmp_opts[] = {
       "Certificate to be updated (defaulting to -cert) or to be revoked in rr;"},
     OPT_MORE("also used as reference (defaulting to -cert) for subject DN and SANs."),
     OPT_MORE("Its issuer used as recipient unless -srvcert, -recipient or -issuer given"),
+    OPT_MORE("It is also used for CRLSource data in genm of type crlStatusList"),
     { "revreason", OPT_NUM, {.num = CRL_REASON_NONE},
       { (const char **) &opt_revreason },
       "Reason code to include in revocation request (rr)."},
@@ -309,13 +312,17 @@ opt_t cmp_opts[] = {
       { &opt_cacerts_dir_format },
       "Format to use for saving those certs. Default \"pem\""},
     { "oldwithold", OPT_TXT, {.txt = NULL}, { &opt_oldwithold },
-      "Root CA certificate to request update for in genm with id-it-rootCaCert"},
+      "Root CA certificate to request update for in genm of type rootCaCert"},
     { "newwithnew", OPT_TXT, {.txt = NULL}, { &opt_newwithnew },
-      "File to save NewWithNew cert received in genp with id-it-rootCaKeyUpdate"},
+      "File to save NewWithNew cert received in genp of type rootCaKeyUpdate"},
     { "newwithold", OPT_TXT, {.txt = NULL}, { &opt_newwithold },
-      "File to save NewWithOld cert received in genp with id-it-rootCaKeyUpdate"},
+      "File to save NewWithOld cert received in genp of type rootCaKeyUpdate"},
     { "oldwithnew", OPT_TXT, {.txt = NULL}, { &opt_oldwithnew },
-      "File to save OldWithNew cert received in genp with id-it-rootCaKeyUpdate"},
+      "File to save OldWithNew cert received in genp of type rootCaKeyUpdate"},
+    { "oldcrl", OPT_TXT, {.txt = NULL}, { &opt_oldcrl },
+      "CRL to request update for in genm of type crlStatusList"},
+    { "crlout", OPT_TXT, {.txt = NULL}, { &opt_crlout },
+      "File to save new CRL received in genp of type 'crls'"},
 
     OPT_HEADER("Client authentication and protection"),
     { "ref", OPT_TXT, {.txt = NULL}, { &opt_ref },
@@ -1370,6 +1377,10 @@ static int complete_genm_asn1_objects(void)
         { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x14 };
     static unsigned char so_certProfile[] =
         { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x15 };
+    static unsigned char so_crlStatusList[] =
+        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x16 };
+    static unsigned char so_crls[] =
+        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x17 };
     static unsigned char so_algId[] =
         { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x05, 0x01, 0x0B };
     static unsigned char so_rsaKeyLen[] =
@@ -1390,6 +1401,10 @@ static int complete_genm_asn1_objects(void)
                     NID_id_it_rootCaCert, "id-it-rootCaCert")
         || !add_object(so_certProfile, sizeof(so_certProfile),
                        NID_id_it_certProfile, "id-it-certProfile")
+        || !add_object(so_crlStatusList, sizeof(so_crlStatusList),
+                       NID_id_it_crlStatusList, "id-it-crlStatusList")
+        || !add_object(so_crls, sizeof(so_crls),
+                       NID_id_it_crls, "id-it-crls")
         || !add_object(so_algId, sizeof(so_algId),
                        NID_id_regCtrl_algId, "id-regCtrl-algId")
         || !add_object(so_rsaKeyLen, sizeof(so_rsaKeyLen),
@@ -1415,8 +1430,10 @@ static CMP_err check_options(enum use_case use_case)
         opt_centralkeygen = true;
 
     if (opt_infotype == NULL) {
-        if (use_case == genm)
-            LOG_warn("no -infotype option given for genm");
+        if (use_case == genm) {
+            LOG_err("no -infotype option given for genm");
+            return -55;
+        }
     } else if (use_case != genm) {
         LOG_warn("-infotype option is ignored for commands other than 'genm'");
     } else {
@@ -1440,8 +1457,7 @@ static CMP_err check_options(enum use_case use_case)
             return -31;
         }
     }
-    if (use_case != genm
-        || (opt_infotype != NULL && strcmp(opt_infotype, "rootCaCert") != 0)) {
+    if (use_case != genm || strcmp(opt_infotype, "rootCaCert")) {
         const char *msg = "option is ignored unless -cmd 'genm' and -infotype 'rootCaCert' is given";
 
         if (opt_oldwithold != NULL)
@@ -1453,12 +1469,17 @@ static CMP_err check_options(enum use_case use_case)
         if (opt_oldwithnew != NULL)
             LOG(FL_WARN, "-oldwithnew %s", msg);
     }
-    if (use_case != genm
-        || (opt_infotype != NULL && strcmp(opt_infotype, "certReqTemplate") != 0)) {
+    if (use_case != genm || strcmp(opt_infotype, "certReqTemplate") != 0) {
         const char *msg = "option is ignored unless -cmd 'genm' and -infotype 'certReqTemplate' is given";
 
         if (opt_template != NULL)
             LOG(FL_WARN, "-template %s", msg);
+    }
+    if (use_case != genm || strcmp(opt_infotype, "crlStatusList") != 0) {
+        const char *msg = "option is ignored unless -cmd 'genm' and -infotype 'crlStatusList' is given";
+
+        if (opt_oldcrl != NULL)
+            LOG(FL_WARN, "-oldcrl %s", msg);
     }
 
     if (!opt_secret && ((opt_cert == NULL) != (opt_key == NULL))) {
@@ -1520,8 +1541,9 @@ static CMP_err check_options(enum use_case use_case)
 
     bool crl_check = opt_crls != NULL || opt_use_cdp || opt_cdps != NULL;
     bool ocsp_check = opt_use_aia || opt_ocsp != NULL;
-    if (opt_crls_timeout >= 0 && !opt_use_cdp && opt_cdps == NULL) {
-        LOG_warn("Ignoring -crls_timeout since -use_cdp and -cdps options are not given");
+    if (opt_crls_timeout >= 0 && !opt_use_cdp && opt_cdps == NULL
+        && (use_case != genm || strcmp(opt_infotype, "certReqTemplate") != 0)) {
+        LOG_warn("Ignoring -crls_timeout since no -use_cdp, -cdps, or -infotype certReqTemplate option given");
     }
     if (opt_ocsp_timeout >= 0 && !ocsp_check) {
         LOG_warn("Ignoring -ocsp_timeout since -use_aia and -ocsp options are not given");
@@ -1681,12 +1703,13 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
     }
     if (use_case != revocation && opt_revreason != CRL_REASON_NONE)
         LOG_warn("-revreason option is ignored for commands other than 'rr'");
-    if (use_case != update && use_case != revocation && opt_oldcert != NULL)
-        LOG_warn("-oldcert option used only as reference cert for commands other than 'kur' and 'rr'");
+    if (use_case != update && use_case != revocation && opt_oldcert != NULL
+        && !(use_case == genm && strcmp(opt_infotype, "crlStatusList") == 0))
+        LOG_warn("-oldcert option used only as reference cert");
 
     if (opt_oldcert != NULL) {
-        if (use_case == genm) {
-            LOG_warn("-oldcert option is ignored for 'genm' command");
+        if (use_case == genm && strcmp(opt_infotype, "crlStatusList") != 0) {
+            LOG_warn("-oldcert option is ignored for 'genm' command except with -infotype crlStatusList");
         } else {
             *oldcert = CERT_load(opt_oldcert, opt_keypass,
                                  use_case == update ? "cert to be updated" :
@@ -1904,7 +1927,7 @@ static const char *nid_name(int nid)
 }
 #endif
 
-static CMP_err do_genm(CMP_CTX *ctx)
+static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
 {
     switch (infotype) {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
@@ -1978,6 +2001,44 @@ static CMP_err do_genm(CMP_CTX *ctx)
             return err;
         }
 
+    case NID_id_it_crlStatusList:
+        if (opt_oldcrl == NULL && opt_oldcert == NULL) {
+            LOG(FL_ERR, "Missing -oldcrl and no -oldcert given for -infotype crlStatusList");
+            return -26;
+        }
+        if (opt_crlout == NULL) {
+            LOG(FL_ERR, "Missing -crlout for -infotype crlStatusList");
+            return -26;
+        }
+        {
+            X509_CRL *oldcrl = NULL, *crl = NULL;
+            CMP_err err = -27;
+
+            if (opt_oldcrl == NULL) {
+                LOG(FL_WARN, "No -oldcrl given, will use data from -oldcert");
+            } else {
+                oldcrl = CRL_load(opt_oldcrl, (int)opt_crls_timeout,
+                                  "CRL for genm with -infotype crlStatusList");
+                if (oldcrl == NULL)
+                    goto end_crlupd;
+            }
+            err = CMPclient_crlUpdate(ctx, oldcrl, oldcert, &crl);
+            if (err != CMP_OK)
+                goto end_crlupd;
+
+            const char *desc = "CRL from genp of type 'crls'";
+            if (crl == NULL) {
+                LOG_info("no CRL update available");
+                if (!delete_file(opt_crlout, desc))
+                    err = -52;
+            } else if (!FILES_store_crl(crl, opt_crlout, FORMAT_ASN1, desc)) {
+                err = -53;
+            }
+        end_crlupd:
+            X509_CRL_free(oldcrl);
+            X509_CRL_free(crl);
+            return err;
+        }
 
     case NID_id_it_certReqTemplate:
         if (opt_template == NULL) {
@@ -2057,6 +2118,9 @@ static CMP_err do_genm(CMP_CTX *ctx)
     tmpl_end:
         sk_OSSL_CMP_ATAV_pop_free(keySpec, OSSL_CMP_ATAV_free);
         return err;
+#else
+    case -1:
+        return oldcert == NULL ? 0 : 0;
 #endif
 
     default:
@@ -2142,7 +2206,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         err = CMPclient_revoke(ctx, oldcert, (int)opt_revreason);
         break;
     case genm:
-        err = do_genm(ctx);
+        err = do_genm(ctx, oldcert);
         break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);

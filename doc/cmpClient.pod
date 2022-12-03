@@ -106,6 +106,8 @@ Server authentication options:
 [B<-newwithnew> I<filename>]
 [B<-newwithold> I<filename>]
 [B<-oldwithnew> I<filename>]
+[B<-oldcrl> I<filename>]
+[B<-crlout> I<filename>]
 
 Client authentication and protection options:
 
@@ -288,16 +290,16 @@ ITAV B<infoType>s is printed to stdout.
 
 =item B<-infotype> I<name>
 
-Set InfoType name to use for requesting specific info in B<genm>,
+InfoType name to use for requesting specific info in a B<genm> request,
 e.g., C<signKeyPairTypes>.
 
-So far, there is specific support for C<caCerts>, C<rootCaCert>,
-and C<certReqTemplate>.
+There is specific support for C<caCerts>, C<rootCaCert>,
+C<certReqTemplate>, and C<crlStatusList> (CRL update retrieval).
 
 =item  B<-profile> I<name>
 
-Name of a certificate profile to place in the generalInfo field of
-the PKIHeader of requests messages.
+Name of a certificate profile to place in
+the generalInfo field of the PKIHeader of request messages.
 
 =item B<-geninfo> I<values>
 
@@ -323,7 +325,7 @@ Note: any keySpec field contents received are logged as INFO.
 =item B<-newkeytype> I<spec>
 
 In case of IR, CR, or KUR,
-generate or request a new key of the given type for the requested certifiate.
+generate or request a new key of the given type for the requested certificate.
 The I<spec> may be of the form C<EC:>I<curve> or C<RSA->I<length>.
 The key will be saved in the file specified with the B<-newkey> option.
 
@@ -532,6 +534,9 @@ default issuer entry in the requested certificate template of an IR/CR/KUR.
 Its subject is used as sender in CMP message headers if B<-cert> is not given.
 Its issuer is used as default recipient in CMP message headers
 if neither B<-recipient>, B<-srvcert>, nor B<-issuer> is given.
+
+This option is also used, along with B<-oldcrl>, to determine CRLSource data
+in a general message (genm) request of infoType C<crlStatusList>.
 
 =item B<-revreason> I<number>
 
@@ -761,8 +766,9 @@ Default is C<pem>.
 The file where to save CA certificates.
 If on a successful certificate request the response (i.e., IP, CP, or KUP)
 contains certificates in its caPubs field, they are stored in the given file.
-On a successful general message (genm) with infoType C<caCerts>, the list
-of received certificates, which may be empty, is also stored in this file.
+When receiving a genp message of infoType C<caCerts> upon a genm request
+of the same infoType, the list of received certificates, which may be empty,
+is also stored in this file.
 
 =item B<-cacerts_dir> I<dirname>
 
@@ -779,7 +785,7 @@ Default is C<pem>.
 
 =item B<-oldwithold> I<filename>
 
-The root CA certificate to include in a genm request with id-it-rootCaCert.
+The root CA certificate to include in a genm request of infoType C<rootCaCert>.
 If present and the optional oldWithNew certificate is received,
 it is verified using the newWithNew certificate as the (only) trust anchor.
 
@@ -787,7 +793,7 @@ it is verified using the newWithNew certificate as the (only) trust anchor.
 
 This option must be provided when B<-infotype> I<rootCaCert> is given.
 It specifies the file to save the newWithNew certificate
-received in a genp response with id-it-rootCaKeyUpdate.
+received in a genp message of type C<rootCaKeyUpdate>.
 If no such certificate is received, this the file (if present) is deleted
 to indicate that the requested root CA certificate update is not available.
 
@@ -805,17 +811,26 @@ the weakest trust placed in any of the B<-trusted> certificates.
 =item B<-newwithold> I<filename>
 
 The file to save any newWithOld certificate
-received in a genp response with id-it-rootCaKeyUpdate.
+received in a genp message of infoType C<rootCaKeyUpdate>.
 If no such certificate received, this is indicated by deleting the file.
 
 =item B<-oldwithnew> I<filename>
 
 The file to save any oldWithNew certificate
-received in a genp response with id-it-rootCaKeyUpdate.
+received in a genp message of infoType C<rootCaKeyUpdate>.
 If no such certificate is received, this is indicated by deleting the file.
 
-=back
+=item B<-oldcrl> I<filename>
 
+The CRL to use for obtaining CRLSource and thisUpdate data
+in a genm request of infoType C<crlStatusList>.
+
+=item B<-crlout> I<filename>
+
+The file to save any CRL in DER format
+received in a genp message of infoType C<crls>.
+
+=back
 
 =head2 Client authentication options
 

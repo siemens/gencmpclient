@@ -38,6 +38,8 @@ typedef int CMP_err;
 # define CMP_R_GET_ITAV           249
 # define CMP_R_INVALID_CACERTS    248
 # define CMP_R_INVALID_ROOTCAUPD  247
+# define CMP_R_GENERATE_CRLSTATUS 246
+# define CMP_R_INVALID_CRL_LIST   245
 # define CMP_R_INVALID_PARAMETERS CMP_R_INVALID_ARGS
 
 /* further error codes are defined in ../cmpossl/include/openssl/cmperr.h */
@@ -166,6 +168,9 @@ CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
 CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
                              X509 *oldWithOld, X509 **newWithNew,
                              X509 **newWithOld, X509 **oldWithNew);
+/* get the latest CRL according to info in last known CRL or cert DPN/issuer */
+CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, const X509_CRL *last_crl,
+                            const X509 *cert, X509_CRL **crl);
 # endif
 
 /* must be called between any of the above certificate management activities */
@@ -190,6 +195,7 @@ EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
                    OPTIONAL const char *engine, OPTIONAL const char *desc);
 X509_REQ *CSR_load(const char *file, OPTIONAL const char *desc);
 
+X509_CRL *CRL_load(const char *url, int timeout, OPTIONAL const char *desc);
 STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout,
                               OPTIONAL const char *desc);
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls);

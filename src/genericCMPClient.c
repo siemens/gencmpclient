@@ -1241,6 +1241,72 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
     OSSL_CMP_ITAV_free(itav);
     return err;
 }
+
+CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, const X509_CRL *last_crl,
+                            const X509 *cert, X509_CRL **crl)
+{
+    OSSL_CMP_CRLSTATUS *status = NULL;
+    STACK_OF(OSSL_CMP_CRLSTATUS) *list = NULL;
+    OSSL_CMP_ITAV *req = NULL, *itav = NULL;
+    STACK_OF(X509_CRL) *crls;
+    CMP_err err = CMP_OK;
+
+    if (crl == NULL) {
+        LOG(FL_ERR, "No crl output parameter given");
+        return CMP_R_NULL_ARGUMENT;
+    }
+    *crl = NULL;
+
+    if ((status = OSSL_CMP_CRLSTATUS_create(last_crl, cert, 1)) == NULL) {
+        LOG(FL_ERR, "Cannot set up CRLStatus structure");
+        err = CMP_R_GENERATE_CRLSTATUS;
+        goto end;
+    }
+    if ((list = sk_OSSL_CMP_CRLSTATUS_new_reserve(NULL, 1)) == NULL) {
+        LOG(FL_ERR, "Cannot set up CRLStatus list");
+        err = CMP_R_GENERATE_CRLSTATUS;
+        goto end;
+    }
+    (void)sk_OSSL_CMP_CRLSTATUS_push(list, status); /* cannot fail */
+
+    if ((req = OSSL_CMP_ITAV_new0_crlStatusList(list)) == NULL) {
+        LOG(FL_ERR, "Failed to create ITAV for genm requesting crlUpdate");
+        err = CMPOSSL_error();
+        goto end;
+    }
+    status = NULL;
+    list = NULL;
+
+    itav = get_genm_itav(ctx, req, NID_id_it_crls, "crl");
+    if (itav == NULL) {
+        err = CMP_R_GET_ITAV;
+        goto end;
+    }
+
+    if (!OSSL_CMP_ITAV_get0_crls(itav, &crls)) {
+        err = CMP_R_INVALID_CRL_LIST;
+        goto end;
+    }
+    if (crls == NULL) /* no CRL update available */
+        goto end;
+    if (sk_X509_CRL_num(crls) != 1) {
+        LOG(FL_ERR, "Unexpected number of CRLs in genp: %d",
+            sk_X509_CRL_num(crls));
+        err = CMP_R_INVALID_CRL_LIST;
+        goto end;
+    }
+
+    if ((*crl = sk_X509_CRL_value(crls, 0)) == NULL || !X509_CRL_up_ref(*crl)) {
+        *crl = NULL;
+        err = CMPOSSL_error();
+    }
+
+ end:
+    OSSL_CMP_CRLSTATUS_free(status);
+    sk_OSSL_CMP_CRLSTATUS_free(list);
+    OSSL_CMP_ITAV_free(itav);
+    return err;
+}
 #endif
 
 char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx, char *buf,
@@ -1304,6 +1370,12 @@ X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc,
                        OPTIONAL X509_VERIFY_PARAM *vpm)
 {
     return STORE_load_check(trusted_certs, desc, vpm, NULL);
+}
+
+inline
+X509_CRL *CRL_load(const char *url, int timeout, OPTIONAL const char *desc)
+{
+    return FILES_load_crl_autofmt(url, FORMAT_ASN1, timeout, desc);
 }
 
 inline

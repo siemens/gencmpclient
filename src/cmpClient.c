@@ -785,12 +785,12 @@ static int set_name(OPTIONAL const char *str,
 
         if (n == NULL) {
             LOG(FL_ERR, "cannot parse %s DN '%s'", desc, str);
-            return -4;
+            return -03;
         }
         if (!(*set_fn) (ctx, n)) {
             X509_NAME_free(n);
             LOG_err("Out of memory");
-            return -5;
+            return -04;
         }
         X509_NAME_free(n);
     }
@@ -817,7 +817,7 @@ int setup_cert_template(CMP_CTX *ctx)
 
     if (!set_gennames(ctx, opt_sans, "Subject Alternative Name")) {
         LOG_err("Failed to set 'Subject Alternative Name' of CMP context");
-        err = -33;
+        err = -39;
         goto err;
     }
 
@@ -834,7 +834,7 @@ static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
     ASN1_UTF8STRING *text = NULL;
     OSSL_CMP_ITAV *itav;
     char *ptr = opt_geninfo, *oid, *end;
-    int ret = -32;
+    int ret = -28;
 
     do {
         while (isspace(*ptr))
@@ -911,7 +911,7 @@ static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
         if (!OSSL_CMP_CTX_push0_geninfo_ITAV(ctx, itav)) {
             LOG_err("Failed to add ITAV for geninfo of the PKI message header");
             OSSL_CMP_ITAV_free(itav);
-            return -14;
+            return -10;
         }
     } while (*ptr != '\0');
     return CMP_OK;
@@ -949,7 +949,7 @@ int setup_ctx(CMP_CTX *ctx)
             if (!OSSL_CMP_CTX_set1_extraCertsOut(ctx, certs)) {
                 LOG_err("Failed to set 'extraCerts' field of CMP context");
                 CERTS_free(certs);
-                err = -9;
+                err = -05;
                 goto err;
             }
             CERTS_free(certs);
@@ -960,12 +960,12 @@ int setup_ctx(CMP_CTX *ctx)
             || opt_popo > OSSL_CRMF_POPO_KEYENC) {
         LOG(FL_ERR, "Invalid value '%d' for popo method (must be between -1 and 2)",
             opt_popo);
-        err = -10;
+        err = -11;
         goto err;
     }
 
-    if (opt_days < 0) {
-        LOG(FL_ERR, "Invalid value '%d' for -days option (must be a non-negative number)",
+    if ((int)opt_days < 0) {
+        LOG(FL_ERR, "Only non-negative values allowed for -days",
             opt_days);
         err = -12;
         goto err;
@@ -993,7 +993,7 @@ int setup_ctx(CMP_CTX *ctx)
         err = CMPclient_add_certProfile(ctx, opt_profile);
 #else
         LOG_err("-profile option is not supported for OpenSSL < 3.0");
-        err = -30;
+        err = -29;
 #endif
         if (err != CMP_OK)
             goto err;
@@ -1016,7 +1016,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
     CREDENTIALS *cmp_creds = NULL;
     OSSL_CMP_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     const bool implicit_confirm = opt_implicit_confirm;
-    CMP_err err = -6;
+    CMP_err err = -02;
 
     use_case = use_case; /* prevent warning on unused parameter */
     const char *new_cert_trusted =
@@ -1080,10 +1080,10 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
                     STORE_load(opt_own_trusted,
                                "trusted certs for validating own CMP signer cert",
                                vpm);
-                err = -7;
+                err = -06;
                 if (own_truststore == NULL)
                     goto err;
-                err = -5;
+                err = -07;
                 /* no cert status/revocation checks done for here */
                 if (!STORE_set_parameters(own_truststore, NULL /* vpm */,
                                           false, false, NULL,
@@ -1115,8 +1115,14 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
             || opt_rspin != NULL || opt_rspout != NULL)
         transfer_fn = read_write_req_resp;
 
+    if ((int)opt_crl_maxdownload_size < 0) {
+        LOG_err("Only non-negative values allowed for -crl_maxdownload_size");
+        err = -50;
+        goto err;
+    }
     if ((int)opt_total_timeout < -1) {
         LOG_err("Only non-negative values allowed for -total_timeout");
+        err = -69;
         goto err;
     }
     err = CMPclient_prepare(pctx, NULL /* libctx */, NULL /* propq */, log_fn,
@@ -1135,7 +1141,7 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
                                   -1 /* no type check */, vpm);
 
         if (srvcert == NULL || !OSSL_CMP_CTX_set1_srvCert(*pctx, srvcert))
-            err = -3;
+            err = -8;
         X509_free(srvcert);
     }
 
@@ -1162,20 +1168,20 @@ int setup_transfer(CMP_CTX *ctx)
 
     if (opt_keep_alive < 0 || opt_keep_alive > 2) {
         LOG_err("-keep_alive argument must be 0, 1, or 2");
-        err = -15;
+        err = -13;
         goto err;
     }
 
-    if (opt_msg_timeout < 0) {
+    if ((int)opt_msg_timeout < 0) {
         LOG_err("Only non-negative values allowed for -msg_timeout");
-        err = -16;
+        err = -14;
         goto err;
     }
 
     if (opt_server == NULL) {
         if (opt_rspin == NULL) {
             LOG_err("missing -server or -rspin option");
-            err = -17;
+            err = -15;
             goto err;
         }
         if (opt_proxy != NULL)
@@ -1205,7 +1211,7 @@ int setup_transfer(CMP_CTX *ctx)
     if (opt_tls_used
             && (tls = setup_TLS(OSSL_CMP_CTX_get0_untrusted(ctx))) == NULL) {
         LOG_err("Unable to set up TLS for CMP client");
-        err = -18;
+        err = -16;
         goto err;
     }
 
@@ -1395,7 +1401,7 @@ static int complete_genm_asn1_objects(void)
                     NID_id_it_rootCaKeyUpdate, "id-it-rootCaKeyUpdate"))
         || !add_object(so_certReqTemplate, sizeof(so_certReqTemplate),
                        NID_id_it_certReqTemplate, "id-it-certReqTemplate"))
-        return -29;
+        return -20;
 #  endif
     if (!add_object(so_rootCaCert, sizeof(so_rootCaCert),
                     NID_id_it_rootCaCert, "id-it-rootCaCert")
@@ -1409,7 +1415,7 @@ static int complete_genm_asn1_objects(void)
                        NID_id_regCtrl_algId, "id-regCtrl-algId")
         || !add_object(so_rsaKeyLen, sizeof(so_rsaKeyLen),
                        NID_id_regCtrl_rsaKeyLen, "id-regCtrl-rsaKeyLen"))
-        return -29;
+        return -21;
 # endif
 #endif
     return CMP_OK;
@@ -1421,7 +1427,7 @@ static CMP_err check_options(enum use_case use_case)
         if (opt_popo > OSSL_CRMF_POPO_NONE) {
             LOG(FL_ERR, "-popo value %ld is inconsistent with -centralkeygen",
                 opt_popo);
-            return -13;
+            return -17;
         }
         opt_popo = OSSL_CRMF_POPO_NONE;
         /* TODO document the use of OSSL_CRMF_POPO_NONE for central key generation */
@@ -1432,7 +1438,7 @@ static CMP_err check_options(enum use_case use_case)
     if (opt_infotype == NULL) {
         if (use_case == genm) {
             LOG_err("no -infotype option given for genm");
-            return -55;
+            return -51;
         }
     } else if (use_case != genm) {
         LOG_warn("-infotype option is ignored for commands other than 'genm'");
@@ -1454,7 +1460,7 @@ static CMP_err check_options(enum use_case use_case)
                 LOG(FL_INFO, "infoType %s is not supported for OpenSSL < 3.0",
                     opt_infotype);
 #endif
-            return -31;
+            return -30;
         }
     }
     if (use_case != genm || strcmp(opt_infotype, "rootCaCert")) {
@@ -1484,12 +1490,12 @@ static CMP_err check_options(enum use_case use_case)
 
     if (!opt_secret && ((opt_cert == NULL) != (opt_key == NULL))) {
         LOG_err("Must give both -cert and -key options or neither");
-        return -32;
+        return -31;
     }
     if (use_case == update) {
         if (opt_oldcert == NULL && opt_csr == NULL) {
             LOG_err("Missing -oldcert for certificate to be updated and no -csr given");
-            return -33;
+            return -32;
         }
         if (opt_subject != NULL)
             LOG(FL_INFO, "Given -subject '%s' overrides the subject of '%s' for 'kur'",
@@ -1500,14 +1506,14 @@ static CMP_err check_options(enum use_case use_case)
     }
     if (!opt_unprotected_requests && opt_secret == NULL && opt_key == NULL) {
         LOG_err("Must give client credentials unless -unprotected_requests is set");
-        return -34;
+        return -33;
     }
 
     if (opt_ref == NULL && opt_cert == NULL && opt_subject == NULL) {
         /* ossl_cmp_hdr_init() takes sender name from cert or else subject */
         /* TODO maybe else take as sender default the subjectName of oldCert or p10cr */
         LOG_err("Must give -ref if no -cert and no -subject given");
-        return -35;
+        return -34;
     }
 
     if (opt_check_all && opt_check_any) {
@@ -1516,12 +1522,12 @@ static CMP_err check_options(enum use_case use_case)
 
     if (use_case == pkcs10 && opt_csr == NULL) {
         LOG_err("-csr option is missing for command 'p10cr'");
-        return -36;
+        return -35;
     }
     if (use_case == revocation) {
         if (opt_oldcert == NULL && opt_csr == NULL) {
             LOG_err("Missing -oldcert for certificate to be revoked and no fallback -csr given");
-            return -37;
+            return -36;
         }
         if (opt_oldcert != NULL && opt_csr != NULL)
             LOG_warn("Ignoring -csr since -oldcert is given for command 'rr' (revocation)");
@@ -1536,7 +1542,7 @@ static CMP_err check_options(enum use_case use_case)
     if (opt_extracerts_dir_format != NULL
             && FILES_get_format(opt_extracerts_dir_format) == FORMAT_UNDEF) {
         LOG_err("-extracerts_format not accepted");
-        return -11;
+        return -18;
     }
 
     bool crl_check = opt_crls != NULL || opt_use_cdp || opt_cdps != NULL;
@@ -1544,10 +1550,17 @@ static CMP_err check_options(enum use_case use_case)
     if (opt_crls_timeout >= 0 && !opt_use_cdp && opt_cdps == NULL
         && (use_case != genm || strcmp(opt_infotype, "certReqTemplate") != 0)) {
         LOG_warn("Ignoring -crls_timeout since no -use_cdp, -cdps, or -infotype certReqTemplate option given");
+    } else if (opt_crls_timeout < -1 ) {
+        LOG(FL_ERR, "-crls_timeout value must be >= -1");
+        return -22;
     }
     if (opt_ocsp_timeout >= 0 && !ocsp_check) {
         LOG_warn("Ignoring -ocsp_timeout since -use_aia and -ocsp options are not given");
+    } else if (opt_ocsp_timeout < -1) {
+        LOG(FL_ERR, "-ocsp_timeout value must be >= -1");
+        return -23;
     }
+    /* TODO check range of remaining numerical options */
     if ((crl_check || ocsp_check) && opt_trusted == NULL) {
         LOG_warn("Certificate status checks are enabled without providing the -trusted option");
     }
@@ -1557,11 +1570,11 @@ static CMP_err check_options(enum use_case use_case)
     }
     if ((opt_check_all || opt_check_any) && !crl_check && !ocsp_check) {
         LOG_err("-check_all or -check_any is given without any option enabling use of CRLs or OCSP");
-        return -38;
+        return -37;
     }
     if (opt_ocsp_last && !ocsp_check) {
         LOG_err("-ocsp_last is given without -ocsp or -use_aia enabling OCSP-based cert status checking");
-        return -39;
+        return -38;
     }
     if (opt_stapling && !opt_tls_used) {
         LOG_warn("-stapling option is given without -tls_used");
@@ -1633,7 +1646,7 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 pkey = FILES_load_pubkey_autofmt(file, FORMAT_PEM, pass, desc);
                 if (pkey == NULL || !OSSL_CMP_CTX_set0_newPkey(ctx, 0, pkey)) {
                     EVP_PKEY_free(pkey);
-                    return -43;
+                    return -41;
                 }
             }
         } else if (opt_csr == NULL) {
@@ -1646,14 +1659,14 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
         if (opt_subject == NULL
                 && opt_csr == NULL && opt_oldcert == NULL && opt_cert == NULL) {
             LOG_err("no -subject given for enrollment; no -csr or -oldcert or -cert available for fallback");
-            return -44;
+            return -43;
         }
 
         if ((err = setup_cert_template(ctx)) != CMP_OK)
             return err;
         if ((*exts = setup_X509_extensions(ctx)) == NULL) {
             LOG_err("Unable to set up X509 extensions for CMP client");
-            return -45;
+            return -44;
         }
         if (reqExtensions_have_SAN(*exts) && opt_sans != NULL) {
             LOG_err("Cannot have Subject Alternative Names both via -reqexts and via -sans");
@@ -1661,7 +1674,7 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
         }
         if (opt_certout == NULL) {
             LOG_err("-certout not given, nowhere to save certificate");
-            return -46;
+            return -45;
         }
     } else {
         const char *msg = "option is ignored for commands other than 'ir', 'cr', and 'kur'";
@@ -1717,7 +1730,7 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                                  "reference certificate (oldcert)",
                                  -1 /* no type check */, vpm);
             if (*oldcert == NULL || !OSSL_CMP_CTX_set1_oldCert(ctx, *oldcert))
-                return -47;
+                return -46;
         }
     }
     if (opt_csr != NULL) {
@@ -1725,9 +1738,9 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
             LOG_warn("-csr option is ignored for 'genm' command");
         } else {
             if ((*csr = CSR_load(opt_csr, "PKCS#10 CSR")) == NULL)
-                return -48;
+                return -47;
             if (!OSSL_CMP_CTX_set1_p10CSR(ctx, *csr))
-                return -49;
+                return -48;
         }
     }
     return CMP_OK;
@@ -1766,7 +1779,7 @@ CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
             LOG(FL_ERR, "Failed to store %s from %s in %s",
                 desc_certs, field, file);
             CERTS_free(certs);
-            return -50;
+            return -49;
         }
     }
 
@@ -1793,7 +1806,7 @@ CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
                     LOG(FL_ERR, "Failed to store %s cert #%d from %s in %s",
                         desc, i + 1, field, dir);
                     CERTS_free(certs);
-                    return -51;
+                    return -52;
                 }
             }
         }
@@ -1814,7 +1827,7 @@ CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds,
 
     if (!save_cert_or_delete(OSSL_CMP_CTX_get0_validatedSrvCert(ctx),
                              opt_srvcertout, "validated server cert"))
-        return -52;
+        return -53;
 
     err = save_certs(OSSL_CMP_CTX_get1_caPubs(ctx), "caPubs", "CA",
                      opt_cacertsout, opt_cacerts_dir, opt_cacerts_dir_format);
@@ -1901,13 +1914,13 @@ static int save_template(const char *file, const OSSL_CRMF_CERTTEMPLATE *tmpl)
     if (bio == NULL) {
         LOG(FL_ERR, "error saving certTemplate from genp: cannot open file %s",
             file);
-        return -53;
+        return -55;
     }
     if (!ASN1_i2d_bio_of(OSSL_CRMF_CERTTEMPLATE, i2d_OSSL_CRMF_CERTTEMPLATE,
                          bio, tmpl)) {
         LOG(FL_ERR, "error saving certTemplate from genp: cannot write file %s",
             file);
-        res = -53;;
+        res = -56;
     } else {
         LOG(FL_INFO, "stored certTemplate from genp to file '%s'", file);
     }
@@ -1934,7 +1947,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
     case NID_id_it_caCerts:
         if (opt_cacertsout == NULL) {
             LOG(FL_ERR, "Missing -cacertsout option for -infotype caCerts");
-            return -24;
+            return -57;
         }
 
         STACK_OF(X509) *cacerts = NULL;
@@ -1949,7 +1962,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             if (CERTS_save(cacerts, opt_cacertsout, "caCerts from genp") < 0) {
                 LOG(FL_ERR, "Failed to store caCerts from genp in %s",
                     opt_cacertsout);
-                err = -25;
+                err = -58;
             }
         }
         CERTS_free(cacerts);
@@ -1959,14 +1972,14 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
     case NID_id_it_rootCaCert:
         if (opt_newwithnew == NULL) {
             LOG(FL_ERR, "Missing -newwithnew option for -infotype rootCaCert");
-            return -26;
+            return -59;
         }
         {
             X509 *oldwithold = NULL;
             X509 *newwithnew = NULL;
             X509 *newwithold = NULL;
             X509 *oldwithnew = NULL;
-            CMP_err err = -27;
+            CMP_err err = -60;
 
             if (opt_oldwithold == NULL) {
                 LOG(FL_WARN, "No -oldwithold given, will use all certs given with -trusted as trust anchors for verifying the newWithNew cert");
@@ -1991,7 +2004,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
                                         "NewWithOld cert from genp")
                 || !save_cert_or_delete(oldwithnew, opt_oldwithnew,
                                         "OldWithNew cert from genp"))
-                err = -28;
+                err = -61;
 
             X509_free(newwithnew);
             X509_free(newwithold);
@@ -2004,15 +2017,15 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
     case NID_id_it_crlStatusList:
         if (opt_oldcrl == NULL && opt_oldcert == NULL) {
             LOG(FL_ERR, "Missing -oldcrl and no -oldcert given for -infotype crlStatusList");
-            return -26;
+            return -62;
         }
         if (opt_crlout == NULL) {
             LOG(FL_ERR, "Missing -crlout for -infotype crlStatusList");
-            return -26;
+            return -63;
         }
         {
             X509_CRL *oldcrl = NULL, *crl = NULL;
-            CMP_err err = -27;
+            CMP_err err = -64;
 
             if (opt_oldcrl == NULL) {
                 LOG(FL_WARN, "No -oldcrl given, will use data from -oldcert");
@@ -2030,9 +2043,9 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             if (crl == NULL) {
                 LOG_info("no CRL update available");
                 if (!delete_file(opt_crlout, desc))
-                    err = -52;
+                    err = -65;
             } else if (!FILES_store_crl(crl, opt_crlout, FORMAT_ASN1, desc)) {
-                err = -53;
+                err = -66;
             }
         end_crlupd:
             X509_CRL_free(oldcrl);
@@ -2043,7 +2056,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
     case NID_id_it_certReqTemplate:
         if (opt_template == NULL) {
             LOG(FL_ERR, "Missing -template option for -infotype certReqTemplate");
-            return -24;
+            return -67;
         }
 
         OSSL_CRMF_CERTTEMPLATE *certTemplate;
@@ -2055,7 +2068,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         if (certTemplate == NULL) {
             LOG_warn("no certificate request template available");
             if (!delete_file(opt_template, "certTemplate from genp"))
-                return -52;
+                return -68;
             return CMP_OK;
         }
         err = save_template(opt_template, certTemplate);
@@ -2132,7 +2145,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
                 opt_infotype);
             if (req == NULL || !OSSL_CMP_CTX_push0_genm_ITAV(ctx, req)) {
                 LOG(FL_ERR, "Failed to create ITAV for genm");
-                return -21;
+                return -24;
             }
         }
 
@@ -2141,17 +2154,17 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             int res = print_itavs(itavs);
 
             sk_OSSL_CMP_ITAV_pop_free(itavs, OSSL_CMP_ITAV_free);
-            return res ? CMP_OK : -22;
+            return res ? CMP_OK : -25;
         }
         if (OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_request)
             LOG(FL_ERR, "Could not obtain valid response message on genm");
-        return -23;
+        return -26;
     }
 }
 
 static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 {
-    CMP_err err = -1;
+    CMP_err err = -01;
     CMP_CTX *ctx = NULL;
     EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
@@ -2179,7 +2192,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         || opt_revreason > CRL_REASON_AA_COMPROMISE
         || opt_revreason == 7) {
         LOG_err("Invalid revreason given. Valid values are -1..6, 8..10");
-        err = -20;
+        err = -27;
         goto err;
     }
 

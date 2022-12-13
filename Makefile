@@ -419,16 +419,17 @@ else
 	  BIN_D=. \
 	  EXE_EXT= \
 	  LD_LIBRARY_PATH=$(BIN_D) \
-	  OPENSSL_CMP_CONFIG=test_config.cnf \
+	  OPENSSL_CMP_CONFIG=test.cnf \
 	  $(PERL) test/recipes/80-test_cmp_http.t )
 	@ :
 endif
 
+# uses $(OPENSSL) as binary of mock server
 test_Mock:
 ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # OpenSSL <1.1 does not support -no_check_time nor OCSP
 	$(warning skipping test_Mock since OpenSSL <1.1 does not support -no_check_time nor OCSP)
 else
-	make test_cli OPENSSL_CMP_SERVER=Mock
+	make test_cli OPENSSL_CMP_SERVER=Mock OPENSSL=$(OPENSSL)
 endif
 
 .phony: test_Insta test_EJBCA-AWS

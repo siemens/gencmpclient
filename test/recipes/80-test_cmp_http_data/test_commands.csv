@@ -58,7 +58,7 @@ TBD: missing serial number in template,0, --- use csr for revocation ----, -sect
 ,,,,,,,,,,,,,,,,,
 1,1,ir + infotype, -section,, -cmd,ir,,BLANK,,, -infotype,signKeyPairTypes,,BLANK,,BLANK,
 TBD,TBD,EJBCA does not support genm,,,,,,,,,,,,,,,
--,1,genm with infotype blank as in config, -section,, -cmd,genm,,BLANK,,,BLANK,,,BLANK,,BLANK,
+-,0,genm without infotype, -section,, -cmd,genm,,BLANK,,,BLANK,,,BLANK,,BLANK,
 -,1,genm with infotype some value, -section,, -cmd,genm,,BLANK,,, -infotype,signKeyPairTypes,,BLANK,,BLANK,
 -,0,genm with missing infotype value, -section,, -cmd,genm,,BLANK,,, -infotype,,,BLANK,,BLANK,
 -,0,genm with invalid infotype value, -section,, -cmd,genm,,BLANK,,, -infotype,asdf,,BLANK,,BLANK,

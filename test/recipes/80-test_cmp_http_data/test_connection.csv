@@ -55,7 +55,7 @@ EJBCA,Insta,description, -section,val, -server,val, -proxy,val, -path,val, -msg_
 0,0,argument given for -tls_used, -section,, -server,_SERVER_HOST:_SERVER_TLS,,,,,BLANK,,BLANK,, -tls_used,0,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,
 1,-,tls_used given but not checking server cert, -section,, -server,_SERVER_HOST:_SERVER_TLS,,,,,BLANK,,BLANK,, -tls_used,, -tls_cert,tls.p12, -tls_key,tls.p12, -tls_keypass,pass:12345,BLANK,,BLANK,
-1,-,tls with PEM credential files, -section,, -server,_SERVER_HOST:_SERVER_TLS,,,,,BLANK,,BLANK,,-tls_used,, -tls_cert,tls.crt, -tls_key,tls.key,BLANK,,BLANK,,BLANK,
+1,-,tls with PEM credential files, -section,, -server,_SERVER_HOST:_SERVER_TLS,,,,,BLANK,,BLANK,,-tls_used,, -tls_cert,tls.crt, -tls_key,tls.key, -tls_keypass,pass:12345,BLANK,,BLANK,
 TBD Keyfile does not match,TBD Keyfile does not match,tls .pem file with 1000 certs, -section,, -server,_SERVER_HOST:_SERVER_TLS,,,,,BLANK,,BLANK,,-tls_used,, -tls_cert,big_tls.crt.pem, -tls_key,tls.key,BLANK,,BLANK,,BLANK,
 BIG TBD Keyfile does not match,TBD Keyfile does not match,tls big .pem file converted to p12, -section,, -server,_SERVER_HOST:_SERVER_TLS,,,,,BLANK,,BLANK,,-tls_used,, -tls_cert,big_tls.crt.pem.p12, -tls_key,big_tls.crt.pem.p12, -tls_keypass,pass:12345,BLANK,,BLANK,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,

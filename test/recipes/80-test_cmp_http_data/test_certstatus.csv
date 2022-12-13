@@ -44,8 +44,10 @@ EJBCA,Insta,description, -section,val, -crls,val, -cdps,val, -ocsp,val, -crls_ti
 ,,,,,,,,,,,,,,,,,,,,,,,,,
 1,1,crls_timeout infinite, -section,,,,,,,,,,,,,,,,,,, -crls_timeout,0,,
 1,1,ocsp_timeout infinite, -section,,,,,,,,,,,,,,,,,,, -ocsp_timeout,0,,
-1,1,crls_timeout negative (default value), -section,,,,,,,,,,,,,,,,,,, -crls_timeout,-5,,
-1,1,ocsp_timeout negative (default value), -section,,,,,,,,,,,,,,,,,,, -ocsp_timeout,-5,,
+1,1,crls_timeout -1 (default), -section,,,,,,,,,,,,,,,,,,, -crls_timeout,-1,,
+1,1,ocsp_timeout -1 (default), -section,,,,,,,,,,,,,,,,,,, -ocsp_timeout,-1,,
+0,0,crls_timeout negative, -section,,,,,,,,,,,,,,,,,,, -crls_timeout,-5,,
+0,0,ocsp_timeout negative, -section,,,,,,,,,,,,,,,,,,, -ocsp_timeout,-5,,
 0,0,crls_timeout too short, -section,,,,,,,,,,,,,, -use_cdp,,,,, -crls_timeout,1, -server,_SERVER_HOST:9000
 0,0,ocsp_timeout too short, -section,,,,,,,,,,,,,,, -use_aia,,,, -ocsp_timeout,1, -server,_SERVER_HOST:9000
 0,0,crls_timeout without parameter, -section,,,,,,,,,,,,,,,,,,, -crls_timeout,,,

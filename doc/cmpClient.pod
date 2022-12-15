@@ -361,11 +361,11 @@ or 'stdin' to indicate that the password input is to be read from STDIN.
 
 X509 Distinguished Name (DN) of subject to use in the requested certificate
 template.
-For KUR, it defaults to the subject
-in the PKCS#10 CSR given with the B<-csr> option, if provided,
-otherwise the subject of the B<-oldcert>, if provided.
-This default is used for IR and CR only if no SANs are set.
 If the NULL-DN (C</>) is given then no subject is placed in the template.
+Default is the subject DN of any PKCS#10 CSR given with the B<-csr> option.
+For KUR, a further fallback is the subject DN
+of the reference certificate (see B<-oldcert>) if provided.
+This fallback is used for IR and CR only if no SANs are set.
 
 If provided and neither of B<-cert>, B<-oldcert>, or B<-csr> is given,
 the subject DN is used as fallback sender of outgoing CMP messages.
@@ -451,8 +451,9 @@ is provided via the B<-newkey> option.
 
 PKCS#10 CSR in PEM or DER format containing a certificate request.
 With B<-cmd> I<p10cr> it is used directly in a legacy P10CR message.
-When used with B<-cmd> I<ir>, I<cr>, or I<kur>, it is transformed into the
-respective regular CMP request.
+When used with B<-cmd> I<ir>, I<cr>, or I<kur>,
+it is transformed into the respective regular CMP request,
+while its public key is ignored if I<-newkey> is given.
 It may also be used with B<-cmd> I<rr> to specify the certificate to be revoked
 via the included subject and public key.
 Its subject is used as fallback sender in CMP message headers
@@ -501,15 +502,17 @@ B<WARNING:> This leads to behavior violating RFC 4210.
 
 =item B<-certout> I<filename>
 
-The file where the newly enrolled certificate should be saved.
+The file where any newly enrolled certificate should be saved.
+
 If B<-newkey> and B<-newkeytype> or B<-centralkeygen> are given
 and B<-cmd> is not I<p10cr>
 then the related chain and key are stored in this file as well,
-else if B<-chainout> is not given the the related chain is stored here as well.
+else if B<-chainout> is not given or is the same as B<-certout>
+the related chain is stored in this file as well.
 
 =item B<-chainout> I<filename>
 
-The file where the chain of the newly enrolled certificate should be saved.
+The file where the chain of any newly enrolled certificate should be saved.
 If B<-newkey> and B<-newkeytype> or B<-centralkeygen> are given
 and B<-cmd> is not I<p10cr> then this option is ignored.
 
@@ -741,19 +744,20 @@ with a signature key."
 
 The file where to save the successfully validated certificate, if any,
 that the CMP server used for signature-based response message protection.
-If there is no such certificate, this is indicated by deleting the file.
+If there is no such certificate, typically because the protection was MAC-based,
+this is indicated by deleting the file (if it existed).
 
 =item B<-extracertsout> I<filename>
 
-The file where to save any extra certificates received in the extraCerts field
-of response messages.
+The file where to save the list of certificates contained in the extraCerts
+field of the last received response message that is not a pollRep nor PKIConf.
 
 =item B<-extracerts_dir> I<dirname>
 
 Directory to save extra certificates received in the extraCerts field
 that are not self-issued.
 If given,
-the name must end with the (potentally platform-specific) path separator.
+the name must end with the (potentially platform-specific) path separator.
 
 =item B<-extracerts_dir_format> <I<PEM|DER|P12|extension>
 
@@ -763,9 +767,9 @@ Default is C<pem>.
 
 =item B<-cacertsout> I<filename>
 
-The file where to save CA certificates.
-If on a successful certificate request the response (i.e., IP, CP, or KUP)
-contains certificates in its caPubs field, they are stored in the given file.
+The file where to save CA certificates received.
+On a successful certificate request the list of CA certificates in the caPubs
+field of the response (i.e., IP, CP, or KUP) is stored in the given file.
 When receiving a genp message of infoType C<caCerts> upon a genm request
 of the same infoType, the list of received certificates, which may be empty,
 is also stored in this file.
@@ -775,7 +779,7 @@ is also stored in this file.
 Directory to save self-issued (root CA) certificates
 received in the caPubs field.
 If given,
-the name must end with the (potentally platform-specific) path separator.
+the name must end with the (potentially platform-specific) path separator.
 
 =item B<-cacerts_dir_format> <I<PEM|DER|P12|extension>
 
@@ -794,7 +798,7 @@ it is verified using the newWithNew certificate as the (only) trust anchor.
 This option must be provided when B<-infotype> I<rootCaCert> is given.
 It specifies the file to save the newWithNew certificate
 received in a genp message of type C<rootCaKeyUpdate>.
-If no such certificate is received, this the file (if present) is deleted
+If on success no such cert was received, this file (if present) is deleted
 to indicate that the requested root CA certificate update is not available.
 
 Any received newWithNew certificate is verified
@@ -812,13 +816,13 @@ the weakest trust placed in any of the B<-trusted> certificates.
 
 The file to save any newWithOld certificate
 received in a genp message of infoType C<rootCaKeyUpdate>.
-If no such certificate received, this is indicated by deleting the file.
+If on success no such cert was received, this is indicated by deleting the file.
 
 =item B<-oldwithnew> I<filename>
 
 The file to save any oldWithNew certificate
 received in a genp message of infoType C<rootCaKeyUpdate>.
-If no such certificate is received, this is indicated by deleting the file.
+If on success no such cert was received, this is indicated by deleting the file.
 
 =item B<-oldcrl> I<filename>
 
@@ -829,6 +833,7 @@ in a genm request of infoType C<crlStatusList>.
 
 The file to save any CRL in DER format
 received in a genp message of infoType C<crls>.
+If on success no such CRL was received, this is indicated by deleting the file.
 
 =back
 
@@ -1093,7 +1098,7 @@ or to send issuer Distinguished Names (DNs) to in the form C<url?issuer=DN>.
 =item B<-crl_cache_dir> I<dirname>
 
 Directory where to cache CRLs downloaded during verification.
-If given, the name must end with the (potentally platform-specific)
+If given, the name must end with the (potentially platform-specific)
 path separator.
 Then downloaded CRLs will be stored at the given location
 using files names uniquely derived from the URL of the CRL distribution point.

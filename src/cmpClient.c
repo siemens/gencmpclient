@@ -238,7 +238,7 @@ opt_t cmp_opts[] = {
       "Do not confirm newly enrolled certificates w/o requesting implicit confirm"},
     { "certout", OPT_TXT, {.txt = NULL}, { &opt_certout },
       "File to save newly enrolled certificate, possibly with chain and key"},
-    { "chainout", OPT_TXT, {.txt = NULL}, { &opt_certout },
+    { "chainout", OPT_TXT, {.txt = NULL}, { &opt_chainout },
       "File to save the chain of the newly enrolled certificate"},
 
     OPT_HEADER("Certificate enrollment and revocation"),
@@ -560,9 +560,10 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 #endif
 }
 
-X509_STORE *setup_CMP_truststore(void)
+X509_STORE *setup_CMP_truststore(const char *trusted_cert_files)
 {
-    const char *trusted_cert_files = opt_trusted;
+    if (trusted_cert_files == NULL)
+        return NULL;
     X509_STORE *cmp_truststore =
         STORE_load(trusted_cert_files, "trusted certs for CMP level",
                    NULL /* no vpm: prevent strict checking */);
@@ -1098,9 +1099,11 @@ CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
     }
 
     err = CMP_R_LOAD_CERTS;
-    if (opt_srvcert != NULL && opt_trusted != NULL)
+    if (opt_srvcert != NULL && opt_trusted != NULL) {
         LOG_warn("-trusted option is ignored since -srvcert option is present");
-    cmp_truststore = opt_trusted == NULL ? NULL : setup_CMP_truststore();
+        opt_trusted = NULL;
+    }
+    cmp_truststore = setup_CMP_truststore(opt_trusted);
     untrusted_certs = opt_untrusted == NULL ? NULL :
         CERTS_load(opt_untrusted, "untrusted certs", 1 /* CA */, vpm);
     if ((cmp_truststore == NULL && opt_trusted != NULL)
@@ -1436,10 +1439,14 @@ static CMP_err check_options(enum use_case use_case)
         opt_centralkeygen = true;
 
     if (opt_infotype == NULL) {
+#if 0
         if (use_case == genm) {
             LOG_err("no -infotype option given for genm");
             return -51;
         }
+#else
+        opt_infotype = "";
+#endif
     } else if (use_case != genm) {
         LOG_warn("-infotype option is ignored for commands other than 'genm'");
     } else {
@@ -1535,7 +1542,7 @@ static CMP_err check_options(enum use_case use_case)
 
     if (opt_cacerts_dir_format != NULL
             && FILES_get_format(opt_cacerts_dir_format) == FORMAT_UNDEF) {
-        LOG_err("-cacerts_dir_format not accpeted");
+        LOG_err("-cacerts_dir_format not accepted");
         return -9;
     }
 
@@ -1770,11 +1777,11 @@ static int save_cert_or_delete(X509 *cert, const char *file, const char *desc)
 CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
                    const char *file, const char *dir, const char *format)
 {
-    LOG(FL_TRACE, "Extracted certs from %s", field);
     char desc_certs[80];
     snprintf(desc_certs, sizeof(desc_certs), "%s certs", desc);
+    LOG(FL_TRACE, "Extracted %s from %s", desc_certs, field);
 
-    if (file != NULL && sk_X509_num(certs) > 0) {
+    if (file != NULL) {
         if (CERTS_save(certs, file, desc_certs) < 0) {
             LOG(FL_ERR, "Failed to store %s from %s in %s",
                 desc_certs, field, file);
@@ -1825,10 +1832,6 @@ CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds,
     if (err != CMP_OK)
         return err;
 
-    if (!save_cert_or_delete(OSSL_CMP_CTX_get0_validatedSrvCert(ctx),
-                             opt_srvcertout, "validated server cert"))
-        return -53;
-
     err = save_certs(OSSL_CMP_CTX_get1_caPubs(ctx), "caPubs", "CA",
                      opt_cacertsout, opt_cacerts_dir, opt_cacerts_dir_format);
     if (err != CMP_OK)
@@ -1844,31 +1847,28 @@ CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds,
             if (!CREDENTIALS_save(new_creds, opt_certout,
                                   opt_newkey, opt_newkeypass, new_desc)) {
                 LOG_err("Failed to save newly enrolled credentials");
-                return -54;
+                return CMP_R_STORE_CREDS; /* unused: -54 */
             }
         } else {
-            const char *new_desc = "newly enrolled certificate";
             X509 *cert = CREDENTIALS_get_cert(new_creds);
             STACK_OF(X509) *certs = CREDENTIALS_get_chain(new_creds);
 
-            if (certs == NULL || opt_chainout != NULL) {
-                if (!CERT_save(cert, opt_certout, new_desc)) {
+            if (opt_chainout != NULL && strcmp(opt_chainout, opt_certout) != 0) {
+                if (!CERT_save(cert, opt_certout,
+                               "newly enrolled certificate")) {
                     return CMP_R_STORE_CREDS;
                 }
                 if (opt_chainout != NULL &&
-                    CERTS_save(certs, opt_chainout, new_desc) < 0) {
+                    CERTS_save(certs, opt_chainout,
+                               "chain of newly enrolled certificate") < 0) {
                     return CMP_R_STORE_CREDS;
                 }
             } else {
-                if (sk_X509_unshift(certs, cert) == 0) { /* prepend cert */
-                    LOG(FL_ERR, "Out of memory writing certs to file '%s'",
-                        opt_certout);
+                if (!FILES_store_credentials(NULL /* key */, cert, certs,
+                                             NULL /* keyfile */, opt_certout,
+                                             FORMAT_PEM, NULL,
+                                             "newly enrolled certificate and chain"))
                     return CMP_R_STORE_CREDS;
-                }
-                CREDENTIALS_set_cert(new_creds, NULL);
-                if (CERTS_save(certs, opt_certout, new_desc) < 0) {
-                    return CMP_R_STORE_CREDS;
-                }
             }
         }
     }
@@ -1955,10 +1955,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
 
         if (err == CMP_OK) {
             /* TODO possibly check authorization of sender/origin */
-            if (cacerts == NULL) {
+            if (cacerts == NULL)
                 LOG_warn("no CA certificate available");
-                cacerts = sk_X509_new_null();
-            }
             if (CERTS_save(cacerts, opt_cacertsout, "caCerts from genp") < 0) {
                 LOG(FL_ERR, "Failed to store caCerts from genp in %s",
                     opt_cacertsout);
@@ -2246,6 +2244,10 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             "received%s%s %s", from, server,
             string != NULL ? string : "<unknown PKIStatus>");
     }
+
+    if (!save_cert_or_delete(OSSL_CMP_CTX_get0_validatedSrvCert(ctx),
+                             opt_srvcertout, "validated server cert"))
+        err = -53;
 
     if (err != CMP_OK) {
         LOG_err("Failed to perform CMP transaction");

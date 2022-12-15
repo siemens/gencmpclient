@@ -769,12 +769,12 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
         goto err;
     }
 
-    LOG_debug("Trying to build chain for newly enrolled cert");
     EVP_PKEY *new_key =
         OSSL_CMP_CTX_get0_newPkey(ctx, 1 /* priv */); /* NULL in case P10CR */
     X509_STORE *new_cert_truststore = OSSL_CMP_CTX_get_certConf_cb_arg(ctx);
     STACK_OF(X509) *untrusted =
         OSSL_CMP_CTX_get0_untrusted(ctx); /* includes extraCerts */
+    LOG_debug("Trying to build chain for newly enrolled cert");
     STACK_OF(X509) *chain = X509_build_chain(newcert, untrusted,
                                              new_cert_truststore /* may NULL */,
                                              0, OSSL_CMP_CTX_get0_libctx(ctx),

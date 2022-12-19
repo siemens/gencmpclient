@@ -281,7 +281,7 @@ opt_t cmp_opts[] = {
 
     OPT_HEADER("Server authentication"),
     { "trusted", OPT_TXT, {.txt = NULL}, { &opt_trusted },
-      "Certificates to trust as chain roots when validating signed CMP responses"},
+      "Certificates to use as trust anchors when validating signed CMP responses"},
     { "untrusted", OPT_TXT, {.txt = NULL}, { &opt_untrusted },
       "Intermediate CA certs for chain construction for CMP/TLS/enrolled certs"},
     { "srvcert", OPT_TXT, {.txt = NULL}, { &opt_srvcert },
@@ -348,7 +348,7 @@ opt_t cmp_opts[] = {
     OPT_MORE("This can be used as the default CMP signer cert chain to include"),
     { "unprotected_requests", OPT_BOOL, {.bit = false},
       { (const char **) &opt_unprotected_requests },
-      "Send messages without CMP-level protection"},
+      "Send request messages without CMP-level protection"},
 
     OPT_HEADER("TLS connection"),
     { "tls_used", OPT_BOOL, {.bit = false}, { (const char **) &opt_tls_used },

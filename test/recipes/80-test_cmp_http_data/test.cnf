@@ -42,6 +42,9 @@ ignore_keyusage = 0
 column = 0
 sleep = 0
 
+[LwCmp] # TODO
+column = 1
+
 [EJBCA]
 server_host = ec2-204-236-244-127.compute-1.amazonaws.com
 server_port = 80
@@ -63,7 +66,7 @@ key  = signer.p12
 keypass = pass:12345
 ignore_keyusage = 0
 unprotected_errors = 1 # EJBCA sends error messages and negative responses without protection
-column = 0
+column = 2
 sleep = 1
 
 [Insta]
@@ -88,7 +91,7 @@ key =
 cert =
 ignore_keyusage = 1
 crls = ../../../../creds/crls/InstaDemoCA.crl
-column = 1
+column = 3
 sleep = 4
 # 3 is not sufficient: sometimes leads to HTTP code 503 (Service Unavailable)
 
@@ -123,7 +126,7 @@ unprotected_errors = 1 # EJBCA sends error messages and negative responses witho
 crls = "../../../../creds/crls/EJBCA-InfrastructureIssuingCAv10.crl, ../../../../creds/crls/EJBCA-ECCRootCAv10.crl, ../../../../creds/crls/EJBCA-InfrastructureRootCAv10.crl ../../../../creds/crls/EJBCA-RSARootCAv10.crl"
 cdps = ${ENV::EJBCA_CDP_URL_PREFIX}Infrastructure+Issuing+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}Infrastructure+Root+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}ECC+Issuing+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}ECC+Root+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}
 ocsp = ${ENV::EJBCA_OCSP_URL}
-column = 0
+column = 2
 sleep = 0
 
 ############################# aspects

@@ -73,6 +73,7 @@ const char *opt_recipient;
 const char *opt_expect_sender;
 bool opt_ignore_keyusage;
 bool opt_unprotected_errors;
+bool opt_no_cache_extracerts;
 const char *opt_srvcertout;
 const char *opt_extracertsout;
 const char *opt_extracerts_dir;
@@ -295,6 +296,9 @@ opt_t cmp_opts[] = {
       { (const char **) &opt_unprotected_errors },
       "Accept missing or invalid protection of regular error messages and negative"},
     OPT_MORE("certificate responses (ip/cp/kup), revocation responses (rp), and PKIConf"),
+    { "no_cache_extracerts", OPT_BOOL, {.bit = false},
+      { (const char **) &opt_no_cache_extracerts },
+      "Do not keep certificates received in the extraCerts CMP message field"},
     { "srvcertout", OPT_TXT, {.txt = NULL}, { &opt_srvcertout },
       "File to save server cert used and validated for CMP response protection"},
     { "extracertsout", OPT_TXT, {.txt = NULL}, { &opt_extracertsout },
@@ -974,6 +978,8 @@ int setup_ctx(CMP_CTX *ctx)
     /* set option flags directly via CMP API */
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
                                  opt_unprotected_errors)
+        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NO_CACHE_EXTRACERTS,
+                                 opt_no_cache_extracerts)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE,
                                     opt_ignore_keyusage)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITY_DAYS,

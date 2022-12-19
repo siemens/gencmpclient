@@ -314,7 +314,7 @@ sub load_tests {
         s/^\"(\".*?\")\"$/$1/ for (@fields); # remove escaping from quotation marks from elements
         my $expected_result = $fields[$column];
         my $description = 1;
-        $description += 1;
+        $description += 3;
         my $title = $fields[$description];
         next LOOP if (!defined($expected_result)
                       || ($expected_result ne 0 && $expected_result ne 1));

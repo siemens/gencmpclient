@@ -15,4 +15,4 @@ rsp_cert = signer_only.crt
 rsp_capubs = server.crt
 rsp_extracerts = signer_issuing.crt
 
-verbosity = 4
+verbosity = 2 # do not show any errors

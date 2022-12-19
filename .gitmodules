@@ -1,6 +1,9 @@
 [submodule "libsecutils"]
 	path = libsecutils
-	url = ../libsecutils.git
+	url = https://github.com/siemens/libsecutils.git
 [submodule "cmpossl"]
 	path = cmpossl
-	url = ../../mpeylo/cmpossl.git
+	url = https://github.com/mpeylo/cmpossl.git
+[submodule "LightweightCmpRa"]
+	path = LightweightCmpRa
+	url = git@github.com:siemens/LightweightCmpRa.git

@@ -1,0 +1,87 @@
+---
+
+DownstreamInterface:
+  HttpServer:
+    ServingUri: "http://localhost:6000/lra"
+
+UpstreamInterface:
+  - HttpClient:
+      servingUri:  "http://127.0.0.1:7000/ca"
+
+DownstreamConfiguration:
+  - VerificationContext:
+      trustedCertificates:
+        - "credentials/CMP_EE_Root.pem"
+        - "credentials/ENROLL_Root.pem"
+      sharedSecret: "myPresharedSecret"
+    OutputCredentials:
+      Signature:
+        keyStore: credentials/CMP_LRA_DOWNSTREAM_Keystore.p12
+        password:  Password
+#      SharedSecret:
+#        SharedSecret: "myPresharedSecret"
+#        SenderKID: "sender_RA"
+#        PasswordBasedMacAlgorithm: "PBM"
+
+RaVerifiedAcceptable:
+  - value: false
+
+RetryAfterTimeInSeconds:
+  - value: 1
+
+UpstreamConfiguration:
+  - VerificationContext:
+      trustedCertificates:
+      - "credentials/CMP_CA_Root.pem"
+    outputCredentials:
+      Signature:
+        keyStore: credentials/CMP_LRA_UPSTREAM_Keystore.p12
+        password:  Password
+
+ForceRaVerifyOnUpstream:
+  - value: false
+
+EnrollmentTrust:
+  - trustedCertificates:
+    - "credentials/ENROLL_Root.pem"
+
+CkgConfiguration:
+  - SignatureCredentials:
+      keyStore: credentials/CMP_LRA_DOWNSTREAM_Keystore.p12
+      password:  Password
+    PasswordContext:
+      KekAlg: AES128-CBC
+      EncryptionCredentials:
+        SharedSecret:
+          SharedSecret: "myPresharedSecret"
+          prf: "SHA256"
+    KeyAgreementContext:
+      keyStore: credentials/CMP_LRA_DOWNSTREAM_Keystore.p12
+      password: Password
+      KeyEncryptionAlg: 2.16.840.1.101.3.4.1.45
+    KeyTransportContext: {}
+
+SupportMessageHandlerInterface:
+  - GetCaCertificates:
+      certProfile: RSA
+      cacertificates:
+        - "credentials/CaCerts.pem"
+  - GetCaCertificates: {}
+
+  - GetCertificateRequestTemplate:
+      certProfile: RSA
+  - GetCertificateRequestTemplate:
+      template: "credentials/CertTemplate.der"
+
+  - GetRootCaCertificateUpdate:
+      certProfile: RSA
+  - GetRootCaCertificateUpdate:
+      newWithNew: "credentials/newwithnew.pem"
+      newWithOld: "credentials/newwithold.pem"
+      oldWithNew: "credentials/oldwithnew.pem"
+
+  - CrlUpdateRetrieval:
+      certProfile: RSA
+  - CrlUpdateRetrieval:
+      crls:
+         - "credentials/CRL.der"

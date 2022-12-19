@@ -97,9 +97,7 @@ endif
 # optional SET_PROXY variable can be set to override default proxy settings
 SET_PROXY ?= no_proxy=localhost,127.0.0.1
 
-# defaults for test_conformance:
-LIGHTWEIGHTCMPRA ?= -Dorg.slf4j.simpleLogger.log.com.siemens.pki.lightweightcmpra=error -jar ./LightweightCmpRa.jar
-CMPCAMOCK ?= -jar ./CmpCaMock.jar
+# defaults for tests:
 OPENSSL ?= openssl$(EXE)
 
 MAKECMDGOALS ?= default
@@ -177,8 +175,8 @@ update: update_secutils update_cmpossl
 	git rebase
 	git submodule update
 
-$(SECUTILS_DIR)/include: # not: update_secutils
-	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)
+$(SECUTILS_DIR)/include:
+	$(MAKE) update_secutils
 
 $(SECUTILS_LIB):
 	build_secutils
@@ -190,8 +188,8 @@ build_secutils: # not: update_secutils
 	$(MAKE) -s -C $(SECUTILS_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 
 ifdef CMP_STANDALONE
-$(LIBCMP_DIR)/include: # not: update_cmpossl
-	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
+$(LIBCMP_DIR)/include:
+	$(MAKE) update_cmpossl
 endif
 
 ifdef CMP_STANDALONE
@@ -246,15 +244,7 @@ clean_uta:
 endif
 
 clean_test:
-	@rm -f creds/{manufacturer,operational*}.*
-	@rm -f creds/{cacerts,extracerts}.pem
-	@rm -f creds/InstaDemoCA_client.pem
-	@rm -f creds/*_????????-????????-????????-????????-????????.pem
-	@rm -fr creds/crls
-	@rm -f test/recipes/80-test_cmp_http_data/*/test.*cert*.pem
-	@rm -f test/recipes/80-test_cmp_http_data/*/{req,rsp}*.der
-	@rm -f test/faillog_*.txt
-	@rm -fr test/{Upstream,Downstream}
+	$(MAKE) -f Makefile_tests clean
 
 clean_this: clean_test
 	$(MAKE) -s -f Makefile_src clean OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)"
@@ -301,11 +291,7 @@ ifneq ($(EJBCA_ENABLED),)
 endif
 
 get_Insta_crls: | creds/crls
-	@ #curl -m 2 -s pki.certificate.fi ...
-	$(SET_PROXY) wget -O /dev/null --tries=1 --max-redirect=0 --timeout=2 https://www.insta.fi/ --no-verbose
-	@ # | fgrep "301 Moved Permanently" -q || (echo $(unreachable); exit 1)
-	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
-	$(SET_PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl?id=633"
+	$(MAKE) -f Makefile_tests get_Insta_crls SET_PROXY=$(SET_PROXY)
 
 .phony: demo demo_Insta demo_EJBCA
 demo: demo_Insta
@@ -363,95 +349,34 @@ else
 	@echo :
 endif
 
-.phony: start stop
-start:
-	@echo starting LightweightCmpRA
-	@java $(CMPCAMOCK) . http://localhost:7000/ca creds/ENROLL_Keystore.p12 creds/CMP_CA_Keystore.p12 &
-	@mkdir test/Upstream test/Downstream 2>/dev/null || true
-	@java $(LIGHTWEIGHTCMPRA) config/ConformanceTest.xml &
-	@ # -Dorg.slf4j.simpleLogger.log.com.*=debug
-	@sleep 2
-stop:
-	@echo stopping LightweightCmpRA
-	@PID=`ps aux|grep "java $(CMPCAMOCK)"        | grep -v grep | awk '{ print $$2 }'` && \
-	if [ -n "$$PID" ]; then kill $$PID; fi
-	@PID=`ps aux|grep "java $(LIGHTWEIGHTCMPRA)" | grep -v grep | awk '{ print $$2 }'` && \
-	if [ -n "$$PID" ]; then kill $$PID; fi
 
-.phony: test_conformance_cmpclient test_conformance_openssl test_conformance
-.phony: conformance_cmpclient conformance_openssl conformance
-CMPCLNT = LD_LIBRARY_PATH=. ./$(OUTBIN) -section CmpRa,
-CMPOSSL = $(OPENSSL) cmp -config config/demo.cnf -section CmpRa,
-test_conformance: start conformance_cmpclient conformance_openssl stop
-test_conformance_openssl: start conformance_openssl stop
-test_conformance_cmpclient: start conformance_cmpclient stop
-conformance_cmpclient: build
-	@CMPCL="$(CMPCLNT)" make conformance
-conformance_openssl: newkey
-	@CMPCL="$(CMPOSSL)" make conformance
-newkey:
-	@which $(OPENSSL) || (echo "cannot find $(OPENSSL), please install it"; false)
-	$(OPENSSL) ecparam -genkey -name secp521r1 -out creds/manufacturer.pem
-	$(OPENSSL) ecparam -genkey -name prime256v1 -out creds/operational.pem
-conformance:
-	$(CMPCL)imprint -verbosity 3 -server localhost:6002/lrawithmacprotection
-	$(CMPCL)bootstrap -verbosity 3
-	$(GENERATE_OPERATIONAL)
-	$(CMPCL)pkcs10 -verbosity 3
-	$(CMPCL)update -verbosity 3 -server localhost:6001 -path /rrkur
-	$(CMPCL)revoke -verbosity 3 -server localhost:6001 -path /rrkur
-	$(CMPCL)bootstrap -verbosity 3 -server localhost:6003/delayedlra
-
-test_cli: build
+.phony: test_EJBCA-AWS
+test_EJBCA-AWS: get_EJBCA_crls
 ifeq ($(filter-out EJBCA Simple,$(OPENSSL_CMP_SERVER))$(EJBCA_ENABLED),)
 	$(warning "### skipping test_$(OPENSSL_CMP_SERVER) since not supported in this environment ###")
 else
-	@which $(PERL) || (echo "cannot find Perl, please install it"; false)
-	@echo -en "\n#### running CLI-based tests #### "
-	@if [ -n "$$OPENSSL_CMP_SERVER" ]; then echo -en "with server=$$OPENSSL_CMP_SERVER"; else echo -n "without server"; fi
-	@echo -e " in test/recipes/80-test_cmp_http_data/$$OPENSSL_CMP_SERVER"
-	@ :
-	( HARNESS_ACTIVE=1 \
-	  HARNESS_VERBOSE=$(V) \
-	  HARNESS_FAILLOG=../test/faillog_$$OPENSSL_CMP_SERVER.txt \
-	  SRCTOP=. \
-	  BLDTOP=. \
-	  BIN_D=. \
-	  EXE_EXT= \
-	  LD_LIBRARY_PATH=$(BIN_D) \
-	  OPENSSL_CMP_CONFIG=test.cnf \
-	  $(PERL) test/recipes/80-test_cmp_http.t )
-	@ :
-endif
-
-# uses $(OPENSSL) as binary of mock server
-test_Mock:
-ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # OpenSSL <1.1 does not support -no_check_time nor OCSP
-	$(warning skipping test_Mock since OpenSSL <1.1 does not support -no_check_time nor OCSP)
-else
-	make test_cli OPENSSL_CMP_SERVER=Mock OPENSSL=$(OPENSSL)
-endif
-
-.phony: test_Insta test_EJBCA-AWS
-test_Insta: get_Insta_crls
-	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=Insta
-test_EJBCA-AWS: get_EJBCA_crls
 	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=EJBCA
+endif
 
 start_Simple:
-	cd SimpleLra && ./RunLra.sh
+	@echo "start SimpleLra"
+	@cd SimpleLra && ./RunLra.sh &
+	@sleep 2
+stop_Simple:
+	@PID=`ps aux|grep " jar/SimpleLra.jar TestConfig.xml" | grep -v grep | awk '{ print $$2 }'` && \
+	if [ -n "$$PID" ]; then echo "stopping SimpleLra" && kill $$PID; fi
 
-test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple
+test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple start_Simple
 ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # OpenSSL <1.1 does not support OCSP
 	$(warning skipping certstatus aspect since OpenSSL <1.1 does not support OCSP)
 	make test_cli OPENSSL_CMP_SERVER=Simple OPENSSL_CMP_ASPECTS="connection verification credentials commands enrollment"
 else
-	make test_cli OPENSSL_CMP_SERVER=Simple
+	$(MAKE) -f Makefile_tests test_cli OPENSSL_CMP_SERVER=Simple OPENSSL=$(OPENSSL)
 endif
-	# TODO: stop server started with cd SimpleLra && ./RunLra.sh
+	$(MAKE) stop_Simple
 
 .phony: test_profile profile_Simple profile_EJBCA
-test_profile: profile_Simple profile_EJBCA
+test_profile: start_Simple profile_Simple profile_EJBCA stop_Simple
 # do before: cd SimpleLra && ./RunLra.sh
 profile_Simple:
 	PROFILE=Simple make profile
@@ -480,13 +405,15 @@ else
 	@echo "\n##### All profile tests succeeded #####"
 endif
 
-.phony: all test_all test doc doc_only zip
+.phony: all test_all test tests doc doc_only zip
 all:	build doc
 
-test_all: test demo_EJBCA test_conformance test_profile test_Simple
+test_all: demo_EJBCA test_profile test test_Simple
 
 test: clean build_no_tls
-	@$(MAKE) clean build demo_Insta test_Mock test_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
+	@$(MAKE) clean build demo_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
+	$(MAKE) -f Makefile_tests tests OUTBIN=$(OUTBIN) OPENSSL=$(OPENSSL)
+
 
 doc: doc_only get_submodules
 	$(MAKE) -s -C $(SECUTILS_DIR) doc

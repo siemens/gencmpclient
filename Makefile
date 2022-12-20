@@ -286,12 +286,12 @@ ifneq ($(EJBCA_ENABLED),)
 	@for CA in $(EJBCA_CDPS); \
 	do \
 		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
-		wget -q "$(EJBCA_CDP_URL_PREFIX)$$CA$(EJBCA_CDP_URL_POSTFIX)" -O "creds/crls/EJBCA-$$ca.crl"; \
+		wget -nv "$(EJBCA_CDP_URL_PREFIX)$$CA$(EJBCA_CDP_URL_POSTFIX)" -O "creds/crls/EJBCA-$$ca.crl"; \
 	done
 endif
 
 get_Insta_crls: | creds/crls
-	$(MAKE) -f Makefile_tests get_Insta_crls SET_PROXY=$(SET_PROXY)
+	@$(MAKE) -f Makefile_tests get_Insta_crls SET_PROXY=$(SET_PROXY)
 
 .phony: demo demo_Insta demo_EJBCA
 demo: demo_Insta

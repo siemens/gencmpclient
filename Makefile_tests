@@ -30,15 +30,15 @@ CMPRACOMP_DIR=cmp-ra-component
 
 $(LWCMPRA_DIR)/pom.xml:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 $(LWCMPRA_DIR)
-$(LWCMPRA_DIR)/$(CMPRACOMP_DIR): $(LWCMPRA_DIR)/pom.xml
-	cd $(LWCMPRA_DIR) && git submodule update $(GIT_PROGRESS) --init --depth 1 $(CMPRACOMP_DIR)
+$(CMPRACOMP_DIR)/pom.xml:
+	git submodule update $(GIT_PROGRESS) --init --depth 1 $(CMPRACOMP_DIR)
 
 LWCMPRA_JAR=$(LWCMPRA_DIR)/target/LightweightCmpRa-2.3.0.jar # TODO make version flexible
-$(LWCMPRA_JAR): $(CMPRACOMP_JAR) $(LWCMPRA_DIR)/pom.xml
+$(LWCMPRA_JAR): $(LWCMPRA_DIR)/pom.xml
 	cd $(LWCMPRA_DIR) && mvn clean install -DskipTests=true
-CMPRACOMP_JAR=$(LWCMPRA_DIR)/$(CMPRACOMP_DIR)/target/CmpRaComponent-2.2.0.jar # TODO make version flexible
-$(CMPRACOMP_JAR): $(LWCMPRA_DIR)/$(CMPRACOMP_DIR)
-	cd $(LWCMPRA_DIR)/$(CMPRACOMP_DIR) && mvn clean install -DskipTests=true
+CMPRACOMP_JAR=$(CMPRACOMP_DIR)/target/CmpRaComponent-2.2.1.jar # TODO make version flexible
+$(CMPRACOMP_JAR): $(CMPRACOMP_DIR)/pom.xml
+	cd $(CMPRACOMP_DIR) && mvn clean install -DskipTests=true
 
 LWCMPRA_JAR ?= $(LWCMPRA_JAR) # was: ./LightweightCmpRa.jar
 LWCMPRA_RUN = java -jar $(LWCMPRA_JAR)
@@ -49,7 +49,7 @@ CMPCAMOCK_RUN = java -jar $(CMPCAMOCK_JAR)
 tests_LwCmp: start_LwCmp conformance_cmpclient conformance_openssl test_LwCmp stop_LwCmp
 
 .phony: start_LwCmp stop_LwCmp
-start_LwCmp: $(LWCMPRA_JAR)
+start_LwCmp: $(CMPRACOMP_JAR) $(LWCMPRA_JAR)
 	@echo starting LightweightCmpRA
 	@ #mkdir test/Upstream test/Downstream 2>/dev/null || true
 	@$(LWCMPRA_RUN) config/tests.yaml &

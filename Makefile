@@ -19,6 +19,8 @@ endif
 
 PERL=/usr/bin/perl
 
+# variables ####################################################################
+
 ifeq ($(OS),Windows_NT)
     EXE=.exe
     DLL=.dll
@@ -263,26 +265,14 @@ ifeq ($(LPATH),)
     #endif not relevant here
 endif
 
-ifneq ($(INSTA),)
-    CA_SECTION=Insta
-    unreachable="cannot reach pki.certificate.fi"
-    OCSP_CHECK= #$(OPENSSL) ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
-    override EXTRA_OPTS += -path pkix/ -newkeytype rsa:1024
-else
-    CA_SECTION=EJBCA
-    unreachable="cannot reach EJBCA at $(EJBCA_HOST)"
-    OCSP_CHECK=$(OPENSSL) ocsp -url $(EJBCA_OCSP_URL) \
-               -CAfile $(EJBCA_CMP_TRUSTED) -issuer $(EJBCA_CMP_ISSUER) \
-               -cert creds/operational.crt
-    override EXTRA_OPTS +=
-endif
+# get CRLs #####################################################################
 
 creds/crls:
 	mkdir $@
 
 get_EJBCA_crls: | creds/crls
 ifneq ($(EJBCA_ENABLED),)
-	@ # ping >/dev/null $(PINGCOUNTOPT) 1 $(EJBCA_HOST) || echo $(unreachable); exit 1
+	@ # ping >/dev/null $(PINGCOUNTOPT) 1 $(EJBCA_HOST) || echo "cannot reach EJBCA at $(EJBCA_HOST)"; exit 1
 	@for CA in $(EJBCA_CDPS); \
 	do \
 		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
@@ -290,8 +280,27 @@ ifneq ($(EJBCA_ENABLED),)
 	done
 endif
 
+.phony: get_Insta_crls
 get_Insta_crls: | creds/crls
-	@$(MAKE) -f Makefile_tests get_Insta_crls SET_PROXY=$(SET_PROXY)
+	@ #curl -m 2 -s pki.certificate.fi ...
+	$(SET_PROXY) wget -O /dev/null --tries=1 --max-redirect=0 --timeout=2 https://www.insta.fi/ --no-verbose
+	@ # | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1)
+	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
+	$(SET_PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl?id=633"
+
+# demo #########################################################################
+
+ifneq ($(INSTA),)
+    CA_SECTION=Insta
+    OCSP_CHECK= #$(OPENSSL) ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
+    override EXTRA_OPTS += -path pkix/ -newkeytype rsa:1024
+else
+    CA_SECTION=EJBCA
+    OCSP_CHECK=$(OPENSSL) ocsp -url $(EJBCA_OCSP_URL) \
+               -CAfile $(EJBCA_CMP_TRUSTED) -issuer $(EJBCA_CMP_ISSUER) \
+               -cert creds/operational.crt
+    override EXTRA_OPTS +=
+endif
 
 .phony: demo demo_Insta demo_EJBCA
 demo: demo_Insta
@@ -349,6 +358,7 @@ else
 	@echo :
 endif
 
+# tests ########################################################################
 
 .phony: test_EJBCA-AWS
 test_EJBCA-AWS: get_EJBCA_crls
@@ -374,6 +384,10 @@ else
 	$(MAKE) -f Makefile_tests test_cli OPENSSL_CMP_SERVER=Simple OPENSSL=$(OPENSSL)
 endif
 	$(MAKE) stop_Simple
+
+.phony: test_Insta
+test_Insta: get_Insta_crls
+	$(SET_PROXY) $(MAKE) -f Makefile_tests test_cli OPENSSL_CMP_SERVER=Insta
 
 .phony: test_profile profile_Simple profile_EJBCA
 test_profile: start_Simple profile_Simple profile_EJBCA stop_Simple
@@ -408,12 +422,20 @@ endif
 .phony: all test_all test tests doc doc_only zip
 all:	build doc
 
-test_all: demo_EJBCA test_profile test test_Simple
+.phony: test_Mock
+test_Mock:
+	$(MAKE) -f Makefile_tests test_Mock OUTBIN=$(OUTBIN) OPENSSL=$(OPENSSL)
+
+.phony: tests_LwCmp
+tests_LwCmp:
+	$(MAKE) -f Makefile_tests tests_LwCmp OUTBIN=$(OUTBIN) OPENSSL=$(OPENSSL)
+
+test_all: demo_EJBCA test_profile test test_Mock tests_LwCmp test_Simple test_Insta
 
 test: clean build_no_tls
 	@$(MAKE) clean build demo_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
-	$(MAKE) -f Makefile_tests tests OUTBIN=$(OUTBIN) OPENSSL=$(OPENSSL)
 
+# doc and zip ##################################################################
 
 doc: doc_only get_submodules
 	$(MAKE) -s -C $(SECUTILS_DIR) doc

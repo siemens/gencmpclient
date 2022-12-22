@@ -45,8 +45,7 @@ LWCMPRA_RUN = java -jar $(LWCMPRA_JAR)
 CMPCAMOCK_JAR ?= ./CmpCaMock.jar # TODO: $(LWCMPRA_DIR)/target/??
 CMPCAMOCK_RUN = java -jar $(CMPCAMOCK_JAR)
 
-.phony: tests tests_LwCmp
-tests: test_Mock tests_LwCmp test_Insta
+.phony: tests_LwCmp
 tests_LwCmp: start_LwCmp conformance_cmpclient conformance_openssl test_LwCmp stop_LwCmp
 
 .phony: start_LwCmp stop_LwCmp
@@ -124,24 +123,6 @@ test_Mock:
 .phony: test_LwCmp
 test_LwCmp:
 	# TODO $(MAKE) -f Makefile_tests test_cli OPENSSL_CMP_SERVER=LwCmp OPENSSL=$(OPENSSL)
-
-# Insta ########################################################################
-
-creds/crls:
-	mkdir $@
-
-.phony: get_Insta_crls
-get_Insta_crls: | creds/crls
-	@ #curl -m 2 -s pki.certificate.fi ...
-	$(SET_PROXY) wget -O /dev/null --tries=1 --max-redirect=0 --timeout=2 https://www.insta.fi/ --no-verbose
-	@ # | fgrep "301 Moved Permanently" -q || (echo $(unreachable); exit 1)
-	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
-	$(SET_PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl?id=633"
-
-
-.phony: test_Insta
-test_Insta: get_Insta_crls
-	$(SET_PROXY) $(MAKE) -f Makefile_tests test_cli OPENSSL_CMP_SERVER=Insta
 
 # clean ########################################################################
 

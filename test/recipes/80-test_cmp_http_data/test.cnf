@@ -42,8 +42,32 @@ ignore_keyusage = 0
 column = 0
 sleep = 0
 
-[LwCmp] # TODO
+[LwCmp]
+#attime = 1524704000
+server_host = 127.0.0.1 # localhost
+server_port = 6000
+server_tls = 0
+server_cert = server.crt
+server = $server_host:$server_port
+server_path = lra/
+path = $server_path
+ca_dn = /CN=CMPCA-ENDENTITY
+recipient = $ca_dn
+server_dn = /CN=Downstream-CMP-ENDENTITY
+expect_sender = $ca_dn
+subject = "/CN=EE-CMP-ENDENTITY"
+newkey = signer.key
+out_trusted = signer_root.crt
+kur_port = 6000
+pbm_port = 6000
+pbm_ref =
+pbm_secret = pass:myPresharedSecret
+cert = signer.crt
+key  = signer.p12
+keypass = pass:12345
+ignore_keyusage = 0
 column = 1
+sleep = 0
 
 [EJBCA]
 server_host = ec2-204-236-244-127.compute-1.amazonaws.com

@@ -19,14 +19,14 @@ TODO,TODO,TODO,TODO,missing attribute in recipient name, -section,, -recipient,/
 0,0,0,0,wrong syntax in recipient name: C too long, -section,, -recipient,/CN=ECC Issuing CA v10/OU=For test purpose only/O=CMPforOpenSSL/C=DEE,BLANK,,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 1,1,1,0,recipient name empty attribute (ignored by server), -section,, -recipient,/CN=/OU=/O=/C=,BLANK,,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,
-1,1,1,1,config default with expected sender, -section,, -recipient,_CA_DN, -expect_sender,_SERVER_DN,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
+1,1,1,1,config default with expected sender, -section,, -recipient,_CA_DN, -expect_sender,_CA_DN,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,0,0,0,expected sender missing arg, -section,, -recipient,_CA_DN, -expect_sender,,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 TODO,TODO,TODO,TODO,order of sender and expected sender do not match, -section,,,, -expect_sender,/C=DE/CN=ECC Issuing CA v10/OU=For test purpose only/O=CMPforOpenSSL,BLANK,, -trusted,trusted.crt,BLANK,,BLANK,,,,,,,,,,
 TODO,TODO,TODO,TODO,expected sender lower case, -section,, -recipient,_CA_DN, -expect_sender,/CN=ecc issuing ca v10/OU=for test purpose only/O=cmpforopenssl/C=de,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 TODO,TODO,TODO,TODO,expected sender all lower case, -section,, -recipient,_CA_DN, -expect_sender,/cn=ecc issuing ca v10/ou=for test purpose only/o=cmpforopenssl/c=de,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 TODO,TODO,TODO,TODO,expected sender upper case, -section,, -recipient,_CA_DN, -expect_sender,/CN=ECC ISSUING CA V10/OU=FOR TEST PURPOSE ONLY/O=CMPFOROPENSSL/C=DE,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,0,0,0,wrong expected sender, -section,, -recipient,_CA_DN, -expect_sender,/CN=Sample Cert/OU=R&D/O=Company Ltd./L=Dublin 4/C=IE,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
-1,1,1,1,unknown attribute in expected sender, -section,, -recipient,_CA_DN, -expect_sender,_SERVER_DN/ABC=123,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
+1,1,1,1,unknown attribute in expected sender, -section,, -recipient,_CA_DN, -expect_sender,_CA_DN/ABC=123,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,0,0,0,extra attribute in expected sender, -section,, -recipient,_CA_DN, -expect_sender,_SERVER_DN/serialNumber=123,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,0,0,0,double attribute in expected sender, -section,, -recipient,_CA_DN, -expect_sender,/CN=ECC Issuing CA v10_SERVER_DN,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,0,0,0,missing attribute in expected sender, -section,, -recipient,_CA_DN, -expect_sender,/CN=ECC Issuing CA v10/OU=For test purpose only/C=DE,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
@@ -39,7 +39,9 @@ TODO,TODO,TODO,TODO,expected sender upper case, -section,, -recipient,_CA_DN, -e
 1,1,1,1,explicit srvcert, -section,,,,BLANK,, -srvcert,_SERVER_CERT, -trusted,"""",BLANK,,, -unprotected_errors, -extracertsout,test.extracerts.pem,, -srvcertout,test.srvcertout.pem, -secret,"""", -cert,signer.crt, -key,signer.p12, -keypass,pass:12345
 1,1,1,1,reuse last srvcert, -section,,,,BLANK,, -srvcert,test.srvcertout.pem, -trusted,"""",BLANK,,, -unprotected_errors,BLANK,,,,,,,,
 1,1,1,1,reuse last extracerts, -section,,,,BLANK,, -srvcert,test.extracerts.pem, -trusted,"""",BLANK,,, -unprotected_errors,BLANK,,,,,,,,
-1,1,-,-,output no srvcert empty extracerts, -section,,,,BLANK,, -secret,_PBM_SECRET, -ref,_PBM_REF,BLANK,,, -unprotected_errors, -extracertsout,test.extracerts_empty.pem,, -srvcertout,test.srvcertout.pem, -cmd,genm, -infotype,signKeyPairTypes
+1,-,-,-,output no srvcert empty extracerts, -section,,,,BLANK,, -secret,_PBM_SECRET, -ref,_PBM_REF,BLANK,,, -unprotected_errors, -extracertsout,test.extracerts_empty.pem,, -srvcertout,test.srvcertout.pem, -cmd,genm, -infotype,signKeyPairTypes
+-,1,-,-,output empty extracerts were output in enrollment, -section,,,,BLANK,,, -trusted,trusted.crt,,,BLANK,,, -unprotected_errors, -cacertsout,test.extracerts_empty.pem,, -srvcertout,test.srvcertout.pem,-server,_SERVER_HOST:_PBM_PORT
+-,0,-,-,output delete srvcert file, -section,,,,BLANK,,,,, -secret,_PBM_SECRET, -ref,_PBM_REF,,BLANK,,, -unprotected_errors,,,, -srvcertout,test.srvcertout.pem,-server,_SERVER_HOST:_PBM_PORT
 -,-,0,-,output no srvcert - empty extracerts were output in enrollment, -section,,,,BLANK,, -secret,_PBM_SECRET, -ref,_PBM_REF,BLANK,,, -unprotected_errors, -cacertsout,test.extracerts_empty.pem,, -srvcertout,test.srvcertout.pem,-server,_SERVER_HOST:_PBM_PORT
 -,-,-,1,output no srvcert empty cacerts used for extracerts, -section,,,,BLANK,, -secret,_PBM_SECRET, -ref,_PBM_REF,BLANK,,, -unprotected_errors, -cacertsout,test.extracerts_empty.pem,, -srvcertout,test.srvcertout.pem
 0,0,0,0,cannot reuse last srvcert, -section,,,,BLANK,, -srvcert,test.srvcertout.pem, -trusted,"""",BLANK,,, -unprotected_errors,BLANK,,,,,,,,

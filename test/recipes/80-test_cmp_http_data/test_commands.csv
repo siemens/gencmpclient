@@ -15,7 +15,7 @@ TBD,TBD,TBD,TBD,config default all options set, -section,, -cmd,ir,, -cacertsout
 ,,,,,,,,,,,,,,,,,,,
 1,1,1,1,no cacertsout, -section,, -cmd,ir,,BLANK,,,BLANK,,,BLANK,,BLANK,
 1,1,1,1,cacertsout given, -section,, -cmd,ir,, -cacertsout,test.cacerts.pem,,BLANK,,,BLANK,,BLANK,
-1,1,-,-,use cacerts, -section,, -cmd,ir,,BLANK,,,BLANK,,,BLANK,,BLANK, -trusted,test.cacerts.pem,
+1,0,-,-,use cacerts, -section,, -cmd,ir,,BLANK,,,BLANK,,,BLANK,,BLANK, -trusted,test.cacerts.pem,
 0,0,0,0,cacertsout missing arg, -section,, -cmd,ir,, -cacertsout,,,BLANK,,,BLANK,,BLANK,
 0,0,0, -,cacertsout value is a dir, -section,, -cmd,ir,, -cacertsout,directory/,,BLANK,,,BLANK,,BLANK,
 ,,,,,,,,,,,,,,,,,,,
@@ -51,7 +51,7 @@ TBD: missing serial number in template,TBD: missing serial number in template,TB
 0,0,0,0,without oldcert, -section,, -cmd,rr,,BLANK,,,BLANK,,,BLANK,,BLANK,
 0,0,0,0,oldcert file nonexistent, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,idontexist,BLANK,
 0,0,0,0,empty oldcert file, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,empty.txt,BLANK,
-0,0,0,0,oldcert and key do not match, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,trusted.crt, -revreason,0
+0,-,0,0,wrong certificate to revoke, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,trusted.crt, -revreason,0
 0,0,0,0,revreason 11 (invalid), -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,11
 0,0,0,0,revreason string, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,abc
 0,0,0,0,revreason out of integer range, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,010000000000000000000

@@ -4,7 +4,7 @@ Mock,LwCmp,EJBCA,Insta,description, -section,val, -cmd,val, -newkey,val,val, -ne
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 TBD,TBD,TBD,TBD,is BLANK wrong error message, -section,, -cmd,ir,BLANK,,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -certout,test.cert.pem,, -out_trusted,root.crt,,BLANK,,BLANK,,,
 1,1,1,1,newkey, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -certout,test.certout.pem,, -out_trusted,root.crt,,BLANK,,BLANK,,,,-chainout,_RESULT_DIR/test.chainout.pem
-1,1,-,1,use chainout, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, ,,, -out_trusted,root.crt,,BLANK,,BLANK,,,,-cert,signer_only.crt,-untrusted,_RESULT_DIR/test.chainout.pem
+1,-,-,1,use chainout, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, ,,, -out_trusted,root.crt,,BLANK,,BLANK,,,,-cert,signer_only.crt,-untrusted,_RESULT_DIR/test.chainout.pem
 -,-,1,-,output no srvcert empty cacerts used for extracerts in verification, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, ,,, -out_trusted,root.crt,,BLANK,,BLANK,,,, -cacertsout,test.extracerts_empty.pem, -srvcertout,test.srvcertout.pem
 0,0,0,1,missing chain, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, ,,, -out_trusted,root.crt,,BLANK,,BLANK,,,,-cert,signer_only.crt,-untrusted,""""
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
@@ -90,7 +90,7 @@ TBD,TBD,TBD,TBD,days 36525, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pa
 1,1,1,1,disable_confirm, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -disable_confirm,, -certout,test.cert.pem,, -out_trusted,root.crt,,BLANK,,BLANK,,,
 0,0,0,0,disable_confirm with parameter, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -disable_confirm,abc, -certout,test.cert.pem,, -out_trusted,root.crt,,BLANK,,BLANK,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-1,1,-,1,use certout (and chainout), -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,,,, -out_trusted,root.crt,,BLANK,,BLANK,,,, -cert,test.certout.pem,-untrusted,test.chainout.pem
+1,1,-,1,use certout (and chainout), -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,,,, -out_trusted,root.crt,,BLANK,,BLANK,,,, -key,new.key, -cert,test.certout.pem,-untrusted,test.chainout.pem
 0,0,0,0,no certout, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -certout,"""",, -out_trusted,root.crt,,BLANK,,BLANK,,,
 0,0,0,0,certout missing arg, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -certout,,, -out_trusted,root.crt,,BLANK,,BLANK,,,
 0,0,0,0,certout is non-existing directory and file, -section,, -cmd,ir, -newkey,new.key,, -newkeypass,pass:,,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,,BLANK,, -certout,idontexist/idontexist,, -out_trusted,root.crt,,BLANK,,BLANK,,,

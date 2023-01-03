@@ -122,7 +122,7 @@ test_Mock:
 
 .phony: test_LwCmp
 test_LwCmp:
-	# TODO $(MAKE) -f Makefile_tests test_cli OPENSSL_CMP_SERVER=LwCmp OPENSSL=$(OPENSSL)
+	$(MAKE) -f Makefile_tests test_cli OPENSSL_CMP_SERVER=LwCmp OPENSSL=$(OPENSSL)
 
 # clean ########################################################################
 

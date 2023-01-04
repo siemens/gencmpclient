@@ -1625,8 +1625,8 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
             LOG(FL_WARN, "-days %s", msg);
         if (opt_popo != OSSL_CRMF_POPO_NONE - 1)
             LOG(FL_WARN, "-popo %s", msg);
-        if (opt_out_trusted != NULL)
-            LOG(FL_WARN, "-out_trusted %s", msg);
+        if (use_case != pkcs10 && opt_out_trusted != NULL)
+            LOG(FL_WARN, "-out_trusted is ignored for 'rr', and 'genm' commands");
     } else {
         if (opt_newkeytype != NULL || opt_centralkeygen) {
             if (opt_newkey == NULL) {

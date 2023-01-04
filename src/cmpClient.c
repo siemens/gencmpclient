@@ -979,7 +979,7 @@ int setup_ctx(CMP_CTX *ctx)
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
                                  opt_unprotected_errors)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NO_CACHE_EXTRACERTS,
-                                 opt_no_cache_extracerts)
+                                    opt_no_cache_extracerts)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE,
                                     opt_ignore_keyusage)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITY_DAYS,
@@ -1407,7 +1407,7 @@ static int complete_genm_asn1_objects(void)
         { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x13 };
 
     if (!add_object(so_rootCaKeyUpdate, sizeof(so_rootCaKeyUpdate),
-                    NID_id_it_rootCaKeyUpdate, "id-it-rootCaKeyUpdate"))
+                    NID_id_it_rootCaKeyUpdate, "id-it-rootCaKeyUpdate")
         || !add_object(so_certReqTemplate, sizeof(so_certReqTemplate),
                        NID_id_it_certReqTemplate, "id-it-certReqTemplate"))
         return -20;
@@ -1563,7 +1563,7 @@ static CMP_err check_options(enum use_case use_case)
     if (opt_crls_timeout >= 0 && !opt_use_cdp && opt_cdps == NULL
         && (use_case != genm || strcmp(opt_infotype, "certReqTemplate") != 0)) {
         LOG_warn("Ignoring -crls_timeout since no -use_cdp, -cdps, or -infotype certReqTemplate option given");
-    } else if (opt_crls_timeout < -1 ) {
+    } else if (opt_crls_timeout < -1) {
         LOG(FL_ERR, "-crls_timeout value must be >= -1");
         return -22;
     }
@@ -1784,6 +1784,7 @@ CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
                    const char *file, const char *dir, const char *format)
 {
     char desc_certs[80];
+
     snprintf(desc_certs, sizeof(desc_certs), "%s certs", desc);
     LOG(FL_TRACE, "Extracted %s from %s", desc_certs, field);
 
@@ -1838,44 +1839,44 @@ CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds,
     if (err != CMP_OK)
         return err;
 
+    if (use_case == revocation || use_case == genm || use_case == validate)
+        return CMP_OK;
+
     err = save_certs(OSSL_CMP_CTX_get1_caPubs(ctx), "caPubs", "CA",
                      opt_cacertsout, opt_cacerts_dir, opt_cacerts_dir_format);
     if (err != CMP_OK)
         return err;
 
-    if (use_case != revocation && use_case != genm && use_case != validate) {
-        if (use_case != pkcs10 && opt_newkey != NULL
+    if (use_case != pkcs10 && opt_newkey != NULL
             && (opt_newkeytype != NULL || opt_centralkeygen)) {
-            if (opt_chainout != NULL)
-                LOG_warn("-chainout option is ignored");
+        const char *new_desc = "newly enrolled certificate and related chain and key";
 
-            const char *new_desc = "newly enrolled certificate and related chain and key";
-            if (!CREDENTIALS_save(new_creds, opt_certout,
-                                  opt_newkey, opt_newkeypass, new_desc)) {
-                LOG_err("Failed to save newly enrolled credentials");
-                return CMP_R_STORE_CREDS; /* unused: -54 */
+        if (opt_chainout != NULL)
+            LOG_warn("-chainout option is ignored");
+
+        if (!CREDENTIALS_save(new_creds, opt_certout,
+                              opt_newkey, opt_newkeypass, new_desc)) {
+            LOG_err("Failed to save newly enrolled credentials");
+            return CMP_R_STORE_CREDS; /* unused: -54 */
+        }
+    } else {
+        X509 *cert = CREDENTIALS_get_cert(new_creds);
+        STACK_OF(X509) *certs = CREDENTIALS_get_chain(new_creds);
+
+        if (opt_chainout != NULL && strcmp(opt_chainout, opt_certout) != 0) {
+            if (!CERT_save(cert, opt_certout, "newly enrolled certificate")) {
+                return CMP_R_STORE_CREDS;
+            }
+            if (opt_chainout != NULL &&
+                CERTS_save(certs, opt_chainout,
+                           "chain of newly enrolled certificate") < 0) {
+                return CMP_R_STORE_CREDS;
             }
         } else {
-            X509 *cert = CREDENTIALS_get_cert(new_creds);
-            STACK_OF(X509) *certs = CREDENTIALS_get_chain(new_creds);
-
-            if (opt_chainout != NULL && strcmp(opt_chainout, opt_certout) != 0) {
-                if (!CERT_save(cert, opt_certout,
-                               "newly enrolled certificate")) {
-                    return CMP_R_STORE_CREDS;
-                }
-                if (opt_chainout != NULL &&
-                    CERTS_save(certs, opt_chainout,
-                               "chain of newly enrolled certificate") < 0) {
-                    return CMP_R_STORE_CREDS;
-                }
-            } else {
-                if (!FILES_store_credentials(NULL /* key */, cert, certs,
-                                             NULL /* keyfile */, opt_certout,
-                                             FORMAT_PEM, NULL,
-                                             "newly enrolled certificate and chain"))
-                    return CMP_R_STORE_CREDS;
-            }
+            if (!FILES_store_credentials(NULL /* key */, cert, certs, NULL,
+                                         opt_certout, FORMAT_PEM, NULL,
+                                         "newly enrolled certificate and chain"))
+                return CMP_R_STORE_CREDS;
         }
     }
     return CMP_OK;

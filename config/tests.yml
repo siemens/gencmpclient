@@ -76,9 +76,9 @@ SupportMessageHandlerInterface:
   - GetRootCaCertificateUpdate:
       certProfile: RSA
   - GetRootCaCertificateUpdate:
-      newWithNew: "credentials/newwithnew.pem"
-      newWithOld: "credentials/newwithold.pem"
-      oldWithNew: "credentials/oldwithnew.pem"
+      newWithNew: "credentials/newWithNew.pem"
+      newWithOld: "credentials/newWithOld.pem"
+      oldWithNew: "credentials/oldWithNew.pem"
 
   - CrlUpdateRetrieval:
       certProfile: RSA

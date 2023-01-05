@@ -943,7 +943,7 @@ int setup_ctx(CMP_CTX *ctx)
     if (opt_extracerts != NULL) {
         STACK_OF(X509) *certs =
             CERTS_load(opt_extracerts, "extra certificates for CMP",
-                       1 /* CA */, vpm);
+                       -1 /* allow EE and CA */, vpm);
 
         if (certs == NULL) {
             LOG(FL_ERR, "Unable to load '%s' extra certificates for CMP",

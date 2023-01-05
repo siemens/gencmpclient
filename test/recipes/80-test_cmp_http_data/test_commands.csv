@@ -1,5 +1,7 @@
-Mock,LwCmp,EJBCA,Insta,description, -section,val, -cmd,val,val2, -cacertsout,val,val2, -infotype,val,val2, -oldcert,val, -revreason,int, -geninfo,val, -opt1,arg1, -opt2,arg2, -opt3,arg3, -opt4,arg4, -opt5,arg5
+Mock,LwCmp,EJBCA,Insta,description, -section,val, -cmd,val,val2, -cacertsout,val,val2, -infotype,val,val2, -oldcert,val, -revreason,int, -geninfo,val,val2, -opt1,arg1, -opt2,arg2, -opt3,arg3, -opt4,arg4, -opt5,arg5
 ,,,,,,,Generic,message options:,,,,,,,,,,,,,,Misc,request options:,,
+,,,,,,,,,,,,,,,,,,,
+-,-,-,1, --- requesting new signer.crt for Insta --- ,-section,,-cmd,ir,-certout,../../../../creds/InstaDemoCA_client.pem,-newkey,signer.p12,-newkeypass,pass:12345
 ,,,,,,,,,,,,,,,,,,,
 1,1,1,1,config default, -section,, -cmd,ir,,BLANK,,,BLANK,,,BLANK,,BLANK,
 TBD,TBD,TBD,TBD,config default all options set, -section,, -cmd,ir,, -cacertsout,test.cacerts.pem,, -infotype,signKeyPairTypes,, -oldcert,test.cert.pem,BLANK,
@@ -8,53 +10,53 @@ TBD,TBD,TBD,TBD,config default all options set, -section,, -cmd,ir,, -cacertsout
 ,,,,,,,,,,,,,,,,,,,
 1,1,1,1,minimum options, -section,, -cmd,ir,,BLANK,,,BLANK,,,BLANK,,BLANK,
 ,,,,,,,,,,,,,,,,,,,
-0,0,0,0,no cmd, -section,,BLANK,,,BLANK,,,BLANK,,,BLANK,,BLANK,
-0,0,0,0,cmd missing arg, -section,, -cmd,,,BLANK,,,BLANK,,,BLANK,,BLANK,
-0,0,0,0,cmd undefined , -section,, -cmd,abc,,BLANK,,,BLANK,,,BLANK,,BLANK,
-0,0,0,0,cmd incomplete, -section,, -cmd,i,,BLANK,,,BLANK,,,BLANK,,BLANK,
+0,*,*,*,no cmd, -section,,BLANK,,,BLANK,,,BLANK,,,BLANK,,BLANK,
+*,*,*,*,cmd missing arg, -section,, -cmd,,,BLANK,,,BLANK,,,BLANK,,BLANK,
+*,*,*,*,cmd undefined , -section,, -cmd,abc,,BLANK,,,BLANK,,,BLANK,,BLANK,
+*,*,*,*,cmd incomplete, -section,, -cmd,i,,BLANK,,,BLANK,,,BLANK,,BLANK,
 ,,,,,,,,,,,,,,,,,,,
 1,1,1,1,no cacertsout, -section,, -cmd,ir,,BLANK,,,BLANK,,,BLANK,,BLANK,
 1,1,1,1,cacertsout given, -section,, -cmd,ir,, -cacertsout,test.cacerts.pem,,BLANK,,,BLANK,,BLANK,
-1,0,-,-,use cacerts, -section,, -cmd,ir,,BLANK,,,BLANK,,,BLANK,,BLANK, -trusted,test.cacerts.pem,
-0,0,0,0,cacertsout missing arg, -section,, -cmd,ir,, -cacertsout,,,BLANK,,,BLANK,,BLANK,
-0,0,0, -,cacertsout value is a dir, -section,, -cmd,ir,, -cacertsout,directory/,,BLANK,,,BLANK,,BLANK,
+1,0,-,-,use cacerts, -section,, -cmd,ir,,BLANK,,,BLANK,,,BLANK,,BLANK,,,,, -trusted,test.cacerts.pem,
+0,*,*,*,cacertsout missing arg, -section,, -cmd,ir,, -cacertsout,,,BLANK,,,BLANK,,BLANK,
+0,*,*,*,cacertsout value is a dir, -section,, -cmd,ir,, -cacertsout,directory/,,BLANK,,,BLANK,,BLANK,
 ,,,,,,,,,,,,,,,,,,,
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-TBD 0 for EJBCA but 1 for Mock,TBD 0 for EJBCA but 1 for Mock,TBD 0 for EJBCA but 1 for Mock,1,rr command with default revreason, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem,BLANK,
+1,0,0,1,rr with default revreason, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem,BLANK,,BLANK, -expect_sender,""""
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-1,1,1,1,revreason unspecified, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,0
+1,1,1,1,rr with revreason unspecified, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,0,BLANK
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-1,1,1,1,revreason keyCompromise, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,1
+1,1,1,1,rr with revreason keyCompromise, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,1,BLANK
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-1,1,1,1,revreason CACompromise, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,2
+1,1,1,1,rr with revreason CACompromise, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,2,BLANK
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-1,1,1,1,revreason affiliationChanged, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,3
+1,1,1,1,rr with revreason affiliationChanged, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,3,BLANK
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-1,1,1,1,revreason superseded, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,4
+1,1,1,1,rr with revreason superseded, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,4,BLANK
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-1,1,1,1,revreason cessationOfOperation, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,5
+1,1,1,1,rr with revreason cessationOfOperation, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,5,BLANK
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-1,1,1,1,revreason certificateHold, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,6
-1,1,1,1,revreason removeFromCRL, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,8
+1,1,1,1,rr with revreason certificateHold, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,6,BLANK
+1,1,TBD Already revoked,1,rr with revreason removeFromCRL, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,8,BLANK, -expect_sender,""""
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-TBD 0 for EJBCA but 1 for Mock,TBD 0 for EJBCA but 1 for Mock,TBD 0 for EJBCA but 1 for Mock,TBD,revreason removeFromCRL - not on hold, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,8
-0,0,0,0,revreason 7 (invalid), -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,7
+1,1,TBD Already revoked,TBD,rr with revreason removeFromCRL - not on hold, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,8,BLANK, -expect_sender,""""
+0,*,*,*,rr with revreason 7 (invalid), -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,7
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-1,1,1,1,revreason priviligeWithdrawn, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,9
+1,1,1,1,rr with revreason priviligeWithdrawn, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,9,BLANK
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-1,1,1,1,revreason AACompromise, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,10
+1,1,1,1,rr with revreason AACompromise, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,10,BLANK
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-TBD 0 for EJBCA but 1 for Mock,TBD 0 for EJBCA but 1 for Mock,TBD 0 for EJBCA but 1 for Mock,1,revreason none, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,-1
+1,0,0,1,rr with revreason none, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,-1,BLANK,,, -expect_sender,""""
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-TBD: missing serial number in template,TBD: missing serial number in template,TBD: missing serial number in template,0, --- use csr for revocation ----, -section,, -cmd,rr,,BLANK,,,BLANK,,,BLANK,,-revreason,0,,, -csr,csr.pem, -newkey, """", -subject, """", -policies, """", -certout, """"
+1,0,0,0,use csr for revocation but missing serial number in template, -section,, -cmd,rr,,BLANK,,,BLANK,,,BLANK,,-revreason,0,,,, -csr,csr.pem, -newkey, """", -subject, """", -policies, """", -certout, """"
 1,1,1,1, --- get certificate for revocation ----, -section,, -cmd,cr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-0,0,0,0,without oldcert, -section,, -cmd,rr,,BLANK,,,BLANK,,,BLANK,,BLANK,
-0,0,0,0,oldcert file nonexistent, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,idontexist,BLANK,
-0,0,0,0,empty oldcert file, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,empty.txt,BLANK,
+0,*,*,*,without oldcert, -section,, -cmd,rr,,BLANK,,,BLANK,,,BLANK,,BLANK,
+0,*,*,*,oldcert file nonexistent, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,idontexist,BLANK,
+0,*,*,*,empty oldcert file, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,empty.txt,BLANK,
 0,-,0,0,wrong certificate to revoke, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,trusted.crt, -revreason,0
-0,0,0,0,revreason 11 (invalid), -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,11
-0,0,0,0,revreason string, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,abc
-0,0,0,0,revreason out of integer range, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,010000000000000000000
+0,*,*,*,revreason 11 (invalid), -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,11
+0,*,*,*,revreason string, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,abc
+0,*,*,*,revreason out of integer range, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,010000000000000000000
 ,,,,,,,,,,,,,,,,,,,
 1,1,1,1,ir + infotype, -section,, -cmd,ir,,BLANK,,, -infotype,signKeyPairTypes,,BLANK,,BLANK,
 TBD,TBD,TBD,TBD,EJBCA does not support genm,,,,,,,,,,,,,,,
@@ -67,16 +69,16 @@ TBD,TBD,TBD,TBD,EJBCA does not support genm,,,,,,,,,,,,,,,
 1,1,1,1,geninfo str, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,id-kp:str:name
 1,1,1,1,geninfo empty str, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,id-kp:str:
 1,1,1,1,geninfo str and int, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo, 'id-kp:str:name,  1.2.3:int:987'
-0,0,0,0,geninfo missing argument, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,,,,,
-0,0,0,0,geninfo bad OID num: leading '.', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,.1.2.3:int:987
-0,0,0,0,geninfo bad OID name: trailing '_', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,id-kp_:int:987
-0,0,0,0,geninfo bad syntax: missing ':int', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3,,,,
-0,0,0,0,geninfo bad type tag, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3:xyz:987,,,,
-0,0,0,0,geninfo bad syntax: missing ':', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3:int987,,,,
-0,0,0,0,geninfo bad int syntax: double ':', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3:int::987,,,,
-0,0,0,0,geninfo bad int syntax: extra char, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3:int:987@,,,,
+0,*,*,*,geninfo missing argument, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,,,,,
+0,*,*,*,geninfo bad OID num: leading '.', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,.1.2.3:int:987
+0,*,*,*,geninfo bad OID name: trailing '_', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,id-kp_:int:987
+0,*,*,*,geninfo bad syntax: missing ':int', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3,,,,
+0,*,*,*,geninfo bad type tag, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3:xyz:987,,,,
+0,*,*,*,geninfo bad syntax: missing ':', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3:int987,,,,
+0,*,*,*,geninfo bad int syntax: double ':', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3:int::987,,,,
+0,*,*,*,geninfo bad int syntax: extra char, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3:int:987@,,,,
 TBD,TBD,TBD,TBD,find invalid geninfo values, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.9:int:123
 ,,,,,,,,,,,,,,,,,,,,,
-1,1,1,no need doing twice,reqout+rspout, -section,, -cmd,ir,,-reqout,req1.der req2.der,-rspout,rsp1.der rsp2.der,BLANK,,BLANK,
-1,1,1,no need doing twice,reqin, -section,, -cmd,ir,,BLANK,,BLANK,,-reqin,req1.der req2.der,BLANK,,-reqin_new_tid
-1,1,1,no need doing twice,rspin, -section,, -cmd,ir,,BLANK,,BLANK,,BLANK,,-rspin,rsp1.der rsp2.der,
+1,*,*,*,reqout+rspout, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqout,req1.der req2.der,-rspout,rsp1.der rsp2.der
+1,*,*,*,reqin        , -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,req1.der req2.der,,-reqin_new_tid
+1,*,*,*,rspin        , -section,, -cmd,ir,,,,,,,,,,,,,,,-rspin,rsp1.der rsp2.der

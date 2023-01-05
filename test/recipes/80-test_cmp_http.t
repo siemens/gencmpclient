@@ -164,17 +164,20 @@ sub test_cmp_http {
     my $cmd = app([@app, @$params]);
 
     $expected_result = 1 if $server_name eq "Mock" && $title =~ m/- ok for Mock/;
-    sleep($sleep) if $title eq "explicit srvcert";
-    sleep($sleep) if 0
-        || $title eq "explicit srvcert"
+    sleep($sleep) if $server_name eq "Insta"
+        && $title eq "explicit srvcert"
         || $title eq "config default with expected sender"
         || $title eq "srvcert big file"
-        || $title eq "untrusted is wrong cert"
+        || $title eq "untrusted empty file"
         || $title eq "unknown attribute in expected sender"
         || $title eq "requesting new signer.crt for Insta"
+        || $title eq "extracerts empty file"
         || $title eq "ir + infotype"
         || $title eq "empty ref but correct cert"
+        || $title eq "newkeypass no prefix"
         || $title eq "subject country missing"
+        || $title eq "days 1"
+        || $title eq "sans 1 dns 1 ip"
         || $title eq "popo SIGNATURE"
         || $title eq "out_trusted bigcert"
         || $title eq "implicit confirm"

@@ -376,14 +376,18 @@ stop_Simple:
 	@PID=`ps aux|grep " jar/SimpleLra.jar TestConfig.xml" | grep -v grep | awk '{ print $$2 }'` && \
 	if [ -n "$$PID" ]; then echo "stopping SimpleLra" && kill $$PID; fi
 
-test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple start_Simple
-ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # OpenSSL <1.1 does not support OCSP
+.phony: test_Simple
+test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple
+ifneq ($(EJBCA_ENABLED),)
+	$(MAKE) start_Simple
+    ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # OpenSSL <1.1 does not support OCSP
 	$(warning skipping certstatus aspect since OpenSSL <1.1 does not support OCSP)
 	make test_cli OPENSSL_CMP_SERVER=Simple OPENSSL_CMP_ASPECTS="connection verification credentials commands enrollment"
-else
+    else
 	$(MAKE) -f Makefile_tests test_cli OPENSSL_CMP_SERVER=Simple OPENSSL=$(OPENSSL)
-endif
+    endif
 	$(MAKE) stop_Simple
+endif
 
 .phony: test_Insta
 test_Insta: get_Insta_crls

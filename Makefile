@@ -305,7 +305,8 @@ endif
 .phony: demo demo_Insta demo_EJBCA
 demo: demo_Insta
 demo_Insta:
-	$(MAKE) run_demo INSTA=1
+	$(MAKE) run_demo INSTA=1 SLEEP="sleep 1"
+# for Insta, sleep 1 helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
 demo_EJBCA:
 	$(MAKE) run_demo INSTA= EJBCA_ENABLED=1
 
@@ -344,13 +345,14 @@ else
 	@echo :
 	$(OCSP_CHECK)
 	@echo
-	@sleep 1 # for Insta helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
+	@$(SLEEP)
 	$(CMPCLIENT) revoke -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
 	$(OCSP_CHECK)
     ifneq ($(INSTA),)
 	@echo
-	@sleep 1 # for Insta helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
+	@$(SLEEP)
+	@$(SLEEP)
 	$(CMPCLIENT) genm -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
     endif

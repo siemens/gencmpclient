@@ -119,40 +119,6 @@ column = 3
 sleep = 4
 # 3 is not sufficient: sometimes leads to HTTP code 503 (Service Unavailable)
 
-[Simple] # this is a Siemens-only test configuration
-#no_check_time = 1  # not yet needed here; # is not supported by OpenSSL 1.0.2
-#attime = 1564704000
-server_host = 127.0.0.1 # localhost
-server_port = 9080
-server_tls = 9085
-server_cert = server.crt
-server = $server_host:$server_port
-tls_cert = tls.p12
-tls_key = $tls_cert
-tls_keypass = pass:12345
-tls_trusted = tls_trusted.pem
-server_path = cmp/PlaygroundECC/
-path = $server_path
-ca_dn = ${ENV::EJBCA_CMP_RECIPIENT}
-recipient = $ca_dn
-server_dn = ${ENV::EJBCA_CMP_SERVER}
-expect_sender = $server_dn
-subject = ${ENV::EJBCA_CMP_SUBJECT_ECC}
-kur_port = 9083
-pbm_port = 9084
-pbm_ref =
-pbm_secret = pass:SecretCmp
-cert = signer.crt
-key  = signer.p12
-keypass = pass:12345
-ignore_keyusage = 0
-unprotected_errors = 1 # EJBCA sends error messages and negative responses without protection
-crls = "../../../../creds/crls/EJBCA-InfrastructureIssuingCAv10.crl, ../../../../creds/crls/EJBCA-ECCRootCAv10.crl, ../../../../creds/crls/EJBCA-InfrastructureRootCAv10.crl ../../../../creds/crls/EJBCA-RSARootCAv10.crl"
-cdps = ${ENV::EJBCA_CDP_URL_PREFIX}Infrastructure+Issuing+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}Infrastructure+Root+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}ECC+Issuing+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}ECC+Root+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}
-ocsp = ${ENV::EJBCA_OCSP_URL}
-column = 2
-sleep = 0
-
 ############################# aspects
 
 [connection]

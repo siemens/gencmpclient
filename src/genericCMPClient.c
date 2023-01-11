@@ -4,7 +4,7 @@
  *
  * @author David von Oheimb, Siemens AG, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2017-2021 Siemens AG
+ *  Copyright (c) 2017-2023 Siemens AG
  *
  *  Licensed under the Apache License 2.0 (the "License").
  *  You may not use this file except in compliance with the License.
@@ -1064,7 +1064,7 @@ CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out)
 
 CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
                                   OSSL_CRMF_CERTTEMPLATE **certTemplate,
-                                  OSSL_CMP_ATAVS **keySpec)
+                                  OPTIONAL OSSL_CMP_ATAVS **keySpec)
 {
     OSSL_CMP_ITAV *req, *itav;
     CMP_err err = CMP_OK;
@@ -1188,8 +1188,9 @@ static int verify_cert1(CMP_CTX *ctx, X509 *trusted, X509 *trans,
 }
 
 CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
-                             X509 *oldWithOld, X509 **newWithNew,
-                             X509 **newWithOld, X509 **oldWithNew)
+                             const X509 *oldWithOld, X509 **newWithNew,
+                             OPTIONAL X509 **newWithOld,
+                             OPTIONAL X509 **oldWithNew)
 {
     OSSL_CMP_ITAV *req, *itav;
     CMP_err err = CMP_OK;
@@ -1216,7 +1217,7 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
 
     if (*newWithNew == NULL) /* no root CA cert update available */
         goto end;
-    if (!verify_cert1(ctx, oldWithOld, *newWithOld,
+    if (!verify_cert1(ctx, (X509 *)oldWithOld, *newWithOld,
                       *newWithNew, "newWithNew")) {
         err = CMP_R_INVALID_ROOTCAUPD;
         goto end;
@@ -1224,8 +1225,8 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
     if (*oldWithNew != NULL) {
         if (oldWithOld == NULL) {
             LOG(FL_WARN, "oldWithNew certificate received in genp for verifying oldWithOld, but oldWithOld was not provided");
-        } else if (!verify_cert1(ctx, *newWithNew, *oldWithNew,
-                                 oldWithOld, "oldWithOld")) {
+        } else if (!verify_cert1(ctx, (X509 *)*newWithNew, *oldWithNew,
+                                 (X509 *)oldWithOld, "oldWithOld")) {
             err = CMP_R_INVALID_ROOTCAUPD;
             goto end;
         }
@@ -1242,8 +1243,8 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
     return err;
 }
 
-CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, const X509_CRL *last_crl,
-                            const X509 *cert, X509_CRL **crl)
+CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, OPTIONAL const X509 *cert,
+                            OPTIONAL const X509_CRL *last_crl, X509_CRL **crl)
 {
     OSSL_CMP_CRLSTATUS *status = NULL;
     STACK_OF(OSSL_CMP_CRLSTATUS) *list = NULL;

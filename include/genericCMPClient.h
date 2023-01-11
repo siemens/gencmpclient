@@ -4,7 +4,7 @@
  *
  * @author David von Oheimb, Siemens AG, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2017-2021 Siemens AG
+ *  Copyright (c) 2017-2023 Siemens AG
  *  Licensed under the Apache License 2.0 (the "License").
  *  You may not use this file except in compliance with the License.
  *  You can obtain a copy in the file LICENSE in the source distribution
@@ -64,7 +64,8 @@ CMP_err CMPclient_init(OPTIONAL const char *name, OPTIONAL LOG_cb_t log_fn);
 
 /* must be called first */
 CMP_err CMPclient_prepare(CMP_CTX **pctx,
-                          OSSL_LIB_CTX *libctx, const char *propq,
+                          OPTIONAL OSSL_LIB_CTX *libctx,
+                          OPTIONAL const char *propq,
                           OPTIONAL LOG_cb_t log_fn,
                           OPTIONAL X509_STORE *cmp_truststore,
                           OPTIONAL const char *recipient,
@@ -160,25 +161,26 @@ CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out);
 /* get certificate request template and related key specifications */
 CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
                                   OSSL_CRMF_CERTTEMPLATE **certTemplate,
-                                  OSSL_CMP_ATAVS **keySpec);
+                                  OPTIONAL OSSL_CMP_ATAVS **keySpec);
 # endif
 
 # if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L
-/* get root CA key update certs and verify it (also as non-expired) */
+/* get any root CA key update and verify it as far as possible */
 CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
-                             X509 *oldWithOld, X509 **newWithNew,
-                             X509 **newWithOld, X509 **oldWithNew);
-/* get the latest CRL according to info in last known CRL or cert DPN/issuer */
-CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, const X509_CRL *last_crl,
-                            const X509 *cert, X509_CRL **crl);
+                             const X509 *oldWithOld, X509 **newWithNew,
+                             OPTIONAL X509 **newWithOld,
+                             OPTIONAL X509 **oldWithNew);
+/* get latest CRL according to cert DPN/issuer or get any update on given CRL */
+CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, OPTIONAL const X509 *cert,
+                            OPTIONAL const X509_CRL *last_crl, X509_CRL **crl);
 # endif
-
-/* must be called between any of the above certificate management activities */
-CMP_err CMPclient_reinit(CMP_CTX *ctx);
 
 /* get error information sent by the server */
 char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx,
                                   char *buf, size_t bufsize);
+
+/* must be called between any of the above certificate management activities */
+CMP_err CMPclient_reinit(CMP_CTX *ctx);
 
 /* should be called on application termination */
 void CMPclient_finish(OPTIONAL CMP_CTX *ctx);

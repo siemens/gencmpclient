@@ -434,7 +434,10 @@ test_Mock:
 tests_LwCmp:
 	$(MAKE) -f Makefile_tests tests_LwCmp OUTBIN=$(OUTBIN) OPENSSL=$(OPENSSL)
 
-test_all: demo_EJBCA test_profile test test_Mock tests_LwCmp test_Simple test_Insta
+ifneq ($(EJBCA_ENABLED),)
+test_all: demo_EJBCA
+endif
+test_all: test_profile test test_Mock tests_LwCmp test_Simple test_Insta
 
 test: clean build_no_tls
 	@$(MAKE) clean build demo_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"

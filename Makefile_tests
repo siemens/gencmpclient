@@ -46,7 +46,10 @@ CMPCAMOCK_JAR ?= ./CmpCaMock.jar # TODO: $(LWCMPRA_DIR)/target/??
 CMPCAMOCK_RUN = java -jar $(CMPCAMOCK_JAR)
 
 .phony: tests_LwCmp
+tests_LwCmp:
+ifneq ("$(wildcard $(CMPCAMOCK_JAR))","")
 tests_LwCmp: start_LwCmp conformance_cmpclient conformance_openssl test_LwCmp stop_LwCmp
+endif
 
 .phony: start_LwCmp stop_LwCmp
 start_LwCmp: $(CMPRACOMP_JAR) $(LWCMPRA_JAR)

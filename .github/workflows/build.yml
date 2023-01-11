@@ -1,6 +1,6 @@
 # GitHub Actions for genCMPClient
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (c) Siemens AG, 2021
+# Copyright (c) Siemens AG, 2023
 
 name: CI
 
@@ -28,4 +28,4 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libssl-dev devscripts debhelper pkg-config libpod-markdown-perl
           make doc
-          make deb
+          # make deb

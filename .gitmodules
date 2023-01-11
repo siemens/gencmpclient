@@ -6,7 +6,7 @@
 	url = https://github.com/mpeylo/cmpossl.git
 [submodule "LightweightCmpRa"]
 	path = LightweightCmpRa
-	url = git@github.com:siemens/LightweightCmpRa.git
+	url = https://github.com/siemens/LightweightCmpRa.git
 [submodule "cmp-ra-component"]
 	path = cmp-ra-component
-	url = git@github.com:siemens/cmp-ra-component.git
+	url = https://github.com/siemens/cmp-ra-component.git

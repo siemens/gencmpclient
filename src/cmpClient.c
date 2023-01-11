@@ -6,7 +6,7 @@
  *
  *  Copyright 2007-2021 The OpenSSL Project Authors. All Rights Reserved.
  *  Copyright Nokia 2007-2019
- *  Copyright (c) 2015-2021 Siemens AG
+ *  Copyright (c) 2015-2023 Siemens AG
  *
  *  Licensed under the Apache License 2.0 (the "License").
  *  You may not use this file except in compliance with the License.
@@ -2040,7 +2040,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
                 if (oldcrl == NULL)
                     goto end_crlupd;
             }
-            err = CMPclient_crlUpdate(ctx, oldcrl, oldcert, &crl);
+            err = CMPclient_crlUpdate(ctx, oldcert, oldcrl, &crl);
             if (err != CMP_OK)
                 goto end_crlupd;
 

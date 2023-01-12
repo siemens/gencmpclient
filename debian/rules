@@ -14,6 +14,7 @@ override_dh_auto_configure:
 
 override_dh_auto_build:
 #	CFLAGS="-O2 -DNDEBUG" CXXFLAGS="-O2 -DNDEBUG" DEBUG_FLAGS="" LDFLAGS=""  # can be used to avoid dependency on libasan and libubsan
+#	OPENSSL_DIR=/usr
 	OPENSSL_DIR=/usr CC=$(CC) CXX=$(CXX) AR=$(AR) \
 	  dh_auto_build -- build_only doc_only
 
@@ -22,3 +23,15 @@ override_dh_auto_test:
 
 #override_dh_builddeb:
 #	dh_builddeb --destdir . --
+
+#override_dh_auto_install:
+#	dh_auto_install --destdir debian/tmp
+
+#workaroud for:
+#dpkg-shlibdeps: error: cannot find library libgencmp.so.2.0 needed by debian/cmpclient/usr/bin/cmpClient (ELF format: 'elf64-x86-64' abi: '0201003e00000000'; RPATH: '')
+#dpkg-shlibdeps: error: cannot continue due to the error above
+#Note: libraries are not searched in other binary packages that do not have any shlibs or symbols file.
+#To help dpkg-shlibdeps find private libraries, you might need to use -l.
+#dh_shlibdeps: error: dpkg-shlibdeps -Tdebian/cmpclient.substvars -l/debian/tmp/usr/lib debian/cmpclient/usr/bin/cmpClient returned exit code 2
+override_dh_shlibdeps:
+	dh_shlibdeps --dpkg-shlibdeps-params=-ldebian/tmp/usr/lib

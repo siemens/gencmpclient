@@ -213,7 +213,7 @@ you will need to `#include` the header file [`genericCMPClient.h`](include/gener
 and add the directories [`include`](include/) and
 [`libsecutils/include`](https://github.com/siemens/libsecutils/blob/master/include/) to your C headers path.
 Wenn using OpenSSL 1.x, you need to
-add also the directory [`cmpossl/include_cmp`](https://github.com/mpeylo/cmpossl/tree/cmp/include/),
+add also the directory [`cmpossl/include/cmp`](https://github.com/mpeylo/cmpossl/tree/cmp/include/cmp/),
 define the C macro `CMP_STANDALONE`, and
 make sure that any OpenSSL header files included have the same version
 as the one used to build the standalone CMP library `libcmp`.

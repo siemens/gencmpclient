@@ -35,9 +35,10 @@ else
     PINGCOUNTOPT=-c
 endif
 
+# $(DESTDIR) set by dh_auto_install
 ROOTFS ?= $(DESTDIR)$(prefix)
 
-VERSION=1.0
+VERSION=2.0
 # must be kept in sync with latest version in debian/changelog
 # PACKAGENAME=libgencmp
 # DIRNAME=$(PACKAGENAME)-$(VERSION)
@@ -50,7 +51,7 @@ ifeq ($(LPATH),)
 #   ifneq ($(wildcard $(ROOTFS)/usr/local/include/openssl),)
 #       OPENSSL_DIR ?= $(ROOTFS)/usr/local
 #   else
-        OPENSSL_DIR ?= $(ROOTFS)/usr
+        OPENSSL_DIR ?= /usr
 #   endif
     SECUTILS_DIR=libsecutils
     SECUTILS_LIB=libsecutils$(DLL)
@@ -105,6 +106,9 @@ OPENSSL ?= openssl$(EXE)
 MAKECMDGOALS ?= default
 ifneq ($(filter-out doc start stop doc doc_only doc/cmpClient.md doc/cmpClient.1.gz \
     clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
+    ifeq (,$(wildcard $(OPENSSL_DIR)/include/openssl))
+        $(error cannot find directory '$(OPENSSL_DIR)/include/openssl', check OPENSSL_DIR variable)
+    endif
     OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
     ifeq ($(OPENSSL_VERSION),)
         $(warning WARNING: cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
@@ -126,19 +130,20 @@ endif
 ifeq ($(LPATH),)
     LIBCMP_DIR=cmpossl
     ifdef CMP_STANDALONE
-        LIBCMP_INC=$(OUT_DIR)/include_cmp # consistent to the default value cmpossl/Makefile
+        LIBCMP_INC=$(OUT_DIR)/include/cmp # consistent with the default value cmpossl/Makefile
     endif
 else
-    LIBCMP_DIR=cmpossl # TODO correct?
+    # TODO correct?
+    LIBCMP_DIR=cmpossl
     ifdef CMP_STANDALONE
-        LIBCMP_INC=$(LPATH)/../include
+        LIBCMP_INC=$(LPATH)/../include/cmp
     endif
 endif
 
 ifeq ($(shell git help submodule | grep progress),)
     GIT_PROGRESS=
 else
-    GIT_PROGRESS=--progress
+    # GIT_PROGRESS=--progress # disabled as gives lengthy output in CI runs
 endif
 
 ################################################################
@@ -222,10 +227,12 @@ build_prereq: submodules
 
 build: build_prereq build_only
 ifdef CMP_STANDALONE
+    ifeq ($(DEB_BUILD_ARCH),) # avoid weird syntax error on '\' with Debian packaging
 	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="$(OUT_DIR)/$(LIBCMP_LIB)"` && \
 	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
 	    echo "WARNING: OpenSSL version '$$LIBCMP_OPENSSL_VERSION' used for building libcmp does not match '$(OPENSSL_VERSION)' to be used for building client"; \
 	fi
+    endif
 endif
 
 OUTLIB=libgencmp$(DLL)
@@ -233,7 +240,6 @@ OUTBIN=cmpClient$(EXE)
 
 build_only:
 	@$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
-	@# CFLAGS="-Idebian/temp/usr/include $(CFLAGS)" LDFLAGS="-Ldebian/temp/usr/lib -Wl,-rpath=debian/temp/usr/lib"
 
 build_no_tls:
 	$(MAKE) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
@@ -248,11 +254,12 @@ endif
 clean_test:
 	$(MAKE) -f Makefile_tests clean
 
+OUT_DOC=cmpClient.1.gz
+OUT_DEV_DOC=Generic_CMP_client_API.pdf
 clean_this: clean_test
 	$(MAKE) -s -f Makefile_src clean OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)"
-	@rm -f doc/$(OUTDOC) doc/cmpClient.md
+	@rm -f doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC)
 
-OUTDOC=cmpClient.1.gz
 clean: clean_this clean_deb
 ifeq ($(LPATH),)
     ifneq ("$(wildcard $(SECUTILS_DIR))","")
@@ -449,7 +456,7 @@ test: clean build_no_tls
 doc: doc_only get_submodules
 	$(MAKE) -s -C $(SECUTILS_DIR) doc
 
-doc_only: doc/$(OUTDOC) doc/cmpClient.md
+doc_only: doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC)
 
 %.gz: %
 	@which gzip || (echo "cannot find gzip, please install it"; false)
@@ -460,8 +467,8 @@ doc_only: doc/$(OUTDOC) doc/cmpClient.md
 	pod2man --section=1 --center="cmpClient Documentation" --release=$(VERSION) $< >$@
 
 %.md: %.pod
-	@which pod2markdown || (echo "cannot find pod2markdown, please install libpod-markdown-perl"; false)
-	pod2markdown $< $@
+	@which pod2markdown || echo "cannot find pod2markdown, please install libpod-markdown-perl"
+	pod2markdown $< $@ || true
 
 zip:
 	zip genCMPClient.zip \
@@ -521,21 +528,20 @@ buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 .phony: deb clean_deb
 deb: get_submodules
 ifeq ($(LPATH),)
-	@# mkdir -p debian/temp
 	$(MAKE) deb -C $(SECUTILS_DIR)
-	@# dpkg --force-not-root --force-depends --root debian/temp -i libsecutils{,-dev}_*.deb
 	sudo dpkg -i libsecutils{,-dev}_*.deb
 #ifdef CMP_STANDALONE not relevant here
     ifneq ("$(wildcard $(LIBCMP_DIR))","")
-	$(MAKE) deb -C $(LIBCMP_DIR)
-	@# dpkg --force-not-root --force-depends --root debian/temp -i libcmp{,-dev}_*.deb
+	$(MAKE) deb -C $(LIBCMP_DIR) LIBCMP_INC="$(LIBCMP_INC)"
 	sudo dpkg -i libcmp{,-dev}_*.deb
     endif
 #endif not relevant here
 endif
-	#pkg-config --print-errors libsecutils
-	#pkg-config --print-errors libcmp
-	debuild -uc -us --lintian-opts --profile debian # --fail-on none
+	@ # pkg-config --print-errors libsecutils
+	@ # pkg-config --print-errors libcmp
+	debuild  -uc -us --lintian-opts --profile debian # --fail-on none
+	@ # not using --preserve-envvar OPENSSL_DIR
+	@ # debian/rules contains override_dh_auto_build: OPENSSL_DIR=/usr
 # alternative:
 #	LD_LIBRARY_PATH= dpkg-buildpackage -d -uc -us # may prepend DH_VERBOSE=1
 	@# dpkg --contents ../libgencmp{,-dev}_*.deb
@@ -544,7 +550,6 @@ endif
 
 clean_deb:
 	rm -rf debian/tmp debian/libgencmp{,-dev} debian/cmpclient
-	@# rm -rf debian/temp
 	rm -f debian/{files,debhelper-build-stamp} debian/*.{log,substvars}
 	rm -f ../libgencmp{_,-}* ../cmpclient*
 	@# sudo dpkg -r cmpclient lib{gen,}cmp{,-dev} libsecutils{,-dev}
@@ -552,26 +557,35 @@ clean_deb:
 # installation target - append ROOTFS=<path> to install into virtual root filesystem
 DEST_LIB=$(ROOTFS)/usr/lib
 DEST_BIN=$(ROOTFS)/usr/bin
-DEST_INC=$(ROOTFS)/usr/include
-DEST_DOC=$(ROOTFS)/usr/share/man/man1
+DEST_MAN=$(ROOTFS)/usr/share/man/man1
+DEST_DOC=$(ROOTFS)/usr/share/doc/libgencmp
+DEST_DEV_DOC=$(ROOTFS)/usr/share/doc/libgencmp-dev
 GENCMPCL_HDRS=genericCMPClient.h
 .phony: install install_cli uninstall
-install: doc/$(OUTDOC) build # $(OUT_DIR)/$(OUTLIB) $(OUT_DIR)/$(OUTBIN)
+install: doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC) $(OUT_DIR)/$(OUTLIB) $(OUT_DIR)/$(OUTBIN)
+	mkdir -p $(DEST_LIB)
 	install -D $(OUT_DIR)/$(OUTLIB) $(DEST_LIB)/
-	install $(SECUTILS_LIB).* $(DEST_LIB)/
-ifdef CMP_STANDALONE
-	install $(OUT_DIR)/$(LIBCMP_LIB).* $(DEST_LIB)/
-endif
 	ln -sf $(OUTLIB) $(DEST_LIB)/$(OUTLIB).$(VERSION)
+ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
+	install $(SECUTILS_LIB).* $(DEST_LIB)/
+    ifdef CMP_STANDALONE
+	install $(OUT_DIR)/$(LIBCMP_LIB).* $(DEST_LIB)/
+    endif
+endif
 #install_headers:
-	find include -type f -name $(GENCMPCL_HDRS) -exec install -Dm 0644 '{}' '$(ROOTFS)/usr/{}' ';'
+	find include -type f -name $(GENCMPCL_HDRS) -exec install -Dm 0644 '{}' '$(ROOTFS)/usr/{}' ';' # DEST_INC=$(ROOTFS)/usr/include
 #install_bins:
 #ifdef CMP_STANDALONE
+	mkdir -p $(DEST_BIN)
 	install -D $(OUT_DIR)/$(OUTBIN) $(DEST_BIN)/$(OUTBIN)
 #endif
 #install_doc:
+	mkdir -p $(DEST_MAN)
+	install -D doc/$(OUT_DOC) $(DEST_MAN)
 	mkdir -p $(DEST_DOC)
-	install -D doc/$(OUTDOC) $(DEST_DOC)
+	install -D doc/cmpClient.md $(DEST_DOC)
+	mkdir -p $(DEST_DEV_DOC)
+	install -D doc/$(OUT_DEV_DOC) $(DEST_DEV_DOC)
 
 uninstall:
 	rm -f $(DEST_LIB)/$(OUTLIB){,.$(VERSION)}
@@ -581,4 +595,9 @@ ifdef CMP_STANDALONE
 endif
 	find include -type f -name $(GENCMPCL_HDRS) -exec rm '$(ROOTFS)/usr/{}' ';'
 	rm -f $(DEST_BIN)/$(OUTBIN)
-	rm -f $(DEST_DOC)/$(OUTDOC)
+	rm -f $(DEST_MAN)/$(OUT_DOC)
+	rmdir $(DEST_MAN) || true
+	rm -f $(DEST_DOC)/{cmpClient.md,changelog.gz,copyright}
+	rmdir $(DEST_DOC) || true
+	rm -f $(DEST_DEV_DOC)/{$(OUT_DEV_DOC),changelog.gz,copyright}
+	rmdir $(DEST_DEV_DOC) || true

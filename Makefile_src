@@ -102,7 +102,7 @@ ifeq ($(LPATH),)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
         override LDFLAGS += -Wl,-rpath=$(OUT_DIR):genCMPClient
     endif
-    override LDFLAGS += -L$(SECUTILS_DIR)
+    # not needed: override LDFLAGS += -L$(SECUTILS_DIR)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
         override LDFLAGS += -Wl,-rpath=$(SECUTILS_DIR_)
     endif
@@ -158,9 +158,9 @@ $(OUT_DIR)/$(LIB_NAME).$(VERSION): src/genericCMPClient$(OBJ)
 	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-soname,$(LIB_NAME).$(VERSION)
 
 $(OUT_DIR)/$(LIB_NAME): $(OUT_DIR)/$(LIB_NAME).$(VERSION)
-	ln -sf $(LIB_NAME).$(VERSION) $(OUT_DIR)/$(LIB_NAME)
+	ln -sf $(OUT_DIR)/$(LIB_NAME).$(VERSION) $(OUT_DIR)/$(LIB_NAME)
 
-$(CMPCLIENT): src/cmpClient$(OBJ)
+$(CMPCLIENT): src/cmpClient$(OBJ) $(OUT_DIR)/$(LIB_NAME)
 	$(CC) $(LDFLAGS) $< $(LIBS) -lgencmp -o $@
 
 .PHONY: all archive

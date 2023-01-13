@@ -104,7 +104,7 @@ SET_PROXY ?= no_proxy=localhost,127.0.0.1
 OPENSSL ?= openssl$(EXE)
 
 MAKECMDGOALS ?= default
-ifneq ($(filter-out doc start stop doc doc_only doc/cmpClient.md doc/cmpClient.1.gz \
+ifneq ($(filter-out doc start stop doc doc_this doc/cmpClient.md doc/cmpClient.1.gz \
     clean clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
     ifeq (,$(wildcard $(OPENSSL_DIR)/include/openssl))
         $(error cannot find directory '$(OPENSSL_DIR)/include/openssl', check OPENSSL_DIR variable)
@@ -432,7 +432,7 @@ else
 	@echo "\n##### All profile tests succeeded #####"
 endif
 
-.phony: all test_all test tests doc doc_only zip
+.phony: all test_all test tests doc doc_this zip
 all:	build doc
 
 .phony: test_Mock
@@ -453,10 +453,10 @@ test: clean build_no_tls
 
 # doc and zip ##################################################################
 
-doc: doc_only get_submodules
+doc: doc_this get_submodules
 	$(MAKE) -s -C $(SECUTILS_DIR) doc
 
-doc_only: doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC)
+doc_this: doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC)
 
 %.gz: %
 	@which gzip || (echo "cannot find gzip, please install it"; false)

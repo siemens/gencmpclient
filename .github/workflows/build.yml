@@ -1,31 +1,37 @@
 # GitHub Actions for genCMPClient
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (c) Siemens AG, 2023
+# Copyright (c) Siemens AG, 2021-2023
 
 name: CI
 
 on: push
 
 jobs:
-  build:
+  build_doc_this:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: build-make
+      - name: build_doc_this
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev build-essential
+          # would need access to azure.archive.ubuntu.com:
+          # sudo apt-get update
+          # sudo apt-get install -q -y libssl-dev build-essential # not needed
           make
           make clean
           make build_no_tls
+          make doc_this # gracefully glosses over missing pod2markdown
 
-  deb-doc:
+  doc_deb:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: deb-doc
+      - name: doc_deb
         run: |
+          # needs access to azure.archive.ubuntu.com:
           sudo apt-get update
-          sudo apt-get install -y libssl-dev devscripts debhelper pkg-config libpod-markdown-perl
+          sudo apt-get install -q -y libpod-markdown-perl doxygen graphviz >/dev/null
           make doc
-          # make deb
+          echo ************************* doc finished *************************
+          sudo apt-get install -q -y devscripts >/dev/null # needed for debuild
+          sudo apt-get install -q -y debhelper  >/dev/null # required by libsecutils
+          make deb

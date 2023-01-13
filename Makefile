@@ -258,7 +258,7 @@ OUT_DOC=cmpClient.1.gz
 OUT_DEV_DOC=Generic_CMP_client_API.pdf
 clean_this: clean_test
 	$(MAKE) -s -f Makefile_src clean OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)"
-	@rm -f doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC)
+	@rm -f doc/$(OUT_DOC) doc/cmpClient.md
 
 clean: clean_this clean_deb
 ifeq ($(LPATH),)

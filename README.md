@@ -50,11 +50,11 @@ The following OSS components are used.
 * [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
   a CMP+HTTP extension to OpenSSL, needed at least when using OpenSSL 1.x
 
-For instance, on a Debian system these may be installed simply as follows:
+For instance, on a Debian system the prerequisites may be installed simply as follows:
 ```
-sudo apt install libssl-dev
+sudo apt install libssl-dev libc-dev linux-libc-dev
 ```
-while `apt install wget git make gcc` usually is not needed as far as these tools are pre-installed.
+while `apt install git make gcc wget` usually is not needed as far as these tools are pre-installed.
 
 As a sanity check you can execute in a shell:
 ```
@@ -152,7 +152,8 @@ This repository can build the following Debian packages.
 * `cmpclient` - simple command-line application
 
 To build the Debian packages, the following dependencies need to be installed:
-* `debhelper`
+* `debhelper` (needed for `dh`)
+* `devscripts` (needed for `debuild`)
 * `libssl-dev`
 * `libsecutils-dev`
 * `libcmp-dev`

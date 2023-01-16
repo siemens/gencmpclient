@@ -15,7 +15,7 @@ jobs:
         run: |
           # would need access to azure.archive.ubuntu.com:
           # sudo apt-get update
-          # sudo apt-get install -q -y libssl-dev build-essential # not needed
+          # sudo apt-get install -y >/dev/null libssl-dev build-essential # not needed
           make
           make clean
           make build_no_tls
@@ -29,9 +29,9 @@ jobs:
         run: |
           # needs access to azure.archive.ubuntu.com:
           sudo apt-get update
-          sudo apt-get install -q -y libpod-markdown-perl doxygen graphviz >/dev/null
+          sudo apt-get install -y >/dev/null libpod-markdown-perl
+          sudo apt-get install -y >/dev/null doxygen graphviz # needed only for recursive 'make doc' in libsecutils
           make doc
           echo ************************* doc finished *************************
-          sudo apt-get install -q -y devscripts >/dev/null # needed for debuild
-          sudo apt-get install -q -y debhelper  >/dev/null # required by libsecutils
+          sudo apt-get install -y >/dev/null debhelper devscripts
           make deb

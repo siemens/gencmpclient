@@ -556,6 +556,7 @@ clean_deb:
 
 # installation target - append ROOTFS=<path> to install into virtual root filesystem
 DEST_LIB=$(ROOTFS)/usr/lib
+DEST_INC=$(ROOTFS)/usr/include
 DEST_BIN=$(ROOTFS)/usr/bin
 DEST_MAN=$(ROOTFS)/usr/share/man/man1
 DEST_DOC=$(ROOTFS)/usr/share/doc/libgencmp
@@ -573,7 +574,7 @@ ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
     endif
 endif
 #install_headers:
-	find include -type f -name $(GENCMPCL_HDRS) -exec install -Dm 0644 '{}' '$(ROOTFS)/usr/{}' ';' # DEST_INC=$(ROOTFS)/usr/include
+	cd include && find . -type f -name $(GENCMPCL_HDRS) -exec install -Dm 0644 '{}' '$(DEST_INC)/{}' ';'
 #install_bins:
 #ifdef CMP_STANDALONE
 	mkdir -p $(DEST_BIN)
@@ -593,7 +594,7 @@ uninstall:
 ifdef CMP_STANDALONE
 	rm -f $(DEST_LIB)/$(LIBCMP_LIB).*
 endif
-	find include -type f -name $(GENCMPCL_HDRS) -exec rm '$(ROOTFS)/usr/{}' ';'
+	cd include && find . -type f -name $(GENCMPCL_HDRS) -exec rm '$(DEST_INC)/{}' ';'
 	rm -f $(DEST_BIN)/$(OUTBIN)
 	rm -f $(DEST_MAN)/$(OUT_DOC)
 	rmdir $(DEST_MAN) || true

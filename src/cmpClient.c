@@ -372,7 +372,7 @@ opt_t cmp_opts[] = {
 
     OPT_HEADER("Debugging"),
     {"reqin", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqin},
-     "Take sequence of CMP requests from file(s)"},
+     "Take sequence of CMP requests to send to server from file(s)"},
     {"reqin_new_tid", OPT_BOOL, {.bit = false},
      { (const char **) &opt_reqin_new_tid},
      "Use fresh transactionID for CMP requests read from -reqin"},

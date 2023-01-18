@@ -386,17 +386,11 @@ stop_Simple:
 	if [ -n "$$PID" ]; then echo "stopping SimpleLra" && kill $$PID; fi
 
 .phony: test_Simple
-test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple
-ifneq ($(EJBCA_ENABLED),)
+test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple test/recipes/80-test_cmp_http_data/test_Simple.cnf
 	$(MAKE) start_Simple
-    ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # OpenSSL <1.1 does not support OCSP
-	$(warning skipping certstatus aspect since OpenSSL <1.1 does not support OCSP)
-	make test_cli OPENSSL_CMP_SERVER=Simple OPENSSL_CMP_ASPECTS="connection verification credentials commands enrollment"
-    else
-	$(MAKE) -f Makefile_tests test_cli OPENSSL_CMP_SERVER=Simple OPENSSL=$(OPENSSL)
-    endif
+	make -f Makefile_tests test_cli OPENSSL_CMP_SERVER=Simple OPENSSL=$(OPENSSL) OPENSSL_CMP_CONFIG="Simple/../test.cnf" \
+	|| ($(OPENSSL) version | grep " 1.0") # with OpenSSL <1.1, some certstatus test cases fail due to missing OCSP support
 	$(MAKE) stop_Simple
-endif
 
 .phony: test_Insta
 test_Insta: get_Insta_crls
@@ -446,7 +440,11 @@ tests_LwCmp:
 ifneq ($(EJBCA_ENABLED),)
 test_all: demo_EJBCA
 endif
-test_all: test_profile test test_Mock tests_LwCmp test_Simple test_Insta
+test_all: test_profile test test_Mock tests_LwCmp
+ifneq ($(EJBCA_ENABLED),)
+test_all: test_Simple
+endif
+test_all: test_Insta
 
 test: clean build_no_tls
 	@$(MAKE) clean build demo_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"

@@ -94,6 +94,7 @@ conformance:
 
 # cli ##########################################################################
 
+OPENSSL_CMP_CONFIG ?= test.cnf
 .phony: test_cli
 test_cli:
 	@which $(PERL) || (echo "cannot find Perl, please install it"; false)
@@ -109,7 +110,7 @@ test_cli:
 	  BIN_D=. \
 	  EXE_EXT= \
 	  LD_LIBRARY_PATH=$(BIN_D) \
-	  OPENSSL_CMP_CONFIG=test.cnf \
+	  OPENSSL_CMP_CONFIG=$(OPENSSL_CMP_CONFIG) \
 	  $(PERL) test/recipes/80-test_cmp_http.t )
 	@ :
 

@@ -444,7 +444,9 @@ test_all: test_profile test test_Mock tests_LwCmp
 ifneq ($(EJBCA_ENABLED),)
 test_all: test_Simple
 endif
+ifneq ($(TEST_INSTA),)
 test_all: test_Insta
+endif
 
 test: clean build_no_tls
 	@$(MAKE) clean build demo_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"

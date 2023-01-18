@@ -54,4 +54,4 @@ tar-ignore = creds/test.*
 tar-ignore = creds/cacerts.pem
 tar-ignore = creds/extracerts.pem
 tar-ignore = creds/manufacturer.*
-tar-ignore = creds/operational*.*
+tar-ignore = creds/operational.*

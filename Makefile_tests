@@ -80,8 +80,7 @@ newkey:
 	@$(OPENSSL) ecparam -genkey -name secp521r1 -out creds/manufacturer.pem
 	@$(OPENSSL) ecparam -genkey -name prime256v1 -out creds/operational.pem
 conformance_openssl: newkey
-	@CMPCL="$(CMPOSSL)" $(MAKE) -f Makefile_tests conformance CERTOUT="-certout operational_updated.crt"
-	@ # CERTOUT is workaround for bug in openssl cmp in version 3.0.x
+	@CMPCL="$(CMPOSSL)" $(MAKE) -f Makefile_tests conformance
 conformance_cmpclient:
 	@CMPCL="$(CMPCLNT)" $(MAKE) -f Makefile_tests conformance
 conformance:
@@ -89,7 +88,7 @@ conformance:
 	$(CMPCL)bootstrap          -verbosity 3
 	@$(GENERATE_OPERATIONAL)
 	$(CMPCL)pkcs10             -verbosity 3
-	$(CMPCL)update -path /lra  -verbosity 3 $(CERTOUT)
+	$(CMPCL)update -path /lra  -verbosity 3
 	$(CMPCL)revoke -path /lra  -verbosity 3
 	@ # $(CMPCL)bootstrap      -verbosity 3 -server localhost:6003/delayedlra
 
@@ -131,10 +130,11 @@ test_LwCmp:
 
 .phony: clean
 clean:
-	@rm -f creds/{manufacturer,operational*}.*
+	@rm -f creds/{manufacturer,operational}.*
 	@rm -f creds/{cacerts,extracerts}.pem
 	@rm -f creds/InstaDemoCA_client.pem
 	@rm -f creds/*_????????-????????-????????-????????-????????.pem
+	@rm -f creds/Aventra_Test_Sub_CA_*.pem
 	@rm -fr creds/crls
 	@rm -f test/recipes/80-test_cmp_http_data/*/test.*cert*.pem
 	@rm -f test/recipes/80-test_cmp_http_data/*/{req,rsp}*.der

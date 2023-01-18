@@ -21,6 +21,17 @@ jobs:
           make build_no_tls
           make doc_this # gracefully glosses over missing pod2markdown
 
+  test_all:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: test_all
+        run: |
+          # would need access to azure.archive.ubuntu.com:
+          # sudo apt-get update
+          # sudo apt-get install -y >/dev/null libssl-dev build-essential # not needed
+          make test_all
+
   doc_deb:
     runs-on: ubuntu-latest
     steps:

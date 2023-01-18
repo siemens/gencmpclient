@@ -164,25 +164,43 @@ sub test_cmp_http {
     my $cmd = app([@app, @$params]);
 
     $expected_result = 1 if $server_name eq "Mock" && $title =~ m/- ok for Mock/;
+    sleep($sleep) if $server_name eq "Insta";
     sleep($sleep) if $server_name eq "Insta"
-        && $title eq "explicit srvcert"
-        || $title eq "config default with expected sender"
-        || $title eq "srvcert big file"
-        || $title eq "untrusted empty file"
-        || $title eq "unknown attribute in expected sender"
+        && $title eq "path with additional '/'s fine according to RFC 3986"
         || $title eq "requesting new signer.crt for Insta"
-        || $title eq "extracerts empty file"
-        || $title eq "ir + infotype"
+        || $title eq "unknown attribute in expected sender DN skipped"
+        || $title eq "no -trusted but -srvcert"
+        || $title eq "ignore key usage"
         || $title eq "empty ref but correct cert"
-        || $title eq "newkeypass no prefix"
-        || $title eq "subject country missing"
+        || $title eq "keypass no prefix"
+        || $title eq "extracerts big file"
+        || $title eq "default sha256"
+        || $title eq "--- requesting new signer.crt for Insta ---"
+        || $title eq "--- get certificate for revocation ----"
+        || $title eq "rr with revreason AACompromise"
+        || $title eq "ir + infotype"
+        || $title eq "geninfo empty str"
+        || $title eq "missing chain"
+        || $title eq "newkeypass ignored"
+        || $title eq "subject organization unit missing"
+        || $title eq "subject bad syntax: missing '='"
         || $title eq "days 1"
-        || $title eq "sans 1 dns 1 ip"
-        || $title eq "popo SIGNATURE"
-        || $title eq "out_trusted bigcert"
-        || $title eq "implicit confirm"
-        || $title eq "oldcert ignored"
-        || $title eq "oldcert wrong cert";
+        || $title eq "reqexts"
+        || $title eq "sans 2 dns"
+        || $title eq "san_nodefault"
+        || $title eq "no out_trusted"
+        || $title eq "oldcert wrong cert"
+        || $title eq "kur command explicit options - overwriting oldcert"
+        || $title eq "crls_timeout infinite"
+        || $title eq "total_timeout 0"
+        || $title eq "issuer NULL-DN"
+        || $title eq "sans 1 dns critical"
+        || $title eq "reuse last extracerts"
+        || $title eq "cacertsout given"
+        || $title eq "subject incorrect data"
+        || $title eq "cr command"
+        || $title eq "reuse last srvcert";
+
     unless (is(my $actual_result = run($cmd), $expected_result, $title)) {
         if ($faillog) {
             my $quote_spc_empty = sub { $_ eq "" ? '""' : $_ =~ m/ / ? '"'.$_.'"' : $_ };
@@ -194,6 +212,7 @@ sub test_cmp_http {
             print $faillog "$invocation\n\n";
         }
         sleep($sleep) if $expected_result == 1;
+        sleep($sleep) if $server_name eq "Insta" && $expected_result == 1;
     }
 }
 

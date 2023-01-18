@@ -116,8 +116,9 @@ cert =
 ignore_keyusage = 1
 crls = ../../../../creds/crls/InstaDemoCA.crl
 column = 3
-sleep = 4
-# 3 is not sufficient: sometimes leads to HTTP code 503 (Service Unavailable)
+sleep = 3
+# A value of 3 appears to be just sufficient, with some exceptions handled
+# in 80-test_cmp_http.t, for preventing HTTP code 503 (Service Unavailable)
 
 ############################# aspects
 

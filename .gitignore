@@ -76,7 +76,7 @@ creds/cacerts.pem
 creds/extracerts.pem
 creds/manufacturer.*
 creds/new_req.csr
-creds/operational*.*
+creds/operational.*
 creds/test.*
 creds/trusted/ATCS*
 creds/trusted/BaltimoreCyberTrustRoot2000.crt

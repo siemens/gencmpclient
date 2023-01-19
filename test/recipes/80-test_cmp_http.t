@@ -199,6 +199,7 @@ sub test_cmp_http {
         || $title eq "cacertsout given"
         || $title eq "subject incorrect data"
         || $title eq "cr command"
+        || $title eq "read newkeypass from file"
         || $title eq "reuse last srvcert";
 
     unless (is(my $actual_result = run($cmd), $expected_result, $title)) {

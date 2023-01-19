@@ -744,7 +744,7 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
     if (opt_rspin != NULL) {
         res = read_PKIMESSAGE(ctx, &opt_rspin);
     } else {
-        const OSSL_CMP_MSG *actual_req = opt_reqin != NULL ? req_new : req;
+        const OSSL_CMP_MSG *actual_req = req_new != NULL ? req_new : req;
 
         res =
 #if 0 /* TODO add in case mock server functionality is included */
@@ -755,13 +755,13 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
     if (res == NULL)
         goto err;
 
-    if (opt_reqin != NULL || prev_opt_rspin != NULL) {
+    if (req_new != NULL || prev_opt_rspin != NULL) {
         /* need to satisfy nonce and transactionID checks */
         ASN1_OCTET_STRING *nonce;
         ASN1_OCTET_STRING *tid;
 
-        hdr = OSSL_CMP_MSG_get0_header(opt_reqin != NULL ? req_new : res);
-        nonce = opt_reqin != NULL
+        hdr = OSSL_CMP_MSG_get0_header(req_new != NULL ? req_new : res);
+        nonce = req_new != NULL
             ? OSSL_CMP_HDR_get0_senderNonce(hdr)
             : OSSL_CMP_HDR_get0_recipNonce(hdr);
         tid = OSSL_CMP_HDR_get0_transactionID(hdr);

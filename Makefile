@@ -578,10 +578,10 @@ DEST_DOC=$(ROOTFS)/usr/share/doc/libgencmp
 DEST_DEV_DOC=$(ROOTFS)/usr/share/doc/libgencmp-dev
 GENCMPCL_HDRS=genericCMPClient.h
 .phony: install install_cli uninstall
-install: doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC) $(OUT_DIR)/$(OUTLIB) $(OUT_DIR)/$(OUTBIN)
+install: doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC) $(OUT_DIR)/$(OUTLIB).$(VERSION) $(OUT_DIR)/$(OUTBIN)
 	mkdir -p $(DEST_LIB)
-	install -D $(OUT_DIR)/$(OUTLIB) $(DEST_LIB)/
-	ln -sf $(OUTLIB) $(DEST_LIB)/$(OUTLIB).$(VERSION)
+	install -D $(OUT_DIR)/$(OUTLIB).$(VERSION) $(DEST_LIB)/
+	ln -sfr $(DEST_LIB)/$(OUTLIB){.$(VERSION),}
 ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
 	install $(SECUTILS_LIB).* $(DEST_LIB)/
     ifdef CMP_STANDALONE
@@ -605,9 +605,9 @@ endif
 
 uninstall:
 	rm -f $(DEST_LIB)/$(OUTLIB){,.$(VERSION)}
-	rm -f $(DEST_LIB)/$(SECUTILS_LIB).*
+	@ #rm -f $(DEST_LIB)/$(SECUTILS_LIB)*
 ifdef CMP_STANDALONE
-	rm -f $(DEST_LIB)/$(LIBCMP_LIB).*
+	@ #rm -f $(DEST_LIB)/$(LIBCMP_LIB)*
 endif
 	cd include && find . -type f -name $(GENCMPCL_HDRS) -exec rm '$(DEST_INC)/{}' ';'
 	rm -f $(DEST_BIN)/$(OUTBIN)

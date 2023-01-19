@@ -8,6 +8,17 @@
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS (default see below).
 # OSSL_VERSION_QUIRKS maybe be needed to provide for setting OpenSSL compilation version quirks.
 
+ifeq ($(DEB_BUILD_ARCH),)
+    SHELL=bash # bash is needed for supporting extended file name globbing
+else # within Debian packaging
+    SHELL=LD_PRELOAD= bash
+    # LD_PRELOAD= is used to prevent Debian packaging give spurios
+    #   ERROR: ld.so: object 'libfakeroot-sysv.so' from LD_PRELOAD
+    #   cannot be preloaded (cannot open shared object file): ignored.
+    # Unfortunately, cannot do this trick generally because otherwise,
+    # multi-line shell commands in rules with '\' will throw weird syntax error
+endif
+
 PREFIX=
 PREFIX_DEST = $(PREFIX)
 PREFIX_DEST ?= ./
@@ -158,7 +169,7 @@ $(OUT_DIR)/$(LIB_NAME).$(VERSION): src/genericCMPClient$(OBJ)
 	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-soname,$(LIB_NAME).$(VERSION)
 
 $(OUT_DIR)/$(LIB_NAME): $(OUT_DIR)/$(LIB_NAME).$(VERSION)
-	ln -sf $(OUT_DIR)/$(LIB_NAME).$(VERSION) $(OUT_DIR)/$(LIB_NAME)
+	ln -sfr $(OUT_DIR)/$(LIB_NAME){.$(VERSION),}
 
 $(CMPCLIENT): src/cmpClient$(OBJ) $(OUT_DIR)/$(LIB_NAME)
 	$(CC) $(LDFLAGS) $< $(LIBS) -lgencmp -o $@

@@ -8,12 +8,12 @@ Standards-Version: 4.5.1
 
 Package: libgencmp
 Architecture: any
-Depends: libcmp (>= 2.0), libsecutils, libssl1.1, ${shlibs:Depends}
+Depends: libcmp (>= 2.0), libsecutils, libssl1.1, ${shlibs:Depends}, ${misc:Depends}
 Description: generic CMP client library
  Generic CMP client library based on CMPforOpenSSL
 
 Package: libgencmp-dev
-Depends: libgencmp (>= 2.0), libcmp-dev (>= 2.0), libsecutils-dev, libssl-dev, ${shlibs:Depends}
+Depends: libgencmp (>= 2.0), libcmp-dev (>= 2.0), libsecutils-dev, libssl-dev, ${shlibs:Depends}, ${misc:Depends}
 Section: libdevel
 Architecture: all
 Multi-Arch: foreign

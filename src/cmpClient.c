@@ -760,8 +760,10 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
         ASN1_OCTET_STRING *nonce;
         ASN1_OCTET_STRING *tid;
 
-        hdr = OSSL_CMP_MSG_get0_header(res);
-        nonce = OSSL_CMP_HDR_get0_recipNonce(hdr);
+        hdr = OSSL_CMP_MSG_get0_header(opt_reqin != NULL ? req_new : res);
+        nonce = opt_reqin != NULL
+            ? OSSL_CMP_HDR_get0_senderNonce(hdr)
+            : OSSL_CMP_HDR_get0_recipNonce(hdr);
         tid = OSSL_CMP_HDR_get0_transactionID(hdr);
         if (!OSSL_CMP_CTX_set1_senderNonce(ctx, nonce)
                 || !OSSL_CMP_CTX_set1_transactionID(ctx, tid)) {

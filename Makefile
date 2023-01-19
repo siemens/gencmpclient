@@ -433,7 +433,7 @@ all:	build doc
 
 .phony: test_Mock
 test_Mock:
-	$(MAKE) -f Makefile_tests test_Mock OUTBIN=$(OUTBIN) OPENSSL=$(OPENSSL)
+	$(MAKE) -f Makefile_tests test_Mock OUTBIN=$(OUTBIN) OPENSSL=$(OPENSSL) OPENSSL_VERSION=$(OPENSSL_VERSION)
 
 .phony: tests_LwCmp
 tests_LwCmp:

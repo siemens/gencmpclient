@@ -200,6 +200,7 @@ sub test_cmp_http {
         || $title eq "subject incorrect data"
         || $title eq "cr command"
         || $title eq "read newkeypass from file"
+        || $title eq "extracerts wrong chain (some root CA)"
         || $title eq "reuse last srvcert";
 
     unless (is(my $actual_result = run($cmd), $expected_result, $title)) {

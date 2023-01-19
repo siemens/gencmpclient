@@ -82,11 +82,16 @@ ifeq ($(LPATH),)
 endif
 ifdef LIBCMP_INC
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
-        override CFLAGS += -isystem $(PREFIX)$(LIBCMP_INC) -DCMP_STANDALONE
+        override CFLAGS += -isystem $(PREFIX)$(LIBCMP_INC)
     else
-        override CFLAGS += -isystem /usr/include/cmp -DCMP_STANDALONE
+        ifeq ($(INSTALL_DEB_PKGS),) # Debian packaging without submodule packages ainstalled
+            override CFLAGS += -isystem $(LIBCMP_INC)
+        else
+            override CFLAGS += -isystem /usr/include/cmp
+        endif
     endif
 # use of -isystem is important for taking precedence over any (older) OpenSSL CMP headers
+    override CFLAGS += -DCMP_STANDALONE
 endif
 override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
 override CFLAGS += -I$(PREFIX)include # for genericCMPClient.h

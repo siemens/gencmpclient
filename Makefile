@@ -51,7 +51,9 @@ ifeq ($(LPATH),)
 #   ifneq ($(wildcard $(ROOTFS)/usr/local/include/openssl),)
 #       OPENSSL_DIR ?= $(ROOTFS)/usr/local
 #   else
-        OPENSSL_DIR ?= /usr
+    ifeq ($(OPENSSLDIR),)
+        OPENSSL_DIR = /usr
+    endif
 #   endif
     SECUTILS_DIR=libsecutils
     SECUTILS_LIB=libsecutils$(DLL)
@@ -239,7 +241,7 @@ OUTLIB=libgencmp$(DLL)
 OUTBIN=cmpClient$(EXE)
 
 build_only:
-	@$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)"
+	$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" INSTALL_DEB_PKGS=$(INSTALL_DEB_PKGS)
 
 build_no_tls:
 	$(MAKE) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
@@ -525,28 +527,41 @@ clean_openssl:
 buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 
 
+ifeq ($(INSTALL_DEB_PKGS),)
+    IGNORE_DEB_DEPEND=-d
+endif
 .phony: deb clean_deb
+ifneq ($(INSTALL_DEB_PKGS),)
 deb: get_submodules
 ifeq ($(LPATH),)
+    ifeq ($(shell dpkg -l | grep "ii  libsecutils "),)
 	$(MAKE) deb -C $(SECUTILS_DIR)
 	sudo dpkg -i libsecutils{,-dev}_*.deb
+    endif
 #ifdef CMP_STANDALONE not relevant here
     ifneq ("$(wildcard $(LIBCMP_DIR))","")
+        ifeq ($(shell dpkg -l | grep "ii  libcmp "),)
 	$(MAKE) deb -C $(LIBCMP_DIR) LIBCMP_INC="$(LIBCMP_INC)"
 	sudo dpkg -i libcmp{,-dev}_*.deb
+        endif
     endif
 #endif not relevant here
 endif
+else
+deb: build
+endif
 	@ # pkg-config --print-errors libsecutils
 	@ # pkg-config --print-errors libcmp
-	debuild  -uc -us --lintian-opts --profile debian # --fail-on none
+	debuild $(IGNORE_DEB_DEPEND) --preserve-envvar INSTALL_DEB_PKGS -uc -us --lintian-opts --profile debian # --fail-on none
 	@ # not using --preserve-envvar OPENSSL_DIR
 	@ # debian/rules contains override_dh_auto_build: OPENSSL_DIR=/usr
 # alternative:
-#	LD_LIBRARY_PATH= dpkg-buildpackage -d -uc -us # may prepend DH_VERBOSE=1
+#	LD_LIBRARY_PATH= dpkg-buildpackage $(IGNORE_DEB_DEPEND) -uc -us # may prepend DH_VERBOSE=1
+ifneq ($(INSTALL_DEB_PKGS),)
 	@# dpkg --contents ../libgencmp{,-dev}_*.deb
 	@# dpkg --contents ../cmpclient_*.deb
 	sudo dpkg -i ../libgencmp{,-dev}_*.deb ../cmpclient_*.deb
+endif
 
 clean_deb:
 	rm -rf debian/tmp debian/libgencmp{,-dev} debian/cmpclient

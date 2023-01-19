@@ -1,0 +1,3 @@
+# prevent when building withouth submodule packages:
+# E: cmpclient: missing-dependency-on-libc needed by usr/bin/cmpClient
+missing-dependency-on-libc

@@ -393,12 +393,17 @@ else
 endif
 
 start_Simple:
+ifneq ($(EJBCA_ENABLED),)
 	@echo "start SimpleLra"
 	@cd SimpleLra && ./RunLra.sh &
 	@sleep 2
+endif
+
 stop_Simple:
+ifneq ($(EJBCA_ENABLED),)
 	@PID=`ps aux|grep " jar/SimpleLra.jar TestConfig.xml" | grep -v grep | awk '{ print $$2 }'` && \
 	if [ -n "$$PID" ]; then echo "stopping SimpleLra" && kill $$PID; fi
+endif
 
 .phony: test_Simple
 test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple test/recipes/80-test_cmp_http_data/test_Simple.cnf

@@ -162,8 +162,14 @@ endif
 # generic CMP Client library and CLI-based client
 ################################################################
 
+OUTLIB=libgencmp$(DLL)
+OUTBIN=cmpClient$(EXE)
+
 .phony: default build
-default: build
+default: $(OUTBIN)
+
+$(OUTBIN): | build # if $OUTBIN already exists, would be nice not to run 'build'
+# but even the 'order-only' prerequisite does not prevent running 'build'
 
 ifndef USE_ICV
     export SECUTILS_CONFIG_NO_ICV=-DSECUTILS_CONFIG_NO_ICV
@@ -183,6 +189,7 @@ else
 submodules: build_submodules
 
 build_submodules: get_submodules build_secutils build_cmpossl
+# might use $(SECUTILS_LIB) $(LIBCMP_INC) instead but does not check for updates
 
 get_submodules: $(SECUTILS_DIR)/include
 ifdef CMP_STANDALONE
@@ -248,9 +255,6 @@ ifdef CMP_STANDALONE
 	fi
     endif
 endif
-
-OUTLIB=libgencmp$(DLL)
-OUTBIN=cmpClient$(EXE)
 
 build_only:
 	$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" INSTALL_DEB_PKGS=$(INSTALL_DEB_PKGS) DEB_TARGET_ARCH=$(DEB_TARGET_ARCH)
@@ -335,13 +339,14 @@ demo_EJBCA:
 CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH=. $(BIN_DIR)/$(OUTBIN)
 GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345 2>/dev/null
 .phony: run_demo
+run_demo: $(OUTBIN) get_EJBCA_crls
 ifeq ($(INSTA),)
-run_demo: build get_EJBCA_crls
+run_demo: get_EJBCA_crls
 else
-run_demo: build get_Insta_crls
+run_demo: get_Insta_crls
 endif
 ifeq ($(EJBCA_ENABLED)$(INSTA),)
-	$(warning "### skipping demo since not supported in this environment ###")
+	$(warning "### skipping demo because EJBCA_ENABLED is not set ###")
 else
 	@which $(OPENSSL) >/dev/null || (echo "cannot find $(OPENSSL), please install it"; false)
 	@/bin/echo -e "\n##### running cmpClient demo #####\n"
@@ -363,6 +368,7 @@ else
 	# @echo
 	# $(CMPCLIENT) pkcs10 -section $(CA_SECTION)
 	@echo
+	@$(SLEEP)
 	$(CMPCLIENT) update -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
 	$(OCSP_CHECK)
@@ -373,7 +379,6 @@ else
 	$(OCSP_CHECK)
     ifneq ($(INSTA),)
 	@echo
-	@$(SLEEP)
 	@$(SLEEP)
 	$(CMPCLIENT) genm -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
@@ -389,7 +394,7 @@ test_EJBCA-AWS: get_EJBCA_crls
 ifeq ($(filter-out EJBCA Simple,$(OPENSSL_CMP_SERVER))$(EJBCA_ENABLED),)
 	$(warning "### skipping test_$(OPENSSL_CMP_SERVER) since not supported in this environment ###")
 else
-	$(SET_PROXY) make test_cli OPENSSL_CMP_SERVER=EJBCA
+	$(SET_PROXY) make -f Makefile_tests test_cli OPENSSL_CMP_SERVER=EJBCA
 endif
 
 start_Simple:
@@ -422,11 +427,12 @@ test_profile: start_Simple profile_Simple profile_EJBCA stop_Simple
 profile_Simple:
 	PROFILE=Simple $(MAKE) -f Makefile_v1 profile
 profile_EJBCA:
-	PROFILE=EJBCA $(MAKE) -f Makefile_v1 profile
-profile: build
+	PROFILE=EJBCA  $(MAKE) -f Makefile_v1 profile
+profile:
 ifeq ($(EJBCA_ENABLED),)
-	$(warning "### skipping test_profile since not supported in this environment ###")
+	$(warning "### skipping test_profile because EJBCA_ENABLED is not set ###")
 else
+profile: $(OUTBIN)
 	@/bin/echo -e "\n##### Requesting a certificate from a PKI with MAC-based protection (RECOMMENDED) #####"
 	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE04
 	@/bin/echo -e "\n##### Requesting a certificate from a new PKI with signature-based protection (MANDATORY) #####"
@@ -454,7 +460,7 @@ test_Mock:
 	$(MAKE) -f Makefile_tests test_Mock OUTBIN=$(OUTBIN) OPENSSL=$(OPENSSL) OPENSSL_VERSION=$(OPENSSL_VERSION)
 
 .phony: tests_LwCmp
-tests_LwCmp:
+tests_LwCmp: $(OUTBIN)
 	$(MAKE) -f Makefile_tests tests_LwCmp OUTBIN=$(OUTBIN) OPENSSL=$(OPENSSL)
 
 ifneq ($(EJBCA_ENABLED),)
@@ -469,7 +475,7 @@ test_all: test_Insta
 endif
 
 test: clean build_no_tls
-	@$(MAKE) -f Makefile_v1 clean build demo_Insta $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)"
+	@$(MAKE) -f Makefile_v1 clean $(OUTBIN) demo_Insta $(SET_NDEBUG) DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
 
 # doc and zip ##################################################################
 

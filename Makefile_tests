@@ -83,7 +83,7 @@ conformance_openssl: newkey
 	@CMPCL="$(CMPOSSL)" $(MAKE) -f Makefile_tests conformance
 conformance_cmpclient:
 	@CMPCL="$(CMPCLNT)" $(MAKE) -f Makefile_tests conformance
-conformance:
+conformance: $(OUTBIN)
 	$(CMPCL)imprint            -verbosity 3
 	$(CMPCL)bootstrap          -verbosity 3
 	@$(GENERATE_OPERATIONAL)
@@ -96,7 +96,7 @@ conformance:
 
 OPENSSL_CMP_CONFIG ?= test.cnf
 .phony: test_cli
-test_cli:
+test_cli: $(OUTBIN)
 	@which $(PERL) || (echo "cannot find Perl, please install it"; false)
 	@echo -en "\n#### running CLI-based tests #### "
 	@if [ -n "$$OPENSSL_CMP_SERVER" ]; then echo -en "with server=$$OPENSSL_CMP_SERVER"; else echo -n "without server"; fi

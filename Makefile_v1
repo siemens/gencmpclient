@@ -212,7 +212,7 @@ $(SECUTILS_LIB):
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)
 build_secutils: # not: update_secutils
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s build $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" # OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s build_all $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" # OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 
 ifdef CMP_STANDALONE
 $(LIBCMP_DIR)/include:
@@ -604,7 +604,19 @@ DEST_DOC=$(ROOTFS)/usr/share/doc/libgencmp
 DEST_DEV_DOC=$(ROOTFS)/usr/share/doc/libgencmp-dev
 GENCMPCL_HDRS=genericCMPClient.h
 .phony: install install_cli uninstall
-install: doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC) $(OUT_DIR)/$(OUTLIB).$(VERSION) $(BIN_DIR)/$(OUTBIN)
+install: # doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC) $(OUT_DIR)/$(OUTLIB).$(VERSION) $(OUT_DIR)/$(OUTBIN)
+	echo -n "This assumes successful 'make build doc' and requires admin rights - otherwise better abort "
+	@read
+ifeq ($(LPATH),)
+    ifneq ("$(wildcard $(SECUTILS_DIR))","")
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 install OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+    endif
+    #ifdef CMP_STANDALONE not relevant here
+    ifneq ("$(wildcard $(LIBCMP_DIR))","")
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 install
+    endif
+    #endif not relevant here
+endif
 	mkdir -p $(DEST_LIB)
 	install -D $(OUT_DIR)/$(OUTLIB).$(VERSION) $(DEST_LIB)/
 	ln -sfr $(DEST_LIB)/$(OUTLIB){.$(VERSION),}
@@ -632,11 +644,17 @@ endif
 	install -D doc/$(OUT_DEV_DOC) $(DEST_DEV_DOC)
 
 uninstall:
-	rm -f $(DEST_LIB)/$(OUTLIB){,.$(VERSION)}
-	rm -f $(DEST_LIB)/$(SECUTILS_LIB)*
-ifdef CMP_STANDALONE
-	rm -f $(DEST_LIB)/$(LIBCMP_LIB)*
+ifeq ($(LPATH),)
+    ifneq ("$(wildcard $(SECUTILS_DIR))","")
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 uninstall OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+    endif
+    #ifdef CMP_STANDALONE not relevant here
+    ifneq ("$(wildcard $(LIBCMP_DIR))","")
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 uninstall
+    endif
+    #endif not relevant here
 endif
+	rm -f $(DEST_LIB)/$(OUTLIB){,.$(VERSION)}
 	cd include && find . -type f -name $(GENCMPCL_HDRS) -exec rm '$(DEST_INC)/{}' ';'
 	rm -f $(DEST_BIN)/$(OUTBIN)
 	rm -f $(DEST_MAN)/$(OUT_DOC)

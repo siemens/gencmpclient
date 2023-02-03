@@ -114,6 +114,11 @@ TBD,*,*,*,genm crlStatusList oldcrl wrong    , -section,, -cmd,genm,, BLANK,,, -
 0,*,*,*,geninfo bad int syntax: extra char, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3:int:987@,,,,
 TBD,TBD,TBD,TBD,find invalid geninfo values, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.9:int:123
 ,,,,,,,,,,,,,,,,,,,,,
-1,*,*,*,reqout+rspout, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqout,req1.der req2.der,-rspout,rsp1.der rsp2.der
-1,*,*,*,reqin        , -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,req1.der req2.der,,-reqin_new_tid
-1,*,*,*,rspin        , -section,, -cmd,ir,,,,,,,,,,,,,,,-rspin,rsp1.der rsp2.der
+1,1,1,1,reqout ir+certConf rspout ip+pkiConf, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqout,ir.der certConf.der,-rspout,ip.der pkiConf.der
+1,1,1,1,reqout cr rspout cp, -section,, -cmd,cr,,,,,,,,,,,,,,,-reqout,cr.der,-rspout,cp.der
+1,0,1,1,reqin old tid, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,ir.der certConf.der,,BLANK
+-,1,-,-,reqin old tid just ir, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,ir.der,,BLANK
+1,0,1,1,reqin new tid, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,ir.der certConf.der,,-reqin_new_tid
+1,0,1,1,reqin new tid just ir, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,ir.der,,-reqin_new_tid
+0,0,0,0,reqin wrong req, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,cr.der certConf.der,,BLANK
+1,1,1,1,rspin        , -section,, -cmd,ir,,,,,,,,,,,,,,,-rspin,ip.der pkiConf.der

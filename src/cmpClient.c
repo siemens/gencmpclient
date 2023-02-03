@@ -688,12 +688,13 @@ static int write_PKIMESSAGE(const OSSL_CMP_MSG *msg, char **filenames)
 }
 
 /* read DER-encoded OSSL_CMP_MSG from the specified file name item */
-static OSSL_CMP_MSG *read_PKIMESSAGE(OSSL_CMP_CTX *ctx, char **filenames)
+static OSSL_CMP_MSG *read_PKIMESSAGE(OSSL_CMP_CTX *ctx,
+                                     const char *desc, char **filenames)
 {
     char *file;
     OSSL_CMP_MSG *ret;
 
-    if (filenames == NULL) {
+    if (filenames == NULL || desc == NULL) {
         LOG_err("NULL arg to read_PKIMESSAGE");
         return NULL;
     }
@@ -709,6 +710,8 @@ static OSSL_CMP_MSG *read_PKIMESSAGE(OSSL_CMP_CTX *ctx, char **filenames)
                             OSSL_CMP_CTX_get0_propq(ctx));
     if (ret == NULL)
         LOG(FL_ERR, "Cannot read PKIMessage from file '%s'", file);
+    else
+        LOG(FL_INFO, "%s %s", desc, file);
     return ret;
 }
 
@@ -729,7 +732,8 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
     if (opt_reqout != NULL && !write_PKIMESSAGE(req, &opt_reqout))
         goto err;
     if (opt_reqin != NULL && opt_rspin == NULL) {
-        if ((req_new = read_PKIMESSAGE(ctx, &opt_reqin)) == NULL)
+        if ((req_new = read_PKIMESSAGE(ctx,
+                                       "actually sending", &opt_reqin)) == NULL)
             goto err;
         /*-
          * The transaction ID in req_new read from opt_reqin may not be fresh.
@@ -742,14 +746,14 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
 
         /*
          * Except for first request, need to satisfy recipNonce check by server.
-         * Unfortunately requires re-protection if protection is required.
+         * Unfortunately requires re-protection if the request was protected.
          */
         if (!OSSL_CMP_MSG_update_recipNonce(ctx, req_new))
             goto err;
     }
 
     if (opt_rspin != NULL) {
-        res = read_PKIMESSAGE(ctx, &opt_rspin);
+        res = read_PKIMESSAGE(ctx, "actually using", &opt_rspin);
     } else {
         const OSSL_CMP_MSG *actual_req = req_new != NULL ? req_new : req;
 

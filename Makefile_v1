@@ -463,7 +463,7 @@ test_Mock:
 
 .phony: tests_LwCmp
 tests_LwCmp: $(OUTBIN)
-	$(MAKE) -f Makefile_tests tests_LwCmp OUTBIN=$(OUTBIN) OPENSSL=$(OPENSSL)
+	$(MAKE) -f Makefile_tests tests_LwCmp OUTBIN=$(OUTBIN) OPENSSL=$(OPENSSL) OPENSSL_VERSION=$(OPENSSL_VERSION)
 
 ifneq ($(EJBCA_ENABLED),)
 test_all: demo_EJBCA

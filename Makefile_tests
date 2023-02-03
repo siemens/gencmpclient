@@ -41,7 +41,8 @@ $(CMPRACOMP_JAR): $(CMPRACOMP_DIR)/pom.xml
 	cd $(CMPRACOMP_DIR) && mvn clean install -DskipTests=true
 
 LWCMPRA_JAR ?= $(LWCMPRA_JAR) # was: ./LightweightCmpRa.jar
-LWCMPRA_RUN = java -jar $(LWCMPRA_JAR) # may insert before -jar: -Dorg.slf4j.simpleLogger.log.com.siemens.pki.cmpracomponent.msgprocessing.CmpRaImplementation=trace
+LWCMPRA_RUN = java -jar $(LWCMPRA_JAR)
+# may insert before -jar: -Dorg.slf4j.simpleLogger.log.com.siemens.pki.cmpracomponent.msgprocessing.CmpRaImplementation=trace
 CMPCAMOCK_JAR ?= ./CmpCaMock.jar # TODO: $(LWCMPRA_DIR)/target/??
 CMPCAMOCK_RUN = java -jar $(CMPCAMOCK_JAR)
 

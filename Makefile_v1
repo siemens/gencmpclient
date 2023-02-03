@@ -606,9 +606,11 @@ DEST_DOC=$(ROOTFS)/usr/share/doc/libgencmp
 DEST_DEV_DOC=$(ROOTFS)/usr/share/doc/libgencmp-dev
 GENCMPCL_HDRS=genericCMPClient.h
 .phony: install install_cli uninstall
+ifeq ($(DESTDIR),)
 install: # doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC) $(OUT_DIR)/$(OUTLIB).$(VERSION) $(OUT_DIR)/$(OUTBIN)
 	echo -n "This assumes successful 'make build doc' and requires admin rights - otherwise better abort "
 	@read
+endif
 ifeq ($(LPATH),)
     ifneq ("$(wildcard $(SECUTILS_DIR))","")
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 install OUT_DIR="$(OUT_DIR_REVERSE_DIR)"

@@ -405,17 +405,19 @@ ifneq ($(EJBCA_ENABLED),)
 endif
 
 stop_Simple:
-ifneq ($(EJBCA_ENABLED),)
 	@PID=`ps aux|grep " jar/SimpleLra.jar TestConfig.xml" | grep -v grep | awk '{ print $$2 }'` && \
 	if [ -n "$$PID" ]; then echo "stopping SimpleLra" && kill $$PID; fi
-endif
 
 .phony: test_Simple
+ifeq ($(EJBCA_ENABLED),)
+test_Simple:
+else
 test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple test/recipes/80-test_cmp_http_data/test_Simple.cnf
 	$(MAKE) -f Makefile_v1 start_Simple
 	make -f Makefile_tests test_cli OPENSSL_CMP_SERVER=Simple OPENSSL=$(OPENSSL) OPENSSL_CMP_CONFIG="Simple/../test.cnf" \
 	|| ($(OPENSSL) version | grep " 1.0") # with OpenSSL <1.1, some certstatus test cases fail due to missing OCSP support
 	$(MAKE) -f Makefile_v1 stop_Simple
+endif
 
 .phony: test_Insta
 test_Insta: get_Insta_crls

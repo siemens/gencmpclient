@@ -615,7 +615,7 @@ ifeq ($(LPATH),)
     endif
     #ifdef CMP_STANDALONE not relevant here
     ifneq ("$(wildcard $(LIBCMP_DIR))","")
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 install
+	$(MAKE) -C $(LIBCMP_DIR)  -f Makefile_v1 install OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
     endif
     #endif not relevant here
 endif

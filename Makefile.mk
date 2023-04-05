@@ -1,4 +1,5 @@
-GENCMPCL_DIR = ../genCMPClient
+# adapt as needed:
+GENCMPCL_DIR = ../gencmplient
 OPENSSL_DIR = /usr
 OUT_DIR = $(abspath .)
 BIN_DIR = $(abspath .)
@@ -16,9 +17,9 @@ endif
 .PHONY: build clean
 
 build:
-	make -C $(GENCMPCL_DIR) build OPENSSL_DIR="$(OPENSSL_DIR)" CFLAGS="$(CFLAGS)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CMP_STANDALONE=1 OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)"
+	make -C $(GENCMPCL_DIR) OPENSSL_DIR="$(OPENSSL_DIR)" CFLAGS="$(CFLAGS)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CMP_STANDALONE=1 OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)"
 
 clean:
-ifneq ($(wildcard genCMPClient/Makefile),)
+ifneq ($(wildcard $(GENCMPCL_DIR)/Makefile),)
 	make -C $(GENCMPCL_DIR) clean CMP_STANDALONE=1 OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)"
 endif

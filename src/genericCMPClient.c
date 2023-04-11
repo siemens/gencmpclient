@@ -45,7 +45,7 @@ STACK_OF(X509_EXTENSION)
 # define ERR_R_INIT_FAIL (6 | ERR_R_FATAL)
 #endif
 
-static int CMPOSSL_error()
+static int CMPOSSL_error(void)
 {
     unsigned long err = ERR_peek_last_error();
 
@@ -99,7 +99,7 @@ CMP_err CMPclient_init(OPTIONAL const char *name, OPTIONAL LOG_cb_t log_fn)
     return CMP_OK;
 }
 
-X509_NAME *parse_DN(const char *str, const char *desc)
+static X509_NAME *parse_DN(const char *str, const char *desc)
 {
     X509_NAME *name = UTIL_parse_name(str, MBSTRING_ASC, false);
 
@@ -648,6 +648,8 @@ int ossl_x509_add_certs_new(STACK_OF(X509) **p_sk, STACK_OF(X509) *certs,
     return 1;
 }
 
+#if 0 // TODO remove?
+static
 int ossl_cmp_X509_STORE_add1_certs(X509_STORE *store, STACK_OF(X509) *certs,
                                    int only_self_signed)
 {
@@ -668,6 +670,9 @@ int ossl_cmp_X509_STORE_add1_certs(X509_STORE *store, STACK_OF(X509) *certs,
     }
     return 1;
 }
+#endif
+
+#if 0 // TODO remove?
 /*-
  * Builds a certificate chain starting from <cert>
  * using the optional list of intermediate CA certificates <certs>.
@@ -683,12 +688,13 @@ int ossl_cmp_X509_STORE_add1_certs(X509_STORE *store, STACK_OF(X509) *certs,
  * OpenSSL seems to take the first one; check X509_verify_cert() for details.
  */
 /* TODO use instead X509_build_chain() when OpenSSL 3.0 is being used */
+static
 STACK_OF(X509) *ossl_cmp_build_cert_chain(OSSL_LIB_CTX *libctx,
                                           const char *propq,
                                           X509_STORE *store,
                                           STACK_OF(X509) *certs, X509 *cert)
 {
-    STACK_OF(X509) *chain = NULL, *result = NULL;
+    STACK_OF(X509) *chain = NULL, *res = NULL;
     X509_STORE *ts = store == NULL ? X509_STORE_new() : store;
     X509_STORE_CTX *csc = NULL;
 
@@ -715,19 +721,20 @@ STACK_OF(X509) *ossl_cmp_build_cert_chain(OSSL_LIB_CTX *libctx,
     chain = X509_STORE_CTX_get0_chain(csc);
 
     /* result list to store the up_ref'ed not self-signed certificates */
-    if (!ossl_x509_add_certs_new(&result, chain,
+    if (!ossl_x509_add_certs_new(&res, chain,
                                  X509_ADD_FLAG_UP_REF | X509_ADD_FLAG_NO_DUP
                                  | X509_ADD_FLAG_NO_SS)) {
-        sk_X509_free(result);
-        result = NULL;
+        sk_X509_free(res);
+        res = NULL;
     }
 
  err:
     if (store == NULL)
         X509_STORE_free(ts);
     X509_STORE_CTX_free(csc);
-    return result;
+    return res;
 }
+#endif
 #endif /* end TODO remove decls when exported by OpenSSL */
 
 CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
@@ -1094,7 +1101,7 @@ CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L
-int selfsigned_verify_cb(int ok, X509_STORE_CTX *store_ctx)
+static int selfsigned_verify_cb(int ok, X509_STORE_CTX *store_ctx)
 {
     if (ok == 0 && store_ctx != NULL
         && X509_STORE_CTX_get_error_depth(store_ctx) == 0

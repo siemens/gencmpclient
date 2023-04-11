@@ -1,3 +1,5 @@
+#!/usr/bin/make
+
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
 # Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
@@ -16,8 +18,6 @@ else # within Debian packaging
     # Unfortunately, cannot do this trick generally because otherwise,
     # multi-line shell commands in rules with '\' will throw weird syntax error
 endif
-
-PERL=/usr/bin/perl
 
 # variables ####################################################################
 
@@ -51,7 +51,7 @@ ifeq ($(LPATH),)
 #   ifneq ($(wildcard $(ROOTFS)/usr/local/include/openssl),)
 #       OPENSSL_DIR ?= $(ROOTFS)/usr/local
 #   else
-    ifeq ($(OPENSSLDIR),)
+    ifeq ($(OPENSSL_DIR),)
         OPENSSL_DIR = /usr
     endif
 #   endif
@@ -132,7 +132,7 @@ endif
 ifeq ($(LPATH),)
     LIBCMP_DIR=cmpossl
     ifdef CMP_STANDALONE
-        LIBCMP_INC=$(OUT_DIR)/include/cmp # consistent with the default value cmpossl/Makefile
+        LIBCMP_INC=cmpossl/include/cmp # consistent with the default value cmpossl/Makefile
     endif
 else
     # TODO correct?
@@ -185,7 +185,7 @@ update: update_secutils update_cmpossl
 	git submodule update
 
 $(SECUTILS_DIR)/include:
-	$(MAKE) update_secutils
+	$(MAKE) -f Makefile_v1 update_secutils
 
 $(SECUTILS_LIB):
 	build_secutils
@@ -194,11 +194,11 @@ $(SECUTILS_LIB):
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)
 build_secutils: # not: update_secutils
-	$(MAKE) -s -C $(SECUTILS_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 
 ifdef CMP_STANDALONE
 $(LIBCMP_DIR)/include:
-	$(MAKE) update_cmpossl
+	$(MAKE) -f Makefile_v1 update_cmpossl
 endif
 
 ifdef CMP_STANDALONE
@@ -213,7 +213,7 @@ update_cmpossl:
 build_cmpossl: # not: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 ifdef CMP_STANDALONE
-	$(MAKE) -s -C $(LIBCMP_DIR) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
 endif
 
 clean_submodules:
@@ -244,13 +244,13 @@ build_only:
 	$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" INSTALL_DEB_PKGS=$(INSTALL_DEB_PKGS)
 
 build_no_tls:
-	$(MAKE) build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
+	$(MAKE) -f Makefile_v1 build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
 
 .phony: clean_test clean clean_uta clean_this
 
 ifeq ($(LPATH),)
 clean_uta:
-	$(MAKE) -s -C $(SECUTILS_DIR) clean_uta
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s clean_uta
 endif
 
 clean_test:
@@ -259,17 +259,18 @@ clean_test:
 OUT_DOC=cmpClient.1.gz
 OUT_DEV_DOC=Generic_CMP_client_API.pdf
 clean_this: clean_test
-	$(MAKE) -s -f Makefile_src clean OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)"
+	rm -fr CMakeCache.txt *.cmake install_manifest.txt CMakeFiles/
+	$(MAKE) -f Makefile_src -s clean OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)"
 	@rm -f doc/$(OUT_DOC) doc/cmpClient.md
 
 clean: clean_this clean_deb
 ifeq ($(LPATH),)
     ifneq ("$(wildcard $(SECUTILS_DIR))","")
-	$(MAKE) -s -C $(SECUTILS_DIR) clean_all OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s clean_all OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
     endif
     #ifdef CMP_STANDALONE not relevant here
     ifneq ("$(wildcard $(LIBCMP_DIR))","")
-	$(MAKE) -s -C $(LIBCMP_DIR) clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
     endif
     #endif not relevant here
 endif
@@ -314,10 +315,10 @@ endif
 .phony: demo demo_Insta demo_EJBCA
 demo: demo_Insta
 demo_Insta:
-	$(MAKE) run_demo INSTA=1 SLEEP="sleep 1"
+	$(MAKE) -f Makefile_v1 run_demo INSTA=1 SLEEP="sleep 1"
 # for Insta, sleep 1 helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
 demo_EJBCA:
-	$(MAKE) run_demo INSTA= EJBCA_ENABLED=1
+	$(MAKE) -f Makefile_v1 run_demo INSTA= EJBCA_ENABLED=1
 
 CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH=. ./$(OUTBIN)
 GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345 2>/dev/null
@@ -330,7 +331,7 @@ endif
 ifeq ($(EJBCA_ENABLED)$(INSTA),)
 	$(warning "### skipping demo since not supported in this environment ###")
 else
-	@which $(OPENSSL) || (echo "cannot find $(OPENSSL), please install it"; false)
+	@which $(OPENSSL) >/dev/null || (echo "cannot find $(OPENSSL), please install it"; false)
 	@/bin/echo -e "\n##### running cmpClient demo #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
@@ -389,10 +390,10 @@ stop_Simple:
 
 .phony: test_Simple
 test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple test/recipes/80-test_cmp_http_data/test_Simple.cnf
-	$(MAKE) start_Simple
+	$(MAKE) -f Makefile_v1 start_Simple
 	make -f Makefile_tests test_cli OPENSSL_CMP_SERVER=Simple OPENSSL=$(OPENSSL) OPENSSL_CMP_CONFIG="Simple/../test.cnf" \
 	|| ($(OPENSSL) version | grep " 1.0") # with OpenSSL <1.1, some certstatus test cases fail due to missing OCSP support
-	$(MAKE) stop_Simple
+	$(MAKE) -f Makefile_v1 stop_Simple
 
 .phony: test_Insta
 test_Insta: get_Insta_crls
@@ -451,12 +452,12 @@ test_all: test_Insta
 endif
 
 test: clean build_no_tls
-	@$(MAKE) clean build demo_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
+	@$(MAKE) -f Makefile_v1 clean build demo_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
 
 # doc and zip ##################################################################
 
 doc: doc_this get_submodules
-	$(MAKE) -s -C $(SECUTILS_DIR) doc
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s doc
 
 doc_this: doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC)
 
@@ -535,13 +536,13 @@ ifneq ($(INSTALL_DEB_PKGS),)
 deb: get_submodules
 ifeq ($(LPATH),)
     ifeq ($(shell dpkg -l | grep "ii  libsecutils "),)
-	$(MAKE) deb -C $(SECUTILS_DIR)
+	$(MAKE) deb -C $(SECUTILS_DIR) -f Makefile_v1
 	sudo dpkg -i libsecutils{,-dev}_*.deb
     endif
 #ifdef CMP_STANDALONE not relevant here
     ifneq ("$(wildcard $(LIBCMP_DIR))","")
         ifeq ($(shell dpkg -l | grep "ii  libcmp "),)
-	$(MAKE) deb -C $(LIBCMP_DIR) LIBCMP_INC="$(LIBCMP_INC)"
+	$(MAKE) deb -C $(LIBCMP_DIR) -f Makefile_v1 LIBCMP_INC="$(LIBCMP_INC)"
 	sudo dpkg -i libcmp{,-dev}_*.deb
         endif
     endif

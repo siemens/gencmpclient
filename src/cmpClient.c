@@ -477,7 +477,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
     return 1;
 }
 
-SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
+static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 {
 #ifdef SECUTILS_NO_TLS
     (void)untrusted_certs;
@@ -564,7 +564,7 @@ SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 #endif
 }
 
-X509_STORE *setup_CMP_truststore(const char *trusted_cert_files)
+static X509_STORE *setup_CMP_truststore(const char *trusted_cert_files)
 {
     if (trusted_cert_files == NULL)
         return NULL;
@@ -589,7 +589,7 @@ X509_STORE *setup_CMP_truststore(const char *trusted_cert_files)
     return cmp_truststore;
 }
 
-X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
+static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
 {
     X509_EXTENSIONS *exts = sk_X509_EXTENSION_new_null();
     X509V3_CTX ext_ctx;
@@ -809,7 +809,7 @@ static int set_name(OPTIONAL const char *str,
     return CMP_OK;
 }
 
-int setup_cert_template(CMP_CTX *ctx)
+static int setup_cert_template(CMP_CTX *ctx)
 {
     int err;
 
@@ -936,7 +936,7 @@ static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
     return ret;
 }
 
-int setup_ctx(CMP_CTX *ctx)
+static int setup_ctx(CMP_CTX *ctx)
 {
     CMP_err err = set_name(opt_expect_sender, OSSL_CMP_CTX_set1_expected_sender,
                            ctx, "expected sender");
@@ -1020,8 +1020,8 @@ int setup_ctx(CMP_CTX *ctx)
     return err;
 }
 
-CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
-                           OPTIONAL LOG_cb_t log_fn)
+static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
+                                  OPTIONAL LOG_cb_t log_fn)
 {
     X509_STORE *new_cert_truststore = NULL;
     X509_STORE *own_truststore = NULL;
@@ -1178,7 +1178,7 @@ static int reqExtensions_have_SAN(X509_EXTENSIONS *exts)
     return X509v3_get_ext_by_NID(exts, NID_subject_alt_name, -1) >= 0;
 }
 
-int setup_transfer(CMP_CTX *ctx)
+static int setup_transfer(CMP_CTX *ctx)
 {
     CMP_err err;
 
@@ -1787,6 +1787,7 @@ static int save_cert_or_delete(X509 *cert, const char *file, const char *desc)
     return CERT_save(cert, file, desc);
 }
 
+static
 CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
                    const char *file, const char *dir, const char *format)
 {
@@ -1836,8 +1837,8 @@ CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
     return CMP_OK;
 }
 
-CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds,
-                         enum use_case use_case)
+static CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds,
+                                enum use_case use_case)
 {
     CMP_err err = save_certs(OSSL_CMP_CTX_get1_extraCertsIn(ctx),
                              "extraCerts", "extra", opt_extracertsout,
@@ -1991,8 +1992,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             X509 *newwithnew = NULL;
             X509 *newwithold = NULL;
             X509 *oldwithnew = NULL;
-            CMP_err err = -60;
 
+            err = -60;
             if (opt_oldwithold == NULL) {
                 LOG(FL_WARN, "No -oldwithold given, will use all certs given with -trusted as trust anchors for verifying the newWithNew cert");
             } else {
@@ -2037,8 +2038,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         }
         {
             X509_CRL *oldcrl = NULL, *crl = NULL;
-            CMP_err err = -64;
 
+            err = -64;
             if (opt_oldcrl == NULL) {
                 LOG(FL_WARN, "No -oldcrl given, will use data from -oldcert");
             } else {
@@ -2312,7 +2313,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     return err;
 }
 
-int print_help(const char *prog)
+static int print_help(const char *prog)
 {
     BIO *bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
 
@@ -2326,7 +2327,7 @@ int print_help(const char *prog)
     return EXIT_SUCCESS;
 }
 
-bool set_verbosity(long level)
+static bool set_verbosity(long level)
 {
     if (level < LOG_EMERG || level > LOG_TRACE) {
         LOG(FL_ERR, "Logging verbosity level %d out of range (0 .. 8)", level);

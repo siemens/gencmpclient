@@ -22,7 +22,12 @@ t.*
 *.zip
 *.gz
 mk
-attic
+CMakeCache.txt
+Makefile
+*.cmake
+install_manifest.txt
+CMakeFiles/
+attic/
 /*.der
 /*.pem
 /*.p12

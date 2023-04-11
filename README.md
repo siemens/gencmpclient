@@ -39,10 +39,11 @@ also on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs
 
 The following network and development tools are needed or recommended.
 * Git (for getting the software, tested with versions 2.7.2, 2.11.0, 2.20, 2.30.2)
+* CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested with version 3.18.4)
 * GNU make (tested with versions 4.1, 4.2.1, 4.3)
-* Perl (used by the Makefile and tests, tested with version 5.32.1)
 * GNU C compiler (gcc, tested with versions 5.4.0, 7.3.0, 8.3.0, 10.0.1, 10.2.1)
 * wget (for running the demo, tested with versions 1.17, 1.18, 1.20, 1.21)
+* Perl (for running the tests, tested with version 5.32.1)
 
 The following OSS components are used.
 * OpenSSL development edition; supported versions: 1.1.1, 3.0, 3.1
@@ -52,7 +53,7 @@ The following OSS components are used.
 
 For instance, on a Debian system the prerequisites may be installed simply as follows:
 ```
-sudo apt install libssl-dev libc-dev linux-libc-dev
+sudo apt install cmake libssl-dev libc-dev linux-libc-dev
 ```
 while `apt install git make gcc wget` usually is not needed as far as these tools are pre-installed.
 
@@ -66,7 +67,7 @@ make -f OpenSSL_version.mk
 This should output on the console something like
 ```
 cc OpenSSL_version.c -lcrypto -o OpenSSL_version
-OpenSSL 1.1.1k  25 Mar 2021 (0x101010bf)
+OpenSSL 3.0.8 7 Feb 2023 (0x30000080)
 ```
 
 
@@ -83,7 +84,7 @@ You can clone the git repository and its submodules with
 ```
 git clone git@github.com:siemens/genCMPClient.git
 cd genCMPClient
-make get_submodules
+make -f Makefile_v1 get_submodules  
 ```
 
 This will fetch also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
@@ -97,50 +98,69 @@ git submodule add git@github.com:siemens/gencmpclient.git
 
 When you later want to update your local copy of all relevant repositories it is sufficient to invoke
 ```
-make update
+make -f Makefile_v1 update  
 ```
 
 
 ## Building the software
 
-The generic CMP client (and also its underlying CMP and Security Utilitieslibraries)
-assumes that OpenSSL (with any version >= 1.1.0) is already installed,
+The generic CMP client (and also its underlying libraries)
+assumes that OpenSSL is already installed,
 including the C header files needed for development
 (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
 
-By default the Makefile behaves as if
+Since version 2, it is recommended to use CMake to produce the `Makefile`,
+for instance as follows:
+```
+cmake .
+```
+By default this makes use of any OpenSSL installation available on the system.
+
+For backward compatibility it is also possible to use instead of CMake
+pre-defined [`Makefile_v1`](Makefile_v1); to this end symlink it to `Makefile`:
+```
+ln -s Makefile_v1 Makefile
+```
+
+By default `Makefile_v1` behaves as if
 ```
 OPENSSL_DIR=/usr
 ```
 was given, such that the OpenSSL headers will be searched for in `/usr/include`
 and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
-You may point the environment variable `OPENSSL_DIR` to an alternative OpenSSL installation, e.g.:
+
+When using CMake as well as when using [`Makefile_v1`](Makefile_v1),
+you may point the environment variable `OPENSSL_DIR`
+to an alternative OpenSSL installation, e.g.:
 ```
 export OPENSSL_DIR=/usr/local
 ```
-You may also specify using the environment variable `OUT_DIR`
-where the produced libraries
-(e.g., `libgencmp.so.1`, `libcmp.so.1`, and `libsecutils.so.1`)
-shall be placed. It defaults to `.`.
+
+When using [`Makefile_v1`](Makefile_v1), you may
+specify via the environment variable `OUT_DIR` where the produced libraries
+(e.g., `libgencmp.so*`, `libcmp.so*`, and `libsecutils.so*`) shall be placed.
+It defaults to `.`.
 If the environment variable `BIN_DIR` is not empty, the
 the CLI application `cmpClient` will be built and placed in `BIN_DIR`.
 If the variable is unset, `.` is used by default.
 For all path variables, relative paths such as `.` are interpreted
 relative to the directory of the genCMPClient module.
+The CC environment variable may be set as needed; it defaults to `gcc`.
+Also the `ROOTFS` environment variable may be set, e.g., for cross compilation.
 For further details on optional environment variables,
-see the [`Makefile`](Makefile) and [`Makefile_src`](Makefile_src).
+see the [`Makefile_v1`](Makefile_v1) and [`Makefile_src`](Makefile_src).
 
-In the newly created directory `genCMPClient` you can build the software simply with
+In the directory `genCMPClient` you can build the software simply with
 ```
+cmake .   # when using CMake; needed only once
 make
 ```
-where the CC environment variable may be set as needed; it defaults to %'gcc'.
-Also the ROOTFS environment variable may be set, e.g., for cross compilation.
 
-The result is in, for instance, `./libgencmp.so.1`.
+The result is in, for instance, `./libgencmp.so.2.0`.
 This also builds all required dependencies
-(such as `./libsecutils.so.1` and `./libcmp.so.1`)
-and an application (`./cmpClient`) for demonstration, test, and exploration purposes.
+(such as `libsecutils/libsecutils.so.2.0` and `cmpossl/libcmp.so.2.0`)
+and an application (`./cmpClient`) that is intended
+for demonstration, test, and exploration purposes.
 
 
 ## Building Debian packages
@@ -158,7 +178,12 @@ To build the Debian packages, the following dependencies need to be installed:
 * `libsecutils-dev`
 * `libcmp-dev`
 
-Then the packages can be built and installed by
+Currently [`CMakeLists.txt`](CMakeLists.txt) does not support Debian packaging.
+Yet [`Makefile_v1`](Makefile_v1) may be used after symlinking it to `Makefile`:
+```
+ln -s Makefile_v1 Makefile
+```
+Then the packages can be built by
 ```
 make deb
 ```
@@ -172,19 +197,16 @@ The CMP demo client is implemented in [`src/cmpClient.c`](src/cmpClient.c)
 as part of the CLI.
 It can be executed with
 ```
-make demo
+make -f Makefile_v1 demo   
 ```
+
+As the demo interacts via HTTP with the external Insta Certifier Demo CA,
+it make be needed to set the environment variable `http_proxy`.
 
 Among others, successful execution should produce a new certificate at `creds/operational.crt`.
 You can view this certificate for instance by executing
 ```
 openssl x509 -noout -text -in creds/operational.crt
-```
-
-The demo client may also interact with the external Insta Certifier Demo CA via
-```
-export http_proxy=  # adapt to your needs
-make demo_Insta
 ```
 
 
@@ -197,7 +219,7 @@ The CLI use with the available options are documented in [`cmpClient.pod`](doc/c
 
 CLI-based tests using the external Insta Demo CA may be invoked using
 ```
-make test_Insta
+make -f Makefile_v1 test_Insta
 ```
 where the PROXY environment variable may be used to override the default
 in order to reach the Insta Demo CA.
@@ -206,7 +228,7 @@ in order to reach the Insta Demo CA.
 ## Using the library in own applications
 
 For building the library (and optionally the CLI application)
-as part of other builds, it is recommended to call the [`Makefile`](Makefile),
+as part of other builds, it is recommended to call the `Makefile`,
 for instance as given in the example outer [`Makefile.mk`](Makefile.mk).
 
 For compiling applications using the library,
@@ -228,7 +250,8 @@ See also the environment variable `OUT_DIR`.
 For helping the Linux loader to find the libraries at run time,
 it is recommended to set also linker options like `-Wl,-rpath=.`.
 
-Also make sure that the OpenSSL libraries (typically referred to via `-lssl -lcrypto`) are in your library path and
+Also make sure that the OpenSSL libraries
+(typically referred to via `-lssl -lcrypto`) are in your library path and
 (the version of) the libraries found there by the linker match the header files found by the compiler.
 
 All this is already done for the cmp client application.

@@ -98,7 +98,7 @@ git submodule add git@github.com:siemens/gencmpclient.git
 
 When you later want to update your local copy of all relevant repositories it is sufficient to invoke
 ```
-make -f Makefile_v1 update  
+make update
 ```
 
 

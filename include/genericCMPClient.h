@@ -16,7 +16,7 @@
 # define GENERIC_CMP_CLIENT_H
 
 # ifdef CMP_STANDALONE
-#  include <openssl/openssl_backport.h> /* needed for OpenSSL version < 3.0 */
+#  include <openssl/openssl_backport.h> /* needed for OpenSSL version < 3.2 */
 # endif
 /* for low-level CMP API, in particular, type OSSL_CMP_CTX */
 # include <openssl/cmp.h>

@@ -10,6 +10,9 @@ message(STATUS "generic CMP client version " ${CMPCLIENT_VERSION})
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 
+# set(GIT_PROGRESS --progress) # not available for all git versions and gives lengthy output in CI runs
+set(GIT_DEPTH --depth 1) # used to speed up getting submodules
+
 if(DEFINED ENV{OPENSSL_DIR})
   set(OpenSSL_INCLUDE_DIRS $ENV{OPENSSL_DIR}/include)
   set(OPENSSL_LIBRARIES $ENV{OPENSSL_DIR}/libssl.so $ENV{OPENSSL_DIR}/libcrypto.so)
@@ -20,13 +23,18 @@ endif()
 
 set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)
 set(INC_DIR ${PROJECT_SOURCE_DIR}/include)
+set(CMPOSSL_INC_DIR ${PROJECT_SOURCE_DIR}/cmpossl/include)
 
 include_directories(
   ${INC_DIR}
   ${PROJECT_SOURCE_DIR}/libsecutils/include
-  ${PROJECT_SOURCE_DIR}/cmpossl/include
-  ${PROJECT_SOURCE_DIR}/cmpossl/include/cmp
-)
+  ${CMPOSSL_INC_DIR}
+  ${CMPOSSL_INC_DIR}/cmp
+  ${CMAKE_SYSROOT}/usr/include/cmp
+  )
+# does not work for OpenSSL 3.0+:
+# add_definitions(-isystem ${CMPOSSL_INC_DIR}/cmp)
+# add_definitions(-isystem ${CMAKE_SYSROOT}/usr/include/cmp)
 
 add_library(${PROJECT_NAME} SHARED
   ${SRC_DIR}/genericCMPClient.c
@@ -43,13 +51,15 @@ target_link_libraries(cmpClient
   cmp
 )
 
-if(DEFINED ENV{NDEBUG}) # OR NOT(CMAKE_BUILD_TYPE MATCHES Debug)
-  add_definitions(-DNDEBUG=1 -O2)
-else()
+if((CMAKE_BUILD_TYPE MATCHES Debug) AND (NOT DEFINED ENV{NDEBUG}))
+  message("build mode: Debug")
   add_definitions(-g -O0)
   set(DEBUG_FLAGS -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all)
   add_definitions(${DEBUG_FLAGS})
   link_libraries(${DEBUG_FLAGS})
+else()
+  message("build mode: Release")
+  add_definitions(-DNDEBUG=1 -O2)
 endif()
 
 add_definitions(-DCMP_STANDALONE -DDEBUG_UNUSED)
@@ -57,12 +67,23 @@ add_definitions(-DPEDANTIC -pedantic)
 add_definitions(-Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes
   -Wswitch -Wsign-compare -Wshadow -Wformat -Wtype-limits -Wundef)
 
-#set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD 90)
-#set_property(TARGET cmpClient PROPERTY C_STANDARD 90)
+# set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD 90)
+# set_property(TARGET cmpClient PROPERTY C_STANDARD 90)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
   VERSION ${CMPCLIENT_VERSION} SOVERSION ${CMPCLIENT_VERSION_MAJOR}
   PUBLIC_HEADER "${INC_DIR}/genericCMPClient.h"
+)
+
+ADD_CUSTOM_TARGET(update
+  COMMAND echo "updating repo and submodules"
+  COMMAND git submodule update ${GIT_PROGRESS} ${GIT_DEPTH} libsecutils cmpossl
+  COMMAND git fetch
+  COMMAND git rebase
+)
+
+ADD_CUSTOM_TARGET(build # just an alias
+  COMMAND make all
 )
 
 install(TARGETS ${PROJECT_NAME}
@@ -80,7 +101,6 @@ install(TARGETS cmpClient
 )
 
 if (NOT YOCTO_BUILD)
-  # set(GIT_PROGRESS --progress) # not available for all git versions and gives lengthy output in CI runs
 
   # find_package(secutils 2.0)
   if(NOT secutils_FOUND)
@@ -89,7 +109,7 @@ if (NOT YOCTO_BUILD)
       find_package(Git)
       if(GIT_FOUND)
         execute_process(COMMAND
-          git submodule update ${GIT_PROGRESS} --init libsecutils
+          git submodule update ${GIT_PROGRESS} --init ${GIT_DEPTH} libsecutils
           RESULT_VARIABLE GIT_SUBMODULE_RESULT
           )
         if(NOT GIT_SUBMODULE_RESULT EQUAL "0")
@@ -109,7 +129,7 @@ if (NOT YOCTO_BUILD)
       find_package(Git)
       if(GIT_FOUND)
         execute_process(COMMAND
-          git submodule update ${GIT_PROGRESS} --init cmpossl
+          git submodule update ${GIT_PROGRESS} --init ${GIT_DEPTH} cmpossl
           RESULT_VARIABLE GIT_SUBMODULE_RESULT
           )
         if(NOT GIT_SUBMODULE_RESULT EQUAL "0")

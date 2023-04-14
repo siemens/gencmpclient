@@ -14,11 +14,18 @@ message(STATUS "generic CMP client version " ${CMPCLIENT_VERSION})
 set(GIT_DEPTH --depth 1) # used to speed up getting submodules
 
 if(DEFINED ENV{OPENSSL_DIR})
+  message(STATUS "using OpenSSL from " $ENV{OPENSSL_DIR})
+  if(DEFINED ENV{OPENSSL_LIB})
+    set(OPENSSL_LIB $ENV{OPENSSL_LIB})
+  else()
+    set(OPENSSL_LIB $ENV{OPENSSL_DIR})
+  endif()
   set(OpenSSL_INCLUDE_DIRS $ENV{OPENSSL_DIR}/include)
-  set(OPENSSL_LIBRARIES $ENV{OPENSSL_DIR}/libssl.so $ENV{OPENSSL_DIR}/libcrypto.so)
+  set(OPENSSL_LIBRARIES ${OPENSSL_LIB}/libssl.so ${OPENSSL_LIB}/libcrypto.so)
   add_definitions(-isystem ${OpenSSL_INCLUDE_DIRS})
 else()
   find_package(OpenSSL REQUIRED)
+  message(STATUS "using OpenSSL version " ${OPENSSL_VERSION})
 endif()
 
 set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)
@@ -45,21 +52,21 @@ add_executable(cmpClient
 )
 
 target_link_libraries(cmpClient
-  ${OPENSSL_LIBRARIES}
   ${PROJECT_NAME}
-  secutils
   cmp
+  secutils
+  ${OPENSSL_LIBRARIES}
 )
 
-if((CMAKE_BUILD_TYPE MATCHES Debug) AND (NOT DEFINED ENV{NDEBUG}))
-  message("build mode: Debug")
+if((CMAKE_BUILD_TYPE MATCHES Release) OR (DEFINED ENV{NDEBUG}))
+  message(STATUS "build mode: Release")
+  add_definitions(-DNDEBUG=1 -O2)
+else()
+  message(STATUS "build mode: Debug")
   add_definitions(-g -O0)
   set(DEBUG_FLAGS -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all)
   add_definitions(${DEBUG_FLAGS})
   link_libraries(${DEBUG_FLAGS})
-else()
-  message("build mode: Release")
-  add_definitions(-DNDEBUG=1 -O2)
 endif()
 
 add_definitions(-DCMP_STANDALONE -DDEBUG_UNUSED)
@@ -75,16 +82,20 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   PUBLIC_HEADER "${INC_DIR}/genericCMPClient.h"
 )
 
-ADD_CUSTOM_TARGET(update
+add_custom_target(update
   COMMAND echo "updating repo and submodules"
   COMMAND git submodule update ${GIT_PROGRESS} ${GIT_DEPTH} libsecutils cmpossl
   COMMAND git fetch
   COMMAND git rebase
 )
 
-ADD_CUSTOM_TARGET(build # just an alias
-  COMMAND make all
-)
+if(NOT TARGET build)
+  add_custom_target(build COMMAND make all)
+endif()
+
+if(DEFINED ENV{ROOTFS})
+  set(CMAKE_INSTALL_PREFIX $ENV{ROOTFS} CACHE PATH "comment" FORCE)
+endif()
 
 install(TARGETS ${PROJECT_NAME}
   LIBRARY
@@ -100,7 +111,11 @@ install(TARGETS cmpClient
   DESTINATION bin
 )
 
-if (NOT YOCTO_BUILD)
+if(NOT TARGET uninstall)
+  add_custom_target(uninstall COMMAND xargs rm -vf <install_manifest.txt)
+endif()
+
+if(NOT YOCTO_BUILD)
 
   # find_package(secutils 2.0)
   if(NOT secutils_FOUND)

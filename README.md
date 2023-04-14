@@ -66,10 +66,14 @@ make -f OpenSSL_version.mk
 
 This should output on the console something like
 ```
-cc OpenSSL_version.c -lcrypto -o OpenSSL_version
+cc [...] OpenSSL_version.c -lcrypto -o OpenSSL_version
 OpenSSL 3.0.8 7 Feb 2023 (0x30000080)
 ```
 
+You might need to set the variable `OPENSSL_DIR` first as described below, e.g.,
+```
+export OPENSSL_DIR=/usr/local
+```
 
 ## Getting the software
 
@@ -102,19 +106,29 @@ make update
 ```
 
 
-## Building the software
+## Configuring and building
 
-The generic CMP client (and also its underlying libraries)
+The generic CMP client (as well as its underlying libraries)
 assumes that OpenSSL is already installed,
 including the C header files needed for development
 (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
+
+By default any OpenSSL installation available on the system is used.
+Set the optional environment variable `OPENSSL_DIR` to specify the
+absolute (or relative to `../`) path of the OpenSSL installation to use, e.g.:
+```
+export OPENSSL_DIR=/usr/local
+```
+In case its libraries are in a different location, set also `OPENSSL_LIB`, e.g.:
+```
+export OPENSSL_LIB=$OPENSSL_DIR/lib
+```
 
 Since version 2, it is recommended to use CMake to produce the `Makefile`,
 for instance as follows:
 ```
 cmake .
 ```
-By default this makes use of any OpenSSL installation available on the system.
 
 For backward compatibility it is also possible to use instead of CMake
 pre-defined [`Makefile_v1`](Makefile_v1); to this end symlink it to `Makefile`:
@@ -129,12 +143,8 @@ OPENSSL_DIR=/usr
 was given, such that the OpenSSL headers will be searched for in `/usr/include`
 and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
 
-When using CMake as well as when using [`Makefile_v1`](Makefile_v1),
-you may point the environment variable `OPENSSL_DIR`
-to an alternative OpenSSL installation, e.g.:
-```
-export OPENSSL_DIR=/usr/local
-```
+When using CMake, `cmake` must be (re-)run
+after setting or unsetting environment variables.
 
 When using [`Makefile_v1`](Makefile_v1), you may
 specify via the environment variable `OUT_DIR` where the produced libraries
@@ -146,15 +156,15 @@ If the variable is unset, `.` is used by default.
 For all path variables, relative paths such as `.` are interpreted
 relative to the directory of the genCMPClient module.
 The CC environment variable may be set as needed; it defaults to `gcc`.
-Also the `ROOTFS` environment variable may be set, e.g., for cross compilation.
 For further details on optional environment variables,
 see the [`Makefile_v1`](Makefile_v1) and [`Makefile_src`](Makefile_src).
 
-In the directory `genCMPClient` you can build the software simply with
+Build the software with
 ```
-cmake .   # when using CMake; needed only once
 make
 ```
+By default, builds are done in Debug mode.
+For Release mode use `-DCMAKE_BUILD_TYPE=Release` or `NDEBUG=1`.
 
 The result is in, for instance, `./libgencmp.so.2.0`.
 This also builds all required dependencies
@@ -162,6 +172,19 @@ This also builds all required dependencies
 and an application (`./cmpClient`) that is intended
 for demonstration, test, and exploration purposes.
 
+
+### Installing and uninstalling
+
+The software can be installed with
+```
+make install
+```
+and uninstalled with
+```
+make uninstall
+```
+
+The destination is `/usr/local`, unless specified otherwise by `ROOTFS`.
 
 ## Building Debian packages
 

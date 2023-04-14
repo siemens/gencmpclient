@@ -134,6 +134,7 @@ const char *opt_chainout;
 
 const char *opt_oldcert;
 long opt_revreason;
+char *opt_serialnumber;
 
 /* TODO? add credentials format options */
 /* TODO add opt_engine */
@@ -267,6 +268,8 @@ opt_t cmp_opts[] = {
       { (const char **) &opt_revreason },
       "Reason code to include in revocation request (rr)."},
     OPT_MORE("Values: 0..6, 8..10 (see RFC5280, 5.3.1) or -1. Default -1 = none included"),
+    { "serialnumber", OPT_TXT, {.txt = NULL}, {(const char **) &opt_serialnumber},
+      "Serial number of certificate to be revoked in revocation request (rr)"},
     /* Note: Lightweight CMP Profile SimpleLra does not allow CRL_REASON_NONE */
 
     /* TODO? OPT_HEADER("Credentials format"), */
@@ -1574,12 +1577,26 @@ static CMP_err check_options(enum use_case use_case)
         return -35;
     }
     if (use_case == revocation) {
-        if (opt_oldcert == NULL && opt_csr == NULL) {
-            LOG_err("Missing -oldcert for certificate to be revoked and no fallback -csr given");
-            return -36;
+        if (opt_issuer == NULL && opt_serialnumber == NULL) {
+            if (opt_oldcert == NULL && opt_csr == NULL) {
+                LOG_err("Missing -oldcert for certificate to be revoked and no fallback -csr given");
+                return -36;
+            }
+            if (opt_oldcert != NULL && opt_csr != NULL)
+                LOG_warn("Ignoring -csr since -oldcert is given for command 'rr' (revocation)");
+        } else {
+            if (opt_issuer == NULL || opt_serialnumber == NULL) {
+                LOG_err("Must give both -serialnumber and -issuer options or neither");
+                return -73;
+            }
+            if (opt_oldcert != NULL)
+                LOG_warn("Ignoring -oldcert since -serialnumber and -issuer is given for command 'rr'");
+            if (opt_csr != NULL)
+                LOG_warn("Ignoring -csr since -serialnumber and -issuer is given for command 'rr'");
         }
-        if (opt_oldcert != NULL && opt_csr != NULL)
-            LOG_warn("Ignoring -csr since -oldcert is given for command 'rr' (revocation)");
+    } else {
+        if (opt_serialnumber != NULL)
+            LOG_warn("Ignoring -serialnumber for command other than 'rr'");
     }
 
     if (opt_cacerts_dir_format != NULL
@@ -1739,8 +1756,7 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                     msg);
             }
         }
-        if (opt_issuer != NULL)
-            LOG(FL_WARN, "-issuer %s", msg);
+
         if (opt_reqexts != NULL)
             LOG(FL_WARN, "-reqexts %s", msg);
         if (opt_san_nodefault)
@@ -1790,6 +1806,24 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 return -47;
             if (!OSSL_CMP_CTX_set1_p10CSR(ctx, *csr))
                 return -48;
+        }
+    }
+    if (use_case == revocation) {
+        if (set_name(opt_issuer, OSSL_CMP_CTX_set1_issuer, ctx, "issuer") != CMP_OK)
+            return -70;
+        if (opt_serialnumber != NULL) {
+            ASN1_INTEGER *sno;
+
+            if ((sno = s2i_ASN1_INTEGER(NULL, opt_serialnumber)) == NULL) {
+                LOG(FL_ERR, "cannot read serial number: '%s'", opt_serialnumber);
+                return -71;
+            }
+            if (!OSSL_CMP_CTX_set1_serialNumber(ctx, sno)) {
+                ASN1_INTEGER_free(sno);
+                LOG_err("out of memory");
+                return -72;
+            }
+            ASN1_INTEGER_free(sno);
         }
     }
     return CMP_OK;

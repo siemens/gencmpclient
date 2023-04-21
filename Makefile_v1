@@ -2,7 +2,7 @@
 
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
-# Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
+# Optional OUT_DIR defines where libgencmp shall be placed, defaulting to LPATH if set, else '.'
 # Optional BIN_DIR defines where the CLI application shall be placed unless it is empty. It defaults to '.' if unset.
 # All these paths may be absolute or relative to the dir containing this Makefile.
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS. Also CFLAGS is passed to build goals.
@@ -47,7 +47,9 @@ ifeq ($(LPATH),)
     ifeq ($(OUT_DIR),)
         override OUT_DIR = .
     endif
-    BIN_DIR ?= .
+    ifeq ($(BIN_DIR),)
+        override BIN_DIR = .
+    endif
 #   ifneq ($(wildcard $(ROOTFS)/usr/local/include/openssl),)
 #       OPENSSL_DIR ?= $(ROOTFS)/usr/local
 #   else
@@ -61,9 +63,14 @@ else
     ifeq ($(OUT_DIR),)
         override OUT_DIR = $(LPATH)
     endif
-    BIN_DIR ?= $(LPATH)
+    ifeq ($(BIN_DIR),)
+        override BIN_DIR = $(LPATH)
+    endif
     OPENSSL_DIR ?= $(LPATH)/..
     # SECUTILS and SECUTILS_LIB not needed since pre-installed
+endif
+ifeq ($(OPENSSL_LIB),)
+    OPENSSL_LIB=$(OPENSSL_DIR)
 endif
 
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
@@ -132,7 +139,7 @@ endif
 ifeq ($(LPATH),)
     LIBCMP_DIR=cmpossl
     ifdef CMP_STANDALONE
-        LIBCMP_INC=cmpossl/include/cmp # consistent with the default value cmpossl/Makefile
+        LIBCMP_INC=${LIBCMP_DIR}/include/cmp # consistent with the default value cmpossl/Makefile
     endif
 else
     # TODO correct?
@@ -194,7 +201,7 @@ $(SECUTILS_LIB):
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)
 build_secutils: # not: update_secutils
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" # OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 
 ifdef CMP_STANDALONE
 $(LIBCMP_DIR)/include:
@@ -203,7 +210,8 @@ endif
 
 ifdef CMP_STANDALONE
 LIBCMP_LIB=libcmp$(DLL)
-$(OUT_DIR)/$(LIBCMP_LIB): $(LIBCMP_INC)
+#$(OUT_DIR)/$(LIBCMP_LIB): $(LIBCMP_INC)
+${LIBCMP_DIR}/$(LIBCMP_LIB): $(LIBCMP_INC)
 	build_cmpossl
 endif
 
@@ -213,13 +221,13 @@ update_cmpossl:
 build_cmpossl: # not: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 ifdef CMP_STANDALONE
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" # OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 endif
 
 clean_submodules:
-	rm -rf $(SECUTILS_DIR) $(SECUTILS_LIB)*
+	rm -rf $(SECUTILS_DIR) # $(OUT_DIR)/$(SECUTILS_LIB)*
 ifdef CMP_STANDALONE
-	rm -rf cmpossl $(OUT_DIR)/$(LIBCMP_LIB)*
+	rm -rf cmpossl # $(OUT_DIR)/$(LIBCMP_LIB)*
 endif
 
 endif # eq ($(SECUTILS_DIR),)
@@ -229,8 +237,8 @@ build_prereq: submodules
 
 build: build_prereq build_only
 ifdef CMP_STANDALONE
-    ifeq ($(DEB_BUILD_ARCH),) # avoid weird syntax error on '\' with Debian packaging
-	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="$(OUT_DIR)/$(LIBCMP_LIB)"` && \
+    ifeq ($(DEB_BUILD_ARCH),) # avoid weird syntax error on '\' with Debian packaging # LIB=$(OUT_DIR)/$(LIBCMP_LIB)
+	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="${LIBCMP_DIR}/$(LIBCMP_LIB)"` && \
 	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
 	    echo "WARNING: OpenSSL version '$$LIBCMP_OPENSSL_VERSION' used for building libcmp does not match '$(OPENSSL_VERSION)' to be used for building client"; \
 	fi
@@ -266,11 +274,11 @@ clean_this: clean_test
 clean: clean_this clean_deb
 ifeq ($(LPATH),)
     ifneq ("$(wildcard $(SECUTILS_DIR))","")
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s clean_all OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s clean_all || true # OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
     endif
     #ifdef CMP_STANDALONE not relevant here
     ifneq ("$(wildcard $(LIBCMP_DIR))","")
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s clean OUT_DIR="$(OUT_DIR_REVERSE_DIR)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s clean OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" # OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
     endif
     #endif not relevant here
 endif
@@ -320,7 +328,7 @@ demo_Insta:
 demo_EJBCA:
 	$(MAKE) -f Makefile_v1 run_demo INSTA= EJBCA_ENABLED=1
 
-CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH=. ./$(OUTBIN)
+CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH=. $(BIN_DIR)/$(OUTBIN)
 GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345 2>/dev/null
 .phony: run_demo
 ifeq ($(INSTA),)
@@ -403,9 +411,9 @@ test_Insta: get_Insta_crls
 test_profile: start_Simple profile_Simple profile_EJBCA stop_Simple
 # do before: cd SimpleLra && ./RunLra.sh
 profile_Simple:
-	PROFILE=Simple make profile
+	PROFILE=Simple $(MAKE) -f Makefile_v1 profile
 profile_EJBCA:
-	PROFILE=EJBCA make profile
+	PROFILE=EJBCA $(MAKE) -f Makefile_v1 profile
 profile: build
 ifeq ($(EJBCA_ENABLED),)
 	$(warning "### skipping test_profile since not supported in this environment ###")
@@ -579,14 +587,16 @@ DEST_DOC=$(ROOTFS)/usr/share/doc/libgencmp
 DEST_DEV_DOC=$(ROOTFS)/usr/share/doc/libgencmp-dev
 GENCMPCL_HDRS=genericCMPClient.h
 .phony: install install_cli uninstall
-install: doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC) $(OUT_DIR)/$(OUTLIB).$(VERSION) $(OUT_DIR)/$(OUTBIN)
+install: doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC) $(OUT_DIR)/$(OUTLIB).$(VERSION) $(BIN_DIR)/$(OUTBIN)
 	mkdir -p $(DEST_LIB)
 	install -D $(OUT_DIR)/$(OUTLIB).$(VERSION) $(DEST_LIB)/
 	ln -sfr $(DEST_LIB)/$(OUTLIB){.$(VERSION),}
 ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
-	install $(SECUTILS_LIB).* $(DEST_LIB)/
+#	install $(OUT_DIR)/$(SECUTILS_LIB).* $(DEST_LIB)/
+	install $(SECUTILS_DIR)/$(SECUTILS_LIB).* $(DEST_LIB)/
     ifdef CMP_STANDALONE
-	install $(OUT_DIR)/$(LIBCMP_LIB).* $(DEST_LIB)/
+#	install $(OUT_DIR)/$(LIBCMP_LIB).* $(DEST_LIB)/
+	install $(LIBCMP_DIR)/$(LIBCMP_LIB).* $(DEST_LIB)/
     endif
 endif
 #install_headers:
@@ -594,7 +604,7 @@ endif
 #install_bins:
 #ifdef CMP_STANDALONE
 	mkdir -p $(DEST_BIN)
-	install -D $(OUT_DIR)/$(OUTBIN) $(DEST_BIN)/$(OUTBIN)
+	install -D $(BIN_DIR)/$(OUTBIN) $(DEST_BIN)/$(OUTBIN)
 #endif
 #install_doc:
 	mkdir -p $(DEST_MAN)
@@ -606,9 +616,9 @@ endif
 
 uninstall:
 	rm -f $(DEST_LIB)/$(OUTLIB){,.$(VERSION)}
-	@ #rm -f $(DEST_LIB)/$(SECUTILS_LIB)*
+	rm -f $(DEST_LIB)/$(SECUTILS_LIB)*
 ifdef CMP_STANDALONE
-	@ #rm -f $(DEST_LIB)/$(LIBCMP_LIB)*
+	rm -f $(DEST_LIB)/$(LIBCMP_LIB)*
 endif
 	cd include && find . -type f -name $(GENCMPCL_HDRS) -exec rm '$(DEST_INC)/{}' ';'
 	rm -f $(DEST_BIN)/$(OUTBIN)

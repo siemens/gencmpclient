@@ -199,6 +199,7 @@ sub test_cmp_http {
         || $title eq "cacertsout given"
         || $title eq "subject incorrect data"
         || $title eq "cr command"
+        || $title eq "popo SIGNATURE"
         || $title eq "read newkeypass from file"
         || $title eq "extracerts wrong chain (some root CA)"
         || $title eq "reuse last srvcert";

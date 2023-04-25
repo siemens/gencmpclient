@@ -2,6 +2,7 @@
 
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
+# Optional OPENSSL_LIB defines where to find the OpenSSL library installation (default: ROOTFS/usr/lib or ".").
 # Optional OUT_DIR defines where libgencmp shall be placed, defaulting to LPATH if set, else '.'
 # Optional BIN_DIR defines where the CLI application shall be placed unless it is empty. It defaults to '.' if unset.
 # All these paths may be absolute or relative to the dir containing this Makefile.
@@ -54,11 +55,10 @@ ifeq ($(LPATH),)
 #       OPENSSL_DIR ?= $(ROOTFS)/usr/local
 #   else
     ifeq ($(OPENSSL_DIR),)
-        OPENSSL_DIR = /usr
+        override OPENSSL_DIR = /usr
     endif
 #   endif
     SECUTILS_DIR=libsecutils
-    SECUTILS_LIB=libsecutils$(DLL)
 else
     ifeq ($(OUT_DIR),)
         override OUT_DIR = $(LPATH)
@@ -68,9 +68,6 @@ else
     endif
     OPENSSL_DIR ?= $(LPATH)/..
     # SECUTILS and SECUTILS_LIB not needed since pre-installed
-endif
-ifeq ($(OPENSSL_LIB),)
-    OPENSSL_LIB=$(OPENSSL_DIR)
 endif
 
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
@@ -93,12 +90,18 @@ else
     OUT_DIR_REVERSE_DIR=$(OUT_DIR)
 endif
 
-override CFLAGS += -DOPENSSL_FUNC=__func__ # workaround for pedantic C compiler
-ifneq ($(NDEBUG),)
-    DEBUG_FLAGS ?= -O2
-    override DEBUG_FLAGS += -DNDEBUG=1
-else
-    DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
+#override CFLAGS += -DOPENSSL_FUNC=__func__ # workaround for pedantic C compiler
+#ifdef NDEBUG
+#    DEBUG_FLAGS ?= -O2
+#    override DEBUG_FLAGS += -DNDEBUG=1
+#else
+#    DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
+#endif
+ifdef NDEBUG
+  SET_NDEBUG=NDEBUG=1
+endif
+ifdef DEBUG_FLAGS
+  SET_DEBUG_FLAGS=DEBUG_FLAGS="$(DEBUG_FLAGS)"
 endif
 
 ifneq ($(EJBCA_ENABLED),)
@@ -139,7 +142,7 @@ endif
 ifeq ($(LPATH),)
     LIBCMP_DIR=cmpossl
     ifdef CMP_STANDALONE
-        LIBCMP_INC=${LIBCMP_DIR}/include/cmp # consistent with the default value cmpossl/Makefile
+        LIBCMP_INC="${LIBCMP_DIR}/include/cmp" # consistent with the default value cmpossl/Makefile
     endif
 else
     # TODO correct?
@@ -194,6 +197,7 @@ update: update_secutils update_cmpossl
 $(SECUTILS_DIR)/include:
 	$(MAKE) -f Makefile_v1 update_secutils
 
+SECUTILS_LIB=libsecutils$(DLL)
 $(SECUTILS_LIB):
 	build_secutils
 
@@ -201,7 +205,7 @@ $(SECUTILS_LIB):
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)
 build_secutils: # not: update_secutils
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" # OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s build $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS) $(SECUTILS_CONFIG_NO_ICV)" OPENSSL_DIR="$(OPENSSL_DIR)" # OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 
 ifdef CMP_STANDALONE
 $(LIBCMP_DIR)/include:
@@ -221,7 +225,7 @@ update_cmpossl:
 build_cmpossl: # not: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 ifdef CMP_STANDALONE
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" # OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s build $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" # OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 endif
 
 clean_submodules:
@@ -249,10 +253,10 @@ OUTLIB=libgencmp$(DLL)
 OUTBIN=cmpClient$(EXE)
 
 build_only:
-	$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" INSTALL_DEB_PKGS=$(INSTALL_DEB_PKGS)
+	$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" INSTALL_DEB_PKGS=$(INSTALL_DEB_PKGS) DEB_TARGET_ARCH=$(DEB_TARGET_ARCH)
 
 build_no_tls:
-	$(MAKE) -f Makefile_v1 build DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
+	$(MAKE) -f Makefile_v1 build $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
 
 .phony: clean_test clean clean_uta clean_this
 
@@ -274,7 +278,7 @@ clean_this: clean_test
 clean: clean_this clean_deb
 ifeq ($(LPATH),)
     ifneq ("$(wildcard $(SECUTILS_DIR))","")
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s clean_all || true # OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s clean_all OPENSSL_DIR="$(OPENSSL_DIR)" || true # OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
     endif
     #ifdef CMP_STANDALONE not relevant here
     ifneq ("$(wildcard $(LIBCMP_DIR))","")
@@ -460,7 +464,7 @@ test_all: test_Insta
 endif
 
 test: clean build_no_tls
-	@$(MAKE) -f Makefile_v1 clean build demo_Insta DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
+	@$(MAKE) -f Makefile_v1 clean build demo_Insta $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)"
 
 # doc and zip ##################################################################
 
@@ -557,11 +561,13 @@ ifeq ($(LPATH),)
 #endif not relevant here
 endif
 else
-deb: build
+deb: build_submodules # but do not yet build this package here
 endif
 	@ # pkg-config --print-errors libsecutils
 	@ # pkg-config --print-errors libcmp
-	debuild $(IGNORE_DEB_DEPEND) --preserve-envvar INSTALL_DEB_PKGS -uc -us --lintian-opts --profile debian # --fail-on none
+	debuild $(IGNORE_DEB_DEPEND) --preserve-envvar OPENSSL_DIR \
+	  --preserve-envvar OPENSSL_DIRINSTALL_DEB_PKGS \
+          -uc -us --lintian-opts --profile debian # --fail-on none
 	@ # not using --preserve-envvar OPENSSL_DIR
 	@ # debian/rules contains override_dh_auto_build: OPENSSL_DIR=/usr
 # alternative:

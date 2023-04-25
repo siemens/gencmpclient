@@ -1,3 +1,2 @@
-usr/lib/lib*.so
-usr/include/*.h
-usr/share/doc/libgencmp-dev
+include/genericCMPClient.h     /usr/include
+doc/Generic_CMP_client_API.pdf /usr/share/doc/libgencmp-dev

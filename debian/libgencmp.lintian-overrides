@@ -1,5 +1,5 @@
 # prevent false positive: E: libgencmp: library-not-linked-against-libc usr/lib/libgencmp.so.1.0
-library-not-linked-against-libc
+# library-not-linked-against-libc
 # prevent when building withouth submodule packages:
 # E: libgencmp: missing-dependency-on-libc needed by usr/lib/libgencmp.so.2.0
-missing-dependency-on-libc
+# missing-dependency-on-libc

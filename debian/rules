@@ -9,17 +9,17 @@ AR=$(DEB_HOST_GNU_TYPE)-ar
 %:
 	dh $@
 
-override_dh_auto_configure:
-	touch Makefile # trigger use of 'make' in dh_auto_build and dh_auto_install
+#override_dh_auto_configure:
+#	touch Makefile # trigger use of 'make' in dh_auto_build and dh_auto_install
 
-override_dh_auto_clean:
-	make clean_this clean_deb
+#override_dh_auto_clean:
+#	make -f Makefile_v1 clean_this clean_deb
 
 override_dh_auto_build:
 #	CFLAGS="-O2 -DNDEBUG" CXXFLAGS="-O2 -DNDEBUG" DEBUG_FLAGS="" LDFLAGS=""  # can be used to avoid dependency on libasan and libubsan
 #	OPENSSL_DIR=/usr
 	OPENSSL_DIR=/usr CC=$(CC) CXX=$(CXX) AR=$(AR) \
-	  dh_auto_build -- build_only # doc_this is implied by 'install' target
+	  dh_auto_build -- -f Makefile_v1 OPENSSL_DIR="$(OPENSSL_DIR)" build doc_this
 
 override_dh_auto_test:
 # do not run any tests
@@ -27,22 +27,11 @@ override_dh_auto_test:
 #override_dh_builddeb:
 #	dh_builddeb --destdir . --
 
-#override_dh_auto_install:
-#	dh_auto_install --destdir debian/tmp
+override_dh_auto_install:
+	dh_auto_install --destdir debian/tmp -- -f Makefile_v1
 
-#workaroud for:
-#dpkg-shlibdeps: error: cannot find library libgencmp.so.2.0 needed by debian/cmpclient/usr/bin/cmpClient (ELF format: 'elf64-x86-64' abi: '0201003e00000000'; RPATH: '')
-#dpkg-shlibdeps: error: cannot continue due to the error above
-#Note: libraries are not searched in other binary packages that do not have any shlibs or symbols file.
-#To help dpkg-shlibdeps find private libraries, you might need to use -l.
-#dh_shlibdeps: error: dpkg-shlibdeps -Tdebian/cmpclient.substvars -l/debian/tmp/usr/lib debian/cmpclient/usr/bin/cmpClient returned exit code 2
 override_dh_shlibdeps:
-	dh_shlibdeps --dpkg-shlibdeps-params=-ldebian/tmp/usr/lib -Xdebian/libgencmp/usr/lib/libgencmp.so.2.0 -Xdebian/cmpclient/usr/bin/cmpClient
-
-#--dpkg-shlibdeps-params=--ignore-missing-info
-# following lintian output likely can be ignored:
-# W: libgencmp: package-name-doesnt-match-sonames libgencmp2.0
-# N: 0 hints overridden; 1 unused override
+	dh_shlibdeps --dpkg-shlibdeps-params="--ignore-missing-info -llibsecutils -lcmpossl"
 
 # https://stackoverflow.com/questions/11238134/dpkg-shlibdeps-error-no-dependency-information-found-for
 # alternatively to  --dpkg-shlibdeps-params=--ignore-missing-info

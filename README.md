@@ -165,6 +165,7 @@ make
 ```
 By default, builds are done in Debug mode.
 For Release mode use `-DCMAKE_BUILD_TYPE=Release` or `NDEBUG=1`.
+For switching to Debug mode, use `-DCMAKE_BUILD_TYPE=Debug` and unset `NDEBUG`.
 
 The result is in, for instance, `./libgencmp.so.2.0`.
 This also builds all required dependencies
@@ -202,13 +203,9 @@ To build the Debian packages, the following dependencies need to be installed:
 * `libcmp-dev`
 
 Currently [`CMakeLists.txt`](CMakeLists.txt) does not support Debian packaging.
-Yet [`Makefile_v1`](Makefile_v1) may be used after symlinking it to `Makefile`:
+Yet [`Makefile_v1`](Makefile_v1) may be used like this:
 ```
-ln -s Makefile_v1 Makefile
-```
-Then the packages can be built by
-```
-make deb
+make -f Makefile_v1 deb
 ```
 On success, they are placed in the parent directory (`../`).
 Installation typically will require root privileges.

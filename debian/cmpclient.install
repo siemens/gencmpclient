@@ -1,2 +1,3 @@
-usr/bin/cmpClient usr/bin/
-usr/share/man/man1/*.gz
+cmpClient          /usr/bin
+doc/cmpClient.md   /usr/share/doc/libgencmp
+doc/cmpClient.1.gz /usr/share/man/man1

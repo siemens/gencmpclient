@@ -1,8 +1,10 @@
 libgencmp (2.0) stable; urgency=medium
 
-  * Include most features of CMP v2+
+  * Include all features of the Lightweight CMP Profile
+  * Improve CMake and Debian packaging support
+  * Fix various small bugs and OpenSSL version incompatibilities
 
- -- David von Oheimb <David.von.Oheimb@siemens.com>  Thu, 12 Jan 2023 21:51:19 +0100
+ -- David von Oheimb <David.von.Oheimb@siemens.com>  Fri, 14 Apr 2023 09:09:05 +0200
 
 libgencmp (1.0) stable; urgency=medium
 

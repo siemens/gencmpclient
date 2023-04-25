@@ -1,6 +1,7 @@
 #!/bin/make
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
+# Optional OPENSSL_LIB defines where to find the OpenSSL library installation (default: ROOTFS/usr/lib or ".").
 # Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
 # BIN_DIR defines where the CLI application shall be placed, unless it is empty or unset.
 # Optional LIBCMP_INC defines the directory of the libcmp header files, must be defined if and only if libcmp is used (CMP_STANDLONE).
@@ -8,7 +9,7 @@
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS (default see below).
 # OSSL_VERSION_QUIRKS maybe be needed to provide for setting OpenSSL compilation version quirks.
 
-ifeq ($(DEB_BUILD_ARCH),)
+ifeq ($(DEB_TARGET_ARCH),)
     SHELL=bash # bash is needed for supporting extended file name globbing
 else # within Debian packaging
     SHELL=LD_PRELOAD= bash
@@ -56,13 +57,17 @@ endif
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 # $(OPENSSL_DIR) is relative path
     OPENSSL=$(PREFIX)$(OPENSSL_DIR)
-    OPENSSL_LIB ?= $(OPENSSL)
+    ifeq ($(OPENSSL_LIB),)
+      override OPENSSL_LIB = $(OPENSSL)
+    endif
     OPENSSL_RPATH=$(OPENSSL_DIR)
     OPENSSL_RPATH_LIB=$(OPENSSL_DIR)
 else
 # $(OPENSSL_DIR) is absolute path
     OPENSSL=$(OPENSSL_DIR)
-    OPENSSL_LIB ?= =$(OPENSSL)/$(LIB)
+    ifeq ($(OPENSSL_LIB),)
+      override OPENSSL_LIB = $(OPENSSL)/$(LIB)
+    endif
     OPENSSL_RPATH=$(OPENSSL)
     OPENSSL_RPATH_LIB=$(OPENSSL_LIB)
 endif
@@ -86,7 +91,7 @@ ifdef LIBCMP_INC
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
         override CFLAGS += -isystem $(PREFIX)$(LIBCMP_INC)
     else
-        ifeq ($(INSTALL_DEB_PKGS),) # Debian packaging without submodule packages ainstalled
+        ifeq ($(INSTALL_DEB_PKGS),) # Debian packaging without submodule packages installed
             override CFLAGS += -isystem $(LIBCMP_INC)
         else
             override CFLAGS += -isystem /usr/include/cmp
@@ -193,8 +198,8 @@ endif
 
 .PHONY: clean
 clean:
-	rm -f $(BINARIES)  $(DEPS) $(OBJS) $(OUT_DIR)/$(LIB_NAME) \
-	$(OUT_DIR)/$(LIB_NAME).* # $(OUT_DIR)/$(LIB_NAME).$(VERSION) $(DEPS)
+	rm -f $(BINARIES) $(DEPS) $(OBJS) $(OUT_DIR)/$(LIB_NAME) $(OUT_DIR)/$(LIB_NAME).*
+#	$(OUT_DIR)/$(LIB_NAME).$(VERSION)
 ifeq ($(OS),Windows_NT)
 ifeq ($(LPATH),)
 	rm -f $(PREFIX_DEST)$(OPENSSL_DLLS)

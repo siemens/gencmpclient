@@ -1,1 +1,1 @@
-usr/lib/lib*.so.*
+libgencmp.so* /usr/lib

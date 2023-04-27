@@ -13,7 +13,7 @@ message(STATUS "generic CMP client version " ${CMPCLIENT_VERSION})
 # set(GIT_PROGRESS --progress) # not available for all git versions and gives lengthy output in CI runs
 set(GIT_DEPTH --depth 1) # used to speed up getting submodules
 
-if(DEFINED ENV{OPENSSL_DIR})
+if(NOT("$ENV{OPENSSL_DIR}" STREQUAL ""))
   message(STATUS "using OpenSSL from " $ENV{OPENSSL_DIR})
   if(DEFINED ENV{OPENSSL_LIB})
     set(OPENSSL_LIB $ENV{OPENSSL_LIB})
@@ -26,6 +26,7 @@ if(DEFINED ENV{OPENSSL_DIR})
 else()
   find_package(OpenSSL REQUIRED)
   message(STATUS "using OpenSSL version " ${OPENSSL_VERSION})
+  add_definitions(-isystem /usr/include)
 endif()
 
 set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)

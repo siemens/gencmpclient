@@ -126,6 +126,7 @@ if(NOT YOCTO_BUILD)
       if(GIT_FOUND)
         execute_process(COMMAND
           git submodule update ${GIT_PROGRESS} --init ${GIT_DEPTH} libsecutils
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           RESULT_VARIABLE GIT_SUBMODULE_RESULT
           )
         if(NOT GIT_SUBMODULE_RESULT EQUAL "0")
@@ -146,6 +147,7 @@ if(NOT YOCTO_BUILD)
       if(GIT_FOUND)
         execute_process(COMMAND
           git submodule update ${GIT_PROGRESS} --init ${GIT_DEPTH} cmpossl
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
           RESULT_VARIABLE GIT_SUBMODULE_RESULT
           )
         if(NOT GIT_SUBMODULE_RESULT EQUAL "0")

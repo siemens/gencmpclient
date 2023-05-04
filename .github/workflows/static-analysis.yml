@@ -1,0 +1,40 @@
+# GitHub Actions for genCMPClient
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) Siemens AG, 2021-2023
+
+name: Static Analysis
+
+#Run once a day
+on:
+  schedule:
+    - cron:  '20 0 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  coverity:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: tool download
+      run: |
+        wget https://scan.coverity.com/download/linux64 \
+             --post-data "token=${{ secrets.COVERITY_TOKEN }}&project=gencmpclient" \
+             --progress=dot:giga -O coverity_tool.tgz
+    - name: tool install
+      run: tar xzf coverity_tool.tgz
+    - name: cmake
+      run: USE_LIBCMP=1 cmake .
+    - name: make
+      run: ./cov-analysis*/bin/cov-build --dir cov-int make
+    - name: archive
+      run: tar czvf gencmpclient.tgz cov-int
+    - name: Coverity upload
+      run: |
+        curl --form token="${{ secrets.COVERITY_TOKEN }}" \
+             --form email=ranjan.rajeev@siemens.com \
+             --form file=@gencmpclient.tgz \
+             --form version="`date -u -I` `git rev-parse --short HEAD`" \
+             --form description="analysis of `git branch --show-current`" \
+             https://scan.coverity.com/builds?project=gencmpclient

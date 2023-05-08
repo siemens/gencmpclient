@@ -1975,9 +1975,9 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         if (err == CMP_OK) {
             /* TODO possibly check authorization of sender/origin */
             if (cacerts == NULL)
-                LOG_warn("no CA certificate available");
+                LOG_warn("no CA certificate provided by server");
             if (CERTS_save(cacerts, opt_cacertsout, "caCerts from genp") < 0) {
-                LOG(FL_ERR, "Failed to store caCerts from genp in %s",
+                LOG(FL_ERR, "Failed to store CA certificates from genp in %s",
                     opt_cacertsout);
                 err = -58;
             }
@@ -2161,7 +2161,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             LOG(FL_WARN, "No specific support for -infotype %s available",
                 opt_infotype);
             if (req == NULL || !OSSL_CMP_CTX_push0_genm_ITAV(ctx, req)) {
-                LOG(FL_ERR, "Failed to create ITAV for genm");
+                LOG(FL_ERR, "Failed to create genm for -infotype %s",
+                         opt_infotype);
                 return -24;
             }
         }
@@ -2174,7 +2175,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             return res ? CMP_OK : -25;
         }
         if (OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_request)
-            LOG(FL_ERR, "Could not obtain valid response message on genm");
+            LOG(FL_ERR, "Did not receive response on genm or genp is not valid");
         return -26;
     }
 }

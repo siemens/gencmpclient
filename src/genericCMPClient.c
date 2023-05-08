@@ -975,7 +975,7 @@ static OSSL_CMP_ITAV *get_genm_itav(CMP_CTX *ctx,
     }
 
     if ((n = sk_OSSL_CMP_ITAV_num(itavs)) <= 0) {
-        LOG(FL_ERR, "Response on genm requesting %s contains no ITAV", desc);
+        LOG(FL_ERR, "Response on genm requesting %s does not include suitable value", desc);
         sk_OSSL_CMP_ITAV_free(itavs);
         return NULL;
     }

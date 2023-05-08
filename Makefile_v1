@@ -138,6 +138,7 @@ ifneq ($(filter-out doc start stop doc doc_this doc/cmpClient.md doc/cmpClient.1
 else
     OPENSSL_VERSION=1.1.1 # dummy
 endif
+OPENSSL_MAJOR_VERSION=$(shell echo $(OPENSSL_VERSION) | sed 's/\..*//')
 
 ifeq ($(LPATH),)
     LIBCMP_DIR=cmpossl
@@ -250,7 +251,8 @@ build: build_prereq build_only
 ifdef CMP_STANDALONE
     ifeq ($(DEB_BUILD_ARCH),) # avoid weird syntax error on '\' with Debian packaging # LIB=$(OUT_DIR)/$(LIBCMP_LIB)
 	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="${LIBCMP_DIR}/$(LIBCMP_LIB)"` && \
-	if [ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" ]; then \
+	if [[ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" && \
+	     "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_MAJOR_VERSION)" ]]; then \
 	    echo "WARNING: OpenSSL version '$$LIBCMP_OPENSSL_VERSION' used for building libcmp does not match '$(OPENSSL_VERSION)' to be used for building client"; \
 	fi
     endif

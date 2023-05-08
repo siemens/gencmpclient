@@ -119,6 +119,6 @@ TBD,TBD,TBD,TBD,find invalid geninfo values, -section,, -cmd,cr,, -cert,signer.c
 1,0,1,1,reqin old tid, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,ir.der certConf.der,,BLANK
 -,1,-,-,reqin old tid just ir, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,ir.der,,BLANK
 1,0,1,1,reqin new tid, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,ir.der certConf.der,,-reqin_new_tid
-1,0,1,1,reqin new tid just ir, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,ir.der,,-reqin_new_tid
+1,1,1,1,reqin new tid just ir, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,ir.der,,-reqin_new_tid
 0,0,0,0,reqin wrong req, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,cr.der certConf.der,,BLANK
 1,1,1,1,rspin        , -section,, -cmd,ir,,,,,,,,,,,,,,,-rspin,ip.der pkiConf.der

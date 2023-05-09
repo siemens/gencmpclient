@@ -10,6 +10,7 @@ endif()
 message(STATUS "generic CMP client version " ${CMPCLIENT_VERSION})
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # set(GIT_PROGRESS --progress) # not available for all git versions and gives lengthy output in CI runs
 set(GIT_DEPTH --depth 1) # used to speed up getting submodules

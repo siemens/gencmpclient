@@ -1,0 +1,35 @@
+# GitHub Actions for genCMPClient
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) Siemens AG, 2021-2023
+
+name: Static Analysis using SonarCloud
+
+#Run once a day
+on: push
+#  schedule:
+#    - cron:  '20 0 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: Install sonar-scanner
+        uses: SonarSource/sonarcloud-github-c-cpp@v1
+      - name: cmake
+        run: |
+          cmake .
+          make
+      - name: Run sonar-scanner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner -Dproject.settings=.github/workflows/sonar-project.properties --define sonar.cfamily.compile-commands=compile_commands.json
+

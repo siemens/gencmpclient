@@ -1,0 +1,232 @@
+# For full documentation of the options, see ../doc/cmpClient-cli.{pod,md}
+
+[default]
+
+verbosity = 6 # means INFO (default)
+#tls_used = 0 # (default)
+#keep_alive = 1 # means preferring to keep the connection open (default)
+#msg_timeout = 120 # in seconds (default). 0 means infinite.
+msg_timeout = 10
+#total_timeout = 0 # in seconds (default). 0 means infinite.
+total_timeout = 30
+#crls_timeout = 10 # in seconds (default). 0 means infinite.
+#ocsp_timeout = 10 # in seconds (default). 0 means infinite.
+#digest = sha256 # (default)
+#mac = hmac-sha1 # (default)
+#ignore_keyusage = 0 # (default)
+ignore_keyusage = 1
+#san_nodefault = 0 # (default)
+#popo = 1 # means SIGNATURE (default)
+#revreason = -1 # means none (default)
+#use_cdp = 0 # (default)
+#use_aia = 0 # (default)
+#disable_confirm = 0 # (default)
+#unprotected_errors = 0 # (default)
+unprotected_errors = 1
+cacertsout = creds/docker/cacerts.pem
+extracertsout = creds/docker/extracerts.pem
+extracerts_dir = creds/docker/
+
+# workarounds in case the environment variables referenced via ${ENV::...} are not set
+EJBCA_HOST =
+EJBCA_OCSP_URL =
+EJBCA_CDP_URL_PREFIX =
+EJBCA_CDPS =
+EJBCA_CDP_URL_POSTFIX =
+EJBCA_CMP_ISSUER =
+EJBCA_CMP_CLIENT =
+EJBCA_TLS_CLIENT =
+EJBCA_CMP_TRUSTED =
+EJBCA_TRUSTED =
+EJBCA_UNTRUSTED =
+EJBCA_CMP_SERVER =
+EJBCA_CMP_RECIPIENT =
+EJBCA_CMP_SUBJECT =
+EJBCA_CMP_SUBJECT_ECC =
+DID = did:example:123456789abcdefghi
+
+[EJBCA]
+server = ${ENV::EJBCA_HOST}:6080
+path = ejbca/publicweb/cmp/test_cmp
+no_proxy = 127.0.0.1,localhost,${ENV::EJBCA_HOST}
+secret = pass:SecretCmp
+cert = ${ENV::EJBCA_CMP_CLIENT}
+key = $cert
+keypass = pass:12345
+recipient = ${ENV::EJBCA_CMP_RECIPIENT}
+subject = ${ENV::EJBCA_CMP_SUBJECT}
+#srvcert = ${ENV::EJBCA_CMP_TRUSTED}
+trusted = ${ENV::EJBCA_CMP_TRUSTED}, ${ENV::EJBCA_TRUSTED}
+out_trusted = ${ENV::EJBCA_CMP_TRUSTED}
+tls_trusted = ${ENV::EJBCA_TRUSTED}
+#tls_host = $server
+tls_cert = ${ENV::EJBCA_TLS_CLIENT}
+tls_key = $tls_cert
+tls_keypass = pass:12345
+tls_used = 0
+crls = ${ENV::EJBCA_CDP_URL_PREFIX}CUSTOMER_ISSUING_CA, creds/docker/CMP_ROOTCA.crl, creds/docker/TLS_ROOTCA.crl
+use_cdp = 1
+cdps = ${ENV::EJBCA_CDP_URL_PREFIX}CUSTOMER_ROOTCA, ${ENV::EJBCA_CDP_URL_PREFIX}TLS_ROOTCA
+use_aia = 1
+ocsp = ${ENV::EJBCA_OCSP_URL}
+
+
+[no-tls]
+server = ${ENV::EJBCA_HOST}:80
+tls_used = 0
+
+[no-certstatus]
+crls =
+use_cdp = 0
+cdps =
+use_aia = 0
+ocsp =
+
+[CmpRa] # LightweightCmpRa
+server = http://localhost:6000/lra
+secret = pass:myPresharedSecret
+ref = keyIdentification
+cert = creds/CMP_EE_Keystore.p12
+key = $cert
+cert = creds/CMP_EE_Chain.pem # workaround for cmpossl
+# if the cert file contains private key, openssl shows spurious error:
+#asn1_check_tlen:crypto/asn1/tasn_dec.c:1156:CMP error: wrong tag:
+#asn1_item_embed_d2i:crypto/asn1/tasn_dec.c:322:CMP error: nested asn1 error:Type=EC_PRIVATEKEY
+key = creds/CMP_EE_Key.pem # workaround for cmpossl
+keypass = pass:Password
+subject = "/CN=test-genCMPClientDemo"
+untrusted = creds/ENROLL_Chain.pem
+trusted = creds/trusted/CMP_LRA_DOWNSTREAM_Root.pem,credentials/CMP_CA_Root.pem
+out_trusted = creds/trusted/ENROLL_Root.pem
+#tls_used = 0
+#tls_trusted =
+#tls_host = $server
+#tls_cert = ${ENV::EJBCA_TLS_CLIENT}
+#tls_key = $tls_cert
+#tls_keypass = pass:12345
+
+[Insta]
+server = pki.certificate.fi:8700/pkix/
+secret = pass:insta
+ref = 3078
+#would need to be updated every 3 months:
+#cert = creds/insta_client.p12
+#key = $cert
+cert = creds/manufacturer.crt
+key = creds/manufacturer.pem
+keypass = pass:12345
+recipient = "/C=FI/O=Insta Demo/CN=Insta Demo CA"
+subject = "/CN=test-genCMPClientDemo"
+cacert = creds/trusted/InstaDemoCA.crt
+#srvcert = $cacert
+trusted = $cacert
+crls = creds/crls/InstaDemoCA.crl
+out_trusted = $cacert
+
+tls_used = 0
+#tls_trusted = $cacert
+#tls_host = pki.certificate.fi
+#tls_cert = $cert
+#tls_key = $key
+
+[imprint]
+cmd = ir
+cert =
+key =
+newkeytype = EC:secp521r1
+newkey = creds/docker/manufacturer.pem # fallback for cmpossl
+newkeypass = pass:12345
+reqexts = empty # is ignored by EJBCA
+policies = empty
+certout = creds/docker/manufacturer.crt
+cacerts_dir = creds/docker/trusted
+
+[bootstrap]
+cmd = cr
+secret =
+newkeytype = EC:prime256v1 # an alias of EC:secp256r1
+newkey = creds/operational.pem # fallback for cmpossl
+newkeypass = pass:12345
+reqexts = reqexts
+policies = certificatePolicies
+san_nodefault = 1
+certout = creds/operational.crt
+
+[update]
+path = ejbca/publicweb/cmp/PlaygroundCMPSigning
+cmd = kur
+secret =
+cert = $bootstrap::certout
+key = $bootstrap::newkey
+keypass = $bootstrap::newkeypass
+newkeytype = $bootstrap::newkeytype
+newkey = $bootstrap::newkey # fallback for cmpossl
+newkeypass = $bootstrap::newkeypass
+reqexts = ""
+policies = ""
+oldcert = $bootstrap::certout # == cert
+subject = ""
+implicit_confirm = 1
+certout = $bootstrap::certout
+
+[revoke]
+path = ejbca/publicweb/cmp/PlaygroundCMPSigning
+cmd = rr
+secret =
+cert = $bootstrap::certout
+key = $bootstrap::newkey
+keypass = $bootstrap::newkeypass
+oldcert = $update::certout # == cert
+revreason = 5 #CRL_REASON_CESSATION_OF_OPERATION
+subject =
+
+[pkcs10]
+cmd = p10cr
+# Insta will respond with CMP body popdecc POPODecKeyChallContent, --pop Challenge
+secret =
+ref = dummy # in EJBCA case there is no ref - fallback for sender as no cert and subject is given
+csr = creds/operational.csr # generated by transforming operational.crt
+subject =
+certout = $bootstrap::certout
+
+[genm]
+ref = 3078 # in EJBCA case there is no ref - fallback for sender as no cert and subject is given
+cmd = genm
+infotype = signKeyPairTypes # default
+
+[validate]
+keypass = pass:12345
+tls_keypass = $keypass
+check_all = 1
+use_aia = 0
+use_cdp = 1
+crl_cache_dir = creds/crls/
+verbosity = 6
+
+[empty]
+#keyUsage =
+#extendedKeyUsage =
+#subjectAltName =
+
+[reqexts]
+#basicConstraints = CA:FASE
+keyUsage = "critical, digitalSignature" # is ignored by EJBCA
+extendedKeyUsage = "critical, serverAuth, 1.3.6.1.5.5.7.3.2" # is ignored by EJBCA
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.0 = localhost
+IP.0 = 127.0.0.1
+IP.1 = 192.168.0.1
+URI.0 = http://192.168.0.2
+
+[certificatePolicies]
+certificatePolicies = "critical, @pkiPolicy"
+
+[pkiPolicy]
+policyIdentifier = 1.3.6.1.4.1.4329.38.4.2.2
+CPS = http://www.my-company.com/pki-policy/
+userNotice.1 = @notice
+
+[notice]
+explicitText=policy text

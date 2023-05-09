@@ -143,7 +143,8 @@ OPENSSL_MAJOR_VERSION=$(shell echo $(OPENSSL_VERSION) | sed 's/\..*//')
 ifeq ($(LPATH),)
     LIBCMP_DIR=cmpossl
     ifdef CMP_STANDALONE
-        LIBCMP_INC="${LIBCMP_DIR}/include/cmp" # consistent with the default value cmpossl/Makefile
+        LIBCMP_INC=${LIBCMP_DIR}/include/cmp
+	# consistent with the default value cmpossl/Makefile
     endif
 else
     # TODO correct?

@@ -181,7 +181,8 @@ opt_t cmp_opts[] = {
     { "cmd", OPT_TXT, {.txt = NULL}, { &opt_cmd },
       "CMP request to send: ir/cr/p10cr/kur/rr/genm. Overrides 'use_case' if given"},
     { "infotype", OPT_TXT, {.txt = NULL}, { &opt_infotype },
-      "InfoType name for requesting specific info in genm, e.g. 'caCerts'"},
+      "InfoType name for requesting specific info in genm, with specific support"},
+    OPT_MORE("for 'caCerts', 'rootCaCert', 'certReqTemplate', and 'crlStatusList'"),
     { "profile", OPT_TXT, {.txt = NULL}, { &opt_profile },
       "Cert profile name to place in generalInfo field of PKIHeader of requests"},
     { "geninfo", OPT_TXT, {.txt = NULL}, { (const char **)&opt_geninfo },
@@ -2323,7 +2324,7 @@ static int print_help(const char *prog)
     BIO *bio_stdout = BIO_new_fp(stdout, BIO_NOCLOSE);
 
     BIO_printf(bio_stdout, "Usage:\n"
-               "%s (imprint | bootstrap | pkcs10 | update | revoke | validate) [-section <server>]\n"
+               "%s (imprint | bootstrap | pkcs10 | update | revoke | genm | validate) [-section <server>]\n"
                "%s options\n\n"
                "Available options are:\n",
                prog, prog);

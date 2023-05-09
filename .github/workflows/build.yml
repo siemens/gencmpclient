@@ -39,7 +39,7 @@ jobs:
           # would need access to azure.archive.ubuntu.com:
           # sudo apt-get update
           # sudo apt-get install -y >/dev/null libssl-dev build-essential # not needed
-          make -f Makefile_v1 test_all
+          make -f Makefile_v1 build_prereq test_all
 
   doc_deb:
     runs-on: ubuntu-latest
@@ -51,7 +51,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y >/dev/null libpod-markdown-perl
           sudo apt-get install -y >/dev/null doxygen graphviz # needed only for recursive 'make doc' in libsecutils
-          make -f Makefile_v1 doc
+          make -f Makefile_v1 doc # ensures presence of cmpClient.md
+          echo
           echo ************************* doc finished *************************
+          echo
           sudo apt-get install -y >/dev/null debhelper devscripts
+          ln -s Makefile_v1 Makefile # workaround for dh_auto_build issue trying to use execute cmake
           make -f Makefile_v1 deb

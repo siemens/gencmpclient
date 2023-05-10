@@ -4,10 +4,13 @@
 
 name: Static Analysis using SonarCloud
 
-#Run once a day
-on: push
-#  schedule:
-#    - cron:  '20 0 * * *'
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+
 
 permissions:
   contents: read

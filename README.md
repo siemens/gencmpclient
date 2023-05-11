@@ -124,8 +124,19 @@ In case its libraries are in a different location, set also `OPENSSL_LIB`, e.g.:
 export OPENSSL_LIB=$OPENSSL_DIR/lib
 ```
 
-Since version 2, it is recommended to use CMake to produce the `Makefile`,
-for instance as follows:
+From the underlying Security Utilities library
+the following environment variables are inherited.
+* When `SECUTILS_USE_ICV` isdefined, configuration files are expected
+to be integrity protected with an Integrity Check Value (ICV),
+which may be produced using `util/icvutil`.
+* Use of the UTA library can be enabled by setting `SECUTILS_USE_UTA`.
+* The TLS-related functions may be disabled by defining `SECUTILS_NO_TLS`.
+
+When using CMake, `cmake` must be (re-)run
+after setting or unsetting environment variables.
+
+Since genCMPClient version 2, it is recommended to use CMake
+to produce the `Makefile`, for instance as follows:
 ```
 cmake .
 ```
@@ -177,13 +188,13 @@ for demonstration, test, and exploration purposes.
 
 ### Installing and uninstalling
 
-The software can be installed with
+The software can be installed with, e.g.,
 ```
-make install
+sudo make install
 ```
 and uninstalled with
 ```
-make uninstall
+sudo make uninstall
 ```
 
 The destination is `/usr/local`, unless specified otherwise by `ROOTFS`.
@@ -284,8 +295,8 @@ e.g., `-lsecutils -lcmp -lgencmp`.
 When using OpenSSL 1.x, `-lcmp` is needed additionally.
 Add the directories (e.g., with the linker option `-L`) where they can be found.
 See also the environment variable `OUT_DIR`.
-For helping the Linux loader to find the libraries at run time,
-it is recommended to set also linker options like `-Wl,-rpath=.`.
+Consider using also linker options like `-Wl,-rpath=.`
+for helping the Linux loader find the libraries at run time.
 
 Also make sure that the OpenSSL libraries
 (typically referred to via `-lssl -lcrypto`) are in your library path and

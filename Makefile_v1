@@ -147,7 +147,7 @@ ifeq ($(LPATH),)
     LIBCMP_DIR=cmpossl
     ifdef CMP_STANDALONE
         LIBCMP_INC=${LIBCMP_DIR}/include/cmp
-	# consistent with the default value cmpossl/Makefile
+	 # consistent with the default value cmpossl/Makefile
     endif
 else
     # TODO correct?
@@ -177,13 +177,13 @@ default: $(OUT_DIR_BIN)
 $(OUT_DIR_BIN): | build # if $OUT_DIR_BIN already exists, would be nice not to run 'build'
 # but even the 'order-only' prerequisite does not prevent running 'build'
 
-ifndef USE_ICV
-    export SECUTILS_CONFIG_NO_ICV=-DSECUTILS_CONFIG_NO_ICV
+ifdef SECUTILS_USE_ICV
+    export SECUTILS_USE_ICV=1
 endif
-ifdef USE_UTA
+ifdef SECUTILS_USE_UTA
     export SECUTILS_USE_UTA=1
 endif
-ifdef NO_TLS
+ifdef SECUTILS_NO_TLS
     export SECUTILS_NO_TLS=1
 endif
 
@@ -243,7 +243,7 @@ endif
 
 .phony: update_cmpossl build_cmpossl
 update_cmpossl:
-	git submodule update $(GIT_PROGRESS) --init --depth 1 cmpossl
+	git submodule update $(GIT_PROGRESS) --init --depth 1 $(LIBCMP_DIR)
 build_cmpossl: # not: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 ifdef CMP_STANDALONE
@@ -390,6 +390,8 @@ else
 	$(OCSP_CHECK)
 	@echo
 	@$(SLEEP)
+	@$(SLEEP)
+	@$(SLEEP)
 	$(CMPCLIENT) revoke -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
 	$(OCSP_CHECK)
@@ -511,7 +513,7 @@ doc_this: doc/$(OUT_DOC) doc/cmpClient.md doc/$(OUT_DEV_DOC)
 	pod2man --section=1 --center="cmpClient Documentation" --release=$(VERSION) $< >$@
 
 %.md: %.pod
-	@which pod2markdown || echo "cannot find pod2markdown, please install libpod-markdown-perl"
+	@which pod2markdown || (echo "cannot find pod2markdown, please install libpod-markdown-perl"; false)
 	pod2markdown $< $@ || true
 
 zip:
@@ -573,6 +575,7 @@ ifeq ($(INSTALL_DEB_PKGS),)
     IGNORE_DEB_DEPEND=-d
 endif
 .phony: deb clean_deb
+deb: doc # just to make sure that transforming the doc files will work fine
 ifneq ($(INSTALL_DEB_PKGS),)
 deb: get_submodules
 ifeq ($(LPATH),)
@@ -590,7 +593,7 @@ ifeq ($(LPATH),)
 #endif not relevant here
 endif
 else
-deb: build_submodules # but do not yet build this package here
+deb:
 endif
 	@ # pkg-config --print-errors libsecutils
 	@ # pkg-config --print-errors libcmp

@@ -58,6 +58,14 @@ target_link_libraries(cmpClient
   secutils
   ${OPENSSL_LIBRARIES}
 )
+if(DEFINED ENV{SECUTILS_USE_UTA})
+  target_link_libraries(cmpClient
+    uta
+  )
+endif()
+if(DEFINED ENV{SECUTILS_NO_TLS})
+  add_definitions(-DSECUTILS_NO_TLS=1)
+endif()
 
 if((CMAKE_BUILD_TYPE MATCHES Release) OR (DEFINED ENV{NDEBUG}))
   message(STATUS "build mode: Release")

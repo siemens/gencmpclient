@@ -4,7 +4,7 @@
 # Optional OPENSSL_LIB defines where to find the OpenSSL library installation (default: ROOTFS/usr/lib or ".").
 # Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
 # BIN_DIR defines where the CLI application shall be placed, unless it is empty or unset.
-# Optional LIBCMP_INC defines the directory of the libcmp header files, must be defined if and only if libcmp is used (CMP_STANDLONE).
+# Optional LIBCMP_INC defines the directory of the libcmp header files, must be non-empty if and only if libcmp is used (USE_LIBCMP).
 # All these paths may be absolute or relative to the dir containing this Makefile.
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS (default see below).
 # OSSL_VERSION_QUIRKS maybe be needed to provide for setting OpenSSL compilation version quirks.
@@ -87,7 +87,7 @@ override CFLAGS += -Werror -Wall -Woverflow -Wconversion -Wextra -Wunused-parame
 ifeq ($(LPATH),)
    override CFLAGS += -I$(SECUTILS_DIR)/include
 endif
-ifdef LIBCMP_INC
+ifneq ($(LIBCMP_INC),)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
         override CFLAGS += -isystem $(PREFIX)$(LIBCMP_INC)
     else
@@ -98,13 +98,13 @@ ifdef LIBCMP_INC
         endif
     endif
 # use of -isystem is important for taking precedence over any (older) OpenSSL CMP headers
-    override CFLAGS += -DCMP_STANDALONE
+    override CFLAGS += -DUSE_LIBCMP
 endif
 override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
 override CFLAGS += -I$(PREFIX)include # for genericCMPClient.h
 override CFLAGS += $(OSSL_VERSION_QUIRKS)
 
-ifdef LIBCMP_INC
+ifneq ($(LIBCMP_INC),)
     override LIBS += -lcmp
 endif
 # placing libcmp before libcrypto such that its contents are preferred

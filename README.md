@@ -134,11 +134,11 @@ will not be supported.
 
 From the underlying Security Utilities library
 the following environment variables are inherited.
-* When `SECUTILS_USE_ICV` isdefined, configuration files are expected
+* When `SECUTILS_USE_ICV` is set, configuration files are expected
 to be integrity protected with an Integrity Check Value (ICV),
 which may be produced using `util/icvutil`.
 * Use of the UTA library can be enabled by setting `SECUTILS_USE_UTA`.
-* The TLS-related functions may be disabled by defining `SECUTILS_NO_TLS`.
+* The TLS-related functions may be disabled by setting `SECUTILS_NO_TLS`.
 
 When using CMake, `cmake` must be (re-)run
 after setting or unsetting environment variables.
@@ -205,7 +205,7 @@ and uninstalled with
 sudo make uninstall
 ```
 
-The destination is `/usr/local`, unless specified otherwise by `ROOTFS`.
+The destination is `/usr`, unless specified otherwise by `DESTDIR` or `ROOTFS`.
 
 ## Building Debian packages
 

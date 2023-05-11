@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
 
 project(gencmp)
+include(GNUInstallDirs)
 
 if(NOT DEFINED CMPCLIENT_VERSION)
   set(CMPCLIENT_VERSION_MAJOR 2)
@@ -140,6 +141,18 @@ if(DEFINED ENV{ROOTFS})
   set(CMAKE_INSTALL_PREFIX $ENV{ROOTFS} CACHE PATH "comment" FORCE)
 endif()
 
+install(FILES doc/Generic_CMP_client_API.pdf
+  DESTINATION ${CMAKE_INSTALL_FULL_DOCDIR}-dev
+  )
+install(FILES doc/cmpClient.1.gz
+  OPTIONAL  # TODO add build for doc/
+  DESTINATION ${CMAKE_INSTALL_FULL_MANDIR}/man1
+  )
+install(FILES doc/cmpClient.md
+  OPTIONAL  # TODO add build for doc/
+  DESTINATION ${CMAKE_INSTALL_FULL_DOCDIR}
+  )
+
 install(TARGETS ${PROJECT_NAME}
   LIBRARY
     DESTINATION lib
@@ -155,7 +168,7 @@ install(TARGETS cmpClient
 )
 
 if(NOT TARGET uninstall)
-  add_custom_target(uninstall COMMAND xargs rm -vf <install_manifest.txt)
+  add_custom_target(uninstall COMMAND xargs -I{} rm -vf $ENV{DESTDIR}{} <install_manifest.txt)
 endif()
 
 if(NOT YOCTO_BUILD)

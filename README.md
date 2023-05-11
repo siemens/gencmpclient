@@ -49,7 +49,8 @@ The following OSS components are used.
 * OpenSSL development edition; supported versions: 1.1.1, 3.0, 3.1
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
 * [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
-  a CMP+HTTP extension to OpenSSL, needed at least when using OpenSSL 1.x
+  a CMP+HTTP extension to OpenSSL, needed when using OpenSSL 1.x
+  or if the environment variable `USE_LIBCMP` is defined.
 
 For instance, on a Debian system the prerequisites may be installed simply as follows:
 ```
@@ -91,7 +92,7 @@ cd genCMPClient
 make -f Makefile_v1 get_submodules  
 ```
 
-This will fetch also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
+This will fetch also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) if needed and
 the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils) library.
 
 For using the project as a git submodule,
@@ -123,6 +124,13 @@ In case its libraries are in a different location, set also `OPENSSL_LIB`, e.g.:
 ```
 export OPENSSL_LIB=$OPENSSL_DIR/lib
 ```
+
+Define the environment variable `USE_LIBCMP` for using the latest CMP features
+and fixes, which implies use of the intermediate library `libcmp`.
+When using OpenSSL version 1.x, this is ensured automatically.
+When using OpenSSL version 3.0 or 3.1 and `USE_LIBCMP` is not defined,
+the new CMP features defined in CMP Updates and the Lightweight CMP Profile
+will not be supported.
 
 From the underlying Security Utilities library
 the following environment variables are inherited.
@@ -285,16 +293,16 @@ For compiling applications using the library,
 you will need to `#include` the header file [`genericCMPClient.h`](include/genericCMPClient.h)
 and add the directories [`include`](include/) and
 [`libsecutils/include`](https://github.com/siemens/libsecutils/blob/master/include/) to your C headers path.
-Wenn using OpenSSL 1.x, you need to
+When the intermediate library `libcmp` is used, you need to
 add also the directory [`cmpossl/include/cmp`](https://github.com/mpeylo/cmpossl/tree/cmp/include/cmp/),
-define the C macro `CMP_STANDALONE`, and
+define the C macro `USE_LIBCMP`, and
 make sure that any OpenSSL header files included have the same version
-as the one used to build the standalone CMP library `libcmp`.
+as the one used to build `libcmp`.
 
 For linking you will need to
 refer the linker to the CMP and Security Utilities libraries,
-e.g., `-lsecutils -lcmp -lgencmp`.
-When using OpenSSL 1.x, `-lcmp` is needed additionally.
+e.g., `-lsecutils -lgencmp`.
+When the intermediate library `libcmp` is used, `-lcmp` is needed additionally.
 Add the directories (e.g., with the linker option `-L`) where they can be found.
 See also the environment variable `OUT_DIR`.
 Consider using also linker options like `-Wl,-rpath=.`

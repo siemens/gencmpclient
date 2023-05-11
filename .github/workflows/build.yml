@@ -15,12 +15,21 @@ jobs:
         run: |
           cmake .
           make
+          mkdir build
+          cd build
+          cmake -S .. -B .
+          cmake --build .
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make clean build
+          cd ..
           mkdir build-with-libcmp
           cd build-with-libcmp
           USE_LIBCMP=1 cmake -S .. -B .
-          make
+          make clean build
+          DESTDIR=tmp make install
+          DESTDIR=tmp make uninstall
 
-  make_build_doc_this:
+  build_doc_this:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -32,7 +41,9 @@ jobs:
           make -f Makefile_v1
           make -f Makefile_v1 clean
           make -f Makefile_v1 build_no_tls
-          make -f Makefile_v1 doc_this # gracefully glosses over missing pod2markdown
+          SKIP_pod2markdown=1 make -f Makefile_v1 doc_this
+          SKIP_pod2markdown=1 DESTDIR=tmp make -f Makefile_v1 install
+          DESTDIR=tmp make -f Makefile_v1 uninstall
 
   test_all:
     runs-on: ubuntu-latest

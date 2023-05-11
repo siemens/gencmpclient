@@ -60,5 +60,4 @@ jobs:
           echo ************************* doc finished *************************
           echo
           sudo apt-get install -y >/dev/null debhelper devscripts
-          ln -s Makefile_v1 Makefile # workaround for dh_auto_build issue trying to use execute cmake
           make -f Makefile_v1 deb

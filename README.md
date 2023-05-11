@@ -276,7 +276,9 @@ in order to reach the Insta Demo CA.
 ## Using the library in own applications
 
 For building the library (and optionally the CLI application)
-as part of other builds, it is recommended to call the `Makefile`,
+as part of other builds, it is recommended to use Debian packages or CMake.
+
+Another possibility is to use [`Makefile_v1`](Makefile_v1),
 for instance as given in the example outer [`Makefile.mk`](Makefile.mk).
 
 For compiling applications using the library,

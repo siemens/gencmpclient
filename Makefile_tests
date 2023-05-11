@@ -1,5 +1,8 @@
 #!/usr/bin/make
 
+# Optional CMPCLIENT specifies the CMP CLI application (including path) to use
+# Optional OPENSSL specifies the OpenSSL CLI application (including path) to use
+
 PERL=/usr/bin/perl
 
 ifeq ($(OS),Windows_NT)
@@ -17,8 +20,8 @@ else
 endif
 
 # defaults for tests:
+CMPCLIENT  ?= ./cmpClient$(EXE)
 OPENSSL ?= openssl$(EXE)
-OUTBIN  ?= cmpClient$(EXE)
 
 # optional SET_PROXY variable can be set to override default proxy settings
 SET_PROXY ?= no_proxy=localhost,127.0.0.1
@@ -69,7 +72,7 @@ stop_LwCmp:
 # conformance ##################################################################
 
 GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345 2>/dev/null
-CMPCLNT = LD_LIBRARY_PATH=. ./$(OUTBIN) -section CmpRa,
+CMPCLNT = LD_LIBRARY_PATH=. $(CMPCLIENT) -section CmpRa,
 CMPOSSL = $(OPENSSL) cmp -config config/demo.cnf -section CmpRa,
 .phony: test_conformance_openssl test_conformance_cmpclient test_conformance
 test_conformance_openssl:   start_LwCmp conformance_openssl   stop_LwCmp
@@ -84,7 +87,7 @@ conformance_openssl: newkey
 	@CMPCL="$(CMPOSSL)" $(MAKE) -f Makefile_tests conformance
 conformance_cmpclient:
 	@CMPCL="$(CMPCLNT)" $(MAKE) -f Makefile_tests conformance
-conformance: $(OUTBIN)
+conformance: $(CMPCLIENT)
 	$(CMPCL)imprint            -verbosity 3
 	$(CMPCL)bootstrap          -verbosity 3
 	@$(GENERATE_OPERATIONAL)
@@ -97,7 +100,7 @@ conformance: $(OUTBIN)
 
 OPENSSL_CMP_CONFIG ?= test.cnf
 .phony: test_cli
-test_cli: $(OUTBIN)
+test_cli: $(CMPCLIENT)
 	@which $(PERL) || (echo "cannot find Perl, please install it"; false)
 	@echo -en "\n#### running CLI-based tests #### "
 	@if [ -n "$$OPENSSL_CMP_SERVER" ]; then echo -en "with server=$$OPENSSL_CMP_SERVER"; else echo -n "without server"; fi

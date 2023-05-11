@@ -1,13 +1,15 @@
 # adapt as needed:
-GENCMPCL_DIR = ../gencmplient
-OPENSSL_DIR = /usr
-OUT_DIR = $(abspath .)
-BIN_DIR = $(abspath .)
-mode = debug
+GENCMPCL_DIR ?= ../gencmpclient
+OPENSSL_DIR ?= /usr
+OPENSSL_LIB ?= /lib/x86_64-linux-gnu
+OUT_DIR ?= $(abspath .)
+BIN_DIR ?= $(abspath .)
+# mode ?= release
+USE_LIBCMP ?= 1
 
 override CFLAGS += -Wall -std=gnu99 -fPIC -D__linux__
 
-ifeq ($(mode), release)
+ifeq ($(mode),release)
     DEBUG_FLAGS ?= -O2
     override DEBUG_FLAGS += -DNDEBUG=1
 else
@@ -17,9 +19,10 @@ endif
 .PHONY: build clean
 
 build:
-	make -C $(GENCMPCL_DIR) OPENSSL_DIR="$(OPENSSL_DIR)" CFLAGS="$(CFLAGS)" DEBUG_FLAGS="$(DEBUG_FLAGS)" CMP_STANDALONE=1 OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)"
+	make -C $(GENCMPCL_DIR) -f Makefile_v1 build USE_LIBCMP=$(USE_LIBCMP) OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)" CFLAGS="$(CFLAGS)" DEBUG_FLAGS="$(DEBUG_FLAGS)"
+
+demo:
+	make -C $(GENCMPCL_DIR) -f Makefile_v1 demo USE_LIBCMP=$(USE_LIBCMP) OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)" CFLAGS="$(CFLAGS)" DEBUG_FLAGS="$(DEBUG_FLAGS)"
 
 clean:
-ifneq ($(wildcard $(GENCMPCL_DIR)/Makefile),)
-	make -C $(GENCMPCL_DIR) clean CMP_STANDALONE=1 OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)"
-endif
+	make -C $(GENCMPCL_DIR) -f Makefile_v1 clean USE_LIBCMP=$(USE_LIBCMP) OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" OPENSSL_DIR="$(OPENSSL_DIR)"

@@ -150,7 +150,7 @@ after setting or unsetting environment variables.
 When using [`Makefile_v1`](Makefile_v1), you may
 specify via the environment variable `OUT_DIR` where the produced libraries
 (e.g., `libgencmp.so*`, `libcmp.so*`, and `libsecutils.so*`) shall be placed.
-It defaults to `.`.
+It defaults to the base directory of the respective library.
 If the environment variable `BIN_DIR` is not empty, the
 the CLI application `cmpClient` will be built and placed in `BIN_DIR`.
 If the variable is unset, `.` is used by default.
@@ -201,28 +201,44 @@ To build the Debian packages, the following dependencies need to be installed:
 * `devscripts` (needed for `debuild`)
 * `libssl-dev`
 * `libsecutils-dev`
-* `libcmp-dev`
+* `libcmp-dev` (if used)
 
 Currently [`CMakeLists.txt`](CMakeLists.txt) does not support Debian packaging.
 Yet [`Makefile_v1`](Makefile_v1) may be used like this:
 ```
-make -f Makefile_v1 deb
+ln -s Makefile_v1 Makefile
+make deb
 ```
-On success, they are placed in the parent directory (`../`).
-Installation typically will require root privileges.
+On success, the packages are placed in the parent directory (`../`).
+They may be installed for instance as follows:
+```
+sudo dpkg -i ../cmpclient_*.deb ../libgencmp_*deb libsecutils_*.deb libcmp_*deb
+```
+If you built with OpenSSL 1.x, add the `--ignore-depends=libssl3` option.
 
 
 ## Using the demo client
 
 The CMP demo client is implemented in [`src/cmpClient.c`](src/cmpClient.c)
 as part of the CLI.
-It can be executed with
+
+For simple test invocations the Insta Certifier Demo CA server may be used,
+for instance as follows:
+```
+openssl ecparam -genkey -name prime256v1 -out test.key.pem
+./cmpClient -config "" -server pki.certificate.fi:8700/pkix/ \
+  -recipient "/C=FI/O=Insta Demo/CN=Insta Demo CA" \
+  -secret pass:insta -ref 3078 \
+  -cmd cr -newkey test.key.pem -subject "/CN=test" -certout test.cert.pem
+openssl x509 -noout -text -in test.cert.pem
+```
+As the CMP client interacts via HTTP with an external CMP server, depending
+on your network you may need to set the environment variable `http_proxy`.
+
+A demo making use of all supported CMP commands can be executed with
 ```
 make -f Makefile_v1 demo   
 ```
-
-As the demo interacts via HTTP with the external Insta Certifier Demo CA,
-it make be needed to set the environment variable `http_proxy`.
 
 Among others, successful execution should produce a new certificate at `creds/operational.crt`.
 You can view this certificate for instance by executing

@@ -515,7 +515,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     return err;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
 static int ossl_cmp_sk_ASN1_UTF8STRING_push_str(STACK_OF(ASN1_UTF8STRING) *sk,
                                                 const char *text, int len)
 {
@@ -570,7 +570,7 @@ CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name)
  err:
     return CMPOSSL_error();
 }
-#endif /* OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L */
+#endif /* OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP */
 
 CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                 OPTIONAL const EVP_PKEY *new_key,
@@ -622,8 +622,8 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
     return CMPOSSL_error();
 }
 
-#if OPENSSL_VERSION_NUMBER >= OPENSSL_V_3_0_0 /* TODO remove decls when exported by OpenSSL */
-int ossl_x509_add_cert_new(STACK_OF(X509) **p_sk, X509 *cert, int flags)
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP /* TODO remove decls when exported by OpenSSL */
+static int ossl_x509_add_cert_new_(STACK_OF(X509) **p_sk, X509 *cert, int flags)
 {
     if (*p_sk == NULL && (*p_sk = sk_X509_new_null()) == NULL) {
         ERR_raise(ERR_LIB_X509, ERR_R_MALLOC_FAILURE);
@@ -631,8 +631,10 @@ int ossl_x509_add_cert_new(STACK_OF(X509) **p_sk, X509 *cert, int flags)
     }
     return X509_add_cert(*p_sk, cert, flags);
 }
-int ossl_x509_add_certs_new(STACK_OF(X509) **p_sk, STACK_OF(X509) *certs,
-                            int flags)
+
+#if 0 // TODO remove?
+static int ossl_x509_add_certs_new(STACK_OF(X509) **p_sk, STACK_OF(X509) *certs,
+                                   int flags)
 /* compiler would allow 'const' for the certs, yet they may get up-ref'ed */
 {
     int n = sk_X509_num(certs /* may be NULL */);
@@ -642,13 +644,12 @@ int ossl_x509_add_certs_new(STACK_OF(X509) **p_sk, STACK_OF(X509) *certs,
         int j = (flags & X509_ADD_FLAG_PREPEND) == 0 ? i : n - 1 - i;
         /* if prepend, add certs in reverse order to keep original order */
 
-        if (!ossl_x509_add_cert_new(p_sk, sk_X509_value(certs, j), flags))
+        if (!ossl_x509_add_cert_new_(p_sk, sk_X509_value(certs, j), flags))
             return 0;
     }
     return 1;
 }
 
-#if 0 // TODO remove?
 static
 int ossl_cmp_X509_STORE_add1_certs(X509_STORE *store, STACK_OF(X509) *certs,
                                    int only_self_signed)
@@ -946,7 +947,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
     return CMPOSSL_error();
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
 static OSSL_CMP_ITAV *get_genm_itav(CMP_CTX *ctx,
                                     OSSL_CMP_ITAV *req, /* gets consumed */
                                     int expected, const char *desc)
@@ -1023,7 +1024,7 @@ static const X509_VERIFY_PARAM *get0_trustedStore_vpm(const CMP_CTX *ctx)
 }
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
 CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out)
 {
     OSSL_CMP_ITAV *req, *itav;
@@ -1100,7 +1101,7 @@ CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
 }
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
 static int selfsigned_verify_cb(int ok, X509_STORE_CTX *store_ctx)
 {
     if (ok == 0 && store_ctx != NULL
@@ -1178,7 +1179,7 @@ static int verify_cert1(CMP_CTX *ctx, X509 *trusted, X509 *trans,
         goto err;
 
     if (trans != NULL
-            && !ossl_x509_add_cert_new(&untrusted, trans, X509_ADD_FLAG_UP_REF))
+            && !ossl_x509_add_cert_new_(&untrusted, trans, X509_ADD_FLAG_UP_REF))
         goto err;
 
     res = validate_ss_cert(OSSL_CMP_CTX_get0_libctx(ctx),

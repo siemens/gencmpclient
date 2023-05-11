@@ -23,26 +23,52 @@ if(NOT("$ENV{OPENSSL_DIR}" STREQUAL ""))
   set(OpenSSL_INCLUDE_DIRS $ENV{OPENSSL_DIR}/include)
   set(OPENSSL_LIBRARIES ${OPENSSL_LIB}/libssl.so ${OPENSSL_LIB}/libcrypto.so)
   add_definitions(-isystem ${OpenSSL_INCLUDE_DIRS})
+  if($ENV{OPENSSL_DIR} MATCHES "3\\.0")
+    set(OPENSSL_VERSION 3.0)
+  elseif($ENV{OPENSSL_DIR} MATCHES "3\\.1")
+    set(OPENSSL_VERSION 3.1)
+  elseif($ENV{OPENSSL_DIR} MATCHES "3\\.2")
+    set(OPENSSL_VERSION 3.2)
+  elseif($ENV{OPENSSL_DIR} MATCHES "3\\.")
+    set(OPENSSL_VERSION 3)
+  elseif($ENV{OPENSSL_DIR} MATCHES "prepare")
+    set(OPENSSL_VERSION 3.2)
+  else()
+    set(OPENSSL_VERSION 1.1.1)
+  endif()
+  message(STATUS "assuming OpenSSL version " ${OPENSSL_VERSION})
 else()
   find_package(OpenSSL REQUIRED)
   message(STATUS "using OpenSSL version " ${OPENSSL_VERSION})
   add_definitions(-isystem /usr/include)
 endif()
 
+if(DEFINED ENV{USE_LIBCMP} OR "${OPENSSL_VERSION}" LESS "3")
+  set(USE_LIBCMP 1)
+endif()
+
 set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)
 set(INC_DIR ${PROJECT_SOURCE_DIR}/include)
-set(CMPOSSL_INC_DIR ${PROJECT_SOURCE_DIR}/cmpossl/include)
+if(DEFINED USE_LIBCMP)
+  set(CMPOSSL_INC_DIR ${PROJECT_SOURCE_DIR}/cmpossl/include)
+endif()
 
 include_directories(
   ${INC_DIR}
   ${PROJECT_SOURCE_DIR}/libsecutils/include
-  ${CMPOSSL_INC_DIR}
-  ${CMPOSSL_INC_DIR}/cmp
-  ${CMAKE_SYSROOT}/usr/include/cmp
-  )
-# does not work for OpenSSL 3.0+:
-# add_definitions(-isystem ${CMPOSSL_INC_DIR}/cmp)
-# add_definitions(-isystem ${CMAKE_SYSROOT}/usr/include/cmp)
+)
+if(DEFINED USE_LIBCMP)
+  include_directories(
+    ${CMPOSSL_INC_DIR}
+    ${CMPOSSL_INC_DIR}/cmp
+    ${CMAKE_SYSROOT}/usr/include/cmp
+    # does not work for OpenSSL 3.0+:
+    # add_definitions(-isystem ${CMPOSSL_INC_DIR}/cmp)
+    # add_definitions(-isystem ${CMAKE_SYSROOT}/usr/include/cmp)
+    )
+endif()
+
+configure_file(${INC_DIR}/genericCMPClient_config.h.in ${INC_DIR}/genericCMPClient_config.h)
 
 add_library(${PROJECT_NAME} SHARED
   ${SRC_DIR}/genericCMPClient.c
@@ -54,10 +80,14 @@ add_executable(cmpClient
 
 target_link_libraries(cmpClient
   ${PROJECT_NAME}
-  cmp
   secutils
   ${OPENSSL_LIBRARIES}
 )
+if(DEFINED USE_LIBCMP)
+  target_link_libraries(cmpClient
+    cmp
+  )
+endif()
 if(DEFINED ENV{SECUTILS_USE_UTA})
   target_link_libraries(cmpClient
     uta
@@ -78,7 +108,7 @@ else()
   link_libraries(${DEBUG_FLAGS})
 endif()
 
-add_definitions(-DCMP_STANDALONE -DDEBUG_UNUSED)
+add_definitions(-DDEBUG_UNUSED)
 add_definitions(-DPEDANTIC -pedantic)
 add_definitions(-Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes
   -Wswitch -Wsign-compare -Wshadow -Wformat -Wtype-limits -Wundef)
@@ -89,11 +119,15 @@ add_definitions(-Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes
 set_target_properties(${PROJECT_NAME} PROPERTIES
   VERSION ${CMPCLIENT_VERSION} SOVERSION ${CMPCLIENT_VERSION_MAJOR}
   PUBLIC_HEADER "${INC_DIR}/genericCMPClient.h"
+  PUBLIC_HEADER "${INC_DIR}/genericCMPClient_config.h"
 )
 
 add_custom_target(update
   COMMAND echo "updating repo and submodules"
-  COMMAND git submodule update ${GIT_PROGRESS} ${GIT_DEPTH} libsecutils cmpossl
+  COMMAND git submodule update ${GIT_PROGRESS} ${GIT_DEPTH} libsecutils
+  if(DEFINED USE_LIBCMP)
+    COMMAND git submodule update ${GIT_PROGRESS} ${GIT_DEPTH} cmpossl
+  endif()
   COMMAND git fetch
   COMMAND git rebase
 )
@@ -148,7 +182,7 @@ if(NOT YOCTO_BUILD)
   endif()
 
   # find_package(cmp 2.0)
-  if(NOT libcmp_FOUND)
+  if(DEFINED USE_LIBCMP AND NOT libcmp_FOUND)
     if(NOT EXISTS cmpossl/CMakeLists.txt)
       message(STATUS "fetching git submodule cmpossl")
       find_package(Git)

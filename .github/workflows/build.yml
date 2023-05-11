@@ -15,6 +15,10 @@ jobs:
         run: |
           cmake .
           make
+          mkdir build-with-libcmp
+          cd build-with-libcmp
+          USE_LIBCMP=1 cmake -S .. -B .
+          make
 
   make_build_doc_this:
     runs-on: ubuntu-latest

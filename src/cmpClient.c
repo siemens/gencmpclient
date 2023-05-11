@@ -73,8 +73,12 @@ const char *opt_recipient;
 const char *opt_expect_sender;
 bool opt_ignore_keyusage;
 bool opt_unprotected_errors;
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
 bool opt_no_cache_extracerts;
+#endif
+#if OPENSSL_VERSION_NUMBER >= 0x30200000L || defined USE_LIBCMP
 const char *opt_srvcertout;
+#endif
 const char *opt_extracertsout;
 const char *opt_extracerts_dir;
 const char *opt_extracerts_dir_format;
@@ -181,10 +185,20 @@ opt_t cmp_opts[] = {
     { "cmd", OPT_TXT, {.txt = NULL}, { &opt_cmd },
       "CMP request to send: ir/cr/p10cr/kur/rr/genm. Overrides 'use_case' if given"},
     { "infotype", OPT_TXT, {.txt = NULL}, { &opt_infotype },
-      "InfoType name for requesting specific info in genm, with specific support"},
+      "InfoType name for requesting specific info in genm, "
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+      "with specific support"
+#else
+      "e.g., C<signKeyPairTypes>"
+#endif
+    },
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
     OPT_MORE("for 'caCerts', 'rootCaCert', 'certReqTemplate', and 'crlStatusList'"),
+#endif
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
     { "profile", OPT_TXT, {.txt = NULL}, { &opt_profile },
       "Cert profile name to place in generalInfo field of PKIHeader of requests"},
+#endif
     { "geninfo", OPT_TXT, {.txt = NULL}, { (const char **)&opt_geninfo },
       "Comma-separated list of OID and value to place in generalInfo PKIHeader"},
     OPT_MORE("of form <OID>:int:<n> or <OID>:str:<s>, e.g. \'1.2.3.4:int:56789, id-kp:str:name'"),
@@ -297,11 +311,15 @@ opt_t cmp_opts[] = {
       { (const char **) &opt_unprotected_errors },
       "Accept missing or invalid protection of regular error messages and negative"},
     OPT_MORE("certificate responses (ip/cp/kup), revocation responses (rp), and PKIConf"),
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
     { "no_cache_extracerts", OPT_BOOL, {.bit = false},
       { (const char **) &opt_no_cache_extracerts },
       "Do not keep certificates received in the extraCerts CMP message field"},
+#endif
+#if OPENSSL_VERSION_NUMBER >= 0x30200000L || defined USE_LIBCMP
     { "srvcertout", OPT_TXT, {.txt = NULL}, { &opt_srvcertout },
       "File to save server cert used and validated for CMP response protection"},
+#endif
     { "extracertsout", OPT_TXT, {.txt = NULL}, { &opt_extracertsout },
       "File to save extra certificates received in the extraCerts field"},
     { "extracerts_dir", OPT_TXT, {.txt = NULL}, { &opt_extracerts_dir },
@@ -316,6 +334,7 @@ opt_t cmp_opts[] = {
     { "cacerts_dir_format", OPT_TXT, {.txt = "pem"},
       { &opt_cacerts_dir_format },
       "Format to use for saving those certs. Default \"pem\""},
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
     { "oldwithold", OPT_TXT, {.txt = NULL}, { &opt_oldwithold },
       "Root CA certificate to request update for in genm of type rootCaCert"},
     { "newwithnew", OPT_TXT, {.txt = NULL}, { &opt_newwithnew },
@@ -328,6 +347,7 @@ opt_t cmp_opts[] = {
       "CRL to request update for in genm of type crlStatusList"},
     { "crlout", OPT_TXT, {.txt = NULL}, { &opt_crlout },
       "File to save new CRL received in genp of type 'crls'"},
+#endif
 
     OPT_HEADER("Client authentication and protection"),
     { "ref", OPT_TXT, {.txt = NULL}, { &opt_ref },
@@ -749,8 +769,10 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
          * Except for first request, need to satisfy recipNonce check by server.
          * Unfortunately requires re-protection if the request was protected.
          */
+#if OPENSSL_VERSION_NUMBER >= 0x30000090L || defined USE_LIBCMP
         if (!OSSL_CMP_MSG_update_recipNonce(ctx, req_new))
             goto err;
+#endif
     }
 
     if (opt_rspin != NULL) {
@@ -990,8 +1012,10 @@ static int setup_ctx(CMP_CTX *ctx)
     /* set option flags directly via CMP API */
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
                                  opt_unprotected_errors)
+# if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NO_CACHE_EXTRACERTS,
                                     opt_no_cache_extracerts)
+# endif
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE,
                                     opt_ignore_keyusage)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITY_DAYS,
@@ -1008,10 +1032,10 @@ static int setup_ctx(CMP_CTX *ctx)
     }
 
     if (opt_profile != NULL) {
-#if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
         err = CMPclient_add_certProfile(ctx, opt_profile);
 #else
-        LOG_err("-profile option is not supported for OpenSSL < 3.0");
+        LOG_err("-profile option is not supported for OpenSSL < 3.2");
         err = -29;
 #endif
         if (err != CMP_OK)
@@ -1771,6 +1795,7 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
     return CMP_OK;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x30200000L || defined USE_LIBCMP
 static int delete_file(const char *file, const char *desc)
 {
     if (file == NULL)
@@ -1791,6 +1816,7 @@ static int save_cert_or_delete(X509 *cert, const char *file, const char *desc)
         return delete_file(file, desc);
     return CERT_save(cert, file, desc);
 }
+#endif
 
 static
 CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
@@ -1925,7 +1951,7 @@ static int print_itavs(const STACK_OF(OSSL_CMP_ITAV) *itavs)
     return ret;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
 static int save_template(const char *file, const OSSL_CRMF_CERTTEMPLATE *tmpl)
 {
     BIO *bio = BIO_new_file(file, "wb");
@@ -1962,8 +1988,10 @@ static const char *nid_name(int nid)
 
 static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
 {
+    CMP_err err;
+
     switch (infotype) {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
     case NID_id_it_caCerts:
         if (opt_cacertsout == NULL) {
             LOG(FL_ERR, "Missing -cacertsout option for -infotype caCerts");
@@ -1971,7 +1999,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         }
 
         STACK_OF(X509) *cacerts = NULL;
-        CMP_err err = CMPclient_caCerts(ctx, &cacerts);
+        err = CMPclient_caCerts(ctx, &cacerts);
 
         if (err == CMP_OK) {
             /* TODO possibly check authorization of sender/origin */
@@ -1986,7 +2014,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         CERTS_free(cacerts);
         return err;
 #endif
-#if OPENSSL_VERSION_NUMBER >= 0x30200000L || OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
     case NID_id_it_rootCaCert:
         if (opt_newwithnew == NULL) {
             LOG(FL_ERR, "Missing -newwithnew option for -infotype rootCaCert");
@@ -2123,7 +2151,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
                         BIO_printf(mem, "\n");
                     } else {
                         BIO_printf(mem, " - ");
-                        ASN1_item_print(mem, (const ASN1_VALUE *)alg,
+                        ASN1_item_print(mem, (ASN1_VALUE *)alg,
                                         0, ASN1_ITEM_rptr(X509_ALGOR), NULL);
                     }
                 }
@@ -2151,7 +2179,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         return err;
 #else
     case -1:
-        return oldcert == NULL ? 0 : 0;
+        err = oldcert == NULL ? 0 : 0;
+        return err;
 #endif
 
     default:
@@ -2266,10 +2295,11 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             string != NULL ? string : "<unknown PKIStatus>");
     }
 
+#if OPENSSL_VERSION_NUMBER >= 0x30200000L || defined USE_LIBCMP
     if (!save_cert_or_delete(OSSL_CMP_CTX_get0_validatedSrvCert(ctx),
                              opt_srvcertout, "validated server cert"))
         err = -53;
-
+#endif
     if (err != CMP_OK) {
         LOG_err("Failed to perform CMP transaction");
         goto err;

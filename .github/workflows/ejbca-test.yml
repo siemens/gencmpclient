@@ -1,0 +1,40 @@
+name: Test EJBCA
+
+on: push
+
+jobs:
+  docker:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Start containers
+      working-directory: ./test/recipes/80-test_cmp_http_data/EJBCA/
+      run: |
+        tar -xvf ejbca-docker.tar.gz
+        cd ejbca-docker
+        docker-compose -f "docker-compose.yml" up -d
+
+    - name: wait
+      uses: iFaxity/wait-on-action@v1.1.0
+      timeout-minutes: 3
+      with:
+        resource: https://localhost:6443/ejbca/
+
+    - name: cmake
+      run: |
+        cmake .
+        make
+
+    - name: test
+      run: |
+        mkdir tmp
+        make -f Makefile_v1 demo_EJBCA
+
+    - name: Stop containers
+      if: always()
+      working-directory: ./test/recipes/80-test_cmp_http_data/EJBCA/ejbca-docker
+      run: docker-compose -f "docker-compose.yml" down

@@ -113,7 +113,7 @@ test_cli: $(CMPCLIENT)
 	  BLDTOP=. \
 	  BIN_D=. \
 	  EXE_EXT= \
-	  LD_LIBRARY_PATH=$(BIN_D) \
+	  LD_LIBRARY_PATH=$(BIN_D):$(LD_LIBRARY_PATH) \
 	  OPENSSL_CMP_CONFIG=$(OPENSSL_CMP_CONFIG) \
 	  $(PERL) test/recipes/80-test_cmp_http.t )
 	@ :

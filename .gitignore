@@ -37,7 +37,10 @@ bak/
 bin/
 build/
 certs/
-doc/
+/*.cnf
+/*.crt
+/*.key
+Mock
 !doc/cmpClient.pod
 lib/
 run/

@@ -95,13 +95,15 @@ add_executable(cmpClient
 target_link_libraries(cmpClient
   ${LIBGENCMP_NAME}
   secutils
-  ${OPENSSL_LIBRARIES}
 )
 if(DEFINED USE_LIBCMP)
   target_link_libraries(cmpClient
     cmp
   )
 endif()
+target_link_libraries(cmpClient
+  ${OPENSSL_LIBRARIES}
+)
 if(DEFINED ENV{SECUTILS_USE_UTA})
   target_link_libraries(cmpClient
     uta

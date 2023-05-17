@@ -116,7 +116,6 @@ bool opt_centralkeygen;
 const char *opt_newkey;
 const char *opt_newkeypass;
 const char *opt_subject;
-const char *opt_issuer;
 long opt_days;
 const char *opt_reqexts;
 char *opt_sans;
@@ -132,9 +131,11 @@ bool opt_disable_confirm;
 const char *opt_certout;
 const char *opt_chainout;
 
+/* certificate enrollment and revocation */
 const char *opt_oldcert;
 long opt_revreason;
-char *opt_serialnumber;
+const char *opt_issuer;
+char *opt_serial;
 
 /* TODO? add credentials format options */
 /* TODO add opt_engine */
@@ -220,8 +221,6 @@ opt_t cmp_opts[] = {
     { "subject", OPT_TXT, {.txt = NULL}, { &opt_subject },
       "Distinguished Name (DN) of subject to use in the requested cert template"},
     OPT_MORE("For kur, default is subject of -csr arg, else subject of -oldcert"),
-    { "issuer", OPT_TXT, {.txt = NULL}, { &opt_issuer },
-      "DN of the issuer to place in the requested certificate template"},
     { "days", OPT_NUM, {.num = 0}, { (const char **) &opt_days },
       "Requested validity time of new cert in number of days"},
     { "reqexts", OPT_TXT, {.txt = NULL}, { &opt_reqexts },
@@ -268,7 +267,9 @@ opt_t cmp_opts[] = {
       { (const char **) &opt_revreason },
       "Reason code to include in revocation request (rr)."},
     OPT_MORE("Values: 0..6, 8..10 (see RFC5280, 5.3.1) or -1. Default -1 = none included"),
-    { "serialnumber", OPT_TXT, {.txt = NULL}, {(const char **) &opt_serialnumber},
+    { "issuer", OPT_TXT, {.txt = NULL}, { &opt_issuer },
+      "DN of the issuer to place in the requested certificate template or rr"},
+    { "serial", OPT_TXT, {.txt = NULL}, {(const char **) &opt_serial},
       "Serial number of certificate to be revoked in revocation request (rr)"},
     /* Note: Lightweight CMP Profile SimpleLra does not allow CRL_REASON_NONE */
 
@@ -1577,26 +1578,27 @@ static CMP_err check_options(enum use_case use_case)
         return -35;
     }
     if (use_case == revocation) {
-        if (opt_issuer == NULL && opt_serialnumber == NULL) {
+        if (opt_issuer == NULL && opt_serial == NULL) {
             if (opt_oldcert == NULL && opt_csr == NULL) {
-                LOG_err("Missing -oldcert for certificate to be revoked and no fallback -csr given");
+                LOG_err("Missing -oldcert or -issuer and -serial for certificate to be revoked and no fallback -csr given");
                 return -36;
             }
             if (opt_oldcert != NULL && opt_csr != NULL)
                 LOG_warn("Ignoring -csr since -oldcert is given for command 'rr' (revocation)");
         } else {
-            if (opt_issuer == NULL || opt_serialnumber == NULL) {
-                LOG_err("Must give both -serialnumber and -issuer options or neither");
+#define OSSL_CMP_RR_MSG "since -issuer and -serial is given for command 'rr'"
+            if (opt_issuer == NULL || opt_serial == NULL) {
+                LOG_err("Must give both -issuer and -serial options or neither");
                 return -73;
             }
             if (opt_oldcert != NULL)
-                LOG_warn("Ignoring -oldcert since -serialnumber and -issuer is given for command 'rr'");
+                LOG_warn("Ignoring -oldcert " OSSL_CMP_RR_MSG);
             if (opt_csr != NULL)
-                LOG_warn("Ignoring -csr since -serialnumber and -issuer is given for command 'rr'");
+                LOG_warn("Ignoring -csr " OSSL_CMP_RR_MSG);
         }
     } else {
-        if (opt_serialnumber != NULL)
-            LOG_warn("Ignoring -serialnumber for command other than 'rr'");
+        if (opt_serial != NULL)
+            LOG_warn("Ignoring -serial for command other than 'rr'");
     }
 
     if (opt_cacerts_dir_format != NULL
@@ -1811,11 +1813,11 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
     if (use_case == revocation) {
         if (set_name(opt_issuer, OSSL_CMP_CTX_set1_issuer, ctx, "issuer") != CMP_OK)
             return -70;
-        if (opt_serialnumber != NULL) {
+        if (opt_serial != NULL) {
             ASN1_INTEGER *sno;
 
-            if ((sno = s2i_ASN1_INTEGER(NULL, opt_serialnumber)) == NULL) {
-                LOG(FL_ERR, "cannot read serial number: '%s'", opt_serialnumber);
+            if ((sno = s2i_ASN1_INTEGER(NULL, opt_serial)) == NULL) {
+                LOG(FL_ERR, "cannot read serial number: '%s'", opt_serial);
                 return -71;
             }
             if (!OSSL_CMP_CTX_set1_serialNumber(ctx, sno)) {

@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
 
 project(gencmp)
-include(GNUInstallDirs)
 
 if(NOT DEFINED CMPCLIENT_VERSION)
   set(CMPCLIENT_VERSION_MAJOR 2)
@@ -14,6 +13,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # set(GIT_PROGRESS --progress) # not available for all git versions and gives lengthy output in CI runs
 set(GIT_DEPTH --depth 1) # used to speed up getting submodules
+
+set(CMAKE_INSTALL_PREFIX "/usr") # must be set before include(GNUInstallDirs)
+include(GNUInstallDirs)
 
 if(NOT("$ENV{OPENSSL_DIR}" STREQUAL ""))
   message(STATUS "using OpenSSL from " $ENV{OPENSSL_DIR})

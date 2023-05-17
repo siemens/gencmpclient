@@ -634,12 +634,13 @@ clean_deb:
 	@# sudo dpkg -r cmpclient lib{gen,}cmp{,-dev} libsecutils{,-dev}
 
 # installation target - append ROOTFS=<path> to install into virtual root filesystem
-DEST_LIB=$(ROOTFS)/usr/lib
-DEST_INC=$(ROOTFS)/usr
-DEST_BIN=$(ROOTFS)/usr/bin
-DEST_MAN=$(ROOTFS)/usr/share/man/man1
-DEST_DOC=$(ROOTFS)/usr/share/doc/gencmp
-DEST_DEV_DOC=$(ROOTFS)/usr/share/doc/gencmp-dev
+DEST_PRE=$(ROOTFS)/usr
+DEST_LIB=$(DEST_PRE)/lib
+DEST_INC=$(DEST_PRE)
+DEST_BIN=$(DEST_PRE)/bin
+DEST_MAN=$(DEST_PRE)/share/man/man1
+DEST_DOC=$(DEST_PRE)/share/doc/gencmp
+DEST_DEV_DOC=$(DEST_PRE)/share/doc/gencmp-dev
 GENCMPCL_HDRS=genericCMPClient*.h
 .phony: remind_admin install install_cli uninstall
 remind_admin:

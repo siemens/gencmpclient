@@ -1,18 +1,17 @@
 cmake_minimum_required(VERSION 3.7)
 
-project(gencmp)
+project(libgencmp)
+set(LIBGENCMP_NAME gencmp)
 
-if(NOT DEFINED CMPCLIENT_VERSION)
-  set(CMPCLIENT_VERSION_MAJOR 2)
-  set(CMPCLIENT_VERSION ${CMPCLIENT_VERSION_MAJOR}.0)
+if(NOT DEFINED GENCMPCLIENT_VERSION)
+  set(GENCMPCLIENT_VERSION_MAJOR 2)
+  set(GENCMPCLIENT_VERSION_MINOR 0)
+  set(GENCMPCLIENT_VERSION ${GENCMPCLIENT_VERSION_MAJOR}.${GENCMPCLIENT_VERSION_MINOR})
 endif()
-message(STATUS "generic CMP client version " ${CMPCLIENT_VERSION})
+message(STATUS "generic CMP client version " ${GENCMPCLIENT_VERSION})
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-# set(GIT_PROGRESS --progress) # not available for all git versions and gives lengthy output in CI runs
-set(GIT_DEPTH --depth 1) # used to speed up getting submodules
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner
 
 set(CMAKE_INSTALL_PREFIX "/usr") # must be set before include(GNUInstallDirs)
 include(GNUInstallDirs)
@@ -74,7 +73,17 @@ endif()
 
 configure_file(${INC_DIR}/genericCMPClient_config.h.in ${INC_DIR}/genericCMPClient_config.h)
 
-add_library(${PROJECT_NAME} SHARED
+# help CPackDeb please dpkg-shlibdeps
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0")
+  set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS
+    "../lib/${CMAKE_INSTALL_FULL_LIBDIR}")
+else()
+  set(CMAKE_INSTALL_RPATH # must be done before add_executable()
+    "../lib/${CMAKE_INSTALL_FULL_LIBDIR}")
+endif()
+
+add_library(${LIBGENCMP_NAME} SHARED
+  "${PROJECT_SOURCE_DIR}/.github/workflows/build.yml"
   ${SRC_DIR}/genericCMPClient.c
 )
 
@@ -82,8 +91,9 @@ add_executable(cmpClient
   ${SRC_DIR}/cmpClient.c
 )
 
+
 target_link_libraries(cmpClient
-  ${PROJECT_NAME}
+  ${LIBGENCMP_NAME}
   secutils
   ${OPENSSL_LIBRARIES}
 )
@@ -101,7 +111,7 @@ if(DEFINED ENV{SECUTILS_NO_TLS})
   add_definitions(-DSECUTILS_NO_TLS=1)
 endif()
 
-if((CMAKE_BUILD_TYPE MATCHES Release) OR (DEFINED ENV{NDEBUG}))
+if(CMAKE_BUILD_TYPE MATCHES Release OR DEFINED ENV{NDEBUG})
   message(STATUS "build mode: Release")
   add_definitions(-DNDEBUG=1 -O2)
 else()
@@ -117,71 +127,236 @@ add_definitions(-DPEDANTIC -pedantic)
 add_definitions(-Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes
   -Wswitch -Wsign-compare -Wshadow -Wformat -Wtype-limits -Wundef)
 
-# set_property(TARGET ${PROJECT_NAME} PROPERTY C_STANDARD 90)
+# set_property(TARGET ${LIBGENCMP_NAME} PROPERTY C_STANDARD 90)
 # set_property(TARGET cmpClient PROPERTY C_STANDARD 90)
 
-set_target_properties(${PROJECT_NAME} PROPERTIES
-  VERSION ${CMPCLIENT_VERSION} SOVERSION ${CMPCLIENT_VERSION_MAJOR}
+set_target_properties(${LIBGENCMP_NAME} PROPERTIES
+  VERSION ${GENCMPCLIENT_VERSION} SOVERSION ${GENCMPCLIENT_VERSION_MAJOR}
   PUBLIC_HEADER "${INC_DIR}/genericCMPClient.h"
   PUBLIC_HEADER "${INC_DIR}/genericCMPClient_config.h"
 )
 
-add_custom_target(update
-  COMMAND echo "updating repo and submodules"
-  COMMAND git submodule update ${GIT_PROGRESS} ${GIT_DEPTH} libsecutils
-  if(DEFINED USE_LIBCMP)
-    COMMAND git submodule update ${GIT_PROGRESS} ${GIT_DEPTH} cmpossl
+find_package(Git)
+if(GIT_FOUND)
+  set(GIT_DEPTH --depth 1) # used to speed up getting submodules
+  # add --progress if the tool supports it
+  execute_process(COMMAND ${CMAKE_COMMAND} -E env LC_ALL=C ${GIT_EXECUTABLE} --help submodule
+    OUTPUT_VARIABLE _TMP_HELP
+    ERROR_QUIET
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if("${_TMP_HELP}" MATCHES "--progress")
+    set(GIT_PROGRESS "--progress") # gives lengthy output in CI runs
   endif()
-  COMMAND git fetch
-  COMMAND git rebase
-)
+  if(DEFINED USE_LIBCMP)
+    set(submodules libsecutils cmpossl)
+  else()
+    set(submodules libsecutils)
+    endif()
+
+  add_custom_target(update
+    COMMAND echo "updating repo and submodules"
+    COMMAND git submodule update ${GIT_PROGRESS} ${submodules}
+    COMMAND git fetch
+    COMMAND git rebase
+    )
+else()
+  MESSAGE(WARNING "Cannot find git, so cannot add 'update' targets for submodules")
+endif()
 
 if(NOT TARGET build)
   add_custom_target(build COMMAND make all)
 endif()
 
+
+# installation and uninstall
+
 if(DEFINED ENV{ROOTFS})
   set(CMAKE_INSTALL_PREFIX $ENV{ROOTFS} CACHE PATH "comment" FORCE)
 endif()
 
+# see also https://gitlab.kitware.com/cmake/cmake/-/issues/24929 and
+# https://stackoverflow.com/questions/46490448/how-i-can-add-a-changelog-in-deb-with-cmake
+add_custom_command(
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog"
+    COMMAND gzip -cn9 "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog"
+    > "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz"
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz"
+)
+if(NOT TARGET changelog)
+  add_custom_target(changelog ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz")
+endif()
+
 install(FILES doc/Generic_CMP_client_API.pdf
   DESTINATION ${CMAKE_INSTALL_FULL_DOCDIR}-dev
-  )
-install(FILES doc/cmpClient.1.gz
-  OPTIONAL  # TODO add build for doc/
-  DESTINATION ${CMAKE_INSTALL_FULL_MANDIR}/man1
-  )
-install(FILES doc/cmpClient.md
-  OPTIONAL  # TODO add build for doc/
-  DESTINATION ${CMAKE_INSTALL_FULL_DOCDIR}
+  COMPONENT dev
   )
 
-install(TARGETS ${PROJECT_NAME}
+include(./Pod2Man)
+POD2MAN("${CMAKE_CURRENT_SOURCE_DIR}/doc" cmpClient 1 "${CMAKE_INSTALL_FULL_MANDIR}" bin)
+
+install(TARGETS ${LIBGENCMP_NAME}
   LIBRARY
-    DESTINATION lib
-    COMPONENT Library
+    DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
+    COMPONENT lib
   PUBLIC_HEADER
-    DESTINATION include
-    COMPONENT Development
+    DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}"
+    COMPONENT dev
 )
 
 install(TARGETS cmpClient
   RUNTIME
-  DESTINATION bin
+  DESTINATION "${CMAKE_INSTALL_FULL_BINDIR}"
+  COMPONENT bin
 )
 
 if(NOT TARGET uninstall)
   add_custom_target(uninstall COMMAND xargs -I{} rm -vf $ENV{DESTDIR}{} <install_manifest.txt)
 endif()
 
+
+if(NOT DEFINED CPACK_PACKAGE_NAME)
+# generate Debian packages using CPack, relying on installation defined above
+
+SET(CPACK_PACKAGE_NAME ${PROJECT_NAME})
+SET(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/siemens/gencmpclient")
+SET(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.md")
+SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.txt")
+SET(CPACK_PACKAGE_VENDOR "Siemens")
+set(CPACK_PACKAGE_CONTACT "David von Oheimb <David.von.Oheimb@siemens.com>")
+set(CPACK_PACKAGE_VERSION       ${GENCMPCLIENT_VERSION})
+set(CPACK_PACKAGE_VERSION_MAJOR ${GENCMPCLIENT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${GENCMPCLIENT_VERSION_MINOR})
+set(CPACK_STRIP_FILES ON)
+
+set(CPACK_COMPONENT_LIB_DESCRIPTION "generic CMP client library
+Generic CMP client library based on OpenSSL and otionally libcmp
+With extended support for certficate status checking using CRLs and/or OCSP")
+set(CPACK_COMPONENT_DEV_DESCRIPTION "libgencmp C headers and documentation
+Development support for libgencmp and cmpclient")
+set(CPACK_COMPONENT_BIN_DESCRIPTION "CMP client command-line interface
+ A CLI application for exploring the use of the generic CMP client library")
+
+set(CPACK_GENERATOR "DEB")
+set(CPACK_DEB_COMPONENT_INSTALL ON)
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+set(CPACK_DEBIAN_LIB_PACKAGE_NAME "${PROJECT_NAME}")
+set(CPACK_DEBIAN_BIN_PACKAGE_NAME "cmpclient")
+set(CPACK_DEBIAN_DEV_PACKAGE_ARCHITECTURE "all")
+set(CPACK_DEBIAN_LIB_PACKAGE_SECTION "libs")
+set(CPACK_DEBIAN_DEV_PACKAGE_SECTION "devel")
+set(CPACK_DEBIAN_BIN_PACKAGE_SECTION "utils")
+set(CPACK_DEBIAN_PACKAGE_GENERATE_SHLIBS ON)
+set(CPACK_DEBIAN_ENABLE_COMPONENT_DEPENDS ON)
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+# set(CPACK_DEBIAN_PACKAGE_DEBUG ON)
+# see above assignments
+# to CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS or CMAKE_INSTALL_RPATH
+if(DEFINED USE_LIBCMP)
+  set(CPACK_DEBIAN_PACKAGE_DEPENDS
+    "libcmp (>= ${CPACK_PACKAGE_VERSION}), libsecutils (>= ${CPACK_PACKAGE_VERSION})")
+else()
+  set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsecutils (>= ${CPACK_PACKAGE_VERSION})")
+endif()
+set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "libgencmp (>= ${CPACK_PACKAGE_VERSION})")
+set(CPACK_DEBIAN_DEV_PACKAGE_SUGGESTS "libcmp-dev (>= ${CPACK_PACKAGE_VERSION}), libsecutils-dev (>= ${CPACK_PACKAGE_VERSION}), libssl-dev")
+# see also https://gitlab.kitware.com/cmake/cmake/-/issues/21834
+# CPack Deb does not create postinst when installing to /usr/lib/x86_64-linux-gnu
+set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/triggers")
+set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
+
+set(CPACK_SOURCE_GENERATOR "TGZ")
+#set(CPACK_SET_DESTDIR TRUE) # prevents package creation error when using cpack
+set(CPACK_VERBATIM_VARIABLES YES)
+set(CPACK_SOURCE_IGNORE_FILES
+  ${CPACK_IGNORE_FILES}
+  ~$
+  /\\.git/
+  \\.git$
+  \\.deb$
+  \\.gz$
+  \\.so
+  /attic/
+  /tmp/
+  /Makefile$
+  CMakeFiles/
+  _CPack_Packages/
+  \\.cmake$
+  /CMakeCache.txt$
+  /compile_commands.json$
+  /install_manifest.*\\.txt$
+  /changelog\.gz$
+  /debian/tmp/
+  \\.substvars$
+  \\.log$
+  /debian/\\.debhelper/
+  /debian/files$
+  /debian/debhelper-build-stamp
+  /debian/${PROJECT_NAME}/
+  /debian/${PROJECT_NAME}-dev/
+  /debian/cmpclient/
+  cmpClient$
+  \\.1$
+  \\.1\.gz$
+  \\.crl$
+  \\.der$
+  \\.jar$
+  \\.dsc$
+  \\.build$
+  \\.buildinfo$
+  \\.changes$
+  libsecutils/
+  cmpossl/
+  cmp-ra-component.*/
+  LightweightCmpRa/
+  SimpleLra/
+  credentials/
+  Mock/
+  Insta/
+  Simple/
+  )
+
+include(CPack)
+
+# see also https://gitlab.kitware.com/cmake/cmake/-/issues/21832
+# CPack Deb lacks a way to configure copyright files by component
+foreach(component IN LISTS CPACK_COMPONENTS_ALL)
+  if(${component} STREQUAL "lib" OR ${component} STREQUAL "bin")
+    set(suffix "")
+  else()
+    set(suffix "-${component}")
+  endif()
+  install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/debian/copyright"
+    "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz"
+    DESTINATION "${CMAKE_INSTALL_FULL_DOCDIR}${suffix}"
+    COMPONENT ${component}
+    )
+endforeach()
+
+if(NOT TARGET deb)
+  set (deb_pack_full_name
+    "${CMAKE_CURRENT_BINARY_DIR}/${CPACK_PACKAGE_NAME}-dev_${CPACK_PACKAGE_VERSION}_all.deb")
+  add_custom_command(
+    OUTPUT "${deb_pack_full_name}"
+    DEPENDS build
+    COMMENT "Building packages possibly including doxygen run"
+    COMMAND cpack # --config CPackConfig.cmake
+    COMMAND cpack --config CPackSourceConfig.cmake
+    )
+  add_custom_target(deb DEPENDS ${deb_pack_full_name})
+endif()
+
+endif(NOT DEFINED CPACK_PACKAGE_NAME)
+
+# submodules
+
 if(NOT YOCTO_BUILD)
 
-  # find_package(secutils 2.0)
+  # find_package(secutils ${CPACK_PACKAGE_VERSION})
   if(NOT secutils_FOUND)
     if(NOT EXISTS libsecutils/CMakeLists.txt)
-      message(STATUS "fetching git submodule libsecutils")
-      find_package(Git)
       if(GIT_FOUND)
+        message(STATUS "fetching git submodule libsecutils")
         execute_process(COMMAND
           git submodule update ${GIT_PROGRESS} --init ${GIT_DEPTH} libsecutils
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -197,12 +372,11 @@ if(NOT YOCTO_BUILD)
     add_subdirectory(libsecutils)
   endif()
 
-  # find_package(cmp 2.0)
+  # find_package(cmp ${CPACK_PACKAGE_VERSION})
   if(DEFINED USE_LIBCMP AND NOT libcmp_FOUND)
     if(NOT EXISTS cmpossl/CMakeLists.txt)
-      message(STATUS "fetching git submodule cmpossl")
-      find_package(Git)
       if(GIT_FOUND)
+        message(STATUS "fetching git submodule cmpossl")
         execute_process(COMMAND
           git submodule update ${GIT_PROGRESS} --init ${GIT_DEPTH} cmpossl
           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

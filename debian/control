@@ -8,20 +8,24 @@ Standards-Version: 4.5.1
 
 Package: libgencmp
 Architecture: any
-Depends: libcmp (>= 2.0), libsecutils (>= 2.0), libssl3, ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Section: libs
 Description: generic CMP client library
- Generic CMP client library based on CMPforOpenSSL
+ Generic CMP client library based on OpenSSL and optionally libcmp
 
 Package: libgencmp-dev
-Depends: libgencmp (>= 2.0), libcmp-dev (>= 2.0), libsecutils-dev (>= 2.0), libssl-dev, ${shlibs:Depends}, ${misc:Depends}
-Section: libdevel
+Depends: libgencmp (>= 2.0), ${misc:Depends}
+Suggests: libcmp-dev (>= 2.0), libsecutils-dev (>= 2.0), libssl-dev
+Section: devel
 Architecture: all
 Multi-Arch: foreign
-Description: libgencmp C headers
- Only needed for development
+Description: libgencmp C headers and documentation
+ Development support for libgencmp and cmpclient
 
 Package: cmpclient
-Depends: libgencmp (>= 2.0), ${shlibs:Depends}, ${misc:Depends}
+Depends: libsecutils (>= 2.0), ${shlibs:Depends}, ${misc:Depends}
+Suggests: libcmp (>= 2.0)
+Section: utils
 Architecture: any
-Description: simple command-line CMP client
+Description: CMP client command-line interface
  A CLI application for exploring the use of the generic CMP client library

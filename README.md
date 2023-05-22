@@ -233,7 +233,6 @@ They may be installed for instance as follows:
 ```
 sudo dpkg -i ../cmpclient_*.deb ../libgencmp_*deb libsecutils_*.deb libcmp_*deb
 ```
-If you built with OpenSSL 1.x, add the `--ignore-depends=libssl3` option.
 
 
 ## Using the demo client

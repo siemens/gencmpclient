@@ -135,7 +135,9 @@ const char *opt_chainout;
 const char *opt_oldcert;
 long opt_revreason;
 const char *opt_issuer;
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
 char *opt_serial;
+#endif
 
 /* TODO? add credentials format options */
 /* TODO add opt_engine */
@@ -268,9 +270,12 @@ opt_t cmp_opts[] = {
       "Reason code to include in revocation request (rr)."},
     OPT_MORE("Values: 0..6, 8..10 (see RFC5280, 5.3.1) or -1. Default -1 = none included"),
     { "issuer", OPT_TXT, {.txt = NULL}, { &opt_issuer },
-      "DN of the issuer to place in the requested certificate template or rr"},
+      "DN of the issuer to place in the requested certificate template "},
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+    OPT_MORE("or revocation request (rr)"),
     { "serial", OPT_TXT, {.txt = NULL}, {(const char **) &opt_serial},
       "Serial number of certificate to be revoked in revocation request (rr)"},
+#endif
     /* Note: Lightweight CMP Profile SimpleLra does not allow CRL_REASON_NONE */
 
     /* TODO? OPT_HEADER("Credentials format"), */
@@ -1016,10 +1021,10 @@ static int setup_ctx(CMP_CTX *ctx)
     /* set option flags directly via CMP API */
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
                                  opt_unprotected_errors)
-# if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NO_CACHE_EXTRACERTS,
                                     opt_no_cache_extracerts)
-# endif
+#endif
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE,
                                     opt_ignore_keyusage)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITY_DAYS,
@@ -1577,6 +1582,7 @@ static CMP_err check_options(enum use_case use_case)
         LOG_err("-csr option is missing for command 'p10cr'");
         return -35;
     }
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
     if (use_case == revocation) {
         if (opt_issuer == NULL && opt_serial == NULL) {
             if (opt_oldcert == NULL && opt_csr == NULL) {
@@ -1600,6 +1606,16 @@ static CMP_err check_options(enum use_case use_case)
         if (opt_serial != NULL)
             LOG_warn("Ignoring -serial for command other than 'rr'");
     }
+#else
+    if (use_case == revocation) {
+        if (opt_oldcert == NULL && opt_csr == NULL) {
+            LOG_err("Missing -oldcert for certificate to be revoked and no fallback -csr given");
+            return -36;
+        }
+        if (opt_oldcert != NULL && opt_csr != NULL)
+            LOG_warn("Ignoring -csr since -oldcert is given for command 'rr' (revocation)");
+    }
+#endif
 
     if (opt_cacerts_dir_format != NULL
             && FILES_get_format(opt_cacerts_dir_format) == FORMAT_UNDEF) {
@@ -1810,9 +1826,11 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 return -48;
         }
     }
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
     if (use_case == revocation) {
         if (set_name(opt_issuer, OSSL_CMP_CTX_set1_issuer, ctx, "issuer") != CMP_OK)
             return -70;
+
         if (opt_serial != NULL) {
             ASN1_INTEGER *sno;
 
@@ -1828,6 +1846,7 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
             ASN1_INTEGER_free(sno);
         }
     }
+#endif
     return CMP_OK;
 }
 

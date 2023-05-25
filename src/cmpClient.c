@@ -55,6 +55,7 @@ char *opt_section = "EJBCA"; /* name(s) of config file section(s) to use */
 char demo_sections[2 * (SECTION_NAME_MAX + 1)]; /* used for pattern "%s,%s" */
 long opt_verbosity;
 
+/* message transfer */
 const char *opt_server;
 const char *opt_proxy;
 const char *opt_no_proxy;
@@ -66,6 +67,7 @@ long opt_keep_alive;
 long opt_msg_timeout;
 long opt_total_timeout;
 
+/* server authentication */
 const char *opt_trusted;
 const char *opt_untrusted;
 const char *opt_srvcert;
@@ -93,6 +95,7 @@ const char *opt_template;
 const char *opt_oldcrl;
 const char *opt_crlout;
 
+/* client authentication */
 const char *opt_ref;
 const char *opt_secret;
 /* maybe it would be worth re-adding a -creds option combining -cert and -key */
@@ -105,12 +108,14 @@ const char *opt_mac;
 const char *opt_extracerts;
 bool opt_unprotected_requests;
 
+/* generic message */
 const char *opt_cmd;
 const char *opt_infotype;
 static int infotype = NID_undef;
 const char *opt_profile;
 char *opt_geninfo;
 
+/* certificate enrollment */
 const char *opt_newkeytype;
 bool opt_centralkeygen;
 const char *opt_newkey;
@@ -142,6 +147,7 @@ char *opt_serial;
 /* TODO? add credentials format options */
 /* TODO add opt_engine */
 
+/* TLS connection */
 bool opt_tls_used;
 /* TODO re-add tls_creds */
 const char *opt_tls_cert;
@@ -151,6 +157,7 @@ const char *opt_tls_extra;
 const char *opt_tls_trusted;
 const char *opt_tls_host;
 
+/* client-side debugging */
 static char *opt_reqin = NULL;
 static bool opt_reqin_new_tid = 0;
 static char *opt_reqout = NULL;
@@ -270,9 +277,15 @@ opt_t cmp_opts[] = {
       "Reason code to include in revocation request (rr)."},
     OPT_MORE("Values: 0..6, 8..10 (see RFC5280, 5.3.1) or -1. Default -1 = none included"),
     { "issuer", OPT_TXT, {.txt = NULL}, { &opt_issuer },
-      "DN of the issuer to place in the requested certificate template "},
+      "DN of the issuer to place in the certificate template of ir/cr/kur"
 #if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
-    OPT_MORE("or revocation request (rr)"),
+      "/rr"
+#else
+      ""
+#endif
+      ";"},
+    OPT_MORE("also used as recipient if neither -recipient nor -srvcert are given"),
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
     { "serial", OPT_TXT, {.txt = NULL}, {(const char **) &opt_serial},
       "Serial number of certificate to be revoked in revocation request (rr)"},
 #endif
@@ -1774,7 +1787,8 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                     msg);
             }
         }
-
+        if (use_case != revocation && opt_issuer != NULL)
+            LOG(FL_WARN, "-issuer %s", msg);
         if (opt_reqexts != NULL)
             LOG(FL_WARN, "-reqexts %s", msg);
         if (opt_san_nodefault)

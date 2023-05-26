@@ -62,7 +62,6 @@ tar-ignore = run
 tar-ignore = run_
 tar-ignore = libcmp*
 tar-ignore = libsecutils*
-tar-ignore = doc/Compliance_Test_Report*
 tar-ignore = securityUtilities*
 tar-ignore = test/recipes/80-test_cmp_http_data/Simple
 tar-ignore = 80-test_cmp_http_data

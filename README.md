@@ -39,7 +39,7 @@ also on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs
 
 The following network and development tools are needed or recommended.
 * Git (for getting the software, tested with versions 2.7.2, 2.11.0, 2.20, 2.30.2)
-* CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested with version 3.18.4)
+* CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested with versions 3.18.4 and 3.26.3)
 * GNU make (tested with versions 4.1, 4.2.1, 4.3)
 * GNU C compiler (gcc, tested with versions 5.4.0, 7.3.0, 8.3.0, 10.0.1, 10.2.1)
 * wget (for running the demo, tested with versions 1.17, 1.18, 1.20, 1.21)
@@ -63,6 +63,7 @@ As a sanity check you can execute in a shell:
 git clone git@github.com:siemens/genCMPClient.git
 cd genCMPClient
 make -f OpenSSL_version.mk
+
 ```
 
 This should output on the console something like
@@ -101,9 +102,10 @@ do for instance the following in the directory where you want to integrate it:
 git submodule add git@github.com:siemens/gencmpclient.git
 ```
 
-When you later want to update your local copy of all relevant repositories it is sufficient to invoke
+When you later want to update your local copy of all relevant repositories
+it is sufficient to invoke
 ```
-make -f Makefile_v1 update
+make update
 ```
 
 
@@ -209,29 +211,33 @@ The destination is `/usr`, unless specified otherwise by `DESTDIR` or `ROOTFS`.
 
 ## Building Debian packages
 
-This repository can build the following Debian packages.
+This repository can build the following Debian and source packages.
 
 * `libgencmp` - the shared library
-* `libgencmp-dev` - development headers
-* `cmpclient` - simple command-line application
+* `libgencmp-dev` - development headers and documentation
+* `cmpclient` - simple command-line application with its documentation
+* `libgencmp*Source.tar.gz` -- source tarball
 
-To build the Debian packages, the following dependencies need to be installed:
+The recommended way is to use CPack with the files produced by CMake as follows:
+```
+make deb
+```
+
+Alternatively, [`Makefile_v1`](Makefile_v1) may be used like this:
+```
+make -f Makefile_v1 deb
+```
+In this case, the resulting packages are placed in the parent directory (`../`),
+and the following dependencies need to be installed:
 * `debhelper` (needed for `dh`)
 * `devscripts` (needed for `debuild`)
 * `libssl-dev`
 * `libsecutils-dev`
 * `libcmp-dev` (if used)
 
-Currently [`CMakeLists.txt`](CMakeLists.txt) does not support Debian packaging.
-Yet [`Makefile_v1`](Makefile_v1) may be used like this:
+The Debian packages may be installed for instance as follows:
 ```
-ln -s Makefile_v1 Makefile
-make deb
-```
-On success, the packages are placed in the parent directory (`../`).
-They may be installed for instance as follows:
-```
-sudo dpkg -i ../cmpclient_*.deb ../libgencmp_*deb libsecutils_*.deb libcmp_*deb
+sudo dpkg -i libgencmp*deb cmpclient_*.deb
 ```
 
 

@@ -26,7 +26,7 @@
 # include <openssl/cmp.h>
 /* for abbreviation and backward compatibility: */
 typedef OSSL_CMP_CTX CMP_CTX;
-typedef OSSL_CMP_severity severity;
+/* typedef OSSL_CMP_severity severity; already defined by libsecutils */
 
 # if OPENSSL_VERSION_NUMBER < 0x30000080L
 #  define OSSL_CMP_PKISTATUS_request                -3

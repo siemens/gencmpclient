@@ -284,7 +284,15 @@ ifdef USE_LIBCMP
     endif
 endif
 
-build_only:
+%.h: %.h.in # limitation: this is not triggered when the env. variable changes
+	cp $< $@
+ifdef USE_LIBCMP
+	@sed -i -e 's|#cmakedefine USE_LIBCMP|#define USE_LIBCMP|' $@
+else
+	@sed -i -e 's|#cmakedefine USE_LIBCMP|/* #undef USE_LIBCMP */|' $@
+endif
+
+build_only: include/genericCMPClient_config.h
 	$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" INSTALL_DEB_PKGS=$(INSTALL_DEB_PKGS) DEB_TARGET_ARCH=$(DEB_TARGET_ARCH)
 
 build_no_tls:

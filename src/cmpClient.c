@@ -2522,8 +2522,6 @@ int main(int argc, char *argv[])
     X509_VERIFY_PARAM_free(vpm);
     /* TODO fix potential memory leaks; find out why this potentially crashes: */
     NCONF_free(config);
-    /* free possibly created OID NIDs */
-    OBJ_cleanup();
 
     return rc;
 }

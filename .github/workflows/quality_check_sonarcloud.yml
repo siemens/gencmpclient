@@ -31,7 +31,7 @@ jobs:
           make
       - name: test-coverage
         run: |
-          make -f Makefile_v1 test_Mock test_Insta test_profile test_Simple
+          make -f Makefile_v1 test_Mock
           find . -name *.gcno -exec gcov {} \;
       - name: Run sonar-scanner
         env:

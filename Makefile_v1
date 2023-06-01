@@ -640,7 +640,7 @@ ifneq ($(INSTALL_DEB_PKGS),)
 endif
 
 clean_deb:
-	rm -rf debian/{tmp,libgencmp{,-dev},cmpclient} debian-packaging
+	rm -rf debian/{.debhelper,tmp,libgencmp{,-dev},cmpclient} debian-packaging
 	rm -f debian/{files,debhelper-build-stamp} debian/*.{log,substvars}
 	rm -f ../{libgencmp,cmpclient}*.{deb,dsc,build*,changes,tar.gz}
 	rm -f lib{secutils,cmp}*.{deb,dsc,build*,changes,tar.gz}

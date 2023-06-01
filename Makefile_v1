@@ -298,6 +298,7 @@ build_only: include/genericCMPClient_config.h
 	$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" INSTALL_DEB_PKGS=$(INSTALL_DEB_PKGS) DEB_TARGET_ARCH=$(DEB_TARGET_ARCH)
 
 build_no_tls:
+	rm libsecutils/include/secutils/secutils_static_config.h
 	$(MAKE) -f Makefile_v1 build $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
 
 .phony: clean_test clean clean_uta clean_this
@@ -521,6 +522,7 @@ test_all: test_Insta
 endif
 
 test: clean build_no_tls
+	rm libsecutils/include/secutils/secutils_static_config.h
 	@$(MAKE) -f Makefile_v1 clean $(OUT_DIR_BIN) demo_Insta $(SET_NDEBUG) DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
 
 # doc and zip ##################################################################

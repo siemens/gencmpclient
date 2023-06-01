@@ -92,9 +92,11 @@ endif
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 # $(OPENSSL_DIR) is relative path, assumed relative to ./
     OPENSSL_REVERSE_DIR=../$(OPENSSL_DIR)
+    OPENSSL_LIB ?= ../$(OPENSSL_DIR)
 else
 # $(OPENSSL_DIR) is absolute path
     OPENSSL_REVERSE_DIR=$(OPENSSL_DIR)
+    OPENSSL_LIB ?= $(OPENSSL_DIR)/$(LIB)
 endif
 
 ifeq ($(shell echo $(DESTDIR) | grep "^/"),)
@@ -626,7 +628,8 @@ deb:
 endif
 	@ # pkg-config --print-errors libsecutils
 	@ # pkg-config --print-errors libcmp
-	debuild $(IGNORE_DEB_DEPEND) --preserve-envvar OPENSSL_DIR \
+	debuild $(IGNORE_DEB_DEPEND) \
+          -e OPENSSL_DIR="$(OPENSSL_DIR)" -e OPENSSL_LIB="$(OPENSSL_LIB)" \
 	  --preserve-envvar OPENSSL_DIRINSTALL_DEB_PKGS \
           -uc -us --lintian-opts --profile debian # --fail-on none
 	@ # not using --preserve-envvar OPENSSL_DIR

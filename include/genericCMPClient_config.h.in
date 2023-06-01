@@ -16,8 +16,7 @@
 #ifndef GENCMPCLIENT_STATIC_CONFIG_H_
 #define GENCMPCLIENT_STATIC_CONFIG_H_
 
-#ifndef USE_LIBCMP
+#undef USE_LIBCMP
 #cmakedefine USE_LIBCMP
-#endif
 
 #endif /* GENCMPCLIENT_STATIC_CONFIG_H_ */

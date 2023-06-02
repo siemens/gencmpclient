@@ -41,7 +41,7 @@ jobs:
           make -f Makefile_v1
           make -f Makefile_v1 clean
           make -f Makefile_v1 build_no_tls
-          rm libsecutils/include/secutils/secutils_static_config.h
+          make -C libsecutils -f Makefile_v1 clean_config
           SKIP_pod2markdown=1 make -f Makefile_v1 doc_this
           SKIP_pod2markdown=1 DESTDIR=tmp make -f Makefile_v1 install
           DESTDIR=tmp make -f Makefile_v1 uninstall

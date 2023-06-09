@@ -122,7 +122,7 @@ ifdef DEBUG_FLAGS
 endif
 
 ifneq ($(EJBCA_ENABLED),)
-    include config/EJBCA.env
+    include config/EJBCA_docker.env
 else
     include config/empty.env
 endif
@@ -370,9 +370,9 @@ ifneq ($(INSTA),)
 else
     CA_SECTION=EJBCA
     OCSP_CHECK=$(OPENSSL) ocsp -url $(EJBCA_OCSP_URL) \
-               -CAfile $(EJBCA_CMP_TRUSTED) -issuer $(EJBCA_CMP_ISSUER) \
+               -CAfile $(EJBCA_TRUSTED) -issuer $(EJBCA_ISSUER) \
                -cert creds/operational.crt
-    override EXTRA_OPTS +=
+    override EXTRA_OPTS += -config config/demo_EJBCA.cnf
 endif
 
 .phony: demo demo_Insta demo_EJBCA
@@ -400,9 +400,7 @@ else
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
     ifeq ($(INSTA),)
-	$(CMPCLIENT) validate -section validate -cert $(EJBCA_CMP_CLIENT) -tls_cert "" -own_trusted $(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
-	@/bin/echo -e "\nValidating own TLS client cert"
-	$(CMPCLIENT) validate -section validate -tls_cert $(EJBCA_TLS_CLIENT) -tls_trusted $(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
+	$(CMPCLIENT) validate -section EJBCA -cert $(EJBCA_CMP_CLIENT) -tls_cert "" -own_trusted $(EJBCA_CMP_TRUSTED) -untrusted $(EJBCA_CMP_UNTRUSTED) $(EXTRA_OPTS)
     else
 	$(CMPCLIENT) validate -section Insta -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/InstaDemoCA.crt # -no_check_time
     endif

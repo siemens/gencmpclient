@@ -1,19 +1,25 @@
 # generic CMP client
 
-This is a generic CMP client library with high-level API
+This is a generic Certificate Management Protocol (CMP) client library
+with a high-level API
 and associated CLI-based demo client, tests, and documentation.
 
 ## Purpose
 
 The purpose of this software is to provide a high-level API
 on top of the detailed CMP (and CRMF) API of
-[CMPforOpenSSL](https://github.com/mpeylo/cmpossl) and
-and [OpenSSL](https://www.openssl.org/) since version 3.0.
+[OpenSSL](https://www.openssl.org/) since version 3.0.
+It can be used with OpenSSL and with the intermediate CMP library
+[CMPforOpenSSL](https://github.com/mpeylo/cmpossl)
+providing the latest CMP features defined in [CMP Updates
+](https://datatracker.ietf.org/doc/html/draft-ietf-lamps-cmp-updates).
+
 The high-level API is on the one hand convenient to use for application
 programmers and on the other hand complete and flexible enough
 to cover the major certificate management use cases.
-The library supports developing CMP clients that follow
-the [Lightweight Certificate Management Protocol (CMP) Profile](https://datatracker.ietf.org/doc/html/draft-ietf-lamps-lightweight-cmp-profile),
+The library supports developing CMP clients that adhere to
+the [Lightweight CMP Profile (LCMPP)
+](https://datatracker.ietf.org/doc/html/draft-ietf-lamps-lightweight-cmp-profile),
 which is geared towards simple and interoperable industrial use.
 The software also provides a command-line interface (CLI)
 that is handy for interactive exploration of using CMP in a PKI.
@@ -49,8 +55,9 @@ The following OSS components are used.
 * OpenSSL development edition; supported versions: 1.1.1, 3.0, 3.1
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
 * [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
-  a CMP+HTTP extension to OpenSSL, needed when using OpenSSL 1.x
-  or if the environment variable `USE_LIBCMP` is defined.
+  a CMP+CRMF+HTTP extension to OpenSSL, needed when using OpenSSL 1.x
+  or if the latest CMP features not yet available in OpenSSL are required,
+  which can be indicated by setting the environment variable `USE_LIBCMP`.
 
 For instance, on a Debian system the prerequisites may be installed simply as follows:
 ```

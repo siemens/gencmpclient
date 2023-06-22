@@ -59,7 +59,7 @@ The following OSS components are used.
   or if the latest CMP features not yet available in OpenSSL are required,
   which can be indicated by setting the environment variable `USE_LIBCMP`.
 
-For instance, on a Debian system the prerequisites may be installed simply as follows:
+For instance, on a Debian or Ubuntu system the prerequisites may be installed simply as follows:
 ```
 sudo apt install cmake libssl-dev libc-dev linux-libc-dev
 ```
@@ -220,9 +220,9 @@ sudo make uninstall
 
 The destination is `/usr`, unless specified otherwise by `DESTDIR` or `ROOTFS`.
 
-## Building Debian packages
+## Building Debian / Ubuntu packages
 
-This repository can build the following Debian and source packages.
+This repository can build the following Debian / Ubuntu and source packages.
 
 * `libgencmp` - the shared library
 * `libgencmp-dev` - development headers and documentation

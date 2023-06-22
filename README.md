@@ -67,7 +67,7 @@ while `sudo apt install git make gcc wget` usually is not needed as far as these
 
 As a sanity check you can execute in a shell:
 ```
-git clone git@github.com:siemens/genCMPClient.git
+git clone https://github.com/siemens/gencmpclient.git
 cd genCMPClient
 make -f OpenSSL_version.mk
 
@@ -95,7 +95,7 @@ export https_proxy=http://proxy.example.com:8080
 
 You can clone the git repository and its submodules with
 ```
-git clone git@github.com:siemens/genCMPClient.git
+git clone https://github.com/siemens/gencmpclient.git
 cd genCMPClient
 make -f Makefile_v1 get_submodules  
 ```

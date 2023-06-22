@@ -63,7 +63,7 @@ For instance, on a Debian system the prerequisites may be installed simply as fo
 ```
 sudo apt install cmake libssl-dev libc-dev linux-libc-dev
 ```
-while `apt install git make gcc wget` usually is not needed as far as these tools are pre-installed.
+while `sudo apt install git make gcc wget` usually is not needed as far as these tools are pre-installed.
 
 As a sanity check you can execute in a shell:
 ```

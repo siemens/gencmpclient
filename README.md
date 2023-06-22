@@ -261,7 +261,7 @@ For simple test invocations the Insta Certifier Demo CA server may be used,
 for instance as follows:
 ```
 openssl ecparam -genkey -name prime256v1 -out test.key.pem
-./cmpClient -config "" -server pki.certificate.fi:8700/pkix/ \
+/usr/bin/cmpClient -config "" -server pki.certificate.fi:8700/pkix/ \
   -recipient "/C=FI/O=Insta Demo/CN=Insta Demo CA" \
   -secret pass:insta -ref 3078 \
   -cmd cr -newkey test.key.pem -subject "/CN=test" -certout test.cert.pem

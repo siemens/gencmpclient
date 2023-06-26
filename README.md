@@ -272,7 +272,12 @@ on your network you may need to set the environment variable `http_proxy`.
 
 A demo making use of all supported CMP commands can be executed with
 ```
-make -f Makefile_v1 demo   
+make -f Makefile_v1 demo
+```
+The demo can be run using the online Insta Demo CA, which is the default,
+or using an included Docker instance of the EJBCA that can be launched locally:
+```
+make -f Makefile_v1 demo_EJBCA
 ```
 
 Among others, successful execution should produce a new certificate at `creds/operational.crt`.

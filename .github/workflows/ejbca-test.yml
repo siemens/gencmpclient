@@ -1,9 +1,9 @@
-name: Test EJBCA
+name: CI
 
 on: push
 
 jobs:
-  docker:
+  test_ejbca-docker:
     timeout-minutes: 10
     runs-on: ubuntu-latest
 
@@ -12,9 +12,10 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Start containers
-      working-directory: ./test/recipes/80-test_cmp_http_data/EJBCA/
       run: |
-        tar -xvf ejbca-docker.tar.gz
+        mkdir tmp
+        cd tmp
+        tar -xvf ../test/recipes/80-test_cmp_http_data/EJBCA/ejbca-docker.tar.gz
         cd ejbca-docker
         docker-compose -f "docker-compose.yml" up -d
 
@@ -31,10 +32,9 @@ jobs:
 
     - name: test
       run: |
-        mkdir tmp
         make -f Makefile_v1 demo_EJBCA
 
     - name: Stop containers
       if: always()
-      working-directory: ./test/recipes/80-test_cmp_http_data/EJBCA/ejbca-docker
+      working-directory: tmp/ejbca-docker
       run: docker-compose -f "docker-compose.yml" down

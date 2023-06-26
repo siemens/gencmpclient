@@ -356,6 +356,10 @@ endif(NOT DEFINED CPACK_PACKAGE_NAME)
 
 # submodules
 
+macro(add_clean_target dir)
+  add_custom_target(clean-${dir} COMMAND ${CMAKE_MAKE_PROGRAM} clean WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${dir})
+endmacro(add_clean_target)
+
 if(NOT YOCTO_BUILD)
 
   # find_package(secutils ${CPACK_PACKAGE_VERSION})
@@ -376,6 +380,7 @@ if(NOT YOCTO_BUILD)
       endif()
     endif()
     add_subdirectory(libsecutils)
+    add_clean_target(libsecutils)
   endif()
 
   # find_package(cmp ${CPACK_PACKAGE_VERSION})
@@ -396,6 +401,7 @@ if(NOT YOCTO_BUILD)
       endif()
     endif()
     add_subdirectory(cmpossl)
+    add_clean_target(cmpossl)
   endif()
 
 endif()

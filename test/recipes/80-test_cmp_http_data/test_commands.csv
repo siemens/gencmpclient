@@ -105,12 +105,14 @@ TBD,*,*,*,genm crlStatusList oldcrl wrong    , -section,, -cmd,genm,, BLANK,,, -
 0,*,*,*,genm crlStatusList crlout missing arg, -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldcrl, oldcrl.pem, -crlout,,
 0,*,*,*,genm crlStatusList crlout directory  , -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldcrl, oldcrl.pem, -crlout,directory/,
 ,,,,,,,,,,,,,,,,,,,,,,,,
-1,1,1,1,geninfo int, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3:int:987
+1,1,1,1,geninfo int, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.3:int:987
 1,1,1,1,geninfo str, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,id-kp:str:name
 1,1,1,1,geninfo empty str, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,id-kp:str:
-1,1,1,1,geninfo str and int, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo, 'id-kp:str:name,  1.2.3:int:987'
+1,1,1,1,geninfo str and int, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo, 'id-kp:str:name, 1.3:int:987'
 0,*,*,*,geninfo missing argument, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,,,,,
-0,*,*,*,geninfo bad OID num: leading '.', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,.1.2.3:int:987
+0,*,*,*,geninfo bad OID num syntax: leading '.', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,.1.2.3:int:987
+0,*,*,*,geninfo invalid OID nummber string: leading '.', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.333:int:987
+1,*,*,*,geninfo inknown OID nummber string: leading '.', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.33:int:987
 0,*,*,*,geninfo bad OID name: trailing '_', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,id-kp_:int:987
 0,*,*,*,geninfo bad syntax: missing ':int', -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3,,,,
 0,*,*,*,geninfo bad type tag, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.2.3:xyz:987,,,,

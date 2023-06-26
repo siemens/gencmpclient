@@ -220,9 +220,9 @@ sudo make uninstall
 
 The destination is `/usr`, unless specified otherwise by `DESTDIR` or `ROOTFS`.
 
-## Building Debian / Ubuntu packages
+## Building Debian packages for use also with Ubuntu
 
-This repository can build the following Debian / Ubuntu and source packages.
+This repository can build the following binary and source packages.
 
 * `libgencmp` - the shared library
 * `libgencmp-dev` - development headers and documentation
@@ -261,7 +261,7 @@ For simple test invocations the Insta Certifier Demo CA server may be used,
 for instance as follows:
 ```
 openssl ecparam -genkey -name prime256v1 -out test.key.pem
-/usr/bin/cmpClient -config "" -server pki.certificate.fi:8700/pkix/ \
+cmpClient -config "" -server pki.certificate.fi:8700/pkix/ \
   -recipient "/C=FI/O=Insta Demo/CN=Insta Demo CA" \
   -secret pass:insta -ref 3078 \
   -cmd cr -newkey test.key.pem -subject "/CN=test" -certout test.cert.pem

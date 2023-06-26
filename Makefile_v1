@@ -121,10 +121,10 @@ ifdef DEBUG_FLAGS
   SET_DEBUG_FLAGS=DEBUG_FLAGS="$(DEBUG_FLAGS)"
 endif
 
-ifneq ($(EJBCA_ENABLED),)
-    include config/EJBCA_docker.env
+ifneq ($(EJBCA_CONFIG),)
+    include $(EJBCA_CONFIG)
 else
-    include config/empty.env
+    include config/EJBCA.env
 endif
 # optional SET_PROXY variable can be set to override default proxy settings
 SET_PROXY ?= no_proxy=localhost,127.0.0.1
@@ -341,17 +341,15 @@ clean_all: clean clean_config clean_deb
 # get CRLs #####################################################################
 
 creds/crls:
-	mkdir $@
+	@mkdir $@
 
 get_EJBCA_crls: | creds/crls
-ifneq ($(EJBCA_ENABLED),)
 	@ # ping >/dev/null $(PINGCOUNTOPT) 1 $(EJBCA_HOST) || echo "cannot reach EJBCA at $(EJBCA_HOST)"; exit 1
 	@for CA in $(EJBCA_CDPS); \
 	do \
 		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
-		wget -nv "$(EJBCA_CDP_URL_PREFIX)$$CA$(EJBCA_CDP_URL_POSTFIX)" -O "creds/crls/EJBCA-$$ca.crl"; \
+		wget --tries=1 -nv "$(EJBCA_CDP_URL_PREFIX)$$CA$(EJBCA_CDP_URL_POSTFIX)" -O "creds/crls/EJBCA-$$CA.crl"; \
 	done
-endif
 
 .phony: get_Insta_crls
 get_Insta_crls: | creds/crls
@@ -370,48 +368,46 @@ ifneq ($(INSTA),)
 else
     CA_SECTION=EJBCA
     OCSP_CHECK=$(OPENSSL) ocsp -url $(EJBCA_OCSP_URL) \
-               -CAfile $(EJBCA_TRUSTED) -issuer $(EJBCA_ISSUER) \
+               -CAfile $(EJBCA_CMP_TRUSTED) -issuer $(EJBCA_CMP_ISSUER) \
                -cert creds/operational.crt
-    override EXTRA_OPTS += -config config/demo_EJBCA.cnf
+  ifeq ($(EJBCA_TLS_HOST),) # workaround for ephemeral TLS server certificate of ejbca-docker:
+    override EXTRA_OPTS += -tls_host `cat creds/docker/TLS_ROOTCA-docker-cn.txt`
+    BOOTSTRAP_CREDS = -cert creds/manufacturer.crt -key creds/manufacturer.pem
+  endif
 endif
 
 .phony: demo demo_Insta demo_EJBCA
 demo: demo_Insta
-demo_Insta:
-	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" INSTA=1 SLEEP="sleep 1"
+demo_Insta: get_Insta_crls
+	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" INSTA="using Insta" SLEEP="sleep 1"
 # for Insta, sleep 1 helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
-demo_EJBCA:
-	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" INSTA= EJBCA_ENABLED=1
+demo_EJBCA: start_EJBCA get_EJBCA_crls run_demo stop_EJBCA
 
 CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH="$(OUT_DIR)" $(OUT_DIR_BIN)
 GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345 2>/dev/null
 .phony: run_demo
 run_demo: $(OUT_DIR_BIN)
-ifeq ($(INSTA),)
-run_demo: get_EJBCA_crls
-else
-run_demo: get_Insta_crls
-endif
-ifeq ($(EJBCA_ENABLED)$(INSTA),)
-	$(warning "### skipping demo because EJBCA_ENABLED is not set ###")
-else
 	@which $(OPENSSL) >/dev/null || (echo "cannot find $(OPENSSL), please install it"; false)
-	@/bin/echo -e "\n##### running cmpClient demo #####\n"
+	@/bin/echo -e "\n##### running cmpClient demo $(INSTA) #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
     ifeq ($(INSTA),)
-	$(CMPCLIENT) validate -section EJBCA -cert $(EJBCA_CMP_CLIENT) -tls_cert "" -own_trusted $(EJBCA_CMP_TRUSTED) -untrusted $(EJBCA_CMP_UNTRUSTED) $(EXTRA_OPTS)
+	$(CMPCLIENT) validate -section EJBCA -cert $(EJBCA_CMP_CLIENT) -tls_cert "" -own_trusted $(EJBCA_CMP_TRUSTED),$(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
+      ifneq ($(EJBCA_TLS_HOST),)
+	@/bin/echo -e "\nValidating own TLS client cert"
+	$(CMPCLIENT) validate -section validate -tls_cert $(EJBCA_TLS_CLIENT) -tls_trusted $(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
+      endif
     else
 	$(CMPCLIENT) validate -section Insta -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/InstaDemoCA.crt # -no_check_time
     endif
 	@echo
-	$(CMPCLIENT) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS)
+	$(CMPCLIENT) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS) $(BOOTSTRAP_CREDS)
 	$(GENERATE_OPERATIONAL)
 	$(OPENSSL) x509 -noout -text -in creds/operational.crt
 	@echo :
 	$(OPENSSL) x509 -noout -text -in creds/operational.crt | sed '/^         [0-9a-f].*/d'
-	# @echo
-	# $(CMPCLIENT) pkcs10 -section $(CA_SECTION)
+	@# @echo
+	@# $(CMPCLIENT) pkcs10 -section $(CA_SECTION)
 	@echo
 	@$(SLEEP)
 	$(CMPCLIENT) update -section $(CA_SECTION) $(EXTRA_OPTS)
@@ -430,44 +426,67 @@ else
 	$(CMPCLIENT) genm -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
     endif
-	@echo -e "\n#### demo finished ####"
+	@echo -e "\n#### finished demo $(INSTA) ####"
 	@echo :
-endif
 
 # tests ########################################################################
 
 .phony: test_EJBCA-AWS
 test_EJBCA-AWS: get_EJBCA_crls
-ifeq ($(filter-out EJBCA Simple,$(OPENSSL_CMP_SERVER))$(EJBCA_ENABLED),)
+ifeq ($(filter-out EJBCA Simple,$(OPENSSL_CMP_SERVER)),)
 	$(warning "### skipping test_$(OPENSSL_CMP_SERVER) since not supported in this environment ###")
 else
 	$(SET_PROXY) make -f Makefile_tests test_cli CMPCLIENT="$(OUT_DIR_BIN)" OPENSSL_CMP_SERVER=EJBCA
 endif
 
+.phony: start_EJBCA stop_EJBCA
+
+tmp:
+	@mkdir $@
+EJBCA_TAR_DIR=ejbca-docker
+EJBCA_DOCKER_DIR=tmp/$(EJBCA_TAR_DIR)
+$(EJBCA_DOCKER_DIR): | tmp
+	@tar >/dev/null -C tmp -xvf test/recipes/80-test_cmp_http_data/EJBCA/$(EJBCA_TAR_DIR).tar.gz
+
+start_EJBCA: $(EJBCA_DOCKER_DIR)
+ifeq ($(EJBCA_CONFIG),)
+	@echo "starting EJBCA"
+	@cd $(EJBCA_DOCKER_DIR) && docker-compose -f docker-compose.yml up -d
+	@echo "probing until EJBCA docker is ready..."
+	wget --tries=100 -nv http://${EJBCA_HOST}:${EJBCA_HTTP_PORT}/ejbca -O /dev/null
+	@echo "EJBCA docker is ready now to accept requests."
+    ifeq ($(EJBCA_TLS_HOST),) # workaround for ephemeral TLS server certificate of ejbca-docker:
+	@$(OPENSSL) s_client -connect $(EJBCA_HOST):$(EJBCA_HTTPS_PORT) 2>/dev/null \
+	  -verify_return_error -showcerts >creds/docker/TLS_ROOTCA-docker.pem || true
+	@echo `fgrep "CN = " creds/docker/TLS_ROOTCA-docker.pem|head -n 1 | sed 's/.*CN = //; s/, UID = .*//;'` >creds/docker/TLS_ROOTCA-docker-cn.txt
+    endif
+endif
+
+stop_EJBCA: $(EJBCA_DOCKER_DIR)
+ifeq ($(EJBCA_CONFIG),)
+	@echo "stopping EJBCA"
+	@cd $(EJBCA_DOCKER_DIR) && docker-compose -f docker-compose.yml down
+endif
+
+.phony: start_Simple stop_Simple
 start_Simple:
-ifneq ($(EJBCA_ENABLED),)
 	@echo "start SimpleLra"
 	@cd SimpleLra && ./RunLra.sh &
 	@sleep 2
-endif
 
 stop_Simple:
 	@PID=`ps aux|grep " jar/SimpleLra.jar TestConfig.xml" | grep -v grep | awk '{ print $$2 }'` && \
 	if [ -n "$$PID" ]; then echo "stopping SimpleLra" && kill $$PID; fi
 
 .phony: test_Simple
-ifeq ($(EJBCA_ENABLED),)
-test_Simple:
-else
-test_Simple: get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple test/recipes/80-test_cmp_http_data/test_Simple.cnf
+test_Simple: build get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple test/recipes/80-test_cmp_http_data/test_Simple.cnf
 	$(MAKE) -f Makefile_v1 start_Simple
 	make -f Makefile_tests test_cli CMPCLIENT="$(OUT_DIR_BIN)" OPENSSL_CMP_SERVER=Simple OPENSSL=$(OPENSSL) OPENSSL_CMP_CONFIG="Simple/../test.cnf" \
 	|| ($(OPENSSL) version | grep " 1.0") # with OpenSSL <1.1, some certstatus test cases fail due to missing OCSP support
 	$(MAKE) -f Makefile_v1 stop_Simple
-endif
 
 .phony: test_Insta
-test_Insta: get_Insta_crls
+test_Insta: build get_Insta_crls
 	$(SET_PROXY) $(MAKE) -f Makefile_tests test_cli CMPCLIENT="$(OUT_DIR_BIN)" OPENSSL_CMP_SERVER=Insta
 
 .phony: test_profile profile_Simple profile_EJBCA
@@ -478,8 +497,8 @@ profile_Simple:
 profile_EJBCA:
 	PROFILE=EJBCA  $(MAKE) -f Makefile_v1 profile
 profile:
-ifeq ($(EJBCA_ENABLED),)
-	$(warning "### skipping test_profile because EJBCA_ENABLED is not set ###")
+ifeq ($(TEST_SIMPLE),)
+	$(warning "### skipping test_profile because TEST_SIMPLE is not set ###")
 else
 profile: $(OUT_DIR_BIN)
 	@/bin/echo -e "\n##### Requesting a certificate from a PKI with MAC-based protection (RECOMMENDED) #####"
@@ -512,12 +531,9 @@ test_Mock:
 tests_LwCmp: $(OUT_DIR_BIN)
 	$(MAKE) -f Makefile_tests tests_LwCmp CMPCLIENT="$(OUT_DIR_BIN)" OPENSSL=$(OPENSSL) OPENSSL_VERSION=$(OPENSSL_VERSION)
 
-ifneq ($(EJBCA_ENABLED),)
-test_all: demo_EJBCA
-endif
-test_all: test_profile test test_Mock tests_LwCmp
-ifneq ($(EJBCA_ENABLED),)
-test_all: test_Simple
+test_all: demo_EJBCA test test_Mock tests_LwCmp
+ifneq ($(TEST_SIMPLE),)
+test_all: test_Simple test_profile
 endif
 ifneq ($(TEST_INSTA),)
 test_all: test_Insta

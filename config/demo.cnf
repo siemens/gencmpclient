@@ -29,25 +29,36 @@ extracerts_dir = creds/
 
 # workarounds in case the environment variables referenced via ${ENV::...} are not set
 EJBCA_HOST =
+EJBCA_TLS_HOST =
+EJBCA_HTTP_PORT =
+EJBCA_HTTPS_PORT =
+EJBCA_PATH_RA =
+EJBCA_PATH_IMPRINT =
+EJBCA_PATH_BOOTSTRAP =
+EJBCA_PATH_P10CR =
+EJBCA_PATH_UPDATE =
+EJBCA_PATH_REVOKE =
 EJBCA_OCSP_URL =
 EJBCA_CDP_URL_PREFIX =
+EJBCA_CDP1 =
+EJBCA_CDP2 =
+EJBCA_CDP3 =
 EJBCA_CDPS =
 EJBCA_CDP_URL_POSTFIX =
 EJBCA_CMP_ISSUER =
 EJBCA_CMP_CLIENT =
 EJBCA_TLS_CLIENT =
 EJBCA_CMP_TRUSTED =
+EJBCA_TLS_TRUSTED =
 EJBCA_TRUSTED =
 EJBCA_UNTRUSTED =
-EJBCA_CMP_SERVER =
 EJBCA_CMP_RECIPIENT =
 EJBCA_CMP_SUBJECT =
-EJBCA_CMP_SUBJECT_ECC =
-DID = did:example:123456789abcdefghi
+EJBCA_CMP_SUBJECT_IMPRINT =
 
 [EJBCA]
-server = ${ENV::EJBCA_HOST}:443
-path = ejbca/publicweb/cmp/PlaygroundECC
+server = ${ENV::EJBCA_HOST}:${ENV::EJBCA_HTTPS_PORT}
+path = ejbca/publicweb/cmp/${ENV::EJBCA_PATH_RA}
 no_proxy = 127.0.0.1,localhost,${ENV::EJBCA_HOST}
 secret = pass:SecretCmp
 cert = ${ENV::EJBCA_CMP_CLIENT}
@@ -57,21 +68,21 @@ recipient = ${ENV::EJBCA_CMP_RECIPIENT}
 subject = ${ENV::EJBCA_CMP_SUBJECT}
 #srvcert = ${ENV::EJBCA_CMP_TRUSTED}
 trusted = ${ENV::EJBCA_CMP_TRUSTED}, ${ENV::EJBCA_TRUSTED}
-out_trusted = ${ENV::EJBCA_CMP_TRUSTED}
-tls_trusted = ${ENV::EJBCA_TRUSTED}
-#tls_host = $server
+out_trusted = ${ENV::EJBCA_CMP_TRUSTED}, ${ENV::EJBCA_TRUSTED}
+tls_trusted = ${ENV::EJBCA_TLS_TRUSTED}
+tls_host = ${ENV::EJBCA_TLS_HOST}
 tls_cert = ${ENV::EJBCA_TLS_CLIENT}
 tls_key = $tls_cert
 tls_keypass = pass:12345
 tls_used = 1
-crls = ${ENV::EJBCA_CDP_URL_PREFIX}ECC+Issuing+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, creds/crls/EJBCA-ECCRootCAv10.crl, creds/crls/EJBCA-InfrastructureRootCAv10.crl
+crls = ${ENV::EJBCA_CDP_URL_PREFIX}${ENV::EJBCA_CDP2}${ENV::EJBCA_CDP_URL_POSTFIX}, creds/crls/EJBCA-${ENV::EJBCA_CDP3}.crl, creds/crls/EJBCA-${ENV::EJBCA_CDP1}.crl
 use_cdp = 1
-cdps = ${ENV::EJBCA_CDP_URL_PREFIX}ECC+Root+CA+v1.0${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}Infrastructure+Root+CA${ENV::EJBCA_CDP_URL_POSTFIX}
+cdps = ${ENV::EJBCA_CDP_URL_PREFIX}${ENV::EJBCA_CDP3}${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}${ENV::EJBCA_CDP1}${ENV::EJBCA_CDP_URL_POSTFIX}
 use_aia = 1
 ocsp = ${ENV::EJBCA_OCSP_URL}
 
 [no-tls]
-server = ${ENV::EJBCA_HOST}:80
+server = ${ENV::EJBCA_HOST}:${ENV::EJBCA_HTTP_PORT}
 tls_used = 0
 
 [no-certstatus]
@@ -129,6 +140,8 @@ tls_used = 0
 #tls_key = $key
 
 [imprint]
+path = ejbca/publicweb/cmp/${ENV::EJBCA_PATH_IMPRINT}
+subject = ${ENV::EJBCA_CMP_SUBJECT_IMPRINT}
 cmd = ir
 cert =
 key =
@@ -141,7 +154,10 @@ certout = creds/manufacturer.crt
 cacerts_dir = creds/trusted
 
 [bootstrap]
+path = ejbca/publicweb/cmp/${ENV::EJBCA_PATH_BOOTSTRAP}
 cmd = cr
+# cert = $imprint::certout
+# key = $imprint::newkey
 secret =
 newkeytype = EC:prime256v1 # an alias of EC:secp256r1
 newkey = creds/operational.pem # fallback for cmpossl
@@ -152,7 +168,7 @@ san_nodefault = 1
 certout = creds/operational.crt
 
 [update]
-path = ejbca/publicweb/cmp/PlaygroundCMPSigning
+path = ejbca/publicweb/cmp/${ENV::EJBCA_PATH_UPDATE}
 cmd = kur
 secret =
 cert = $bootstrap::certout
@@ -169,7 +185,7 @@ implicit_confirm = 1
 certout = $bootstrap::certout
 
 [revoke]
-path = ejbca/publicweb/cmp/PlaygroundCMPSigning
+path = ejbca/publicweb/cmp/${ENV::EJBCA_PATH_REVOKE}
 cmd = rr
 secret =
 cert = $bootstrap::certout
@@ -180,6 +196,7 @@ revreason = 5 #CRL_REASON_CESSATION_OF_OPERATION
 subject =
 
 [pkcs10]
+path = ejbca/publicweb/cmp/${ENV::EJBCA_PATH_P10CR}
 cmd = p10cr
 # Insta will respond with CMP body popdecc POPODecKeyChallContent, --pop Challenge
 secret =

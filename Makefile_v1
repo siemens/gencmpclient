@@ -453,13 +453,14 @@ ifeq ($(EJBCA_CONFIG),)
 	@echo "starting EJBCA"
 	@cd $(EJBCA_DOCKER_DIR) && docker-compose -f docker-compose.yml up -d
 	@echo "probing until EJBCA docker is ready..."
-	wget --tries=100 -nv http://${EJBCA_HOST}:${EJBCA_HTTP_PORT}/ejbca -O /dev/null
+	wget --tries=100 -nv http://${EJBCA_HOST}:${EJBCA_HTTPS_PORT}/ejbca -O /dev/null
 	@echo "EJBCA docker is ready now to accept requests."
     ifeq ($(EJBCA_TLS_HOST),) # workaround for ephemeral TLS server certificate of ejbca-docker:
 	@$(OPENSSL) s_client -connect $(EJBCA_HOST):$(EJBCA_HTTPS_PORT) 2>/dev/null \
 	  -verify_return_error -showcerts >creds/docker/TLS_ROOTCA-docker.pem || true
 	@echo `fgrep "CN = " creds/docker/TLS_ROOTCA-docker.pem|head -n 1 | sed 's/.*CN = //; s/, UID = .*//;'` >creds/docker/TLS_ROOTCA-docker-cn.txt
     endif
+	@sleep 5
 endif
 
 stop_EJBCA: $(EJBCA_DOCKER_DIR)

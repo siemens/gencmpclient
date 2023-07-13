@@ -1418,7 +1418,7 @@ err:
 }
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# if OPENSSL_VERSION_NUMBER < 0x30200000L
+/* # if OPENSSL_VERSION_NUMBER < 0x30200000L */
 static int add_object(unsigned char *data, int len, int nid, const char *name)
 {
     ASN1_OBJECT *obj;
@@ -1438,7 +1438,7 @@ static int add_object(unsigned char *data, int len, int nid, const char *name)
         LOG(FL_ERR, "Error adding info for ASN.1 object %s", name);
     return res;
 }
-# endif
+/* # endif */
 #endif
 
 /* Add any missing OIDs needed for genm */
@@ -1485,6 +1485,16 @@ static int complete_genm_asn1_objects(void)
         return -21;
 # endif
 #endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x30200000L
+    static unsigned char so_KemCiphertextInfo[] =
+        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x19 };
+
+    if (!add_object(so_KemCiphertextInfo, sizeof(so_KemCiphertextInfo),
+                    NID_id_it_KemCiphertextInfo, "id-it-KemCiphertextInfo"))
+        return -21;
+#endif
+
     return CMP_OK;
 }
 

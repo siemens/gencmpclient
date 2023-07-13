@@ -78,6 +78,11 @@ const char *OSSL_CMP_CTX_get0_propq(ossl_unused const OSSL_CMP_CTX *ctx)
 #  define OBJ_id_regCtrl_rsaKeyLen                OBJ_id_regCtrl,12L
 # endif
 
+/* using preliminary value for testing */
+# define SN_id_it_KemCiphertextInfo              "id_it_KemCiphertextInfo"
+# define NID_id_it_KemCiphertextInfo             1400 /* TBD */
+# define OBJ_id_it_KemCiphertextInfo             OBJ_id_it,24L /* TBD1 */
+
 # define CMPCLIENT_MODULE_NAME "genCMPClient"
 
 typedef int CMP_err;

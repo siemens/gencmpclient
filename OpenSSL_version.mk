@@ -7,6 +7,9 @@ ifeq ($(OS),Windows_NT)
 else
     EXE=
     LIB=lib
+    ifeq ($(shell uname -s),Darwin)
+        OS=MacOS
+    endif
 endif
 
 #CC=gcc
@@ -39,12 +42,16 @@ clean:
 else ifeq ($(LIB),header)
 
 
-OPENSSL_NUMBER_SEL=head -n 1 | sed -r 's/.*?OpenSSL //' | awk '{print ($$0+0)}'
+OPENSSL_NUMBER_SEL=head -n 1 | sed -r 's/.*OpenSSL //' | awk '{print ($$0+0)}'
 OPENSSLV_H=$(OPENSSL_DIR)/include/openssl/opensslv.h
 ifeq ($(shell fgrep OPENSSL_VERSION_MAJOR "$(OPENSSLV_H)"),)
-OPENSSL_VERSION=$(shell grep 'OPENSSL_VERSION_TEXT\s* "OpenSSL ' "$(OPENSSLV_H)" | $(OPENSSL_NUMBER_SEL))
+  OPENSSL_VERSION=$(shell grep 'OPENSSL_VERSION_TEXT\s* "OpenSSL ' "$(OPENSSLV_H)" | $(OPENSSL_NUMBER_SEL))
 else
-OPENSSL_VERSION=$(shell fgrep OPENSSL_VERSION_M "$(OPENSSLV_H)" | head -n 2 | awk -v RS="" '{print $$4"."$$8 }')
+  ifeq ($(OS),MacOS)
+    OPENSSL_VERSION=$(shell fgrep OPENSSL_VERSION_M "$(OPENSSLV_H)" | head -n 2 | awk -v RS="" '{print $4"."$8 }')
+  else
+    OPENSSL_VERSION=$(shell fgrep OPENSSL_VERSION_M "$(OPENSSLV_H)" | head -n 2 | awk -v RS="" '{print $$4"."$$8 }')
+  endif
 endif
 
 ifeq ($(OPENSSL_VERSION),1)
@@ -55,9 +62,9 @@ endif
 else # $(LIB) is name of library file
 
 
-OPENSSL_VERSION=$(shell strings "$(LIB)" | grep -E 'OpenSSL [0-9]+\.[0-9]+\.' | head -n 1 | sed -r 's/.*?OpenSSL //' | awk -v FS="." '{print $$1"."$$2}')
+OPENSSL_VERSION=$(shell strings "$(LIB)" | grep -E 'OpenSSL [0-9]+\.[0-9]+\.' | head -n 1 | sed -r 's/.*OpenSSL //' | awk -v FS="." '{print $$1"."$$2}')
 ifeq ($(OPENSSL_VERSION),)
-	OPENSSL_VERSION=$(shell strings "$(LIB)" | grep -E 'libcrypto\.' | head -n 1 | sed -r 's/.*?libcrypto(.[a-z]+)?\.//')
+	OPENSSL_VERSION=$(shell strings "$(LIB)" | grep -E 'libcrypto\.' | head -n 1 | sed -r 's/.*libcrypto(.[a-z]+)?\.//')
 endif
 ifeq ($(OPENSSL_VERSION),1.0.0)
     OPENSSL_VERSION=1.0

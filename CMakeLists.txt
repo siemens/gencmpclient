@@ -24,7 +24,8 @@ if(NOT("$ENV{OPENSSL_DIR}" STREQUAL ""))
     set(OPENSSL_LIB $ENV{OPENSSL_DIR})
   endif()
   set(OpenSSL_INCLUDE_DIRS $ENV{OPENSSL_DIR}/include)
-  set(OPENSSL_LIBRARIES ${OPENSSL_LIB}/libssl.so ${OPENSSL_LIB}/libcrypto.so)
+  set(OPENSSL_LIBRARIES ${OPENSSL_LIB}/libssl${CMAKE_SHARED_LIBRARY_SUFFIX}
+                        ${OPENSSL_LIB}/libcrypto${CMAKE_SHARED_LIBRARY_SUFFIX})
   add_definitions(-isystem ${OpenSSL_INCLUDE_DIRS})
   if($ENV{OPENSSL_DIR} MATCHES "3\\.0")
     set(OPENSSL_VERSION 3.0)
@@ -44,7 +45,7 @@ if(NOT("$ENV{OPENSSL_DIR}" STREQUAL ""))
   message(STATUS "assuming OpenSSL version " ${OPENSSL_VERSION})
 else()
   find_package(OpenSSL REQUIRED)
-  message(STATUS "using OpenSSL version " ${OPENSSL_VERSION})
+  message(STATUS "using OpenSSL package, with version " ${OPENSSL_VERSION})
   add_definitions(-isystem /usr/include)
 endif()
 
@@ -121,13 +122,18 @@ if(CMAKE_BUILD_TYPE MATCHES Release OR DEFINED ENV{NDEBUG})
 else()
   message(STATUS "build mode: Debug")
   add_definitions(-g -O0)
-  set(DEBUG_FLAGS -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all)
+
+  set(DEBUG_FLAGS "-fsanitize=address,undefined -fno-sanitize-recover=all") # must use quotes on MacOSX
   add_definitions(${DEBUG_FLAGS})
   link_libraries(${DEBUG_FLAGS})
-  set(COVERAGE_FLAGS --coverage -fprofile-arcs)
-  add_definitions(${COVERAGE_FLAGS})
-  link_libraries(${COVERAGE_FLAGS})
-  target_link_libraries(${LIBGENCMP_NAME} ${COVERAGE_FLAGS})
+  #set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=address,undefined -fno-sanitize-recover=all") # workarund for link_libraries() ignored on MacOSX
+
+  if(NOT APPLE)
+    set(COVERAGE_FLAGS --coverage -fprofile-arcs)
+    add_definitions(${COVERAGE_FLAGS})
+    link_libraries(${COVERAGE_FLAGS})
+    target_link_libraries(${LIBGENCMP_NAME} ${COVERAGE_FLAGS})
+  endif()
 endif()
 
 add_definitions(-DDEBUG_UNUSED)
@@ -137,6 +143,11 @@ add_definitions(-Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes
 
 # set_property(TARGET ${LIBGENCMP_NAME} PROPERTY C_STANDARD 90)
 # set_property(TARGET cmpClient PROPERTY C_STANDARD 90)
+
+target_link_libraries(${LIBGENCMP_NAME} ${OPENSSL_LIBRARIES} secutils) # needed for clang/MacOSX
+if(DEFINED USE_LIBCMP)
+  target_link_libraries(${LIBGENCMP_NAME} cmp) # needed for clang/MacOSX
+endif()
 
 set_target_properties(${LIBGENCMP_NAME} PROPERTIES
   VERSION ${GENCMPCLIENT_VERSION} SOVERSION ${GENCMPCLIENT_VERSION_MAJOR}
@@ -283,6 +294,7 @@ set(CPACK_SOURCE_IGNORE_FILES
   \\.deb$
   \\.gz$
   \\.so
+  \\.dylib$
   /attic/
   /tmp/
   /Makefile$

@@ -31,9 +31,16 @@ ifeq ($(OS),Windows_NT)
     LIB=bin
 else
     EXE=
-    DLL=.so
     OBJ=.o
     LIB=lib
+    ifeq ($(shell uname -s),Darwin)
+        OS=MacOS
+        DLL=.dylib
+        SONAME=install_name
+    else # assuming Linux
+        DLL=.so
+        SONAME=soname
+    endif
 endif
 
 ifeq ($(LPATH),)
@@ -82,7 +89,7 @@ ifdef NDEBUG
 else
     DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
 endif
-override CFLAGS += $(DEBUG_FLAGS) -std=gnu90 -fstack-protector -fno-omit-frame-pointer -D_FORTIFY_SOURCE=2
+override CFLAGS += $(DEBUG_FLAGS) -std=gnu90 -fstack-protector -fno-omit-frame-pointer
 override CFLAGS += -Werror -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter #-DPEDANTIC -pedantic -Wno-declaration-after-statement # -Werror
 ifeq ($(LPATH),)
    override CFLAGS += -I$(SECUTILS_DIR)/include
@@ -121,24 +128,31 @@ override LIBS += -lsecutils
 
 override LDFLAGS += $(DEBUG_FLAGS) # needed for -fsanitize=...
 ifeq ($(LPATH),)
-    override LDFLAGS += -L$(PREFIX)$(OUT_DIR)
+    override LDFLAGS += -L $(PREFIX)$(OUT_DIR)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
-        override LDFLAGS += -Wl,-rpath=$(OUT_DIR):$(LIBCMP_DIR):$(SECUTILS_DIR):genCMPClient
-        override LDFLAGS += -Wl,-rpath=$(OUT_DIR)/../../../..:$(OUT_DIR)/../../../../$(LIBCMP_DIR):$(OUT_DIR)/../../../../$(SECUTILS_DIR) # for CLI-based tests
+        override LDFLAGS += -Wl,-rpath $(OUT_DIR) -Wl,-rpath $(LIBCMP_DIR) -Wl,-rpath $(SECUTILS_DIR)
+        # override LDFLAGS += -Wl,-rpath $(OUT_DIR)/../../../.. -Wl,-rpath $(OUT_DIR)/../../../../$(LIBCMP_DIR) -Wl,-rpath $(OUT_DIR)/../../../../$(SECUTILS_DIR) # for CLI-based tests
     endif
-    override LDFLAGS += -L$(LIBCMP_DIR) -L$(SECUTILS_DIR)
+    override LDFLAGS += -L $(LIBCMP_DIR) -L $(SECUTILS_DIR)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
-        override LDFLAGS += -Wl,-rpath=$(LIBCMP_DIR_) -Wl,-rpath=$(SECUTILS_DIR_)
+        override LDFLAGS += -Wl,-rpath $(LIBCMP_DIR_) -Wl,-rpath $(SECUTILS_DIR_)
     endif
-    override LDFLAGS += -L$(OPENSSL_LIB) -L$(OPENSSL)
+    override LDFLAGS += -L $(OPENSSL_LIB) -L $(OPENSSL)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
-        override LDFLAGS += -Wl,-rpath=$(OPENSSL_RPATH_LIB) -Wl,-rpath=$(OPENSSL_RPATH)
+        override LDFLAGS += -Wl,-rpath $(OPENSSL_RPATH_LIB) -Wl,-rpath $(OPENSSL_RPATH)
     endif
 else
-    override LDFLAGS += -L$(LPATH)
+    override LDFLAGS += -L $(LPATH)
 endif
 
-LIB_NAME ?= libgencmp$(DLL)
+OUTLIB_ ?= libgencmp
+OUTLIB=$(OUTLIB_)$(DLL)
+ifeq ($(OS),MacOS)
+    OUTLIBV=$(OUTLIB_).$(VERSION)$(DLL)
+else
+    OUTLIBV=$(OUTLIB).$(VERSION)
+    override CFLAGS += -D_FORTIFY_SOURCE=2
+endif
 
 OBJS = src/genericCMPClient$(OBJ) src/cmpClient$(OBJ)
 
@@ -157,7 +171,7 @@ endif
 ########## rules and targets
 
 .PHONY: build
-build:  $(OUT_DIR)/$(LIB_NAME) $(BINARIES)
+build:  $(OUT_DIR)/$(OUTLIB) $(BINARIES)
 ifeq ($(OS),Windows_NT)
 ifeq ($(LPATH),)
 	@echo "Copying OpenSSL DLLs to base directory for convenient use with Windows"
@@ -178,13 +192,13 @@ $(OBJS): %$(OBJ): %.c # | $(SECUTILS_LIB) # $(PREFIX)$(OUT_DIR)/libcmp$(DLL)
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"
 
-$(OUT_DIR)/$(LIB_NAME).$(VERSION): src/genericCMPClient$(OBJ)
-	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-soname,$(LIB_NAME).$(VERSION)
+$(OUT_DIR)/$(OUTLIBV): src/genericCMPClient$(OBJ)
+	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-$(SONAME),$(OUTLIBV)
 
-$(OUT_DIR)/$(LIB_NAME): $(OUT_DIR)/$(LIB_NAME).$(VERSION)
-	ln -sfr $(OUT_DIR)/$(LIB_NAME){.$(VERSION),}
+$(OUT_DIR)/$(OUTLIB): $(OUT_DIR)/$(OUTLIBV)
+	ln -sf $(OUTLIBV) $(OUT_DIR)/$(OUTLIB)
 
-$(CMPCLIENT): src/cmpClient$(OBJ) $(OUT_DIR)/$(LIB_NAME)
+$(CMPCLIENT): src/cmpClient$(OBJ) $(OUT_DIR)/$(OUTLIB)
 	$(CC) $(LDFLAGS) $< $(LIBS) -lgencmp -o $@
 
 .PHONY: all archive
@@ -198,8 +212,9 @@ endif
 
 .PHONY: clean
 clean:
-	rm -f $(BINARIES) $(DEPS) $(OBJS) $(OUT_DIR)/$(LIB_NAME) $(OUT_DIR)/$(LIB_NAME).*
-#	$(OUT_DIR)/$(LIB_NAME).$(VERSION)
+	rm -fr $(OUT_DIR)/$(OUTLIB_)*$(DLL)*
+	rm -f $(BINARIES) $(DEPS) $(OBJS)
+#	$(OUT_DIR)/$(OUTLIB).$(VERSION)
 ifeq ($(OS),Windows_NT)
 ifeq ($(LPATH),)
 	rm -f $(PREFIX_DEST)$(OPENSSL_DLLS)

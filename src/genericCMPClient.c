@@ -197,7 +197,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
         }
     }
     if (rcp != NULL) { /* else CMPforOpenSSL uses cert issuer */
-        bool rv = OSSL_CMP_CTX_set1_recipient(ctx, rcp);
+        bool rv = OSSL_CMP_CTX_set1_recipient(ctx, rcp) != 0;
 
         X509_NAME_free(rcp);
         if (!rv)
@@ -238,7 +238,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
         goto err;
     }
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IMPLICIT_CONFIRM,
-                                 implicit_confirm)) {
+                                 implicit_confirm ? 1 : 0)) {
         goto err;
     }
     if (new_cert_truststore != NULL) {
@@ -1394,7 +1394,7 @@ STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout,
     return FILES_load_crls_multi(files, FORMAT_ASN1, timeout, desc);
 }
 
-inline
+/* do not use: inline */
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls)
 {
     sk_X509_CRL_pop_free(crls, X509_CRL_free);

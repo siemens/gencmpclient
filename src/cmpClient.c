@@ -1033,22 +1033,22 @@ static int setup_ctx(CMP_CTX *ctx)
     }
     /* set option flags directly via CMP API */
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
-                                 opt_unprotected_errors)
+                                 opt_unprotected_errors ? 1 : 0)
 #if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NO_CACHE_EXTRACERTS,
-                                    opt_no_cache_extracerts)
+                                    opt_no_cache_extracerts ? 1 : 0)
 #endif
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE,
-                                    opt_ignore_keyusage)
+                                    opt_ignore_keyusage ? 1 : 0)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITY_DAYS,
                                     (int)opt_days)
         || (opt_popo >= OSSL_CRMF_POPO_NONE
             && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPO_METHOD,
                                         (int)opt_popo))
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLE_CONFIRM,
-                                    opt_disable_confirm)
+                                    opt_disable_confirm ? 1 : 0)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND,
-                                    opt_unprotected_requests)) {
+                                    opt_unprotected_requests ? 1 : 0)) {
         LOG_err("Failed to set option flags of CMP context");
         goto err;
     }
@@ -1083,7 +1083,7 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
     const bool implicit_confirm = opt_implicit_confirm;
     CMP_err err = -02;
 
-    use_case = use_case; /* prevent warning on unused parameter */
+    use_case = use_case + 0; /* prevent warning on unused parameter */
     const char *new_cert_trusted =
         opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
     if (new_cert_trusted != NULL) {
@@ -1883,7 +1883,7 @@ static int save_cert_or_delete(X509 *cert, const char *file, const char *desc)
         return 1;
     if (cert == NULL)
         return delete_file(file, desc);
-    return CERT_save(cert, file, desc);
+    return CERT_save(cert, file, desc) ? 1 : 0;
 }
 #endif
 

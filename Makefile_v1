@@ -92,11 +92,11 @@ endif
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 # $(OPENSSL_DIR) is relative path, assumed relative to ./
     OPENSSL_REVERSE_DIR=../$(OPENSSL_DIR)
-    OPENSSL_LIB ?= ../$(OPENSSL_DIR)
+    OPENSSL_LIB ?= $(OPENSSL_DIR)
 else
 # $(OPENSSL_DIR) is absolute path
     OPENSSL_REVERSE_DIR=$(OPENSSL_DIR)
-    OPENSSL_LIB ?= $(OPENSSL_DIR)/$(LIB)
+    OPENSSL_LIB ?= $(OPENSSL_DIR)
 endif
 
 ifeq ($(shell echo $(DESTDIR) | grep "^/"),)

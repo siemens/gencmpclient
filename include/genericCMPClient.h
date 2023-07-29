@@ -20,7 +20,7 @@
 # include <openssl/opensslv.h>
 
 # if OPENSSL_VERSION_NUMBER < 0x30000000L || defined USE_LIBCMP
-#  include <openssl/openssl_backport.h>
+#  include <openssl/openssl_backport.h> /* if not found, maybe genericCMPClient_config.h is not up to date w.r.t. USE_LIBCMP */
 # endif
 /* for low-level CMP API, in particular, type OSSL_CMP_CTX */
 # include <openssl/cmp.h>

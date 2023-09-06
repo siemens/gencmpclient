@@ -270,12 +270,16 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 # set(CPACK_DEBIAN_PACKAGE_DEBUG ON)
 # see above assignments
 # to CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS or CMAKE_INSTALL_RPATH
+
+if(FALSE) # for now, disable dependencies to libs of subprojectx because their .so files for some reason already get included in the package:
 if(DEFINED USE_LIBCMP)
   set(CPACK_DEBIAN_PACKAGE_DEPENDS
     "libcmp (>= ${CPACK_PACKAGE_VERSION}), libsecutils (>= ${CPACK_PACKAGE_VERSION})")
 else()
   set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsecutils (>= ${CPACK_PACKAGE_VERSION})")
 endif()
+endif()
+
 set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "libgencmp (>= ${CPACK_PACKAGE_VERSION})")
 set(CPACK_DEBIAN_DEV_PACKAGE_SUGGESTS "libcmp-dev (>= ${CPACK_PACKAGE_VERSION}), libsecutils-dev (>= ${CPACK_PACKAGE_VERSION}), libssl-dev")
 # see also https://gitlab.kitware.com/cmake/cmake/-/issues/21834

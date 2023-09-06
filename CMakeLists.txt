@@ -149,10 +149,13 @@ if(DEFINED USE_LIBCMP)
   target_link_libraries(${LIBGENCMP_NAME} cmp) # needed for clang/MacOSX
 endif()
 
+set(INC_PUBLIC_HDRS
+  ${INC_DIR}/genericCMPClient.h
+  ${INC_DIR}/genericCMPClient_config.h
+)
 set_target_properties(${LIBGENCMP_NAME} PROPERTIES
   VERSION ${GENCMPCLIENT_VERSION} SOVERSION ${GENCMPCLIENT_VERSION_MAJOR}
-  PUBLIC_HEADER "${INC_DIR}/genericCMPClient.h"
-  PUBLIC_HEADER "${INC_DIR}/genericCMPClient_config.h"
+  PUBLIC_HEADER "${INC_PUBLIC_HDRS}"
 )
 
 find_package(Git)

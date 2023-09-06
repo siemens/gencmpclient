@@ -245,8 +245,10 @@ and the following dependencies need to be installed:
 * `debhelper` (needed for `dh`)
 * `devscripts` (needed for `debuild`)
 * `libssl-dev`
+<!--
 * `libsecutils-dev`
 * `libcmp-dev` (if used)
+--->
 
 The Debian packages may be installed for instance as follows:
 ```

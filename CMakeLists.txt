@@ -253,7 +253,7 @@ With extended support for certficate status checking using CRLs and/or OCSP")
 set(CPACK_COMPONENT_DEV_DESCRIPTION "libgencmp C headers and documentation
 Development support for libgencmp and cmpclient")
 set(CPACK_COMPONENT_BIN_DESCRIPTION "CMP client command-line interface
- A CLI application for exploring the use of the generic CMP client library")
+A CLI application for exploring the use of the generic CMP client library")
 
 set(CPACK_GENERATOR "DEB")
 set(CPACK_DEB_COMPONENT_INSTALL ON)

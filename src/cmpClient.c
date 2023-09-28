@@ -389,7 +389,7 @@ opt_t cmp_opts[] = {
     { "digest", OPT_TXT, {.txt = NULL}, { &opt_digest },
       "Digest alg to use in msg protection and POPO signatures. Default \"sha256\""},
     { "mac", OPT_TXT, {.txt = NULL}, { &opt_mac},
-      "MAC algorithm to use in PBM-based message protection. Default \"hmac-sha1\""},
+      "MAC algorithm to use in PBM-based message protection. Default \"hmac-sha1\". Possible algorithms are defined in https://raw.githubusercontent.com/openssl/openssl/master/include/openssl/obj_mac.h ."},
     { "extracerts", OPT_TXT, {.txt = NULL}, { &opt_extracerts },
       "File(s) with certificates to append in extraCerts field of outgoing messages."},
     OPT_MORE("This can be used as the default CMP signer cert chain to include"),

@@ -32,6 +32,7 @@ EJBCA_HOST =
 EJBCA_TLS_HOST =
 EJBCA_HTTP_PORT =
 EJBCA_HTTPS_PORT =
+EJBCA_PATH =
 EJBCA_PATH_RA =
 EJBCA_PATH_IMPRINT =
 EJBCA_PATH_BOOTSTRAP =
@@ -58,7 +59,7 @@ EJBCA_CMP_SUBJECT_IMPRINT =
 
 [EJBCA]
 server = ${ENV::EJBCA_HOST}:${ENV::EJBCA_HTTPS_PORT}
-path = ejbca/publicweb/cmp/${ENV::EJBCA_PATH_RA}
+path = ${ENV::EJBCA_PATH}/${ENV::EJBCA_PATH_RA}
 no_proxy = 127.0.0.1,localhost,${ENV::EJBCA_HOST}
 secret = pass:SecretCmp
 cert = ${ENV::EJBCA_CMP_CLIENT}
@@ -140,7 +141,7 @@ tls_used = 0
 #tls_key = $key
 
 [imprint]
-path = ejbca/publicweb/cmp/${ENV::EJBCA_PATH_IMPRINT}
+path = ${ENV::EJBCA_PATH}/${ENV::EJBCA_PATH_IMPRINT}
 subject = ${ENV::EJBCA_CMP_SUBJECT_IMPRINT}
 cmd = ir
 cert =
@@ -154,7 +155,7 @@ certout = creds/manufacturer.crt
 cacerts_dir = creds/trusted
 
 [bootstrap]
-path = ejbca/publicweb/cmp/${ENV::EJBCA_PATH_BOOTSTRAP}
+path = ${ENV::EJBCA_PATH}/${ENV::EJBCA_PATH_BOOTSTRAP}
 cmd = cr
 # cert = $imprint::certout
 # key = $imprint::newkey
@@ -168,7 +169,7 @@ san_nodefault = 1
 certout = creds/operational.crt
 
 [update]
-path = ejbca/publicweb/cmp/${ENV::EJBCA_PATH_UPDATE}
+path = ${ENV::EJBCA_PATH}/${ENV::EJBCA_PATH_UPDATE}
 cmd = kur
 secret =
 cert = $bootstrap::certout
@@ -185,7 +186,7 @@ implicit_confirm = 1
 certout = $bootstrap::certout
 
 [revoke]
-path = ejbca/publicweb/cmp/${ENV::EJBCA_PATH_REVOKE}
+path = ${ENV::EJBCA_PATH}/${ENV::EJBCA_PATH_REVOKE}
 cmd = rr
 secret =
 cert = $bootstrap::certout
@@ -196,7 +197,7 @@ revreason = 5 #CRL_REASON_CESSATION_OF_OPERATION
 subject =
 
 [pkcs10]
-path = ejbca/publicweb/cmp/${ENV::EJBCA_PATH_P10CR}
+path = ${ENV::EJBCA_PATH}/${ENV::EJBCA_PATH_P10CR}
 cmd = p10cr
 # Insta will respond with CMP body popdecc POPODecKeyChallContent, --pop Challenge
 secret =

@@ -1391,7 +1391,7 @@ static bool validate_cert(void)
         goto err;
     if (opt_untrusted != NULL &&
         (untrusted = CERTS_load(opt_untrusted, "untrusted certs",
-                                1 /* CA */, vpm)) == NULL)
+                                -1 /* allow also non-CA certs */, vpm)) == NULL)
         goto err;
 
     if (!STORE_set_parameters(store, vpm,

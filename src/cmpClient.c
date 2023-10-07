@@ -390,7 +390,7 @@ opt_t cmp_opts[] = {
       "Digest alg to use in msg protection and POPO signatures. Default \"sha256\""},
     OPT_MORE("See the man page or online doc for hints on available algorithms"),
     { "mac", OPT_TXT, {.txt = NULL}, { &opt_mac},
-      "MAC algorithm to use in PBM-based message protection. Default \"hmac-sha1\"."},
+      "MAC algorithm to use in PBM-based message protection. Default \"hmac-sha1\""},
     OPT_MORE("See the man page or online doc for hints on available algorithms"),
     { "extracerts", OPT_TXT, {.txt = NULL}, { &opt_extracerts },
       "File(s) with certificates to append in extraCerts field of outgoing messages."},

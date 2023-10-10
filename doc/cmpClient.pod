@@ -930,6 +930,8 @@ Specifies name of supported digest to use as the MAC algorithm in MSG_MAC_ALG.
 To get the names of supported MAC algorithms use B<openssl list -mac-algorithms>
 and possibly combine such a name with the name of a supported digest algorithm,
 e.g., hmacWithSHA256.
+L<https://raw.githubusercontent.com/openssl/openssl/master/include/openssl/obj_mac.h>
+contains the complete set of supported combinations of MAC and digest algorithm names.
 Defaults to C<hmac-sha1> as per RFC 4210.
 
 =item B<-extracerts> I<sources>

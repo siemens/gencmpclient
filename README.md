@@ -208,6 +208,11 @@ This also builds all required dependencies
 and an application (`./cmpClient`) that is intended
 for demonstration, test, and exploration purposes.
 
+When getting the compiler error: `'openssl/openssl_backport.h' file not found`
+likely `include/genericCMPClient_config.h` is outdated
+and contains `#define USE_LIBCMP` although the environment variable `USE_LIBCMP`
+is not set. In such situations, `make -f Makfile_v1 clean` helps to reset it to a consistent state.
+
 
 ### Installing and uninstalling
 

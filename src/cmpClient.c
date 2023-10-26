@@ -1311,6 +1311,10 @@ static size_t get_cert_filename(const X509 *cert, const char *prefix,
     if (ret < 0)
         return 0;
     size_t len = (size_t)ret;
+    if (buf_len > len + 1 && buf[len] != '/' && buf[len] != '\\') {
+        buf[len] = '/'; /* add missing path name separator */
+        buf[++len] = '\0';
+    }
 
     char subject[256], *p;
     if (X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName,

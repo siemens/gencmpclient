@@ -1635,13 +1635,13 @@ static CMP_err check_options(enum use_case use_case)
 
     if (opt_cacerts_dir_format != NULL
             && FILES_get_format(opt_cacerts_dir_format) == FORMAT_UNDEF) {
-        LOG_err("-cacerts_dir_format not accepted");
+        LOG_err("-cacerts_dir_format argument not accepted");
         return -9;
     }
 
     if (opt_extracerts_dir_format != NULL
             && FILES_get_format(opt_extracerts_dir_format) == FORMAT_UNDEF) {
-        LOG_err("-extracerts_format not accepted");
+        LOG_err("-extracerts_format argument not accepted");
         return -18;
     }
 

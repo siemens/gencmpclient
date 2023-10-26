@@ -334,7 +334,7 @@ clean_this: clean_test
 	$(MAKE) -f Makefile_src -s clean OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)"
 	rm -f *.1{,.gz}
 
-clean: clean_this
+clean: clean_this clean_config
 ifeq ($(LPATH),)
     ifneq ("$(wildcard $(SECUTILS_DIR))","")
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s clean OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
@@ -349,7 +349,7 @@ endif
 clean_config:
 	rm -f $(GENCMPCLIENT_CONFIG)
 
-clean_all: clean clean_config clean_deb
+clean_all: clean clean_deb
 	rm -fr Makefile CMakeCache.txt *.cmake CMakeFiles/
 	rm -f install_manifest*.txt compile_commands.json
 	rm -f doc/$(OUT_DOC) doc/cmpClient.md

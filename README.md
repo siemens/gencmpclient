@@ -49,7 +49,7 @@ The following network and development tools are needed or recommended.
 * CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested with versions 3.18.4, 3.26.3, 3.27.0)
 * GNU make (tested with versions 3.81, 4.1, 4.2.1, 4.3)
 * GNU C compiler (gcc, tested with versions 5.4.0, 7.3.0, 8.3.0, 10.0.1, 10.2.1)
-  or clang (tested with version 14.0.3)
+  or clang (tested with version 14.0.3 and 17.0.3)
 * wget (for running the demo, tested with versions 1.17, 1.18, 1.20, 1.21)
 * Perl (for running the tests, tested with versions 5.30.3 and 5.32.1)
 

@@ -36,10 +36,11 @@ else
     ifeq ($(shell uname -s),Darwin)
         OS=MacOS
         DLL=.dylib
-        SONAME=install_name
+        # see https://www.fullstaq.com/knowledge-hub/blogs/an-alternative-to-macos-dyld-library-path
+        SONAME=install_name,@rpath/
     else # assuming Linux
         DLL=.so
-        SONAME=soname
+        SONAME=soname,
     endif
 endif
 
@@ -130,16 +131,22 @@ override LDFLAGS += $(DEBUG_FLAGS) # needed for -fsanitize=...
 ifeq ($(LPATH),)
     override LDFLAGS += -L $(PREFIX)$(OUT_DIR)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
-        override LDFLAGS += -Wl,-rpath $(OUT_DIR) -Wl,-rpath $(LIBCMP_DIR) -Wl,-rpath $(SECUTILS_DIR)
-        # override LDFLAGS += -Wl,-rpath $(OUT_DIR)/../../../.. -Wl,-rpath $(OUT_DIR)/../../../../$(LIBCMP_DIR) -Wl,-rpath $(OUT_DIR)/../../../../$(SECUTILS_DIR) # for CLI-based tests
+        # ifeq ($(PREFIX),)
+        # TODO maybe better use absolute path here, as done by CMake
+        override LDFLAGS += -Wl,-rpath,$(OUT_DIR) -Wl,-rpath,$(LIBCMP_DIR) -Wl,-rpath,$(SECUTILS_DIR)
+        # endif
+        override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../.. -Wl,-rpath,$(OUT_DIR)/../../../../$(LIBCMP_DIR) -Wl,-rpath,$(OUT_DIR)/../../../../$(SECUTILS_DIR) # for CLI-based tests
     endif
     override LDFLAGS += -L $(LIBCMP_DIR) -L $(SECUTILS_DIR)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
-        override LDFLAGS += -Wl,-rpath $(LIBCMP_DIR_) -Wl,-rpath $(SECUTILS_DIR_)
+        override LDFLAGS += -Wl,-rpath,$(LIBCMP_DIR_) -Wl,-rpath,$(SECUTILS_DIR_)
     endif
     override LDFLAGS += -L $(OPENSSL_LIB) -L $(OPENSSL)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
-        override LDFLAGS += -Wl,-rpath $(OPENSSL_RPATH_LIB) -Wl,-rpath $(OPENSSL_RPATH)
+        override LDFLAGS += -Wl,-rpath,$(OPENSSL_RPATH_LIB)
+	ifneq ($(OPENSSL_RPATH_LIB),$(OPENSSL_RPATH))
+        override LDFLAGS += -Wl,-rpath,$(OPENSSL_RPATH)
+        endif
     endif
 else
     override LDFLAGS += -L $(LPATH)
@@ -193,7 +200,7 @@ $(OBJS): %$(OBJ): %.c # | $(SECUTILS_LIB) # $(PREFIX)$(OUT_DIR)/libcmp$(DLL)
 #	$(CC) $(CFLAGS) -o "$@" "$<"
 
 $(OUT_DIR)/$(OUTLIBV): src/genericCMPClient$(OBJ)
-	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-$(SONAME),$(OUTLIBV)
+	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-$(SONAME)$(OUTLIBV)
 
 $(OUT_DIR)/$(OUTLIB): $(OUT_DIR)/$(OUTLIBV)
 	ln -sf $(OUTLIBV) $(OUT_DIR)/$(OUTLIB)

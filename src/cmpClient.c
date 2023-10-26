@@ -1892,7 +1892,7 @@ static int save_cert_or_delete(X509 *cert, const char *file, const char *desc)
 
 static
 CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
-                   const char *file, const char *dir, const char *format)
+                   const char *dir, const char *file, const char *format)
 {
     char desc_certs[80];
 
@@ -1909,11 +1909,12 @@ CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
     }
 
     if (dir != NULL) {
-        if (sk_X509_num(certs) <= 0)
+        int i, n = sk_X509_num(certs);
+
+        if (n <= 0)
             LOG(FL_INFO, "No %s certificate in %s to store in %s",
                 desc, field, dir);
-        int i;
-        for (i = 0; i < sk_X509_num(certs); i++) {
+        for (i = 0; i < n; i++) {
             X509 *cert = sk_X509_value(certs, i);
             bool save_self_issued = strcmp(field, "caPubs") == 0;
 
@@ -1924,8 +1925,7 @@ CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
             } else {
                 char path[FILENAME_MAX];
 
-                if (get_cert_filename(cert, dir, format, path,
-                                      sizeof(path)) == 0
+                if (get_cert_filename(cert, dir, format, path, sizeof(path)) == 0
                     || !FILES_store_cert(cert, path, FILES_get_format(format),
                                          desc_certs)) {
                     LOG(FL_ERR, "Failed to store %s cert #%d from %s in %s",
@@ -1944,8 +1944,8 @@ static CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds,
                                 enum use_case use_case)
 {
     CMP_err err = save_certs(OSSL_CMP_CTX_get1_extraCertsIn(ctx),
-                             "extraCerts", "extra", opt_extracertsout,
-                             opt_extracerts_dir, opt_extracerts_dir_format);
+                             "extraCerts", "extra", opt_extracerts_dir,
+                             opt_extracertsout, opt_extracerts_dir_format);
 
     if (err != CMP_OK)
         return err;
@@ -1954,7 +1954,7 @@ static CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds,
         return CMP_OK;
 
     err = save_certs(OSSL_CMP_CTX_get1_caPubs(ctx), "caPubs", "CA",
-                     opt_cacertsout, opt_cacerts_dir, opt_cacerts_dir_format);
+                     opt_cacerts_dir, opt_cacertsout, opt_cacerts_dir_format);
     if (err != CMP_OK)
         return err;
 

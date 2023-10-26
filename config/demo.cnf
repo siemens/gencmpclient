@@ -25,7 +25,7 @@ ignore_keyusage = 1
 unprotected_errors = 1
 cacertsout = creds/cacerts.pem
 extracertsout = creds/extracerts.pem
-extracerts_dir = creds/
+extracerts_dir = creds
 
 # workarounds in case the environment variables referenced via ${ENV::...} are not set
 EJBCA_HOST =

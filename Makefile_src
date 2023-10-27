@@ -115,7 +115,7 @@ override CFLAGS += $(OSSL_VERSION_QUIRKS)
 ifneq ($(LIBCMP_INC),)
     override LIBS += -lcmp
 endif
-# placing libcmp before libcrypto such that its contents are preferred
+# important: place libcmp before libcrypto such that its contents are preferred
 override LIBS += -lcrypto
 ifdef SECUTILS_USE_UTA
     override LIBS += -luta

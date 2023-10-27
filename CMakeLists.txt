@@ -104,6 +104,7 @@ if(DEFINED USE_LIBCMP)
     cmp
   )
 endif()
+# important: place libcmp before libcrypto such that its contents are preferred
 target_link_libraries(cmpClient
   ${OPENSSL_LIBRARIES}
 )
@@ -144,10 +145,11 @@ add_definitions(-Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes
 # set_property(TARGET ${LIBGENCMP_NAME} PROPERTY C_STANDARD 90)
 # set_property(TARGET cmpClient PROPERTY C_STANDARD 90)
 
-target_link_libraries(${LIBGENCMP_NAME} ${OPENSSL_LIBRARIES} secutils) # needed for clang/MacOSX
 if(DEFINED USE_LIBCMP)
   target_link_libraries(${LIBGENCMP_NAME} cmp) # needed for clang/MacOSX
 endif()
+# important: place libcmp before libcrypto such that its contents are preferred
+target_link_libraries(${LIBGENCMP_NAME} ${OPENSSL_LIBRARIES} secutils) # needed for clang/MacOSX
 
 set(INC_PUBLIC_HDRS
   ${INC_DIR}/genericCMPClient.h

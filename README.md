@@ -118,7 +118,7 @@ make update
 ```
 
 
-## Configuring and building
+## Configuring
 
 The generic CMP client (as well as its underlying libraries)
 assumes that OpenSSL is already installed,
@@ -155,14 +155,17 @@ which may be produced using `util/icvutil`.
 * Use of the UTA library can be enabled by setting `SECUTILS_USE_UTA`.
 * The TLS-related functions may be disabled by setting `SECUTILS_NO_TLS`.
 
-When using CMake, `cmake` must be (re-)run
-after setting or unsetting environment variables.
-
 Since genCMPClient version 2, it is recommended to use CMake
 to produce the `Makefile`, for instance as follows:
 ```
 cmake .
 ```
+When using CMake, `cmake` must be (re-)run
+after setting or unsetting environment variables.
+By default, CMake builds are in Release mode.
+This may also be enforced by defining the environment variable `NDEBUG`.
+For switching to Debug mode, use `cmake` with `-DCMAKE_BUILD_TYPE=Debug`.
+The chosen mode is remembered in `CMakeCache.txt`.
 
 For backward compatibility it is also possible to use instead of CMake
 pre-defined [`Makefile_v1`](Makefile_v1); to this end symlink it to `Makefile`:
@@ -171,15 +174,15 @@ ln -s Makefile_v1 Makefile
 ```
 or use for instance `make -f Makefile_v1`.
 
+By default, builds using `Makefile_v1` are in Debug mode.
+Release mode can be selected by defining the environment variable `NDEBUG`.
+
 By default `Makefile_v1` behaves as if
 ```
 OPENSSL_DIR=/usr
 ```
 was given, such that the OpenSSL headers will be searched for in `/usr/include`
 and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
-
-When using CMake, `cmake` must be (re-)run
-after setting or unsetting environment variables.
 
 When using [`Makefile_v1`](Makefile_v1), you may
 specify via the environment variable `OUT_DIR` where the produced libraries
@@ -194,14 +197,13 @@ The CC environment variable may be set as needed; it defaults to `gcc`.
 For further details on optional environment variables,
 see the [`Makefile_v1`](Makefile_v1) and [`Makefile_src`](Makefile_src).
 
+
+## Building
+
 Build the software with
 ```
 make
 ```
-By default, builds are done in Debug mode.
-For Release mode use `-DCMAKE_BUILD_TYPE=Release` or `NDEBUG=1`.
-For switching to Debug mode, use `-DCMAKE_BUILD_TYPE=Debug` and unset `NDEBUG`.
-
 The result is in, for instance, `./libgencmp.so.2.0`.
 This also builds all required dependencies
 (such as `libsecutils/libsecutils.so.2.0` and `cmpossl/libcmp.so.2.0`)

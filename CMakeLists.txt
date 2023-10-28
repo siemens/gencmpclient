@@ -121,11 +121,13 @@ if(DEFINED ENV{SECUTILS_NO_TLS})
   add_definitions(-DSECUTILS_NO_TLS=1)
 endif()
 
-if(CMAKE_BUILD_TYPE MATCHES Release OR DEFINED ENV{NDEBUG})
-  message(STATUS "build mode: Release")
+if(DEFINED ENV{NDEBUG} OR NOT CMAKE_BUILD_TYPE MATCHES Debug)
+  set(CMAKE_BUILD_TYPE Release
+      CACHE STRING "Choose the type of build." FORCE)
   add_definitions(-DNDEBUG=1 -O2)
 else()
-  message(STATUS "build mode: Debug")
+  set(CMAKE_BUILD_TYPE Debug
+      CACHE STRING "Choose the type of build." FORCE)
   add_definitions(-g -O0)
 
   set(DEBUG_FLAGS "-fsanitize=address,undefined -fno-sanitize-recover=all") # must use quotes on MacOSX
@@ -140,6 +142,7 @@ else()
     target_link_libraries(${LIBGENCMP_NAME} ${COVERAGE_FLAGS})
   endif()
 endif()
+message(STATUS "build mode: ${CMAKE_BUILD_TYPE}")
 
 add_definitions(-DDEBUG_UNUSED)
 add_definitions(-DPEDANTIC -pedantic)

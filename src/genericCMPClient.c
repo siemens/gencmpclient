@@ -422,6 +422,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     }
 #endif
     char *host = NULL, *server_port = NULL, *parsed_path = NULL;
+    const char *proxy_host = NULL;
     if (server == NULL)
         goto set_path;
 
@@ -446,7 +447,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         err = CMPOSSL_error();
         goto err;
     }
-    const char *proxy_host =
+    proxy_host =
         OSSL_HTTP_adapt_proxy(proxy, no_proxy, host, tls != NULL);
 #ifndef SECUTILS_NO_TLS
     if (tls != NULL) {

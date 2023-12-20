@@ -1300,45 +1300,47 @@ static int setup_transfer(CMP_CTX *ctx)
 }
 
 /* file (path) name using prefix, subject DN, "_", hash, ".", and suffix */
-static size_t get_cert_filename(const X509 *cert, const char *prefix,
-                                const char *suffix,
-                                char *buf, size_t buf_len)
+static int get_cert_filename(const X509 *cert, const char *prefix,
+                             const char *suffix,
+                             char *buf, size_t buf_len)
 {
     if (buf == NULL || buf_len == 0)
         return 0;
 
-    size_t ret, len = UTIL_safe_string_copy(prefix, buf, buf_len, NULL);
-    if (len == 0)
+    int ret, len;
+    if ((len = UTIL_safe_string_copy(prefix, buf, buf_len, NULL)) <= 0)
         return 0;
 
     char subject[256], *p;
     if (X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName,
                                   subject, sizeof(subject)) <= 0)
         return 0;
-    ret = UTIL_safe_string_copy(subject, buf + len, buf_len - len, NULL);
-    if (ret == 0)
+    ret =
+        UTIL_safe_string_copy(subject, buf + len, buf_len - (size_t)len, NULL);
+    if (ret <= 0)
         return 0;
     for (p = buf + len; *p != '\0'; p++)
         if (*p == ' ')
             *p = '_';
     len += ret;
-    if ((ret = UTIL_safe_string_copy("_", buf + len, buf_len - len, NULL)) == 0)
+    if ((ret = UTIL_safe_string_copy("_", buf + len, buf_len - (size_t)len, NULL)) <= 0)
         return 0;
     len += ret;
 
     unsigned char sha1[EVP_MAX_MD_SIZE];
     unsigned int size = 0;
     X509_digest(cert, EVP_sha1(), sha1, &size);
-    ret = UTIL_bintohex(sha1, size, false, '-', 4,
-                        buf + len, buf_len - len, NULL);
+    ret = (int)UTIL_bintohex(sha1, size, false, '-', 4,
+                             buf + len, buf_len - (size_t)len, NULL);
     if (ret == 0)
         return 0;
     len += ret;
-    if ((ret = UTIL_safe_string_copy(".", buf + len, buf_len - len, NULL)) == 0)
+    ret = UTIL_safe_string_copy(".", buf + len, buf_len - (size_t)len, NULL);
+    if (ret <= 0)
         return 0;
     len += ret;
 
-    ret = UTIL_safe_string_copy(suffix, buf + len, buf_len - len, NULL);
+    ret = UTIL_safe_string_copy(suffix, buf + len, buf_len - (size_t)len, NULL);
     if (ret == 0)
         return 0;
     for (p = buf + len; *p != '\0'; p++)

@@ -381,22 +381,30 @@ ifneq ($(INSTA),)
     CA_SECTION=Insta
     OCSP_CHECK= #$(OPENSSL) ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
     override EXTRA_OPTS += -path pkix/ -newkeytype rsa:1024
-else
+endif
+ifneq ($(CLOUDCA),)
+    CA_SECTION=CloudCA
+    OCSP_CHECK=
+    override EXTRA_OPTS += -path /.well-known/cmp -subject /CN=CloudCA-Integration-Test-User
+endif
+ifeq ($(INSTA)$(CLOUDCA),)
     CA_SECTION=EJBCA
     OCSP_CHECK=$(OPENSSL) ocsp -url $(EJBCA_OCSP_URL) \
-               -CAfile $(EJBCA_CMP_TRUSTED) -issuer $(EJBCA_CMP_ISSUER) \
-               -cert creds/operational.crt
-  ifeq ($(EJBCA_TLS_HOST),) # workaround for ephemeral TLS server certificate of ejbca-docker:
-    override EXTRA_OPTS += -tls_host `cat creds/docker/TLS_ROOTCA-docker-cn.txt`
-    BOOTSTRAP_CREDS = -cert creds/manufacturer.crt -key creds/manufacturer.pem
-  endif
+        -CAfile $(EJBCA_CMP_TRUSTED) -issuer $(EJBCA_CMP_ISSUER) \
+        -cert creds/operational.crt
+    ifeq ($(EJBCA_TLS_HOST),) # workaround for ephemeral TLS server certificate of ejbca-docker:
+        override EXTRA_OPTS += -tls_host `cat creds/docker/TLS_ROOTCA-docker-cn.txt`
+        BOOTSTRAP_CREDS = -cert creds/manufacturer.crt -key creds/manufacturer.pem
+    endif
 endif
 
-.phony: demo demo_Insta demo_EJBCA
+.phony: demo demo_Insta demo_EJBCA demo_CloudCA
 demo: demo_Insta
 demo_Insta: get_Insta_crls
 	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" INSTA="using Insta" SLEEP="sleep 1"
-# for Insta, sleep 1 helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
+	# for Insta, sleep 1 helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
+demo_CloudCA:
+	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" CLOUDCA="using CloudCA Connector"
 demo_EJBCA: start_EJBCA get_EJBCA_crls run_demo stop_EJBCA
 
 CMPCLIENT=$(SET_PROXY) $(DY)LD_LIBRARY_PATH="$(OUT_DIR):$(OPENSSL_LIB):$(SECUTILS_DIR):$(LIBCMP_DIR)" $(OUT_DIR_BIN)
@@ -404,17 +412,21 @@ GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signk
 .phony: run_demo
 run_demo: $(OUT_DIR_BIN)
 	@which $(OPENSSL) >/dev/null || (echo "cannot find $(OPENSSL), please install it"; false)
-	@/bin/echo -e "\n##### running cmpClient demo $(INSTA) #####\n"
+	@/bin/echo -e "\n##### running cmpClient demo $(INSTA)$(CLOUDCA) #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
-    ifeq ($(INSTA),)
-	$(CMPCLIENT) validate -section EJBCA -cert $(EJBCA_CMP_CLIENT) -tls_cert "" -own_trusted $(EJBCA_CMP_TRUSTED),$(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
-      ifneq ($(EJBCA_TLS_HOST),)
-	@/bin/echo -e "\nValidating own TLS client cert"
-	$(CMPCLIENT) validate -section validate -tls_cert $(EJBCA_TLS_CLIENT) -tls_trusted $(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
-      endif
+    ifeq ($(INSTA)$(CLOUDCA),)
+		$(CMPCLIENT) validate -section EJBCA -cert $(EJBCA_CMP_CLIENT) -tls_cert "" -own_trusted $(EJBCA_CMP_TRUSTED),$(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
+        ifneq ($(EJBCA_TLS_HOST),)
+			@/bin/echo -e "\nValidating own TLS client cert"
+			$(CMPCLIENT) validate -section validate -tls_cert $(EJBCA_TLS_CLIENT) -tls_trusted $(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
+        endif
     else
-	$(CMPCLIENT) validate -section Insta -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/InstaDemoCA.crt # -no_check_time
+        ifneq ($(INSTA),)
+			$(CMPCLIENT) validate -section Insta -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/InstaDemoCA.crt # -no_check_time
+        else
+			$(CMPCLIENT) validate -section CloudCA -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/CloudCA_Root.crt -untrusted creds/extracerts.pem
+        endif
     endif
 	@echo
 	$(CMPCLIENT) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS) $(BOOTSTRAP_CREDS)
@@ -437,12 +449,12 @@ run_demo: $(OUT_DIR_BIN)
 	@echo :
 	$(OCSP_CHECK)
     ifneq ($(INSTA),)
-	@echo
-	@$(SLEEP)
-	$(CMPCLIENT) genm -section $(CA_SECTION) $(EXTRA_OPTS)
-	@echo :
+		@echo
+		@$(SLEEP)
+		$(CMPCLIENT) genm -section $(CA_SECTION) $(EXTRA_OPTS)
+		@echo :
     endif
-	@echo -e "\n#### finished demo $(INSTA) ####"
+	@echo -e "\n#### finished demo $(INSTA)$(CLOUDCA) ####"
 	@echo :
 
 # tests ########################################################################
@@ -552,10 +564,10 @@ tests_LwCmp: $(OUT_DIR_BIN)
 
 test_all: demo_EJBCA test test_Mock tests_LwCmp
 ifneq ($(TEST_SIMPLE),)
-test_all: test_Simple test_profile
+	test_all: test_Simple test_profile
 endif
 ifneq ($(TEST_INSTA),)
-test_all: test_Insta
+	test_all: test_Insta
 endif
 
 test: clean build_no_tls

@@ -87,6 +87,7 @@ server = ${ENV::EJBCA_HOST}:${ENV::EJBCA_HTTP_PORT}
 tls_used = 0
 
 [no-certstatus]
+check_all = 0
 crls =
 use_cdp = 0
 cdps =
@@ -118,6 +119,7 @@ out_trusted = creds/trusted/ENROLL_Root.pem
 
 [Insta]
 server = pki.certificate.fi:8700/pkix/
+# path = pkix/ # gets overridden by Makefile_v1
 secret = pass:insta
 ref = 3078
 #would need to be updated every 3 months:
@@ -133,6 +135,7 @@ cacert = creds/trusted/InstaDemoCA.crt
 trusted = $cacert
 crls = creds/crls/InstaDemoCA.crl
 out_trusted = $cacert
+own_trusted = $cacert
 
 tls_used = 0
 #tls_trusted = $cacert
@@ -143,7 +146,7 @@ tls_used = 0
 [CloudCA]
 # Server
 server = broker.sdo-qa.siemens.cloud:443
-path = /.well-known/cmp
+# path = /.well-known/cmp # gets overridden by Makefile_v1
 tls_used = 1
 tls_trusted = creds/trusted/DigicertGlobalRootG2.crt
 
@@ -152,6 +155,7 @@ recipient = /CN=CloudPKI-Integration-Test
 cacert = creds/trusted/CloudCA_Root.crt
 trusted = $cacert
 out_trusted = $cacert
+own_trusted = $cacert
 
 # User in tenant
 ref = /CN=CloudCA-Integration-Test-User
@@ -237,11 +241,12 @@ infotype = signKeyPairTypes # default
 [validate]
 keypass = pass:12345
 tls_keypass = $keypass
-#check_all = 1
 use_aia = 0
-#use_cdp = 1
 crl_cache_dir = creds/crls/
 verbosity = 6
+[crls]
+check_all = 1
+use_cdp = 1
 
 [empty]
 #keyUsage =
@@ -252,7 +257,7 @@ verbosity = 6
 #basicConstraints = CA:FASE
 keyUsage = "critical, digitalSignature" # is ignored by EJBCA
 extendedKeyUsage = "critical, serverAuth, 1.3.6.1.5.5.7.3.2" # is ignored by EJBCA
-#subjectAltName = @alt_names
+subjectAltName = @alt_names
 
 [alt_names]
 DNS.0 = localhost

@@ -26,7 +26,7 @@ if(NOT("$ENV{OPENSSL_DIR}" STREQUAL ""))
   set(OpenSSL_INCLUDE_DIRS $ENV{OPENSSL_DIR}/include)
   set(OPENSSL_LIBRARIES ${OPENSSL_LIB}/libssl${CMAKE_SHARED_LIBRARY_SUFFIX}
                         ${OPENSSL_LIB}/libcrypto${CMAKE_SHARED_LIBRARY_SUFFIX})
-  add_definitions(-isystem ${OpenSSL_INCLUDE_DIRS})
+  include_directories(SYSTEM ${OpenSSL_INCLUDE_DIRS})
   if($ENV{OPENSSL_DIR} MATCHES "3\\.0")
     set(OPENSSL_VERSION 3.0)
   elseif($ENV{OPENSSL_DIR} MATCHES "3\\.1")
@@ -50,7 +50,7 @@ if(NOT("$ENV{OPENSSL_DIR}" STREQUAL ""))
 else()
   find_package(OpenSSL REQUIRED)
   message(STATUS "using OpenSSL package, with version " ${OPENSSL_VERSION})
-  add_definitions(-isystem /usr/include)
+  include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 endif()
 
 if(DEFINED ENV{USE_LIBCMP} OR "${OPENSSL_VERSION}" LESS "3")
@@ -73,8 +73,8 @@ if(DEFINED USE_LIBCMP)
     ${CMPOSSL_INC_DIR}/cmp
     ${CMAKE_SYSROOT}/usr/include/cmp
     # does not work for OpenSSL 3.0+:
-    # add_definitions(-isystem ${CMPOSSL_INC_DIR}/cmp)
-    # add_definitions(-isystem ${CMAKE_SYSROOT}/usr/include/cmp)
+    # include_directories(SYSTEM ${CMPOSSL_INC_DIR}/cmp)
+    # include_directories(SYSTEM ${CMAKE_SYSROOT}/usr/include/cmp)
     )
 endif()
 
@@ -118,36 +118,41 @@ if(DEFINED ENV{SECUTILS_USE_UTA})
   )
 endif()
 if(DEFINED ENV{SECUTILS_NO_TLS})
-  add_definitions(-DSECUTILS_NO_TLS=1)
+  add_compile_definitions(SECUTILS_NO_TLS=1)
 endif()
 
 if(DEFINED ENV{NDEBUG} OR NOT CMAKE_BUILD_TYPE MATCHES Debug)
   set(CMAKE_BUILD_TYPE Release
       CACHE STRING "Choose the type of build." FORCE)
-  add_definitions(-DNDEBUG=1 -O2)
+  add_compile_options(-O2)
+  add_compile_definitions(NDEBUG=1)
 else()
   set(CMAKE_BUILD_TYPE Debug
       CACHE STRING "Choose the type of build." FORCE)
-  add_definitions(-g -O0)
+  add_compile_options(-g -O0)
 
   set(DEBUG_FLAGS "-fsanitize=address,undefined -fno-sanitize-recover=all") # must use quotes on MacOSX
-  add_definitions(${DEBUG_FLAGS})
+  add_compile_options(${DEBUG_FLAGS})
   link_libraries(${DEBUG_FLAGS})
   #set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=address,undefined -fno-sanitize-recover=all") # workarund for link_libraries() ignored on MacOSX
 
   if(NOT APPLE)
     set(COVERAGE_FLAGS --coverage -fprofile-arcs)
-    add_definitions(${COVERAGE_FLAGS})
+    add_compile_options(${COVERAGE_FLAGS})
     link_libraries(${COVERAGE_FLAGS})
     target_link_libraries(${LIBGENCMP_NAME} ${COVERAGE_FLAGS})
   endif()
 endif()
 message(STATUS "build mode: ${CMAKE_BUILD_TYPE}")
 
-add_definitions(-DDEBUG_UNUSED)
-add_definitions(-DPEDANTIC -pedantic)
-add_definitions(-Wall -Wextra -Wmissing-prototypes -Wstrict-prototypes
-  -Wswitch -Wsign-compare -Wshadow -Wformat -Wtype-limits -Wundef)
+add_compile_definitions(DEBUG_UNUSED)
+add_compile_definitions(PEDANTIC)
+add_compile_options(-pedantic -Werror)
+add_compile_options(
+  -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
+  -Wsign-compare -Wformat -Wtype-limits -Wundef -Wconversion -Wunused-parameter)
+# because of libsecutils:
+add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
 
 # set_property(TARGET ${LIBGENCMP_NAME} PROPERTY C_STANDARD 90)
 # set_property(TARGET cmpClient PROPERTY C_STANDARD 90)

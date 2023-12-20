@@ -91,7 +91,13 @@ else
     DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
 endif
 override CFLAGS += $(DEBUG_FLAGS) -std=gnu90 -fstack-protector -fno-omit-frame-pointer
-override CFLAGS += -Wall -Woverflow -Wconversion -Wextra -Wunused-parameter -Werror #-DPEDANTIC -pedantic -Wno-declaration-after-statement
+override CFLAGS += \
+  -Wall -Woverflow -Wextra -Wswitch -Wmissing-prototypes -Wstrict-prototypes \
+  -Wformat -Wformat-security -Wtype-limits -Wundef -Wconversion \
+  -Wsign-compare -Wpointer-arith -Wunused-parameter -Wshadow \
+  -pedantic -DPEDANTIC -Werror
+override CFLAGS +=-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement \
+  -Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow # due to libsecutils
 ifeq ($(LPATH),)
    override CFLAGS += -I$(SECUTILS_DIR)/include
 endif

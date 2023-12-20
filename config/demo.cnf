@@ -140,6 +140,29 @@ tls_used = 0
 #tls_cert = $cert
 #tls_key = $key
 
+[CloudCA]
+# Server
+server = broker.sdo-qa.siemens.cloud:443
+path = /.well-known/cmp
+tls_used = 1
+tls_trusted = creds/trusted/DigicertGlobalRootG2.crt
+
+# Tenant on server
+recipient = /CN=CloudPKI-Integration-Test
+cacert = creds/trusted/CloudCA_Root.crt
+trusted = $cacert
+out_trusted = $cacert
+
+# User in tenant
+ref = /CN=CloudCA-Integration-Test-User
+secret = pass:SiemensIT
+subject = $ref
+
+# Local store for imprinting results
+cert = creds/manufacturer.crt
+key = creds/manufacturer.pem
+keypass = pass:12345
+
 [imprint]
 path = ${ENV::EJBCA_PATH}/${ENV::EJBCA_PATH_IMPRINT}
 subject = ${ENV::EJBCA_CMP_SUBJECT_IMPRINT}
@@ -214,9 +237,9 @@ infotype = signKeyPairTypes # default
 [validate]
 keypass = pass:12345
 tls_keypass = $keypass
-check_all = 1
+#check_all = 1
 use_aia = 0
-use_cdp = 1
+#use_cdp = 1
 crl_cache_dir = creds/crls/
 verbosity = 6
 
@@ -229,7 +252,7 @@ verbosity = 6
 #basicConstraints = CA:FASE
 keyUsage = "critical, digitalSignature" # is ignored by EJBCA
 extendedKeyUsage = "critical, serverAuth, 1.3.6.1.5.5.7.3.2" # is ignored by EJBCA
-subjectAltName = @alt_names
+#subjectAltName = @alt_names
 
 [alt_names]
 DNS.0 = localhost

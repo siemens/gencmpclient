@@ -559,10 +559,10 @@ tests_LwCmp: $(OUT_DIR_BIN)
 
 test_all: demo_EJBCA test test_Mock tests_LwCmp
 ifneq ($(TEST_SIMPLE),)
-	test_all: test_Simple test_profile
+test_all: test_Simple test_profile
 endif
 ifneq ($(TEST_INSTA),)
-	test_all: test_Insta
+test_all: test_Insta
 endif
 
 test: clean build_no_tls

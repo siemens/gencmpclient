@@ -385,7 +385,7 @@ endif
 ifneq ($(CLOUDCA),)
     CA_SECTION=CloudCA
     OCSP_CHECK=
-    override EXTRA_OPTS += -path /.well-known/cmp -subject /CN=DI-Integration-Test-User
+    override EXTRA_OPTS += -path /.well-known/cmp -subject /CN=CloudCA-Integration-Test-User
 endif
 ifeq ($(INSTA)$(CLOUDCA),)
     CA_SECTION=EJBCA

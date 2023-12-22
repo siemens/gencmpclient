@@ -154,7 +154,7 @@ trusted = $cacert
 out_trusted = $cacert
 
 # User in tenant
-ref = /CN=DI-Integration-Test-User
+ref = /CN=CloudCA-Integration-Test-User
 secret = pass:SiemensIT
 subject = $ref
 

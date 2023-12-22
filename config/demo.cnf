@@ -241,13 +241,7 @@ infotype = signKeyPairTypes # default
 [validate]
 keypass = pass:12345
 tls_keypass = $keypass
-<<<<<<< HEAD
-#check_all = 1
 use_aia = 0
-#use_cdp = 1
-=======
-use_aia = 0
->>>>>>> e6d00f34ebfdd76edff271eb890905661a204651
 crl_cache_dir = creds/crls/
 verbosity = 6
 [crls]

@@ -377,18 +377,17 @@ get_Insta_crls: | creds/crls
 
 # demo #########################################################################
 
-ifneq ($(INSTA),)
-    CA_SECTION=Insta
-    OCSP_CHECK= #$(OPENSSL) ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
+ifeq ($(CA_SECTION),Insta)
     override EXTRA_OPTS += -path pkix/ -newkeytype rsa:1024
-endif
-ifneq ($(CLOUDCA),)
-    CA_SECTION=CloudCA
+    CRL_SECTION=crls
+    OCSP_CHECK= #$(OPENSSL) ocsp -url "ldap://www.certificate.fi:389/CN=Insta Demo CA,O=Insta Demo,C=FI?caCertificate" -CAfile creds/trusted/InstaDemoCA.crt -issuer creds/trusted/InstaDemoCA.crt -cert creds/operational.crt
+else ifeq ($(CA_SECTION),CloudCA)
+    CRL_SECTION= # no crl-based checks
     OCSP_CHECK=
-    override EXTRA_OPTS += -path /.well-known/cmp -subject /CN=CloudCA-Integration-Test-User
-endif
-ifeq ($(INSTA)$(CLOUDCA),)
+    override EXTRA_OPTS += -path /.well-known/cmp -reqexts empty -subject /CN=CloudCA-Integration-Test-User
+else
     CA_SECTION=EJBCA
+    CRL_SECTION=crls
     OCSP_CHECK=$(OPENSSL) ocsp -url $(EJBCA_OCSP_URL) \
         -CAfile $(EJBCA_CMP_TRUSTED) -issuer $(EJBCA_CMP_ISSUER) \
         -cert creds/operational.crt
@@ -401,10 +400,10 @@ endif
 .phony: demo demo_Insta demo_EJBCA demo_CloudCA
 demo: demo_Insta
 demo_Insta: get_Insta_crls
-	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" INSTA="using Insta" SLEEP="sleep 1"
-	# for Insta, sleep 1 helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
+	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" CA_SECTION="Insta" SLEEP="sleep 1"
+        # for Insta, sleep 1 helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
 demo_CloudCA:
-	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" CLOUDCA="using CloudCA Connector"
+	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" CA_SECTION="CloudCA"
 demo_EJBCA: start_EJBCA get_EJBCA_crls run_demo stop_EJBCA
 
 CMPCLIENT=$(SET_PROXY) $(DY)LD_LIBRARY_PATH="$(OUT_DIR):$(OPENSSL_LIB):$(SECUTILS_DIR):$(LIBCMP_DIR)" $(OUT_DIR_BIN)
@@ -412,21 +411,17 @@ GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signk
 .phony: run_demo
 run_demo: $(OUT_DIR_BIN)
 	@which $(OPENSSL) >/dev/null || (echo "cannot find $(OPENSSL), please install it"; false)
-	@/bin/echo -e "\n##### running cmpClient demo $(INSTA)$(CLOUDCA) #####\n"
+	@/bin/echo -e "\n##### running cmpClient demo using $(CA_SECTION) #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
-    ifeq ($(INSTA)$(CLOUDCA),)
-		$(CMPCLIENT) validate -section EJBCA -cert $(EJBCA_CMP_CLIENT) -tls_cert "" -own_trusted $(EJBCA_CMP_TRUSTED),$(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
+    ifeq ($(CA_SECTION),EJBCA)
+	$(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -cert $(EJBCA_CMP_CLIENT) -tls_cert "" -own_trusted $(EJBCA_CMP_TRUSTED),$(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
         ifneq ($(EJBCA_TLS_HOST),)
-			@/bin/echo -e "\nValidating own TLS client cert"
-			$(CMPCLIENT) validate -section validate -tls_cert $(EJBCA_TLS_CLIENT) -tls_trusted $(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
+	    @/bin/echo -e "\nValidating own TLS client cert"
+	    $(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -tls_cert $(EJBCA_TLS_CLIENT) -tls_trusted $(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED) -no_check_time
         endif
     else
-        ifneq ($(INSTA),)
-			$(CMPCLIENT) validate -section Insta -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/InstaDemoCA.crt # -no_check_time
-        else
-			$(CMPCLIENT) validate -section CloudCA -tls_cert "" -cert creds/manufacturer.crt -own_trusted creds/trusted/CloudCA_Root.crt -untrusted creds/extracerts.pem
-        endif
+	$(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -tls_cert "" -cert creds/manufacturer.crt -untrusted creds/extracerts.pem # -no_check_time
     endif
 	@echo
 	$(CMPCLIENT) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS) $(BOOTSTRAP_CREDS)
@@ -448,13 +443,13 @@ run_demo: $(OUT_DIR_BIN)
 	$(CMPCLIENT) revoke -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
 	$(OCSP_CHECK)
-    ifneq ($(INSTA),)
-		@echo
-		@$(SLEEP)
-		$(CMPCLIENT) genm -section $(CA_SECTION) $(EXTRA_OPTS)
-		@echo :
+    ifeq ($(CA_SECTION),Insta)
+	@echo
+	@$(SLEEP)
+	$(CMPCLIENT) genm -section $(CA_SECTION) $(EXTRA_OPTS)
+	@echo :
     endif
-	@echo -e "\n#### finished demo $(INSTA)$(CLOUDCA) ####"
+	@echo -e "\n#### finished demo using $(CA_SECTION) ####"
 	@echo :
 
 # tests ########################################################################

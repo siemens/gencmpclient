@@ -284,6 +284,12 @@ or using an included Docker instance of the EJBCA that can be launched locally:
 make -f Makefile_v1 demo_EJBCA
 ```
 
+Furthermore it is possible to execute the tests against the reference playground CA operated by Siemens
+
+```
+make -f Makefile_v1 demo_CloudCA
+```
+
 Among others, successful execution should produce a new certificate at `creds/operational.crt`.
 You can view this certificate for instance by executing
 ```

@@ -143,7 +143,7 @@ CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
 CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, const char *path,
                             int keep_alive, int timeout);
 
-# if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+# if OPENSSL_VERSION_NUMBER >= 0x30300000L || defined USE_LIBCMP
 /* call optionally before requests; name may be UTF8-encoded string */
 /* This calls OSSL_CMP_CTX_reset_geninfo_ITAVs() if name == NULL */
 CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name);
@@ -209,16 +209,18 @@ CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 /* reason codes are defined in openssl/x509v3.h */
 CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr, */ int reason);
 
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+# if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
 /* get CA certs, discard duplicates, and verify they are non-expired CA certs */
 CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out);
+# endif
 /* get certificate request template and related key specifications */
+# if OPENSSL_VERSION_NUMBER > 0x30300000L || defined USE_LIBCMP
 CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
                                   OSSL_CRMF_CERTTEMPLATE **certTemplate,
                                   OPTIONAL OSSL_CMP_ATAVS **keySpec);
 # endif
 
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+# if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
 /* get any root CA key update and verify it as far as possible */
 CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
                              const X509 *oldWithOld, X509 **newWithNew,

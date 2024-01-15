@@ -75,7 +75,7 @@ const char *opt_recipient;
 const char *opt_expect_sender;
 bool opt_ignore_keyusage;
 bool opt_unprotected_errors;
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER >= 0x30300000L || defined USE_LIBCMP
 bool opt_no_cache_extracerts;
 #endif
 #if OPENSSL_VERSION_NUMBER >= 0x30200000L || defined USE_LIBCMP
@@ -204,12 +204,13 @@ opt_t cmp_opts[] = {
 #endif
     },
 #if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+    OPT_MORE("for 'caCerts' and 'rootCaCert'"),
+#endif
+#if OPENSSL_VERSION_NUMBER > 0x30300000L || defined USE_LIBCMP
     OPT_MORE("for 'caCerts', 'rootCaCert', 'certReqTemplate', and 'crlStatusList'"),
 #endif
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
     { "profile", OPT_TXT, {.txt = NULL}, { &opt_profile },
       "Cert profile name to place in generalInfo field of PKIHeader of requests"},
-#endif
     { "geninfo", OPT_TXT, {.txt = NULL}, { (const char **)&opt_geninfo },
       "Comma-separated list of OID and value to place in generalInfo PKIHeader"},
     OPT_MORE("of form <OID>:int:<n> or <OID>:str:<s>, e.g. \'1.2.3.4:int:56789, id-kp:str:name'"),
@@ -333,7 +334,7 @@ opt_t cmp_opts[] = {
       { (const char **) &opt_unprotected_errors },
       "Accept missing or invalid protection of regular error messages and negative"},
     OPT_MORE("certificate responses (ip/cp/kup), revocation responses (rp), and PKIConf"),
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER >= 0x30300000L || defined USE_LIBCMP
     { "no_cache_extracerts", OPT_BOOL, {.bit = false},
       { (const char **) &opt_no_cache_extracerts },
       "Do not keep certificates received in the extraCerts CMP message field"},
@@ -356,7 +357,6 @@ opt_t cmp_opts[] = {
     { "cacerts_dir_format", OPT_TXT, {.txt = "pem"},
       { &opt_cacerts_dir_format },
       "Format to use for saving those certs. Default \"pem\""},
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
     { "oldwithold", OPT_TXT, {.txt = NULL}, { &opt_oldwithold },
       "Root CA certificate to request update for in genm of type rootCaCert"},
     { "newwithnew", OPT_TXT, {.txt = NULL}, { &opt_newwithnew },
@@ -369,7 +369,6 @@ opt_t cmp_opts[] = {
       "CRL to request update for in genm of type crlStatusList"},
     { "crlout", OPT_TXT, {.txt = NULL}, { &opt_crlout },
       "File to save new CRL received in genp of type 'crls'"},
-#endif
 
     OPT_HEADER("Client authentication and protection"),
     { "ref", OPT_TXT, {.txt = NULL}, { &opt_ref },
@@ -1036,9 +1035,10 @@ static int setup_ctx(CMP_CTX *ctx)
     /* set option flags directly via CMP API */
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
                                  opt_unprotected_errors ? 1 : 0)
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NO_CACHE_EXTRACERTS,
-                                    opt_no_cache_extracerts ? 1 : 0)
+#if OPENSSL_VERSION_NUMBER >= 0x30300000L || defined USE_LIBCMP
+        || (opt_no_cache_extracerts && // TODO remove this condition, which is just a workaround for wrong variant of OSSL_CMP_CTX_set_option() being called
+            !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NO_CACHE_EXTRACERTS,
+                                     opt_no_cache_extracerts ? 1 : 0))
 #endif
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE,
                                     opt_ignore_keyusage ? 1 : 0)
@@ -1056,10 +1056,10 @@ static int setup_ctx(CMP_CTX *ctx)
     }
 
     if (opt_profile != NULL) {
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER >= 0x30300000L || defined USE_LIBCMP
         err = CMPclient_add_certProfile(ctx, opt_profile);
 #else
-        LOG_err("-profile option is not supported for OpenSSL < 3.2");
+        LOG_err("-profile option is not supported for OpenSSL < 3.3");
         err = -29;
 #endif
         if (err != CMP_OK)
@@ -2027,7 +2027,7 @@ static int print_itavs(const STACK_OF(OSSL_CMP_ITAV) *itavs)
     return ret;
 }
 
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER > 0x30300000L || defined USE_LIBCMP
 static int save_template(const char *file, const OSSL_CRMF_CERTTEMPLATE *tmpl)
 {
     BIO *bio = BIO_new_file(file, "wb");
@@ -2135,7 +2135,9 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             X509_free(oldwithold);
             return err;
         }
+#endif
 
+#if OPENSSL_VERSION_NUMBER > 0x30300000L || defined USE_LIBCMP
     case NID_id_it_crlStatusList:
         if (opt_oldcrl == NULL && opt_oldcert == NULL) {
             LOG(FL_ERR, "Missing -oldcrl and no -oldcert given for -infotype crlStatusList");

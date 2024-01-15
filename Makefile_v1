@@ -148,8 +148,8 @@ ifneq ($(filter-out doc start stop doc doc_this doc/cmpClient.md doc/cmpClient.1
     endif
     OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
     ifeq ($(OPENSSL_VERSION),)
-        $(warning WARNING: cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 1.1.1)
-        OPENSSL_VERSION=1.1.1
+        $(warning WARNING: cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 3.0)
+        OPENSSL_VERSION=3.0
     endif
     $(info detected OpenSSL version $(OPENSSL_VERSION).x)
     ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # same as comparing == 1.0
@@ -161,7 +161,7 @@ ifneq ($(filter-out doc start stop doc doc_this doc/cmpClient.md doc/cmpClient.1
         USE_LIBCMP=1
     endif
 else
-    OPENSSL_VERSION=1.1.1 # dummy
+    OPENSSL_VERSION=3.0 # dummy
 endif
 OPENSSL_MAJOR_VERSION=$(shell echo $(OPENSSL_VERSION) | sed 's/\..*//')
 

@@ -54,7 +54,8 @@ The following network and development tools are needed or recommended.
 * Perl (for running the tests, tested with versions 5.30.3 and 5.32.1)
 
 The following OSS components are used.
-* OpenSSL development edition; supported versions: 1.1.1, 3.0, 3.1
+* OpenSSL development edition; supported versions: 3.0, 3.1, 3.2
+  <!-- (formerly also versions 1.0.2, 1.1.0, and 1.1.1) -->
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
 * [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
   a CMP+CRMF+HTTP extension to OpenSSL, needed when using OpenSSL 1.x

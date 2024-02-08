@@ -23,10 +23,9 @@ if(NOT("$ENV{OPENSSL_DIR}" STREQUAL ""))
   else()
     set(OPENSSL_LIB $ENV{OPENSSL_DIR})
   endif()
-  set(OpenSSL_INCLUDE_DIRS $ENV{OPENSSL_DIR}/include)
+  set(OPENSSL_INCLUDE_DIR $ENV{OPENSSL_DIR}/include)
   set(OPENSSL_LIBRARIES ${OPENSSL_LIB}/libssl${CMAKE_SHARED_LIBRARY_SUFFIX}
                         ${OPENSSL_LIB}/libcrypto${CMAKE_SHARED_LIBRARY_SUFFIX})
-  include_directories(SYSTEM ${OpenSSL_INCLUDE_DIRS})
   if($ENV{OPENSSL_DIR} MATCHES "3\\.0")
     set(OPENSSL_VERSION 3.0)
   elseif($ENV{OPENSSL_DIR} MATCHES "3\\.1")
@@ -50,11 +49,11 @@ if(NOT("$ENV{OPENSSL_DIR}" STREQUAL ""))
 else()
   find_package(OpenSSL REQUIRED)
   message(STATUS "using OpenSSL package, with version " ${OPENSSL_VERSION})
-  include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 endif()
 
 if(DEFINED ENV{USE_LIBCMP} OR "${OPENSSL_VERSION}" LESS "3")
   set(USE_LIBCMP 1)
+  message(STATUS "using libcmp")
 endif()
 
 set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)
@@ -68,15 +67,12 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/libsecutils/include
 )
 if(DEFINED USE_LIBCMP)
-  include_directories(
-    ${CMPOSSL_INC_DIR}
-    ${CMPOSSL_INC_DIR}/cmp
-    ${CMAKE_SYSROOT}/usr/include/cmp
-    # does not work for OpenSSL 3.0+:
-    # include_directories(SYSTEM ${CMPOSSL_INC_DIR}/cmp)
-    # include_directories(SYSTEM ${CMAKE_SYSROOT}/usr/include/cmp)
-    )
+  include_directories(SYSTEM ${CMPOSSL_INC_DIR}/cmp)
+  include_directories(SYSTEM ${CMAKE_SYSROOT}/usr/include/cmp)
 endif()
+
+# must not add the system OpenSSL include dir before ${CMPOSSL_INC_DIR}/cmp etc.
+include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 
 configure_file(${INC_DIR}/genericCMPClient_config.h.in ${INC_DIR}/genericCMPClient_config.h)
 

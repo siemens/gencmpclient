@@ -90,7 +90,8 @@ ifdef NDEBUG
 else
     DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
 endif
-override CFLAGS += $(DEBUG_FLAGS) -std=gnu90 -fstack-protector -fno-omit-frame-pointer
+override CFLAGS += $(DEBUG_FLAGS) -fstack-protector -fno-omit-frame-pointer
+# override CFLAGS += -std=gnu90  # TODO maybe clean up code and re-enable flag
 override CFLAGS += \
   -Wall -Woverflow -Wextra -Wswitch -Wmissing-prototypes -Wstrict-prototypes \
   -Wformat -Wformat-security -Wtype-limits -Wundef -Wconversion \
@@ -145,7 +146,9 @@ ifeq ($(LPATH),)
     endif
     override LDFLAGS += -L $(LIBCMP_DIR) -L $(SECUTILS_DIR)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
+      ifneq ($(PREFIX),)
         override LDFLAGS += -Wl,-rpath,$(LIBCMP_DIR_) -Wl,-rpath,$(SECUTILS_DIR_)
+      endif
     endif
     override LDFLAGS += -L $(OPENSSL_LIB) -L $(OPENSSL)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging

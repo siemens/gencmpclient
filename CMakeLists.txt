@@ -154,6 +154,7 @@ add_compile_options(
 # because of libsecutils:
 add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
 
+# TODO maybe clean up code and re-enable property
 # set_property(TARGET ${LIBGENCMP_NAME} PROPERTY C_STANDARD 90)
 # set_property(TARGET cmpClient PROPERTY C_STANDARD 90)
 

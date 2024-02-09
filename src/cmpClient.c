@@ -2266,8 +2266,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             OSSL_CMP_ITAV *req =
                 OSSL_CMP_ITAV_create(OBJ_nid2obj(infotype), NULL);
 
-            LOG(FL_WARN, "No specific support for -infotype %s available",
-                opt_infotype);
+            LOG(FL_WARN, "No specific support for -infotype %s available in OpenSSL version %lx",
+                opt_infotype, OpenSSL_version_num());
             if (req == NULL || !OSSL_CMP_CTX_push0_genm_ITAV(ctx, req)) {
                 LOG(FL_ERR, "Failed to create genm for -infotype %s",
                          opt_infotype);

@@ -123,16 +123,17 @@ ifneq ($(LIBCMP_INC),)
     override LIBS += -lcmp
 endif
 # important: place libcmp before libcrypto such that its contents are preferred
-override LIBS += -lcrypto
-ifdef SECUTILS_USE_UTA
-    override LIBS += -luta
-endif
+
+override LIBS += -lsecutils
 ifdef SECUTILS_NO_TLS
     override CFLAGS += -DSECUTILS_NO_TLS=1
 else
     override LIBS += -lssl
 endif
-override LIBS += -lsecutils
+override LIBS += -lcrypto
+ifdef SECUTILS_USE_UTA
+    override LIBS += -luta
+endif
 
 override LDFLAGS += $(DEBUG_FLAGS) # needed for -fsanitize=...
 ifeq ($(LPATH),)
@@ -215,7 +216,7 @@ $(OUT_DIR)/$(OUTLIB): $(OUT_DIR)/$(OUTLIBV)
 	ln -sf $(OUTLIBV) $(OUT_DIR)/$(OUTLIB)
 
 $(CMPCLIENT): src/cmpClient$(OBJ) $(OUT_DIR)/$(OUTLIB)
-	$(CC) $(LDFLAGS) $< $(LIBS) -lgencmp -o $@
+	$(CC) $(LDFLAGS) $< -lgencmp $(LIBS) -o $@
 
 .PHONY: all archive
 all: build archive

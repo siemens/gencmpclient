@@ -1452,27 +1452,26 @@ static int add_object(unsigned char *data, int len, int nid, const char *name)
 static int complete_genm_asn1_objects(void)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
+# define ASN1_OID_IT 0x2B,0x06,0x01,0x05,0x05,0x07,0x04
+# define ASN1_OID_REGCTRL 0x2B,0x06,0x01,0x05,0x05,0x07,0x05,0x01
 # if OPENSSL_VERSION_NUMBER < 0x30200000L
-    static unsigned char so_rootCaCert[] =
-        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x14 };
-    static unsigned char so_certProfile[] =
-        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x15 };
-    static unsigned char so_crlStatusList[] =
-        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x16 };
-    static unsigned char so_crls[] =
-        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x17 };
-    static unsigned char so_algId[] =
-        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x05, 0x01, 0x0B };
-    static unsigned char so_rsaKeyLen[] =
-        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x05, 0x01, 0x0C };
+    /* were added by OpenSSL commit 34959f7a2256eadd23d56f0efe855be7fde282b2 */
+    static unsigned char so_rootCaCert[]      = { ASN1_OID_IT, 20 };
+    static unsigned char so_certProfile[]     = { ASN1_OID_IT, 21 };
+    static unsigned char so_crlStatusList[]   = { ASN1_OID_IT, 22 };
+    static unsigned char so_crls[]            = { ASN1_OID_IT, 23 };
+    static unsigned char so_algId[]           = { ASN1_OID_REGCTRL, 11 };
+    static unsigned char so_rsaKeyLen[]       = { ASN1_OID_REGCTRL, 12 };
 #  if OPENSSL_VERSION_NUMBER < 0x30000000L
-    static unsigned char so_rootCaKeyUpdate[] =
-        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x12 };
-    static unsigned char so_certReqTemplate[] =
-        { 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04, 0x13 };
+    /* were added by OpenSSL commit 15633d74dcfe446d309d612c69fd075616d45c5b */
+    static unsigned char so_caCerts[]         = { ASN1_OID_IT, 17 };
+    static unsigned char so_rootCaKeyUpdate[] = { ASN1_OID_IT, 18 };
+    static unsigned char so_certReqTemplate[] = { ASN1_OID_IT, 19 };
 
-    if (!add_object(so_rootCaKeyUpdate, sizeof(so_rootCaKeyUpdate),
-                    NID_id_it_rootCaKeyUpdate, "id-it-rootCaKeyUpdate")
+    if (!add_object(so_caCerts, sizeof(so_caCerts),
+                    NID_id_it_caCerts, "id-it-caCerts")
+        || !add_object(so_rootCaKeyUpdate, sizeof(so_rootCaKeyUpdate),
+                       NID_id_it_rootCaKeyUpdate, "id-it-rootCaKeyUpdate")
         || !add_object(so_certReqTemplate, sizeof(so_certReqTemplate),
                        NID_id_it_certReqTemplate, "id-it-certReqTemplate"))
         return -20;

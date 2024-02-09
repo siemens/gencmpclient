@@ -72,8 +72,9 @@ stop_LwCmp:
 # conformance ##################################################################
 
 GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345 2>/dev/null
-CMPCLNT = LD_LIBRARY_PATH=. $(CMPCLIENT) -section CmpRa,
-CMPOSSL = $(OPENSSL) cmp -config config/demo.cnf -section CmpRa,
+BASIC_ARGS = -verbosity 3 -path /lra -section CmpRa,
+CMPCLNT = LD_LIBRARY_PATH=. $(CMPCLIENT)         $(BASIC_ARGS)
+CMPOSSL = $(OPENSSL) cmp -config config/demo.cnf $(BASIC_ARGS)
 .phony: test_conformance_openssl test_conformance_cmpclient test_conformance
 test_conformance_openssl:   start_LwCmp conformance_openssl   stop_LwCmp
 test_conformance_cmpclient: start_LwCmp conformance_cmpclient stop_LwCmp
@@ -88,13 +89,13 @@ conformance_openssl: newkey
 conformance_cmpclient:
 	@CMPCL="$(CMPCLNT)" $(MAKE) -f Makefile_tests conformance
 conformance: $(CMPCLIENT)
-	$(CMPCL)imprint            -verbosity 3
-	$(CMPCL)bootstrap          -verbosity 3
+	$(CMPCL)imprint
+	$(CMPCL)bootstrap
 	@$(GENERATE_OPERATIONAL)
-	$(CMPCL)pkcs10             -verbosity 3
-	$(CMPCL)update -path /lra  -verbosity 3
-	$(CMPCL)revoke -path /lra  -verbosity 3
-	@ # $(CMPCL)bootstrap      -verbosity 3 -server localhost:6003/delayedlra
+	$(CMPCL)pkcs10 # when using openssl, requires at least version 3.3(-dev)
+	$(CMPCL)update
+	$(CMPCL)revoke
+	@ # $(CMPCL)bootstrap $(BASIC_ARGS) -server localhost:6003/delayedlra
 
 # cli ##########################################################################
 

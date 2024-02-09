@@ -512,7 +512,11 @@ stop_Simple:
 test_Simple: build get_EJBCA_crls test/recipes/80-test_cmp_http_data/Simple test/recipes/80-test_cmp_http_data/test_Simple.cnf
 	$(MAKE) -f Makefile_v1 start_Simple
 	make -f Makefile_tests test_cli CMPCLIENT="$(OUT_DIR_BIN)" OPENSSL_CMP_SERVER=Simple OPENSSL=$(OPENSSL) OPENSSL_CMP_CONFIG="Simple/../test.cnf" \
-	|| ($(OPENSSL) version | grep " 1.0") # with OpenSSL <1.1, some certstatus test cases fail due to missing OCSP support
+	|| (($(OPENSSL) version; echo $(OPENSSL_VERSION)) | grep -e "1\.0\|1\.1")
+# with OpenSSL <1.1, some certstatus test cases fail due to missing OCSP support
+# with OpenSSL 1.1 and 3.0, these Mock genm command test cases fail: 'genm certReqTemplate' 'genm caCerts'
+# with OpenSSL 1.1, Mock enrollment test 'out_trusted accept issuing ca cert ...' fails likely due to -partial_chain not being respected
+# Better use these extended tests only with builds with USE_LIBCMP and OpenSSL >= 3.0.
 	$(MAKE) -f Makefile_v1 stop_Simple
 
 .phony: test_Insta

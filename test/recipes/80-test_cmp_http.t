@@ -123,13 +123,12 @@ sub load_config {
     }
     close CH;
     die "Cannot find all server-dependent config values in $test_config section [$section]\n"
-        if !defined $ca_dn
-        || !defined $server_dn || !defined $server_host
+        if !defined $ca_dn       || !defined $server_host
         || !defined $server_port || !defined $server_tls
         || !defined $server_path || !defined $server_cert
-        || !defined $kur_port || !defined $pbm_port
-        || !defined $pbm_ref || !defined $pbm_secret
-        || !defined $column || !defined $sleep;
+        || !defined $kur_port    || !defined $pbm_port
+        || !defined $pbm_ref     || !defined $pbm_secret
+        || !defined $column      || !defined $sleep;
     die "Invalid server_port number in $test_config section [$section]: $server_port"
         unless $server_port =~ m/^\d+$/;
     $server_dn = $server_dn // $ca_dn;
@@ -378,7 +377,7 @@ sub start_server {
     }
     unless ($server_port > 0) {
         stop_server($server_name, $pid);
-        print "Cannot get expected output from the $server_name server";
+        print "Cannot get expected output from the $server_name server\n";
         return 0;
     }
     $kur_port = $server_port if $kur_port eq "\$server_port";

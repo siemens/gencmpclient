@@ -430,8 +430,11 @@ run_demo: $(OUT_DIR_BIN)
 	$(OPENSSL) x509 -noout -text -in creds/operational.crt
 	@echo :
 	$(OPENSSL) x509 -noout -text -in creds/operational.crt | sed '/^         [0-9a-f].*/d'
-	@# @echo
-	@# $(CMPCLIENT) pkcs10 -section $(CA_SECTION)
+    ifneq ($(CA_SECTION),Insta)
+	@echo
+	@$(SLEEP)
+	$(CMPCLIENT) pkcs10 -section $(CA_SECTION) $(EXTRA_OPTS)
+    endif
 	@echo
 	@$(SLEEP)
 	$(CMPCLIENT) update -section $(CA_SECTION) $(EXTRA_OPTS)

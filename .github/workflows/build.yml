@@ -39,8 +39,8 @@ jobs:
           # sudo apt-get update
           # sudo apt-get install -y >/dev/null libssl-dev build-essential # not needed
           make -f Makefile_v1
-          make -f Makefile_v1 clean
-          make -f Makefile_v1 build_no_tls
+          make -f Makefile_v1 clean_all
+          USE_LIBCMP=1 STATIC_LIBCMP=1 make -f Makefile_v1 build_no_tls
           make -C libsecutils -f Makefile_v1 clean_config
           SKIP_pod2markdown=1 make -f Makefile_v1 doc_this
           SKIP_pod2markdown=1 DESTDIR=tmp make -f Makefile_v1 install

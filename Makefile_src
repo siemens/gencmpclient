@@ -6,6 +6,7 @@
 # BIN_DIR defines where the CLI application shall be placed, unless it is empty or unset.
 # Optional LIBCMP_INC defines the directory of the libcmp header files, must be non-empty if and only if libcmp is used (USE_LIBCMP).
 # All these paths may be absolute or relative to the dir containing this Makefile.
+# With USE_LIBCMP, setting STATIC_LIBCMP leads to static linking with libcmp.a .
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS (default see below).
 # OSSL_VERSION_QUIRKS maybe be needed to provide for setting OpenSSL compilation version quirks.
 
@@ -120,7 +121,11 @@ override CFLAGS += -I$(PREFIX)include # for genericCMPClient.h
 override CFLAGS += $(OSSL_VERSION_QUIRKS)
 
 ifneq ($(LIBCMP_INC),)
-    override LIBS += -lcmp
+    ifneq ($(STATIC_LIBCMP),)
+        LIBCMP = $(LIBCMP_DIR)/libcmp.a
+    else
+        override LIBS += -lcmp
+    endif
 endif
 # important: place libcmp before libcrypto such that its contents are preferred
 
@@ -209,7 +214,7 @@ $(OBJS): %$(OBJ): %.c # | $(SECUTILS_LIB) # $(PREFIX)$(OUT_DIR)/libcmp$(DLL)
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"
 
-$(OUT_DIR)/$(OUTLIBV): src/genericCMPClient$(OBJ)
+$(OUT_DIR)/$(OUTLIBV): src/genericCMPClient$(OBJ) $(LIBCMP)
 	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-$(SONAME)$(OUTLIBV)
 
 $(OUT_DIR)/$(OUTLIB): $(OUT_DIR)/$(OUTLIBV)

@@ -195,6 +195,7 @@ If the variable is unset, `.` is used by default.
 For all path variables, relative paths such as `.` are interpreted
 relative to the directory of the genCMPClient module.
 The CC environment variable may be set as needed; it defaults to `gcc`.
+It is also possible to statically link with `libcmp.a`, using `STATIC_LIBCMP`.
 For further details on optional environment variables,
 see the [`Makefile_v1`](Makefile_v1) and [`Makefile_src`](Makefile_src).
 

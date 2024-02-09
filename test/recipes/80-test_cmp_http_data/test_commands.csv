@@ -55,6 +55,7 @@ TBD,TBD,TBD,TBD,config default all options set, -section,, -cmd,ir,, -cacertsout
 0,*,*,*,without serial, -section,, -cmd,rr,,BLANK,,,BLANK,,,BLANK,,BLANK,, -issuer, '"`openssl x509 -noout -issuer -nameopt compat -in test.cert.pem |sed 's/# //' |sed 's/issuer=//'`"'
 0,*,*,*,oldcert file nonexistent, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,idontexist,BLANK,
 0,*,*,*,empty oldcert file, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,empty.txt,BLANK,
+0,*,*,*,oldcert and key do not match, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,trusted.crt, -revreason,0
 0,-,0,0,wrong certificate to revoke using issuer and serial, -section,, -cmd,rr,,BLANK,,,BLANK,,,BLANK,, -revreason,-1,BLANK,,, -expect_sender,"""", -issuer, '"`openssl x509 -noout -issuer -nameopt compat -in trusted.crt |sed 's/# //' |sed 's/issuer=//'`"', -serial, '"`openssl x509 -noout -serial -in trusted.crt |sed 's/# //' |sed 's/serial=/0x/'`"'
 0,-,0,0,wrong certificate to revoke, -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,trusted.crt, -revreason,0
 0,*,*,*,revreason 11 (invalid), -section,, -cmd,rr,,BLANK,,,BLANK,,, -oldcert,test.cert.pem, -revreason,11
@@ -66,44 +67,44 @@ TBD,TBD,TBD,TBD,config default all options set, -section,, -cmd,ir,, -cacertsout
 1,0,-,1,genm with infotype signKeyPairTypes, -section,, -cmd,genm,,BLANK,,, -infotype,signKeyPairTypes,,BLANK,,BLANK,
 0,*,*,*,genm with missing infotype value, -section,, -cmd,genm,,BLANK,,, -infotype,,,BLANK,,BLANK,
 0,*,*,*,genm with invalid infotype value, -section,, -cmd,genm,,BLANK,,, -infotype,asdf,,BLANK,,BLANK,
-1,1,-,-,genm certReqTemplate                        , -section,, -cmd,genm,, -template,test.template.pem,, -infotype,certReqTemplate,,BLANK,,BLANK,,BLANK,,, -expect_sender, """"
+1,1,-,-,genm certReqTemplate - not with OpenSSL 1.1 , -section,, -cmd,genm,, -template,test.template.pem,, -infotype,certReqTemplate,,BLANK,,BLANK,,BLANK,,, -expect_sender, """"
 0,*,*,*,genm certReqTemplate missing template option, -section,, -cmd,genm,, -template,"""",, -infotype,certReqTemplate,,BLANK,,BLANK,
 0,*,*,*,genm certReqTemplate missing template arg   , -section,, -cmd,genm,, -template,BLANK,, -infotype,certReqTemplate,,BLANK,,BLANK,
 0,*,*,*,genm certReqTemplate template extra arg     , -section,, -cmd,genm,, -template,test.template.pem,test.template.pem, -infotype,certReqTemplate,,BLANK,,BLANK,
 *,0,*,*,genm certReqTemplate template arg non-ex dir, -section,, -cmd,genm,, -template,idontexist/idontexist,, -infotype,certReqTemplate,,BLANK,,BLANK,
-1,1,-,-,genm caCerts                          , -section,, -cmd,genm,, -cacertsout,test.cacertsout.pem,, -infotype,caCerts,,BLANK,,BLANK,,BLANK,,, -expect_sender, """"
+1,1,-,-,genm caCerts  - not with OpenSSL 1.1  , -section,, -cmd,genm,, -cacertsout,test.cacertsout.pem,, -infotype,caCerts,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN
 0,*,*,*,genm caCerts missing cacertsout option, -section,, -cmd,genm,, -cacertsout,"""",, -infotype,caCerts,,BLANK,,BLANK,
 0,*,*,*,genm caCerts missing cacertsout arg   , -section,, -cmd,genm,, -cacertsout,BLANK,, -infotype,caCerts,,BLANK,,BLANK,
 0,*,*,*,genm caCerts cacertsout extra arg     , -section,, -cmd,genm,, -cacertsout,test.cacertsout.pem,test.cacertsout.pem, -infotype,caCerts,,BLANK,,BLANK,
 0,*,*,*,genm caCerts cacertsout arg non-ex dir, -section,, -cmd,genm,, -cacertsout,idontexist/idontexist,, -infotype,caCerts,,BLANK,,BLANK,
--,1,-,-,genm rootCaCert                       , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem
-0,*,*,*,genm rootCaCert missing oldwithold    , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", BLANK,, -newwithnew, test.newwithnew.pem
-0,*,*,*,genm rootCaCert oldwithold missing arg, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold,, -newwithnew, test.newwithnew.pem
-0,*,*,*,genm rootCaCert oldwithold empty file , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, empty.txt, -newwithnew, test.newwithnew.pem
-0,*,*,*,genm rootCaCert oldwithold random file, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, random.bin, -newwithnew, test.newwithnew.pem
-0,*,*,*,genm rootCaCert oldwithold nonexistent, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, idontexist, -newwithnew, test.newwithnew.pem
-0,*,*,*,genm rootCaCert oldwithold wrong      , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, signer.crt, -newwithnew, test.newwithnew.pem
-0,*,*,*,genm rootCaCert missing newwithnew    , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, oldwithold.pem,BLANK,,
-0,*,*,*,genm rootCaCert newwithnew missing arg, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, oldwithold.pem, -newwithnew,,
-0,*,*,*,genm rootCaCert newwithnew directory  , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, oldwithold.pem, -newwithnew,directory/,
--,1,-,-,genm rootCaCert with oldwithnew       , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew, test.oldwithnew.pem
-0,*,*,*,genm rootCaCert oldwithnew missing arg, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew,,
-0,*,*,*,genm rootCaCert oldwithnew directory  , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew,/directory,
--,1,-,-,genm rootCaCert with newwithold       , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew, test.oldwithnew.pem, -newwithold, test.newwithold.pem
-0,*,*,*,genm rootCaCert newwithold missig arg , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew, test.oldwithnew.pem, -newwithold,,
-0,*,*,*,genm rootCaCert newwithold directory  , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew, test.oldwithnew.pem, -newwithold,/directory,
--,1,-,-,genm rootCaCert with oldwithnew and newwithold, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -newwithold, test.newwithold.pem
--,1,-,-,genm crlStatusList                   , -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldcrl, crl.der, -crlout, test.crl.der
--,1,-,-,genm crlStatusList with oldcert      , -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldcert, root.crt, -crlout, test.crl.der
-0,*,*,*,genm crlStatusList missing oldcrl    , -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """",  BLANK,         , -crlout, -test.crl.der
-0,*,*,*,genm crlStatusList oldcrl missing arg, -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldcrl,        , -crlout, test.crl.der
-0,*,*,*,genm crlStatusList oldcrl empty file , -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldcrl, empty.txt , -crlout, test.crl.der
-0,*,*,*,genm crlStatusList oldcrl random file, -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldcrl, random.bin, -crlout, test.crl.der
-0,*,*,*,genm crlStatusList oldcrl nonexistent, -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldcrl, idontexist, -crlout, test.crl.der
-TBD,*,*,*,genm crlStatusList oldcrl wrong    , -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldcrl, crl_wrong.der, -crlout, test.crl.der
-0,*,*,*,genm crlStatusList missing crlout    , -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldcrl, oldcrl.pem,BLANK,,
-0,*,*,*,genm crlStatusList crlout missing arg, -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldcrl, oldcrl.pem, -crlout,,
-0,*,*,*,genm crlStatusList crlout directory  , -section,, -cmd,genm,, BLANK,,, -infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender, """", -oldcrl, oldcrl.pem, -crlout,directory/,
+-,1,-,-,genm rootCaCert                       , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem
+0,*,*,*,genm rootCaCert missing oldwithold    , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, BLANK      ,               , -newwithnew, test.newwithnew.pem
+0,*,*,*,genm rootCaCert oldwithold missing arg, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold,               , -newwithnew, test.newwithnew.pem
+0,*,*,*,genm rootCaCert oldwithold empty file , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, empty.txt     , -newwithnew, test.newwithnew.pem
+0,*,*,*,genm rootCaCert oldwithold random file, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, random.bin    , -newwithnew, test.newwithnew.pem
+0,*,*,*,genm rootCaCert oldwithold nonexistent, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, idontexist    , -newwithnew, test.newwithnew.pem
+0,*,*,*,genm rootCaCert oldwithold wrong      , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, signer.crt    , -newwithnew, test.newwithnew.pem
+0,*,*,*,genm rootCaCert missing newwithnew    , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, BLANK,,
+0,*,*,*,genm rootCaCert newwithnew missing arg, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew,,
+0,*,*,*,genm rootCaCert newwithnew directory  , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew,directory/,
+-,1,-,-,genm rootCaCert with oldwithnew       , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew, test.oldwithnew.pem
+0,*,*,*,genm rootCaCert oldwithnew missing arg, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew,,
+0,*,*,*,genm rootCaCert oldwithnew directory  , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew,/directory,
+-,1,-,-,genm rootCaCert with newwithold       , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew, test.oldwithnew.pem, -newwithold, test.newwithold.pem
+0,*,*,*,genm rootCaCert newwithold missig arg , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew, test.oldwithnew.pem, -newwithold,,
+0,*,*,*,genm rootCaCert newwithold directory  , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew, test.oldwithnew.pem, -newwithold,/directory,
+-,1,-,-,genm rootCaCert oldwithnew newwithold , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -newwithold, test.newwithold.pem
+-,1,-,-,genm crlStatusList                   , -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcrl, crl.der   , -crlout, test.crl.der
+-,1,-,-,genm crlStatusList with oldcert      , -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcert, root.crt , -crlout, test.crl.der
+0,*,*,*,genm crlStatusList missing oldcrl    , -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN,  BLANK,            , -crlout, test.crl.der
+0,*,*,*,genm crlStatusList oldcrl missing arg, -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcrl,           , -crlout, test.crl.der
+0,*,*,*,genm crlStatusList oldcrl empty file , -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcrl, empty.txt , -crlout, test.crl.der
+0,*,*,*,genm crlStatusList oldcrl random file, -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcrl, random.bin, -crlout, test.crl.der
+0,*,*,*,genm crlStatusList oldcrl nonexistent, -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcrl, idontexist, -crlout, test.crl.der
+TBD,*,*,*,genm crlStatusList oldcrl wrong    , -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcrl, wrong.crl , -crlout, test.crl.der
+0,*,*,*,genm crlStatusList missing crlout    , -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcrl, oldcrl.pem, BLANK,,
+0,*,*,*,genm crlStatusList crlout missing arg, -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcrl, oldcrl.pem, -crlout,,
+0,*,*,*,genm crlStatusList crlout directory  , -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcrl, oldcrl.pem, -crlout,directory/,
 ,,,,,,,,,,,,,,,,,,,,,,,,
 1,1,1,1,geninfo int, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,1.3:int:987
 1,1,1,1,geninfo str, -section,, -cmd,cr,, -cert,signer.crt,, -key,signer.p12,, -keypass,pass:12345,BLANK,, -geninfo,id-kp:str:name

@@ -970,7 +970,8 @@ static OSSL_CMP_ITAV *get_genm_itav(CMP_CTX *ctx,
     req = NULL;
     itavs = OSSL_CMP_exec_GENM_ses(ctx);
     if (itavs == NULL) {
-        if (OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_request)
+        if (OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_request
+            && OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_rejection)
             LOG(FL_ERR, "Could not obtain valid response message on genm requesting %s",
                 desc);
         return NULL;

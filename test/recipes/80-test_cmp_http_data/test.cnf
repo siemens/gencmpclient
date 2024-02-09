@@ -55,6 +55,7 @@ ca_dn = /CN=CMPCA-ENDENTITY
 recipient = $ca_dn
 server_dn = /CN=Downstream-CMP-ENDENTITY
 expect_sender = $ca_dn
+# profile = RSA
 subject = "/CN=EE-CMP-ENDENTITY"
 newkey = signer.key
 out_trusted = signer_root.crt
@@ -79,7 +80,6 @@ server_path = /ejbca/publicweb/cmp/ECCEndEntity
 path = $server_path
 ca_dn = /CN=ECC Issuing CA v10/OU=For test purpose only/O=CMPforOpenSSL/C=DE
 recipient = $ca_dn
-server_dn = /CN=ECC Issuing CA v10/OU=For test purpose only/O=CMPforOpenSSL/C=DE
 subject = "/CN=ECC-EE/OU=For test purposes only/O=CMPforOpenSSL/C=DE"
 kur_port = 83
 pbm_port = 80
@@ -102,7 +102,6 @@ server = $server_host:$server_port
 server_path = pkix/
 path = $server_path
 ca_dn = /C=FI/O=Insta Demo/CN=Insta Demo CA
-server_dn = /C=FI/O=Insta Demo/CN=Insta Demo CA
 recipient = $ca_dn
 subject = /C=FI/O=Insta Demo/CN=ECC-EE
 kur_port = 8700

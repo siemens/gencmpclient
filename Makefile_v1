@@ -391,8 +391,9 @@ else
     OCSP_CHECK=$(OPENSSL) ocsp -url $(EJBCA_OCSP_URL) \
         -CAfile $(EJBCA_CMP_TRUSTED) -issuer $(EJBCA_CMP_ISSUER) \
         -cert creds/operational.crt
+    EJBCA_TLS_HOST_FILE=creds/docker/TLS_ROOTCA-docker-cn.txt
     ifeq ($(EJBCA_TLS_HOST),) # workaround for ephemeral TLS server certificate of ejbca-docker:
-        override EXTRA_OPTS += -tls_host `cat creds/docker/TLS_ROOTCA-docker-cn.txt`
+        override EXTRA_OPTS += -tls_host `cat $(EJBCA_TLS_HOST_FILE)`
         BOOTSTRAP_CREDS = -cert creds/manufacturer.crt -key creds/manufacturer.pem
     endif
 endif
@@ -486,7 +487,8 @@ ifeq ($(EJBCA_CONFIG),)
     ifeq ($(EJBCA_TLS_HOST),) # workaround for ephemeral TLS server certificate of ejbca-docker:
 	@$(OPENSSL) s_client -connect $(EJBCA_HOST):$(EJBCA_HTTPS_PORT) 2>/dev/null \
 	  -verify_return_error -showcerts >creds/docker/TLS_ROOTCA-docker.pem || true
-	@echo `fgrep "CN = " creds/docker/TLS_ROOTCA-docker.pem|head -n 1 | sed 's/.*CN = //; s/, UID = .*//;'` >creds/docker/TLS_ROOTCA-docker-cn.txt
+	@echo `grep -E "CN ?= ?" creds/docker/TLS_ROOTCA-docker.pem|head -n 1 | sed -E 's/^.*CN ?= ?//; s/, ?UID ?= ?.*//;'` >$(EJBCA_TLS_HOST_FILE)
+	@grep -qE '\w' $(EJBCA_TLS_HOST_FILE) || (echo "cannot determine EJBCA docker TLS host name"; false)
     endif
 	@echo "waiting $(EJBCA_CRL_INTERVAL) seconds to ensure EJBCA docker has updated its CRLs..."
 	@sleep $(EJBCA_CRL_INTERVAL)

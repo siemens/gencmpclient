@@ -398,8 +398,9 @@ else
     endif
 endif
 
-.phony: demo demo_Insta demo_EJBCA demo_CloudCA
+.phony: demo demo_all demo_Insta demo_EJBCA demo_CloudCA
 demo: demo_Insta
+demo_all: demo demo_EJBCA demo_CloudCA
 demo_Insta: get_Insta_crls
 	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" CA_SECTION="Insta" SLEEP="sleep 1"
         # for Insta, sleep 1 helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
@@ -568,7 +569,7 @@ test_Mock:
 tests_LwCmp: $(OUT_DIR_BIN)
 	$(MAKE) -f Makefile_tests tests_LwCmp CMPCLIENT="$(OUT_DIR_BIN)" OPENSSL=$(OPENSSL) OPENSSL_VERSION=$(OPENSSL_VERSION)
 
-test_all: demo_EJBCA test test_Mock tests_LwCmp
+test_all: demo_all test test_Mock tests_LwCmp
 ifneq ($(TEST_SIMPLE),)
 test_all: test_Simple test_profile
 endif

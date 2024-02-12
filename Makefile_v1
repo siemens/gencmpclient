@@ -405,7 +405,8 @@ demo_Insta: get_Insta_crls
         # for Insta, sleep 1 helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
 demo_CloudCA:
 	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" CA_SECTION="CloudCA"
-demo_EJBCA: start_EJBCA get_EJBCA_crls run_demo stop_EJBCA
+demo_EJBCA: start_EJBCA get_EJBCA_crls run_demo # stop_EJBCA
+# avoid stopping EJBCA docker container because restart will take long time
 
 # $(DY)LD_LIBRARY_PATH="$(OUT_DIR):$(OPENSSL_LIB):$(SECUTILS_DIR):$(LIBCMP_DIR)"
 CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH="$(OUT_DIR)" $(OUT_DIR_BIN)

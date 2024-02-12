@@ -419,7 +419,7 @@ run_demo: $(OUT_DIR_BIN)
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"
     ifeq ($(CA_SECTION),EJBCA)
-	$(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -cert $(EJBCA_CMP_CLIENT) -tls_cert "" -own_trusted $(EJBCA_CMP_TRUSTED),$(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
+	$(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -cert $(EJBCA_CMP_CLIENT_CERT) -tls_cert "" -own_trusted $(EJBCA_CMP_TRUSTED),$(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
         ifneq ($(EJBCA_TLS_HOST),)
 	    @/bin/echo -e "\nValidating own TLS client cert"
 	    $(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -tls_cert $(EJBCA_TLS_CLIENT) -tls_trusted $(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED) -no_check_time

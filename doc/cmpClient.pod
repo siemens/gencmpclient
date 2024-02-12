@@ -123,11 +123,6 @@ Client authentication and protection options:
 [B<-extracerts> I<sources>]
 [B<-unprotected_requests>]
 
-Credentials format options:
-
-[B<-certform> I<PEM|DER>]
-[B<-keyform> I<PEM|DER|P12>]
-
 TLS connection options:
 
 [B<-tls_used>]
@@ -949,21 +944,6 @@ Each source may contain multiple certificates.
 =item B<-unprotected_requests>
 
 Send request messages without CMP-level protection.
-
-=back
-
-=head2 Credentials format options
-
-=over 4
-
-=item B<-certform> I<PEM|DER>
-
-File format to use when saving a certificate to a file.
-Default value is PEM.
-
-=item B<-keyform> I<PEM|DER|P12>
-
-The format of the key input; unspecified by default.
 
 =back
 

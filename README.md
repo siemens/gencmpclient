@@ -294,7 +294,7 @@ or using an included Docker instance of the EJBCA that can be launched locally:
 make -f Makefile_v1 demo_EJBCA
 ```
 
-Furthermore it is possible to execute the tests against the reference playground CA operated by Siemens
+or using the reference playground CA operated by Siemens over a test cloud CA:
 
 ```
 make -f Makefile_v1 demo_CloudCA

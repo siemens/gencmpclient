@@ -55,7 +55,7 @@ jobs:
           # would need access to azure.archive.ubuntu.com:
           # sudo apt-get update
           # sudo apt-get install -y >/dev/null libssl-dev build-essential # not needed
-          make -f Makefile_v1 build_prereq test_all
+          USE_LIBCMP=1 make -f Makefile_v1 build_prereq test_all
 
   doc_deb:
     runs-on: ubuntu-latest

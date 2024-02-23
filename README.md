@@ -84,7 +84,7 @@ OpenSSL 3.0.8 7 Feb 2023 (0x30000080)
 
 You might need to set the variable `OPENSSL_DIR` first as described below, e.g.,
 ```
-export OPENSSL_DIR=/usr
+export OPENSSL_DIR=/usr/local
 ```
 
 ## Getting the software
@@ -130,11 +130,13 @@ By default any OpenSSL installation available on the system is used.
 Set the optional environment variable `OPENSSL_DIR` to specify the
 absolute (or relative to `../`) path of the OpenSSL installation to use, e.g.:
 ```
-export OPENSSL_DIR=/usr
+export OPENSSL_DIR=/usr/local
 ```
+This must point to the location in the file system from which `include/openssl`
+is directly accessible with this relative path name.\
 In case its libraries are in a different location, set also `OPENSSL_LIB`, e.g.:
 ```
-export OPENSSL_LIB=/lib/x86_64-linux-gnu<
+export OPENSSL_LIB=/lib/x86_64-linux-gnu
 ```
 The needed value may be obtained by
 ```

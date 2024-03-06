@@ -13,9 +13,6 @@ message(STATUS "generic CMP client version " ${GENCMPCLIENT_VERSION})
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner
 
-set(CMAKE_INSTALL_PREFIX "/usr") # must be set before include(GNUInstallDirs)
-include(GNUInstallDirs)
-
 # https://cmake.org/cmake/help/v3.6/module/FindOpenSSL.html
 if(NOT "$ENV{OPENSSL_DIR}" STREQUAL "")
   set(OPENSSL_ROOT_DIR $ENV{OPENSSL_DIR})
@@ -188,9 +185,15 @@ endif()
 
 # installation and uninstall
 
+#if(UNIX AND NOT APPLE)
+  set(CMAKE_INSTALL_PREFIX "/usr")
+#else()
+#  set(CMAKE_INSTALL_PREFIX "tmp")
+#endif()
 if(DEFINED ENV{ROOTFS})
   set(CMAKE_INSTALL_PREFIX $ENV{ROOTFS} CACHE PATH "comment" FORCE)
 endif()
+include(GNUInstallDirs) # CMAKE_INSTALL_PREFIX must be set before
 
 # see also https://gitlab.kitware.com/cmake/cmake/-/issues/24929 and
 # https://stackoverflow.com/questions/46490448/how-i-can-add-a-changelog-in-deb-with-cmake
@@ -205,25 +208,25 @@ if(NOT TARGET changelog)
 endif()
 
 install(FILES doc/Generic_CMP_client_API.pdf
-  DESTINATION ${CMAKE_INSTALL_FULL_DOCDIR}-dev
+  DESTINATION ${CMAKE_INSTALL_DOCDIR}-dev
   COMPONENT dev
   )
 
 include(./Pod2Man)
-POD2MAN("${CMAKE_CURRENT_SOURCE_DIR}/doc" cmpClient 1 "${CMAKE_INSTALL_FULL_MANDIR}" bin)
+POD2MAN("${CMAKE_CURRENT_SOURCE_DIR}/doc" cmpClient 1 "${CMAKE_INSTALL_MANDIR}" bin)
 
 install(TARGETS ${LIBGENCMP_NAME}
   LIBRARY
-    DESTINATION "${CMAKE_INSTALL_FULL_LIBDIR}"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     COMPONENT lib
   PUBLIC_HEADER
-    DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
     COMPONENT dev
 )
 
 install(TARGETS cmpClient
   RUNTIME
-  DESTINATION "${CMAKE_INSTALL_FULL_BINDIR}"
+  DESTINATION "${CMAKE_INSTALL_BINDIR}"
   COMPONENT bin
 )
 
@@ -361,7 +364,7 @@ foreach(component IN LISTS CPACK_COMPONENTS_ALL)
   install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/debian/copyright"
     "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz"
-    DESTINATION "${CMAKE_INSTALL_FULL_DOCDIR}${suffix}"
+    DESTINATION "${CMAKE_INSTALL_DOCDIR}${suffix}"
     COMPONENT ${component}
     )
 endforeach()

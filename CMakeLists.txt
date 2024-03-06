@@ -138,7 +138,11 @@ add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
 
 # TODO maybe clean up code and re-enable property
 # set_property(TARGET ${LIBGENCMP_NAME} PROPERTY C_STANDARD 90)
-# set_property(TARGET cmpClient PROPERTY C_STANDARD 90)
+# set_property(TARGET cmpClient         PROPERTY C_STANDARD 90)
+# would have no effect:
+# target_compile_features(${LIBGENCMP_NAME} PRIVATE c_std_90)
+# target_compile_features(cmpClient         PRIVATE c_std_90)
+
 
 if(DEFINED USE_LIBCMP)
   target_link_libraries(${LIBGENCMP_NAME} cmp) # needed for clang/MacOSX

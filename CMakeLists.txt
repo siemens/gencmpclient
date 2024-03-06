@@ -104,19 +104,14 @@ if(DEFINED ENV{SECUTILS_NO_TLS})
 endif()
 
 if(DEFINED ENV{NDEBUG} OR NOT CMAKE_BUILD_TYPE MATCHES Debug)
-  set(CMAKE_BUILD_TYPE Release
+  set(CMAKE_BUILD_TYPE Release  # automatically leads to CFLAGS += -DNDEBUG -O3
       CACHE STRING "Choose the type of build." FORCE)
-  add_compile_options(-O2)
-  add_compile_definitions(NDEBUG=1)
 else()
-  set(CMAKE_BUILD_TYPE Debug
+  set(CMAKE_BUILD_TYPE Debug  # automatically leads to CFLAGS += -g -O0
       CACHE STRING "Choose the type of build." FORCE)
-  add_compile_options(-g -O0)
-
-  set(DEBUG_FLAGS "-fsanitize=address,undefined -fno-sanitize-recover=all") # must use quotes on MacOSX
-  add_compile_options(${DEBUG_FLAGS})
-  link_libraries(${DEBUG_FLAGS})
-  #set(CMAKE_SHARED_LINKER_FLAGS "-fsanitize=address,undefined -fno-sanitize-recover=all") # workarund for link_libraries() ignored on MacOSX
+  set(SANITIZER_FLAGS -fsanitize=address,undefined -fno-sanitize-recover=all)
+  add_compile_options(${SANITIZER_FLAGS})
+  link_libraries(${SANITIZER_FLAGS})
 
   if(NOT APPLE)
     set(COVERAGE_FLAGS --coverage -fprofile-arcs)

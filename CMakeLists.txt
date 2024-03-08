@@ -110,7 +110,7 @@ else()
   add_compile_options(${SANITIZER_FLAGS})
   link_libraries(${SANITIZER_FLAGS})
 
-  if(NOT APPLE)
+  if(UNIX AND NOT APPLE)
     set(COVERAGE_FLAGS --coverage -fprofile-arcs)
     add_compile_options(${COVERAGE_FLAGS})
     link_libraries(${COVERAGE_FLAGS})
@@ -137,7 +137,7 @@ add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
 
 
 if(DEFINED USE_LIBCMP)
-  target_link_libraries(${LIBGENCMP_NAME} cmp) # needed for clang/MacOSX
+  target_link_libraries(${LIBGENCMP_NAME} cmp)
 endif()
 # important: place libcmp before libcrypto such that its contents are preferred
 target_link_libraries(${LIBGENCMP_NAME} ${OPENSSL_LIBRARIES} secutils) # needed for clang/MacOSX

@@ -59,13 +59,15 @@ include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 
 configure_file(${INC_DIR}/genericCMPClient_config.h.in ${INC_DIR}/genericCMPClient_config.h)
 
-# help CPackDeb please dpkg-shlibdeps
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0")
-  set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS
-    "../lib/${CMAKE_INSTALL_FULL_LIBDIR}")
-else()
-  set(CMAKE_INSTALL_RPATH # must be done before add_executable()
-    "../lib/${CMAKE_INSTALL_FULL_LIBDIR}")
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+  # help CPackDeb please dpkg-shlibdeps
+  if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0")
+    set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS
+        "../lib/${CMAKE_INSTALL_FULL_LIBDIR}")
+  else()
+    set(CMAKE_INSTALL_RPATH # must be done before add_executable()
+        "../lib/${CMAKE_INSTALL_FULL_LIBDIR}")
+  endif()
 endif()
 
 add_library(${LIBGENCMP_NAME} SHARED
@@ -195,18 +197,6 @@ if(DEFINED ENV{ROOTFS})
 endif()
 include(GNUInstallDirs) # CMAKE_INSTALL_PREFIX must be set before
 
-# see also https://gitlab.kitware.com/cmake/cmake/-/issues/24929 and
-# https://stackoverflow.com/questions/46490448/how-i-can-add-a-changelog-in-deb-with-cmake
-add_custom_command(
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog"
-    COMMAND gzip -cn9 "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog"
-    > "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz"
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz"
-)
-if(NOT TARGET changelog)
-  add_custom_target(changelog ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz")
-endif()
-
 install(FILES doc/Generic_CMP_client_API.pdf
   DESTINATION ${CMAKE_INSTALL_DOCDIR}-dev
   COMPONENT dev
@@ -235,15 +225,8 @@ if(NOT TARGET uninstall)
 endif()
 
 
-if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  set(EXT "deb")
-  set(GEN "DEB")
-else()
-  set(EXT "zip")
-  set(GEN "ZIP")
-endif()
-if(NOT DEFINED CPACK_PACKAGE_NAME)
 # generate Debian etc. packages using CPack, relying on installation defined above
+if(NOT DEFINED CPACK_PACKAGE_NAME)
 
 SET(CPACK_PACKAGE_NAME ${PROJECT_NAME})
 SET(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/siemens/gencmpclient")
@@ -264,38 +247,63 @@ Development support for libgencmp and cmpclient")
 set(CPACK_COMPONENT_BIN_DESCRIPTION "CMP client command-line interface
 A CLI application for exploring the use of the generic CMP client library")
 
-set(CPACK_GENERATOR ${GEN})
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+  set(CPACK_GENERATOR "DEB")
+  set(EXT "deb")
 
-set(CPACK_DEB_COMPONENT_INSTALL ON)
-set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
-set(CPACK_DEBIAN_LIB_PACKAGE_NAME "${PROJECT_NAME}")
-set(CPACK_DEBIAN_BIN_PACKAGE_NAME "cmpclient")
-set(CPACK_DEBIAN_DEV_PACKAGE_ARCHITECTURE "all")
-set(CPACK_DEBIAN_LIB_PACKAGE_SECTION "libs")
-set(CPACK_DEBIAN_DEV_PACKAGE_SECTION "devel")
-set(CPACK_DEBIAN_BIN_PACKAGE_SECTION "utils")
-set(CPACK_DEBIAN_PACKAGE_GENERATE_SHLIBS ON)
-set(CPACK_DEBIAN_ENABLE_COMPONENT_DEPENDS ON)
-set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-# set(CPACK_DEBIAN_PACKAGE_DEBUG ON)
-# see above assignments
-# to CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS or CMAKE_INSTALL_RPATH
+  # see also https://gitlab.kitware.com/cmake/cmake/-/issues/24929 and
+  # https://stackoverflow.com/questions/46490448/how-i-can-add-a-changelog-in-deb-with-cmake
+  add_custom_command(
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog"
+    COMMAND gzip -cn9 "${CMAKE_CURRENT_SOURCE_DIR}/debian/changelog"
+    > "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz"
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz"
+  )
+  if(NOT TARGET changelog)
+    add_custom_target(changelog ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz")
+  endif()
 
-if(FALSE) # for now, disable dependencies to libs of subprojectx because their .so files for some reason already get included in the package:
-if(DEFINED USE_LIBCMP)
-  set(CPACK_DEBIAN_PACKAGE_DEPENDS
-    "libcmp (>= ${CPACK_PACKAGE_VERSION}), libsecutils (>= ${CPACK_PACKAGE_VERSION})")
-else()
-  set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsecutils (>= ${CPACK_PACKAGE_VERSION})")
-endif()
-endif()
+  set(CPACK_DEB_COMPONENT_INSTALL ON)
+  set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+  set(CPACK_DEBIAN_LIB_PACKAGE_NAME "${PROJECT_NAME}")
+  set(CPACK_DEBIAN_BIN_PACKAGE_NAME "cmpclient")
+  set(CPACK_DEBIAN_DEV_PACKAGE_ARCHITECTURE "all")
+  set(CPACK_DEBIAN_LIB_PACKAGE_SECTION "libs")
+  set(CPACK_DEBIAN_DEV_PACKAGE_SECTION "devel")
+  set(CPACK_DEBIAN_BIN_PACKAGE_SECTION "utils")
+  set(CPACK_DEBIAN_PACKAGE_GENERATE_SHLIBS ON)
+  set(CPACK_DEBIAN_ENABLE_COMPONENT_DEPENDS ON)
+  set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+  # set(CPACK_DEBIAN_PACKAGE_DEBUG ON)
+  # see above assignments
+  # to CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS or CMAKE_INSTALL_RPATH
 
-set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "libgencmp (>= ${CPACK_PACKAGE_VERSION})")
-set(CPACK_DEBIAN_DEV_PACKAGE_SUGGESTS "libcmp-dev (>= ${CPACK_PACKAGE_VERSION}), libsecutils-dev (>= ${CPACK_PACKAGE_VERSION}), libssl-dev")
-# see also https://gitlab.kitware.com/cmake/cmake/-/issues/21834
-# CPack Deb does not create postinst when installing to /usr/lib/x86_64-linux-gnu
-set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/triggers")
-set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
+  if(FALSE) # for now, disable dependencies to libs of subprojectx because their .so files for some reason already get included in the package:
+  if(DEFINED USE_LIBCMP)
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS
+      "libcmp (>= ${CPACK_PACKAGE_VERSION}), libsecutils (>= ${CPACK_PACKAGE_VERSION})")
+  else()
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsecutils (>= ${CPACK_PACKAGE_VERSION})")
+  endif()
+  endif()
+
+  set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "libgencmp (>= ${CPACK_PACKAGE_VERSION})")
+  set(CPACK_DEBIAN_DEV_PACKAGE_SUGGESTS "libcmp-dev (>= ${CPACK_PACKAGE_VERSION}), libsecutils-dev (>= ${CPACK_PACKAGE_VERSION}), libssl-dev")
+  # see also https://gitlab.kitware.com/cmake/cmake/-/issues/21834
+  # CPack Deb does not create postinst when installing to /usr/lib/x86_64-linux-gnu
+  set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/triggers")
+  set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
+
+else(Linux)
+  #if(APPLE)
+  #  set(CPACK_GENERATOR "Bundle")
+  #  set(EXT "bundle")
+  #  set(CPACK_BUNDLE_NAME "${CPACK_PACKAGE_NAME}")
+  #else()
+    set(CPACK_GENERATOR "ZIP")
+    set(EXT "zip")
+  #endif(APPLE)
+endif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 
 set(CPACK_SOURCE_GENERATOR "TGZ")
 #set(CPACK_SET_DESTDIR TRUE) # prevents package creation error when using cpack
@@ -383,6 +391,7 @@ if(NOT TARGET ${EXT})
 endif()
 
 endif(NOT DEFINED CPACK_PACKAGE_NAME)
+
 
 # submodules
 

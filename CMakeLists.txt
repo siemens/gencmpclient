@@ -94,9 +94,9 @@ target_link_libraries(cmpClient
   ${OPENSSL_LIBRARIES}
 )
 if(DEFINED ENV{SECUTILS_USE_UTA})
-  target_link_libraries(cmpClient
-    uta
-  )
+  target_link_libraries(cmpClient uta)
+  target_link_directories(cmpClient PRIVATE /usr/local/lib)
+# set(CMAKE_INSTALL_RPATH "/usr/local/lib")
 endif()
 if(DEFINED ENV{SECUTILS_NO_TLS})
   add_compile_definitions(SECUTILS_NO_TLS=1)

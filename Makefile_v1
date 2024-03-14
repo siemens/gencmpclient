@@ -415,7 +415,7 @@ CMPCLIENT=$(SET_PROXY) LD_LIBRARY_PATH="$(OUT_DIR)" $(OUT_DIR_BIN)
 GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345 2>/dev/null
 .phony: run_demo
 run_demo: $(OUT_DIR_BIN)
-	@which $(OPENSSL) >/dev/null || (echo "cannot find $(OPENSSL), please install it"; false)
+	@which $(OPENSSL) >/dev/null || (echo "cannot find $(OPENSSL)"; false)
 	@/bin/echo -e "\n##### running cmpClient demo using $(CA_SECTION) #####\n"
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
 	@/bin/echo -e "\nValidating own CMP client cert"

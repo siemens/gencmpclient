@@ -47,7 +47,6 @@ endif()
 
 include_directories(
   ${INC_DIR}
-  ${PROJECT_SOURCE_DIR}/libsecutils/include
 )
 if(DEFINED USE_LIBCMP)
   include_directories(SYSTEM ${CMPOSSL_INC_DIR}/cmp)
@@ -63,10 +62,10 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   # help CPackDeb please dpkg-shlibdeps
   if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0")
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS
-        "../lib/${CMAKE_INSTALL_FULL_LIBDIR}")
+        "${CMAKE_CURRENT_BINARY_DIR}/tmp/usr/${CMAKE_INSTALL_LIBDIR}")
   else()
     set(CMAKE_INSTALL_RPATH # must be done before add_executable()
-        "../lib/${CMAKE_INSTALL_FULL_LIBDIR}")
+        "../${CMAKE_INSTALL_LIBDIR}")
   endif()
 endif()
 
@@ -82,7 +81,7 @@ add_executable(cmpClient
 
 target_link_libraries(cmpClient
   ${LIBGENCMP_NAME}
-  secutils
+  security-utilities::library
 )
 if(DEFINED USE_LIBCMP)
   target_link_libraries(cmpClient
@@ -142,7 +141,7 @@ if(DEFINED USE_LIBCMP)
   target_link_libraries(${LIBGENCMP_NAME} cmp)
 endif()
 # important: place libcmp before libcrypto such that its contents are preferred
-target_link_libraries(${LIBGENCMP_NAME} ${OPENSSL_LIBRARIES} secutils) # needed for clang/MacOSX
+target_link_libraries(${LIBGENCMP_NAME} OpenSSL::Crypto OpenSSL::SSL security-utilities::library)
 
 set(INC_PUBLIC_HDRS
   ${INC_DIR}/genericCMPClient.h

@@ -101,7 +101,7 @@ override CFLAGS += \
 override CFLAGS +=-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement \
   -Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow # due to libsecutils
 ifeq ($(LPATH),)
-   override CFLAGS += -I$(SECUTILS_DIR)/include
+   override CFLAGS += -I$(SECUTILS_DIR)/src/libsecutils/include
 endif
 ifneq ($(LIBCMP_INC),)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging

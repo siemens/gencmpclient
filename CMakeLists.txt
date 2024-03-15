@@ -78,19 +78,13 @@ add_executable(cmpClient
   ${SRC_DIR}/cmpClient.c
 )
 
-
 target_link_libraries(cmpClient
   ${LIBGENCMP_NAME}
   security-utilities::library
-)
-if(DEFINED USE_LIBCMP)
-  target_link_libraries(cmpClient
-    cmp
-  )
-endif()
-# important: place libcmp before libcrypto such that its contents are preferred
-target_link_libraries(cmpClient
-  ${OPENSSL_LIBRARIES}
+  $<$<BOOL:${USE_LIBCMP}>:cmp>
+  # important: libcmp before libcrypto such that its contents are preferred
+  OpenSSL::Crypto
+  $<$<NOT:$<BOOL:$ENV{SECUTILS_NO_TLS}>>:OpenSSL::SSL>
 )
 if(DEFINED ENV{SECUTILS_USE_UTA})
   target_link_libraries(cmpClient uta)
@@ -136,12 +130,13 @@ add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
 # target_compile_features(${LIBGENCMP_NAME} PRIVATE c_std_90)
 # target_compile_features(cmpClient         PRIVATE c_std_90)
 
-
-if(DEFINED USE_LIBCMP)
-  target_link_libraries(${LIBGENCMP_NAME} cmp)
-endif()
-# important: place libcmp before libcrypto such that its contents are preferred
-target_link_libraries(${LIBGENCMP_NAME} OpenSSL::Crypto OpenSSL::SSL security-utilities::library)
+target_link_libraries(${LIBGENCMP_NAME}
+  security-utilities::library
+  $<$<BOOL:${USE_LIBCMP}>:cmp>
+  # important: libcmp before libcrypto such that its contents are preferred
+  OpenSSL::Crypto
+  $<$<NOT:$<BOOL:$ENV{SECUTILS_NO_TLS}>>:OpenSSL::SSL>
+)
 
 set(INC_PUBLIC_HDRS
   ${INC_DIR}/genericCMPClient.h

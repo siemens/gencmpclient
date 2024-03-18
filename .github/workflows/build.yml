@@ -10,7 +10,7 @@ jobs:
   cmake:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: cmake
         run: |
           cmake .
@@ -32,7 +32,7 @@ jobs:
   build_doc_this:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: build_doc_this
         run: |
           # would need access to azure.archive.ubuntu.com:
@@ -49,7 +49,7 @@ jobs:
   test_all:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: test_all
         run: |
           # would need access to azure.archive.ubuntu.com:
@@ -60,7 +60,7 @@ jobs:
   doc_deb:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: doc_deb
         run: |
           # needs access to azure.archive.ubuntu.com:

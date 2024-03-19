@@ -439,9 +439,11 @@ run_demo: $(OUT_DIR_BIN)
 	@$(SLEEP)
 	$(CMPCLIENT) pkcs10 -section $(CA_SECTION) $(EXTRA_OPTS)
     endif
+    ifneq ($(CA_SECTION),CloudCA) # workaround for CA hickup: "Could not verify the RA, signature verification on NestedMessageContent failed."
 	@echo
 	@$(SLEEP)
 	$(CMPCLIENT) update -section $(CA_SECTION) $(EXTRA_OPTS)
+    endif
 	@echo :
 	$(OCSP_CHECK)
 	@echo

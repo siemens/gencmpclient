@@ -214,7 +214,7 @@ CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr,
 CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out);
 # endif
 /* get certificate request template and related key specifications */
-# if OPENSSL_VERSION_NUMBER > 0x30300000L || defined USE_LIBCMP
+# if OPENSSL_VERSION_NUMBER > 0x30400000L || defined USE_LIBCMP
 CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
                                   OSSL_CRMF_CERTTEMPLATE **certTemplate,
                                   OPTIONAL OSSL_CMP_ATAVS **keySpec);

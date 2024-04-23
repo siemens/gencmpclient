@@ -1073,7 +1073,7 @@ CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out)
 }
 #endif
 
-#if OPENSSL_VERSION_NUMBER > 0x30300000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER > 0x30400000L || defined USE_LIBCMP
 CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
                                   OSSL_CRMF_CERTTEMPLATE **certTemplate,
                                   OPTIONAL OSSL_CMP_ATAVS **keySpec)
@@ -1256,7 +1256,7 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
 }
 #endif
 
-#if OPENSSL_VERSION_NUMBER > 0x30300000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER > 0x30400000L || defined USE_LIBCMP
 CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, OPTIONAL const X509 *cert,
                             OPTIONAL const X509_CRL *last_crl, X509_CRL **crl)
 {

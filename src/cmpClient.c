@@ -2026,7 +2026,7 @@ static int print_itavs(const STACK_OF(OSSL_CMP_ITAV) *itavs)
     return ret;
 }
 
-#if OPENSSL_VERSION_NUMBER > 0x30300000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER > 0x30400000L || defined USE_LIBCMP
 static int save_template(const char *file, const OSSL_CRMF_CERTTEMPLATE *tmpl)
 {
     BIO *bio = BIO_new_file(file, "wb");
@@ -2136,7 +2136,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         }
 #endif
 
-#if OPENSSL_VERSION_NUMBER > 0x30300000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER > 0x30400000L || defined USE_LIBCMP
     case NID_id_it_crlStatusList:
         if (opt_oldcrl == NULL && opt_oldcert == NULL) {
             LOG(FL_ERR, "Missing -oldcrl and no -oldcert given for -infotype crlStatusList");

@@ -73,7 +73,7 @@ stop_LwCmp:
 
 GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signkey creds/operational.pem -out creds/operational.csr -passin pass:12345 2>/dev/null
 BASIC_ARGS = -verbosity 3 -path /lra -section CmpRa,
-CMPCLNT = LD_LIBRARY_PATH=. $(CMPCLIENT)         $(BASIC_ARGS)
+CMPCLNT = $(CMPCLIENT) $(BASIC_ARGS)
 CMPOSSL = $(OPENSSL) cmp -config config/demo.cnf $(BASIC_ARGS)
 .phony: test_conformance_openssl test_conformance_cmpclient test_conformance
 test_conformance_openssl:   start_LwCmp conformance_openssl   stop_LwCmp

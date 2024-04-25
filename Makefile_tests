@@ -91,7 +91,7 @@ conformance_cmpclient:
 conformance: $(CMPCLIENT)
 	$(CMPCL)imprint
 	$(CMPCL)bootstrap
-	@$(GENERATE_OPERATIONAL)
+	$(GENERATE_OPERATIONAL)
 	$(CMPCL)pkcs10 # when using openssl, requires at least version 3.3(-dev)
 	$(CMPCL)update
 	$(CMPCL)revoke

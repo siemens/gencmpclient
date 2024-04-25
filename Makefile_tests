@@ -39,9 +39,9 @@ $(CMPRACOMP_DIR)/pom.xml:
 LWCMPRA_JAR=$(LWCMPRA_DIR)/target/LightweightCmpRa-2.3.0.jar # TODO make version flexible
 $(LWCMPRA_JAR): $(LWCMPRA_DIR)/pom.xml
 	cd $(LWCMPRA_DIR) && mvn clean install -DskipTests=true
-CMPRACOMP_JAR=$(CMPRACOMP_DIR)/target/CmpRaComponent-2.2.1.jar # TODO make version flexible
+CMPRACOMP_JAR=$(CMPRACOMP_DIR)/target/CmpRaComponent-4.1.2.jar # TODO make version flexible
 $(CMPRACOMP_JAR): $(CMPRACOMP_DIR)/pom.xml
-	cd $(CMPRACOMP_DIR) && mvn clean install -DskipTests=true
+	cd $(CMPRACOMP_DIR) && mvn clean install -DskipTests=true -Dgpg.skip
 
 LWCMPRA_JAR ?= $(LWCMPRA_JAR) # was: ./LightweightCmpRa.jar
 LWCMPRA_RUN = java -jar $(LWCMPRA_JAR)

@@ -1,7 +1,7 @@
 [default]
 batch = 1 # do not use stdin
 total_timeout = 8 # prevent, e.g., infinite polling due to error
-trusted = trusted.crt # might also use srvcert here
+trusted = trusted.crt,server_root.crt
 newkey = new.key
 newkeypass =
 cmd = ir
@@ -51,9 +51,9 @@ server_cert = server.crt
 server = $server_host:$server_port
 server_path = lra/
 path = $server_path
-ca_dn = /CN=CMPCA-ENDENTITY
+ca_dn = /C=DE/O=Siemens/OU=TestDepartment/CN=CMP_CA_ENDENTITY
 recipient = $ca_dn
-server_dn = /CN=Downstream-CMP-ENDENTITY
+server_dn = /C=DE/O=Siemens/OU=TestDepartment/CN=CMP_LRA_DOWNSTREAM_ENDENTITY
 expect_sender = $ca_dn
 # profile = RSA
 subject = "/CN=EE-CMP-ENDENTITY"

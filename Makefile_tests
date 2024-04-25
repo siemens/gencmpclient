@@ -36,7 +36,7 @@ $(LWCMPRA_DIR)/pom.xml:
 $(CMPRACOMP_DIR)/pom.xml:
 	git submodule update $(GIT_PROGRESS) --init --depth 1 $(CMPRACOMP_DIR)
 
-LWCMPRA_JAR=$(LWCMPRA_DIR)/target/LightweightCmpRa-2.3.0.jar # TODO make version flexible
+LWCMPRA_JAR=$(LWCMPRA_DIR)/target/LightweightCmpRa-4.0.2.jar # TODO make version flexible
 $(LWCMPRA_JAR): $(LWCMPRA_DIR)/pom.xml
 	cd $(LWCMPRA_DIR) && mvn clean install -DskipTests=true
 CMPRACOMP_JAR=$(CMPRACOMP_DIR)/target/CmpRaComponent-4.1.2.jar # TODO make version flexible

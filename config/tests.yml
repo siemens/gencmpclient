@@ -2,11 +2,11 @@
 
 DownstreamInterface:
   HttpServer:
-    ServingUri: "http://localhost:6000/lra"
+    UpstreamUri: "http://localhost:6000/lra"
 
 UpstreamInterface:
   - HttpClient:
-      servingUri:  "http://127.0.0.1:7000/ca"
+      UpstreamUri:  "http://127.0.0.1:7000/ca"
 
 DownstreamConfiguration:
   - VerificationContext:

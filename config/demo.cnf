@@ -109,7 +109,7 @@ key = creds/CMP_EE_Key.pem # workaround for cmpossl
 keypass = pass:Password
 subject = "/CN=test-genCMPClientDemo"
 untrusted = creds/ENROLL_Chain.pem
-trusted = creds/trusted/CMP_LRA_DOWNSTREAM_Root.pem,credentials/CMP_CA_Root.pem
+trusted = creds/trusted/CMP_LRA_DOWNSTREAM_Root.pem,creds/trusted/CMP_CA_Root.pem
 out_trusted = creds/trusted/ENROLL_Root.pem
 #tls_used = 0
 #tls_trusted =

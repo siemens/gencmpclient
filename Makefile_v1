@@ -560,7 +560,7 @@ profile: $(OUT_DIR_BIN)
 	@echo "\n##### All profile tests succeeded #####"
 endif
 
-.phony: all test_all test tests doc doc_this zip
+.phony: all test_all test doc doc_this zip
 all:	build doc
 
 .phony: test_Mock

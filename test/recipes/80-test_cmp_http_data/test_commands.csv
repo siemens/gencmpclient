@@ -78,12 +78,12 @@ Mock server must use OpenSSL 3.2 ,1,-,-,genm caCerts  - not with OpenSSL 1.1  , 
 0,*,*,*,genm caCerts cacertsout extra arg     , -section,, -cmd,genm,, -cacertsout,test.cacertsout.pem,test.cacertsout.pem, -infotype,caCerts,,BLANK,,BLANK,
 0,*,*,*,genm caCerts cacertsout arg non-ex dir, -section,, -cmd,genm,, -cacertsout,idontexist/idontexist,, -infotype,caCerts,,BLANK,,BLANK,
 -,1,-,-,genm rootCaCert                       , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem
-0,*,*,*,genm rootCaCert missing oldwithold    , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, BLANK      ,               , -newwithnew, test.newwithnew.pem
+0,*,*,*,genm rootCaCert no oldwithold given   , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, BLANK      ,               , -newwithnew, test.newwithnew.pem
 0,*,*,*,genm rootCaCert oldwithold missing arg, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold,               , -newwithnew, test.newwithnew.pem
 0,*,*,*,genm rootCaCert oldwithold empty file , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, empty.txt     , -newwithnew, test.newwithnew.pem
 0,*,*,*,genm rootCaCert oldwithold random file, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, random.bin    , -newwithnew, test.newwithnew.pem
 0,*,*,*,genm rootCaCert oldwithold nonexistent, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, idontexist    , -newwithnew, test.newwithnew.pem
-0,*,*,*,genm rootCaCert oldwithold wrong      , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, signer.crt    , -newwithnew, test.newwithnew.pem
+0,*,*,*,genm rootCaCert oldwithold no match   , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, signer.crt    , -newwithnew, test.newwithnew.pem
 0,*,*,*,genm rootCaCert missing newwithnew    , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, BLANK,,
 0,*,*,*,genm rootCaCert newwithnew missing arg, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew,,
 0,*,*,*,genm rootCaCert newwithnew directory  , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew,directory/,

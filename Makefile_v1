@@ -372,7 +372,7 @@ get_EJBCA_crls: | creds/crls
 .phony: get_Insta_crls
 get_Insta_crls: | creds/crls
 	@ #curl -m 2 -s pki.certificate.fi ...
-	$(SET_PROXY) wget -O /dev/null --tries=1 --max-redirect=0 --timeout=2 https://www.insta.fi/ --no-verbose
+	$(SET_PROXY) wget -O /dev/null --tries=1 --max-redirect=2 --timeout=4 https://www.insta.fi/ --no-verbose
 	@ # | fgrep "301 Moved Permanently" -q || (echo "cannot reach pki.certificate.fi"; exit 1)
 	@ #curl -s -o creds/crls/InstaDemoCA.crl ...
 	$(SET_PROXY) wget --quiet -O creds/crls/InstaDemoCA.crl "http://pki.certificate.fi:8081/crl-as-der/currentcrl-633.crl?id=633"

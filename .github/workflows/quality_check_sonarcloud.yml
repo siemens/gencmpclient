@@ -36,7 +36,7 @@ jobs:
           make
       - name: test-coverage
         run: |
-          USE_LIBCMP=1 make -f Makefile_v1 clean_all build
+          USE_LIBCMP=1 make -f Makefile_v1 clean build
           USE_LIBCMP=1 make -f Makefile_v1 test_Mock || true
           find . -name *.gcno -exec gcov {} \;
       - name: Run sonar-scanner

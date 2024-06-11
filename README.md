@@ -62,11 +62,47 @@ The following OSS components are used.
   or if the latest CMP features not yet available in OpenSSL are required,
   which can be indicated by setting the environment variable `USE_LIBCMP`.
 
+### Linux installation
+
 For instance, on a Debian or Ubuntu system the prerequisites may be installed simply as follows:
 ```
 sudo apt install cmake libssl-dev libc-dev linux-libc-dev
 ```
 while `sudo apt install git make gcc wget` usually is not needed as far as these tools are pre-installed.
+
+You might need to set the variable `OPENSSL_DIR` first as described below, e.g.,
+```
+export OPENSSL_DIR=/usr/local
+```
+
+### OS X installation
+
+On a Mac OS X system the following steps need to be executed in a terminal:
+
+```
+brew install git
+brew install CMake
+brew install make
+brew install gcc
+brew install wget
+brew install perl    
+brew uninstall --ignore-dependencies openssl@3
+brew install openssl@3
+brew --prefix openssl@3
+```
+
+These lines need to be added to ``~/.zshrc``
+
+```
+export LDFLAGS="-L$(brew --prefix openssl@3)/lib"
+export CPPFLAGS="-I$(brew --prefix openssl@3)/include"
+export OPENSSL_DIR=$(brew --prefix openssl@3)
+export OPENSSL_LIB=$(brew --prefix openssl@3)/lib
+```
+
+After adding these lines, the terminal needs to be restarted.
+
+### Common steps
 
 As a sanity check you can execute in a shell on a Unix-like system:
 ```
@@ -80,11 +116,6 @@ This should output on the console something like
 ```
 cc [...] OpenSSL_version.c -lcrypto -o OpenSSL_version
 OpenSSL 3.0.8 7 Feb 2023 (0x30000080)
-```
-
-You might need to set the variable `OPENSSL_DIR` first as described below, e.g.,
-```
-export OPENSSL_DIR=/usr/local
 ```
 
 ## Getting the software
@@ -127,21 +158,26 @@ including the C header files needed for development
 (as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
 
 By default any OpenSSL installation available on the system is used.
-Set the optional environment variable `OPENSSL_DIR` to specify the
-absolute (or relative to `../`) path of the OpenSSL installation to use, e.g.:
-```
-export OPENSSL_DIR=/usr/local
-```
-This must point to the location in the file system from which `include/openssl`
-is directly accessible with this relative path name.\
-In case its libraries are in a different location, set also `OPENSSL_LIB`, e.g.:
-```
-export OPENSSL_LIB=/lib/x86_64-linux-gnu
-```
-The needed value may be obtained by
-```
-ldd `which openssl` | grep libcrypto.so | awk '{print $3}' | sed 's#/[^/]*$##'
-```
+
+> [!TIP]
+>
+> **Only on Linux**
+>
+> Set the optional environment variable `OPENSSL_DIR` to specify the
+> absolute (or relative to `../`) path of the OpenSSL installation to use, e.g.:
+>```
+>export OPENSSL_DIR=/usr/local
+>```
+>This must point to the location in the file system from which `include/openssl`
+>is directly accessible with this relative path name.\
+>In case its libraries are in a different location, set also `OPENSSL_LIB`, e.g.:
+>```
+>export OPENSSL_LIB=/lib/x86_64-linux-gnu
+>```
+>The needed value may be obtained by
+>```
+>ldd `which openssl` | grep libcrypto.so | awk '{print $3}' | sed 's#/[^/]*$##'
+>```
 
 Define the environment variable `USE_LIBCMP` for using the latest CMP features
 and fixes, which implies use of the intermediate library `libcmp`.

@@ -118,6 +118,18 @@ it is sufficient to invoke
 make update
 ```
 
+When switching to a certain commit or version, e.g.
+```
+git checkout v2.0
+```
+then also execute
+```
+git submodule update
+make -f Makefile_v1 clean
+```
+to bring the submodules in a state consistent with that
+and remove any previous possibly outdated artifacts.
+
 
 ## Configuring
 

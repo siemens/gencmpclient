@@ -42,7 +42,7 @@ via a link in its [README file](https://github.com/siemens/libsecutils/blob/mast
 
 This software should work with any flavor of Linux, including [Cygwin](https://www.cygwin.com/),
 also on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)),
-and with MacOS.
+and with MacOS X.
 
 The following network and development tools are needed or recommended.
 * Git (for getting the software, tested with versions 2.7.2, 2.11.0, 2.20, 2.30.2, 2.39.2)
@@ -77,30 +77,22 @@ export OPENSSL_DIR=/usr/local
 
 ### OS X installation
 
-On a Mac OS X system the following steps need to be executed in a terminal:
-
+On a Mac OS X system the prerequisites may be installed
+by executing the following in a terminal:
 ```
-brew install git
-brew install CMake
-brew install make
-brew install gcc
-brew install wget
-brew install perl    
+brew install git make openssl cmake wget perl
+```
+When using `gcc` (instead of `clang`) and `ccache`:
+```
+brew install gcc ccache
+```
+
+For making sure that OpenSSL version 3 is installed:
+```
 brew uninstall --ignore-dependencies openssl@3
 brew install openssl@3
 brew --prefix openssl@3
 ```
-
-These lines need to be added to ``~/.zshrc``
-
-```
-export LDFLAGS="-L$(brew --prefix openssl@3)/lib"
-export CPPFLAGS="-I$(brew --prefix openssl@3)/include"
-export OPENSSL_DIR=$(brew --prefix openssl@3)
-export OPENSSL_LIB=$(brew --prefix openssl@3)/lib
-```
-
-After adding these lines, the terminal needs to be restarted.
 
 ### Common steps
 
@@ -171,25 +163,38 @@ including the C header files needed for development
 
 By default any OpenSSL installation available on the system is used.
 
-> [!TIP]
->
-> **Only on Linux**
->
-> Set the optional environment variable `OPENSSL_DIR` to specify the
-> absolute (or relative to `../`) path of the OpenSSL installation to use, e.g.:
->```
->export OPENSSL_DIR=/usr/local
->```
->This must point to the location in the file system from which `include/openssl`
->is directly accessible with this relative path name.\
->In case its libraries are in a different location, set also `OPENSSL_LIB`, e.g.:
->```
->export OPENSSL_LIB=/lib/x86_64-linux-gnu
->```
->The needed value may be obtained by
->```
->ldd `which openssl` | grep libcrypto.so | awk '{print $3}' | sed 's#/[^/]*$##'
->```
+Set the optional environment variable `OPENSSL_DIR` to specify the
+absolute (or relative to `../`) path of the OpenSSL installation to use.
+
+This must point to the location in the file system from which `include/openssl`
+is directly accessible with this relative path name.\
+In case its libraries are in a different location, set also `OPENSSL_LIB`.
+
+### Linux
+
+Here are examples for Linux:
+```
+export OPENSSL_DIR=/usr/local
+export OPENSSL_LIB=/lib/x86_64-linux-gnu
+```
+The value for `OPENSSL_LIB` may be obtained by
+```
+ldd `which openssl` | grep libcrypto.so | awk '{print $3}' | sed 's#/[^/]*$##'
+```
+
+### OS X
+
+On Mac OS X, these lines are suggested to add to ``~/.zshrc``
+
+```
+export LDFLAGS="-L$(brew --prefix openssl@3)/lib"
+export CPPFLAGS="-I$(brew --prefix openssl@3)/include"
+export OPENSSL_DIR=$(brew --prefix openssl@3)
+export OPENSSL_LIB=$(brew --prefix openssl@3)/lib
+```
+After doing so, restart the terminal or copy&paste them there, too.
+
+### Common steps
 
 Define the environment variable `USE_LIBCMP` for using the latest CMP features
 and fixes, which implies use of the intermediate library `libcmp`.

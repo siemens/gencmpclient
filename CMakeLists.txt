@@ -255,8 +255,8 @@ if(NOT DEFINED CPACK_PACKAGE_NAME)
 
 SET(CPACK_PACKAGE_NAME ${PROJECT_NAME})
 SET(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/siemens/gencmpclient")
-SET(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.md")
-SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.txt")
+SET(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
 SET(CPACK_PACKAGE_VENDOR "Siemens")
 set(CPACK_PACKAGE_CONTACT "David von Oheimb <David.von.Oheimb@siemens.com>")
 set(CPACK_PACKAGE_VERSION       ${GENCMPCLIENT_VERSION})
@@ -435,7 +435,7 @@ if(NOT YOCTO_BUILD)
         message(STATUS "fetching git submodule libsecutils")
         execute_process(COMMAND
           git submodule update ${GIT_PROGRESS} --init ${GIT_DEPTH} libsecutils
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
           RESULT_VARIABLE GIT_SUBMODULE_RESULT
           )
         if(NOT GIT_SUBMODULE_RESULT EQUAL "0")
@@ -456,7 +456,7 @@ if(NOT YOCTO_BUILD)
         message(STATUS "fetching git submodule cmpossl")
         execute_process(COMMAND
           git submodule update ${GIT_PROGRESS} --init ${GIT_DEPTH} cmpossl
-          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
           RESULT_VARIABLE GIT_SUBMODULE_RESULT
           )
         if(NOT GIT_SUBMODULE_RESULT EQUAL "0")

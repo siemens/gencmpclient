@@ -17,6 +17,10 @@
 
 # include "genericCMPClient_config.h"
 
+# ifdef __cplusplus
+extern "C" {
+# endif
+
 # include <openssl/opensslv.h>
 
 # if OPENSSL_VERSION_NUMBER < 0x30000000L || defined USE_LIBCMP
@@ -284,6 +288,10 @@ void TLS_free(OPTIONAL SSL_CTX *tls);
 #  include "genericCMPClient_imports.h"
 # else
 #  include <secutils/util/extensions.h>
+# endif
+
+# ifdef __cplusplus
+}
 # endif
 
 #endif /* GENERIC_CMP_CLIENT_H */

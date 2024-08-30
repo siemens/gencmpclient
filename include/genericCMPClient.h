@@ -66,18 +66,18 @@ const char *OSSL_CMP_CTX_get0_propq(ossl_unused const OSSL_CMP_CTX *ctx)
 #  define SN_id_it_crlStatusList          "id-it-crlStatusList"
 #  define NID_id_it_crlStatusList         1256
 #  define OBJ_id_it_crlStatusList         OBJ_id_it, 22L
-#  define SN_id_it_crls           "id-it-crls"
-#  define NID_id_it_crls          1257
-#  define OBJ_id_it_crls          OBJ_id_it, 23L
-#  define SN_id_regCtrl_altCertTemplate           "id-regCtrl-altCertTemplate"
-#  define NID_id_regCtrl_altCertTemplate          1258
-#  define OBJ_id_regCtrl_altCertTemplate          OBJ_id_regCtrl, 7L
+#  define SN_id_it_crls                   "id-it-crls"
+#  define NID_id_it_crls                  1257
+#  define OBJ_id_it_crls                  OBJ_id_it, 23L
+#  define SN_id_regCtrl_altCertTemplate   "id-regCtrl-altCertTemplate"
+#  define NID_id_regCtrl_altCertTemplate  1258
+#  define OBJ_id_regCtrl_altCertTemplate  OBJ_id_regCtrl, 7L
 #  define SN_id_regCtrl_algId             "id-regCtrl-algId"
 #  define NID_id_regCtrl_algId            1259
 #  define OBJ_id_regCtrl_algId            OBJ_id_regCtrl, 11L
 #  define SN_id_regCtrl_rsaKeyLen         "id-regCtrl-rsaKeyLen"
-#  define NID_id_regCtrl_rsaKeyLen                1260
-#  define OBJ_id_regCtrl_rsaKeyLen                OBJ_id_regCtrl, 12L
+#  define NID_id_regCtrl_rsaKeyLen        1260
+#  define OBJ_id_regCtrl_rsaKeyLen        OBJ_id_regCtrl, 12L
 # endif
 
 # define CMPCLIENT_MODULE_NAME "genCMPClient"

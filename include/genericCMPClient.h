@@ -23,7 +23,7 @@ extern "C" {
 
 # include <openssl/opensslv.h>
 
-# if OPENSSL_VERSION_NUMBER < 0x30000000L || defined USE_LIBCMP
+# if OPENSSL_VERSION_NUMBER < 0x30000000L || defined(USE_LIBCMP)
 #  include <openssl/openssl_backport.h> /* if not found, maybe genericCMPClient_config.h is not up to date w.r.t. USE_LIBCMP */
 # endif
 /* for low-level CMP API, in particular, type OSSL_CMP_CTX */
@@ -38,7 +38,7 @@ typedef OSSL_CMP_CTX CMP_CTX;
 #  define OSSL_CMP_PKISTATUS_unspecified            -1
 # endif
 
-# if OPENSSL_VERSION_NUMBER < 0x30200000L && !defined USE_LIBCMP
+# if OPENSSL_VERSION_NUMBER < 0x30200000L && !defined(USE_LIBCMP)
 static ossl_inline
 OSSL_LIB_CTX *OSSL_CMP_CTX_get0_libctx(ossl_unused const OSSL_CMP_CTX *ctx)
 {
@@ -49,37 +49,35 @@ const char *OSSL_CMP_CTX_get0_propq(ossl_unused const OSSL_CMP_CTX *ctx)
 {
     return NULL; /* sorry, dummy */
 }
-# endif
-# if OPENSSL_VERSION_NUMBER < 0x30200000L
 #  define SN_id_mod_cmp2000_02            "id-mod-cmp2000-02"
 #  define NID_id_mod_cmp2000_02           1251
-#  define OBJ_id_mod_cmp2000_02           OBJ_id_pkix_mod,50L
+#  define OBJ_id_mod_cmp2000_02           OBJ_id_pkix_mod, 50L
 #  define SN_id_mod_cmp2021_88            "id-mod-cmp2021-88"
 #  define NID_id_mod_cmp2021_88           1252
-#  define OBJ_id_mod_cmp2021_88           OBJ_id_pkix_mod,99L
+#  define OBJ_id_mod_cmp2021_88           OBJ_id_pkix_mod, 99L
 #  define SN_id_mod_cmp2021_02            "id-mod-cmp2021-02"
 #  define NID_id_mod_cmp2021_02           1253
-#  define OBJ_id_mod_cmp2021_02           OBJ_id_pkix_mod,100L
+#  define OBJ_id_mod_cmp2021_02           OBJ_id_pkix_mod, 100L
 #  define NID_id_it_rootCaCert            1254
-#  define OBJ_id_it_rootCaCert            OBJ_id_it,20L
+#  define OBJ_id_it_rootCaCert            OBJ_id_it, 20L
 #  define SN_id_it_certProfile            "id-it-certProfile"
 #  define NID_id_it_certProfile           1255
-#  define OBJ_id_it_certProfile           OBJ_id_it,21L
+#  define OBJ_id_it_certProfile           OBJ_id_it, 21L
 #  define SN_id_it_crlStatusList          "id-it-crlStatusList"
 #  define NID_id_it_crlStatusList         1256
-#  define OBJ_id_it_crlStatusList         OBJ_id_it,22L
-#  define SN_id_it_crls           "id-it-crls"
-#  define NID_id_it_crls          1257
-#  define OBJ_id_it_crls          OBJ_id_it,23L
-#  define SN_id_regCtrl_altCertTemplate           "id-regCtrl-altCertTemplate"
-#  define NID_id_regCtrl_altCertTemplate          1258
-#  define OBJ_id_regCtrl_altCertTemplate          OBJ_id_regCtrl,7L
+#  define OBJ_id_it_crlStatusList         OBJ_id_it, 22L
+#  define SN_id_it_crls                   "id-it-crls"
+#  define NID_id_it_crls                  1257
+#  define OBJ_id_it_crls                  OBJ_id_it, 23L
+#  define SN_id_regCtrl_altCertTemplate   "id-regCtrl-altCertTemplate"
+#  define NID_id_regCtrl_altCertTemplate  1258
+#  define OBJ_id_regCtrl_altCertTemplate  OBJ_id_regCtrl, 7L
 #  define SN_id_regCtrl_algId             "id-regCtrl-algId"
 #  define NID_id_regCtrl_algId            1259
-#  define OBJ_id_regCtrl_algId            OBJ_id_regCtrl,11L
+#  define OBJ_id_regCtrl_algId            OBJ_id_regCtrl, 11L
 #  define SN_id_regCtrl_rsaKeyLen         "id-regCtrl-rsaKeyLen"
-#  define NID_id_regCtrl_rsaKeyLen                1260
-#  define OBJ_id_regCtrl_rsaKeyLen                OBJ_id_regCtrl,12L
+#  define NID_id_regCtrl_rsaKeyLen        1260
+#  define OBJ_id_regCtrl_rsaKeyLen        OBJ_id_regCtrl, 12L
 # endif
 
 # define CMPCLIENT_MODULE_NAME "genCMPClient"
@@ -147,7 +145,7 @@ CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
 CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, const char *path,
                             int keep_alive, int timeout);
 
-# if OPENSSL_VERSION_NUMBER >= 0x30300000L || defined USE_LIBCMP
+# if OPENSSL_VERSION_NUMBER >= 0x30300000L || defined(USE_LIBCMP)
 /* call optionally before requests; name may be UTF8-encoded string */
 /* This calls OSSL_CMP_CTX_reset_geninfo_ITAVs() if name == NULL */
 CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name);
@@ -213,18 +211,18 @@ CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 /* reason codes are defined in openssl/x509v3.h */
 CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr, */ int reason);
 
-# if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+# if OPENSSL_VERSION_NUMBER > 0x30200000L || defined(USE_LIBCMP)
 /* get CA certs, discard duplicates, and verify they are non-expired CA certs */
 CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out);
 # endif
 /* get certificate request template and related key specifications */
-# if OPENSSL_VERSION_NUMBER > 0x30400000L || defined USE_LIBCMP
+# if OPENSSL_VERSION_NUMBER > 0x30400000L || defined(USE_LIBCMP)
 CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
                                   OSSL_CRMF_CERTTEMPLATE **certTemplate,
                                   OPTIONAL OSSL_CMP_ATAVS **keySpec);
 # endif
 
-# if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+# if OPENSSL_VERSION_NUMBER > 0x30200000L || defined(USE_LIBCMP)
 /* get any root CA key update and verify it as far as possible */
 CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
                              const X509 *oldWithOld, X509 **newWithNew,

@@ -49,8 +49,6 @@ const char *OSSL_CMP_CTX_get0_propq(ossl_unused const OSSL_CMP_CTX *ctx)
 {
     return NULL; /* sorry, dummy */
 }
-# endif
-# if OPENSSL_VERSION_NUMBER < 0x30200000L
 #  define SN_id_mod_cmp2000_02            "id-mod-cmp2000-02"
 #  define NID_id_mod_cmp2000_02           1251
 #  define OBJ_id_mod_cmp2000_02           OBJ_id_pkix_mod, 50L

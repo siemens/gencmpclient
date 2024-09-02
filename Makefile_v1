@@ -484,7 +484,7 @@ EJBCA_CRL_INTERVAL=5
 start_EJBCA: $(EJBCA_DOCKER_DIR)
 ifeq ($(EJBCA_CONFIG),)
 	@echo "starting EJBCA"
-	@cd $(EJBCA_DOCKER_DIR) && docker-compose -f docker-compose.yml up -d
+	@cd $(EJBCA_DOCKER_DIR) && docker compose -f docker-compose.yml up -d
 	@echo "probing until EJBCA docker is ready - usually takes some 70 seconds..."
 	@wget -q --tries=100 -nv http://${EJBCA_HOST}:${EJBCA_HTTPS_PORT}/ejbca -O /dev/null
 	@echo "EJBCA docker is ready now to accept requests."
@@ -501,7 +501,7 @@ endif
 stop_EJBCA: $(EJBCA_DOCKER_DIR)
 ifeq ($(EJBCA_CONFIG),)
 	@echo "stopping EJBCA"
-	@cd $(EJBCA_DOCKER_DIR) && docker-compose -f docker-compose.yml down
+	@cd $(EJBCA_DOCKER_DIR) && docker compose -f docker-compose.yml down
 endif
 
 .phony: start_Simple stop_Simple

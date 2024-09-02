@@ -402,7 +402,7 @@ endif
 
 .phony: demo demo_all demo_Insta demo_EJBCA demo_CloudCA
 demo: demo_Insta
-demo_all: demo demo_EJBCA demo_CloudCA
+demo_all: demo demo_EJBCA
 demo_Insta: get_Insta_crls
 	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" CA_SECTION="Insta" SLEEP="sleep 1"
         # for Insta, sleep 1 helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable

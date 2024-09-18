@@ -22,7 +22,7 @@ ifneq ($(OPENSSL_DIR),)
         OPENSSL_LIB=$(OPENSSL_DIR)/$(LIB)
     endif
     CFLAGS+=-isystem $(OPENSSL_DIR)/include
-    LDFLAGS+=-L$(OPENSSL_DIR) -L$(OPENSSL_LIB) -Wl,-rpath=$(OPENSSL_DIR) -Wl,-rpath=$(OPENSSL_LIB)
+    LDFLAGS+=-L$(OPENSSL_DIR) -L$(OPENSSL_LIB) -Wl,-rpath,$(OPENSSL_DIR) -Wl,-rpath,$(OPENSSL_LIB)
 endif
 LDLIBS=-lcrypto
 

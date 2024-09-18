@@ -407,7 +407,7 @@ e.g., `-lsecutils -lgencmp`.
 When the intermediate library `libcmp` is used, `-lcmp` is needed additionally.
 Add the directories (e.g., with the linker option `-L`) where they can be found.
 See also the environment variable `OUT_DIR`.
-Consider using also linker options like `-Wl,-rpath=.`
+Consider using also linker options like `-Wl,-rpath,.`
 for helping the Linux loader find the libraries at run time.
 
 Also make sure that the OpenSSL libraries

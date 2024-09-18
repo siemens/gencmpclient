@@ -61,6 +61,17 @@ The following OSS components are used.
   or if the latest CMP features not yet available in OpenSSL are required,
   which can be indicated by setting the environment variable `USE_LIBCMP`.
 
+Hint: As long as your system provides at least OpenSSL 3.0 and
+related development header files at a sufficiently new patch level,
+better not manually install in addition a different OpenSSL version unless
+you need newer CMP features without using the intermediate CMP library `libcmp`.
+Such a manual installation can interfere with the more or less implicit
+references to the locations of OpenSSL header files and binary libary files.
+So unless you know exactly what you are doing, you may receive
+version mismatch errors like the one mentioned [below](#sanity-checks-on-openssl).
+<!-- https://github.com/orgs/community/discussions/60861-->
+
+
 ### Linux installation
 
 For instance, on a Debian or Ubuntu system the prerequisites may be installed simply as follows:
@@ -93,9 +104,10 @@ brew install openssl@3
 brew --prefix openssl@3
 ```
 
-### Common steps
+### Sanity checks on OpenSSL
 
-As a sanity check you can execute in a shell on a Unix-like system:
+As a sanity check whether OpenSSL is usable for building the CMP client,
+you can execute in a shell on a Unix-like system:
 ```
 git clone https://github.com/siemens/gencmpclient.git
 cd genCMPClient
@@ -106,8 +118,17 @@ make -f OpenSSL_version.mk
 This should output on the console something like
 ```
 cc [...] OpenSSL_version.c -lcrypto -o OpenSSL_version
-OpenSSL 3.0.8 7 Feb 2023 (0x30000080)
+OpenSSL 3.0.13 30 Jan 2024 (0x300000d0)
 ```
+
+When getting version mismatch errors like
+```
+OpenSSL runtime version 0x304000d0 does not match version 0x300000d0 used by compiler
+```
+make sure that the system-level configuration for finding header and library files
+as well as the optional environment variables `OPENSSL_DIR` and `OPENSSL_LIB`
+described [below](#configuring) are set up in a consistent way.
+
 
 ## Getting the software
 

@@ -60,7 +60,7 @@ cmp-ra-component*/
 seccmp_lib
 securityUtilities*/
 reports/cpputest/*
-include/openssl-*
+include/genericCMPClient_config.h
 libsecutils.*
 libSecUtils.so
 libsecurityutilities*
@@ -98,5 +98,3 @@ creds/test.*
 creds/trusted/ATCS*
 creds/trusted/BaltimoreCyberTrustRoot2000.crt
 creds/www.insta.fi.*
-include/cmp/
-kanz/

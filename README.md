@@ -9,17 +9,16 @@ and associated CLI-based demo client, tests, and documentation.
 The purpose of this software is to provide a high-level API
 on top of the detailed CMP (and CRMF) API of
 [OpenSSL](https://www.openssl.org/) since version 3.0.
-It can be used with OpenSSL and with the intermediate CMP library
-[CMPforOpenSSL](https://github.com/mpeylo/cmpossl)
-providing the latest CMP features defined in [CMP Updates
-](https://datatracker.ietf.org/doc/html/draft-ietf-lamps-cmp-updates).
+It can be used with OpenSSL and optionally the intermediate CMP library
+[CMPforOpenSSL](https://github.com/mpeylo/cmpossl), called `libcmp` below,
+providing the CMPv3 features defined in
+[CMP Updates](https://www.rfc-editor.org/rfc/rfc9480).
 
 The high-level API is on the one hand convenient to use for application
 programmers and on the other hand complete and flexible enough
 to cover the major certificate management use cases.
 The library supports developing CMP clients that adhere to
-the [Lightweight CMP Profile (LCMPP)
-](https://datatracker.ietf.org/doc/html/draft-ietf-lamps-lightweight-cmp-profile),
+the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483),
 which is geared towards simple and interoperable industrial use.
 The software also provides a command-line interface (CLI)
 that is handy for interactive exploration of using CMP in a PKI.
@@ -54,7 +53,7 @@ The following network and development tools are needed or recommended.
 * Perl (for running the tests, tested with versions 5.30.3 and 5.32.1)
 
 The following OSS components are used.
-* OpenSSL development edition; supported versions: 3.0, 3.1, 3.2
+* OpenSSL development edition; supported versions: 3.0, 3.1, 3.2, 3.3, 3.4
   <!-- (formerly also versions 1.0.2, 1.1.0, and 1.1.1) -->
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
 * [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
@@ -199,9 +198,9 @@ After doing so, restart the terminal or copy&paste them there, too.
 Define the environment variable `USE_LIBCMP` for using the latest CMP features
 and fixes, which implies use of the intermediate library `libcmp`.
 When using OpenSSL version 1.x, this is ensured automatically.
-When using OpenSSL version 3.0 or 3.1 and `USE_LIBCMP` is not defined,
-the new CMP features defined in CMP Updates and the Lightweight CMP Profile
-will not be supported.
+When using OpenSSL versions before 3.5 and `USE_LIBCMP` is not defined,
+not all of the CMP features newly defined in CMP Updates
+and in the Lightweight CMP Profile (LCMPP) are supported.
 
 From the underlying Security Utilities library
 the following environment variables are inherited.
@@ -404,7 +403,7 @@ as the one used to build `libcmp`.
 For linking you will need to
 refer the linker to the CMP and Security Utilities libraries,
 e.g., `-lsecutils -lgencmp`.
-When the intermediate library `libcmp` is used, `-lcmp` is needed additionally.
+When `libcmp` is used, `-lcmp` is needed additionally.
 Add the directories (e.g., with the linker option `-L`) where they can be found.
 See also the environment variable `OUT_DIR`.
 Consider using also linker options like `-Wl,-rpath,.`

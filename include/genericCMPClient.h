@@ -91,10 +91,13 @@ typedef int CMP_err;
 # define CMP_R_STORE_CREDS        252
 # define CMP_R_RECIPIENT          251
 # define CMP_R_INVALID_CONTEXT    250
-# define CMP_R_GET_ITAV           249
+# if OPENSSL_VERSION_NUMBER < 0x30400000L || defined(USE_LIBCMP)
+/* workaround for non-matching definitions */
+#  define CMP_R_GET_ITAV           249
+#  define CMP_R_GENERATE_CRLSTATUS 246
+# endif
 # define CMP_R_INVALID_CACERTS    248
 # define CMP_R_INVALID_ROOTCAUPD  247
-# define CMP_R_GENERATE_CRLSTATUS 246
 # define CMP_R_INVALID_CRL_LIST   245
 # define CMP_R_INVALID_PARAMETERS CMP_R_INVALID_ARGS
 

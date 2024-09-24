@@ -7,7 +7,7 @@
 # Optional CFLAGS and LDFLAGS are appended by local settings.
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS. Also CFLAGS is passed to build goals.
 # Builds are done in release mode if optional NDEBUG is defined.
-# Optional OUT_DIR defines where libgencmp shall be placed, defaulting to LPATH if set, else '.'
+# Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
 # Optional BIN_DIR defines where the CLI application shall be placed unless it is empty. It defaults to '.' if unset.
 # Optional DESTDIR defines a prefix for the installation target directories.
 # All these paths may be absolute or relative to the dir containing this Makefile.

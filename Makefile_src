@@ -2,7 +2,7 @@
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
 # Optional OPENSSL_LIB defines where to find the OpenSSL library installation (default: ROOTFS/usr/lib or ".").
-# Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
+# Optional OUT_DIR defines where libgencmp shall be placed, defaulting to LPATH if set, else '.'
 # BIN_DIR defines where the CLI application shall be placed, unless it is empty or unset.
 # Optional LIBCMP_INC defines the directory of the libcmp header files, must be non-empty if and only if libcmp is used (USE_LIBCMP).
 # All these paths may be absolute or relative to the dir containing this Makefile.

@@ -54,7 +54,6 @@ ifeq ($(LPATH),)
     LIBCMP_DIR=$(PREFIX)$(LIBCMP_DIR_)
     SECUTILS_DIR_=libsecutils
     SECUTILS_DIR=$(PREFIX)$(SECUTILS_DIR_)
-    SECUTILS_LIB=$(PREFIX)$(OUT_DIR)/libsecutils$(DLL)
 else
     ifeq ($(OUT_DIR),)
         override OUT_DIR = $(LPATH)

@@ -74,7 +74,7 @@ else ifeq ($(LIB),header)
             $(info [DEBUG] OS is not MacOS)
             OPENSSL_VERSION = $(shell fgrep OPENSSL_VERSION_M "$(OPENSSLV_H)" | head -n 2 | awk -v RS="" '{print $$4"."$$8 }')
         endif
-        $(info [TRACE] After OS check in header: OPENSSL_VERSION=$(OPENSSL_VERSION))
+        $(info [TRACE] After OS check in header: OPENSSL VERSION=$(OPENSSL_VERSION))
     endif
 
     ifeq ($(OPENSSL_VERSION),1)

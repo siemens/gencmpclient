@@ -21,29 +21,29 @@ ifeq ($(LIB),)
 
     # CC = gcc
     ifneq ($(OPENSSL_DIR),)
-        $(info [DEBUG] OPENSSL_DIR is set: $(OPENSSL_DIR))
+        $(info [DEBUG] OPENSSL DIR is set: $(OPENSSL_DIR))
         ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
-            $(info [DEBUG] OPENSSL_DIR is a relative path)
+            $(info [DEBUG] OPENSSL DIR is a relative path)
             # $(OPENSSL_DIR) is relative path
             OPENSSL_LIB = $(OPENSSL_DIR)
         else
-            $(info [DEBUG] OPENSSL_DIR is an absolute path)
+            $(info [DEBUG] OPENSSL DIR is an absolute path)
             # $(OPENSSL_DIR) is absolute path
             OPENSSL_LIB = $(OPENSSL_DIR)/$(LIB)
         endif
-        $(info [TRACE] After OPENSSL_DIR check: OPENSSL_LIB="$(OPENSSL_LIB)")
+        $(info [TRACE] After OPENSSL DIR check: OPENSSL_LIB="$(OPENSSL_LIB)")
         CFLAGS += -isystem $(OPENSSL_DIR)/include
         LDFLAGS += -L$(OPENSSL_DIR) -L$(OPENSSL_LIB) -Wl,-rpath,$(OPENSSL_DIR) -Wl,-rpath,$(OPENSSL_LIB)
     endif
 
     LDLIBS = -lcrypto
 
-    $(info [TRACE] After OPENSSL_DIR set: EXE=$(EXE))
-    $(info [TRACE] After OPENSSL_DIR set: LIB=$(LIB))
-    $(info [TRACE] After OPENSSL_DIR set: OPENSSL_LIB=$(OPENSSL_LIB))
-    $(info [TRACE] After OPENSSL_DIR set: CFLAGS=$(CFLAGS))
-    $(info [TRACE] After OPENSSL_DIR set: LDFLAGS=$(LDFLAGS))
-    $(info [TRACE] After OPENSSL_DIR set: LDLIBS=$(LDLIBS))
+    $(info [TRACE] After OPENSSL DIR set: EXE=$(EXE))
+    $(info [TRACE] After OPENSSL DIR set: LIB=$(LIB))
+    $(info [TRACE] After OPENSSL DIR set: OPENSSL_LIB=$(OPENSSL_LIB))
+    $(info [TRACE] After OPENSSL DIR set: CFLAGS=$(CFLAGS))
+    $(info [TRACE] After OPENSSL DIR set: LDFLAGS=$(LDFLAGS))
+    $(info [TRACE] After OPENSSL DIR set: LDLIBS=$(LDLIBS))
 
     .PHONY: default build show clean
 
@@ -63,10 +63,10 @@ else ifeq ($(LIB),header)
     OPENSSL_NUMBER_SEL = head -n 1 | sed -r 's/.*OpenSSL //' | awk '{print ($$0+0)}'
     OPENSSLV_H = $(OPENSSL_DIR)/include/openssl/opensslv.h
     ifeq ($(shell fgrep OPENSSL_VERSION_MAJOR "$(OPENSSLV_H)"),)
-        $(info [DEBUG] OPENSSL_VERSION_MAJOR not found in OPENSSLV_H)
+        $(info [DEBUG] OPENSSL VERSION MAJOR not found in OPENSSLV H)
         OPENSSL_VERSION = $(shell grep 'OPENSSL_VERSION_TEXT\s* "OpenSSL ' "$(OPENSSLV_H)" | $(OPENSSL_NUMBER_SEL))
     else
-        $(info [DEBUG] OPENSSL_VERSION_MAJOR found in OPENSSLV_H)
+        $(info [DEBUG] OPENSSL VERSION MAJOR found in OPENSSLV_H)
         ifeq ($(OS),MacOS)
             $(info [DEBUG] OS is MacOS)
             OPENSSL_VERSION = $(shell fgrep OPENSSL_VERSION_M "$(OPENSSLV_H)" | head -n 2 | awk -v RS="" '{print $4"."$8 }')

@@ -81,9 +81,9 @@ else ifeq ($(LIB),header)
         OPENSSL_VERSION = 1.0
     endif
 
-    $(info [TRACE] OPENSSL_NUMBER_SEL=$(OPENSSL_NUMBER_SEL))
-    $(info [TRACE] OPENSSLV_H=$(OPENSSLV_H))
-    $(info [TRACE] OPENSSL_VERSION=$(OPENSSL_VERSION))
+    $(info [TRACE] OPENSSL NUMBER SEL=$(OPENSSL_NUMBER_SEL))
+    $(info [TRACE] OPENSSLV H=$(OPENSSLV_H))
+    $(info [TRACE] OPENSSL VERSION=$(OPENSSL_VERSION))
 
 else # $(LIB) is name of library file
     $(info [DEBUG] LIB is supposed to be a library file: $(LIB))
@@ -97,7 +97,7 @@ else # $(LIB) is name of library file
         OPENSSL_VERSION = 1.0
     endif
 
-    $(info [TRACE] OPENSSL_VERSION=$(OPENSSL_VERSION))
+    $(info [TRACE] OPENSSL VERSION=$(OPENSSL_VERSION))
 
 endif # $(LIB)
 

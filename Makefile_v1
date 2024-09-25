@@ -341,11 +341,11 @@ ifeq ($(LPATH),)
     ifneq ("$(wildcard $(SECUTILS_DIR))","")
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s clean OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
     endif
-    ifdef USE_LIBCMP
-      ifneq ("$(wildcard $(LIBCMP_DIR))","")
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s clean OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
-      endif
-    endif
+    # ifdef USE_LIBCMP # better always try cleaning cmpossl artifacts, which may have been produced earlier with USE_LIBCMP=1
+        ifneq ("$(wildcard $(LIBCMP_DIR))","")
+	    $(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s clean OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+        endif
+    # endif
 endif
 
 clean_config:

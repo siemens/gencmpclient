@@ -145,15 +145,25 @@ ifeq ($(LPATH),)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
         # ifeq ($(PREFIX),)
         # TODO maybe better use absolute path here, as done by CMake
-        override LDFLAGS += -Wl,-rpath,$(OUT_DIR) -Wl,-rpath,$(LIBCMP_DIR) -Wl,-rpath,$(SECUTILS_DIR)
+        override LDFLAGS += -Wl,-rpath,$(OUT_DIR) -Wl,-rpath,$(SECUTILS_DIR)
+        override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../.. -Wl,-rpath,$(OUT_DIR)/../../../../$(SECUTILS_DIR) # for CLI-based tests
+        ifneq ($(LIBCMP_INC),)
+            override LDFLAGS += -Wl,-rpath,$(LIBCMP_DIR)
+            override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../../$(LIBCMP_DIR) # for CLI-based tests
+        endif
         # endif
-        override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../.. -Wl,-rpath,$(OUT_DIR)/../../../../$(LIBCMP_DIR) -Wl,-rpath,$(OUT_DIR)/../../../../$(SECUTILS_DIR) # for CLI-based tests
     endif
-    override LDFLAGS += -L $(LIBCMP_DIR) -L $(SECUTILS_DIR)
+    override LDFLAGS += -L $(SECUTILS_DIR)
+    ifneq ($(LIBCMP_INC),)
+        override LDFLAGS += -L $(LIBCMP_DIR)
+    endif
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
-      ifneq ($(PREFIX),)
-        override LDFLAGS += -Wl,-rpath,$(LIBCMP_DIR_) -Wl,-rpath,$(SECUTILS_DIR_)
-      endif
+        ifneq ($(PREFIX),)
+            override LDFLAGS += -Wl,-rpath,$(SECUTILS_DIR_)
+            ifneq ($(LIBCMP_INC),)
+                override LDFLAGS += -Wl,-rpath,$(LIBCMP_DIR_)
+            endif
+        endif
     endif
     override LDFLAGS += -L $(OPENSSL_LIB) -L $(OPENSSL)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
@@ -213,7 +223,10 @@ $(OBJS): %$(OBJ): %.c # | $(SECUTILS_LIB) # $(PREFIX)$(OUT_DIR)/libcmp$(DLL)
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"
 
-$(OUT_DIR)/$(OUTLIBV): src/genericCMPClient$(OBJ) $(LIBCMP)
+ifneq ($(LIBCMP_INC),)
+$(OUT_DIR)/$(OUTLIBV): $(LIBCMP)
+endif
+$(OUT_DIR)/$(OUTLIBV): src/genericCMPClient$(OBJ)
 	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-$(SONAME)$(OUTLIBV)
 
 $(OUT_DIR)/$(OUTLIB): $(OUT_DIR)/$(OUTLIBV)

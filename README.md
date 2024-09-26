@@ -143,7 +143,7 @@ You can clone the git repository and its submodules with
 ```
 git clone https://github.com/siemens/gencmpclient.git
 cd genCMPClient
-make -f Makefile_v1 get_submodules  
+make -f Makefile_v1 get_submodules
 ```
 
 This will fetch also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) if needed and
@@ -408,6 +408,13 @@ set the environment variable `OPENSSL_TRACE` to contain the string `"HTTP"`.
 For instance:
 ```
 OPENSSL_TRACE=HTTP ./cmpClient imprint -section Insta
+```
+
+To select a specific CMP profile on the cloudCA server, set the environment
+variable `CMP_PROFILE` to the profile name.
+For instance:
+```
+CMP_PROFILE=Nested make -f Makefile_v1 demo_CloudCA
 ```
 
 

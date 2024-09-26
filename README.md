@@ -347,16 +347,18 @@ sudo dpkg -i libgencmp*deb cmpclient_*.deb
 ```
 
 
-## Using the demo client
+## Using the CLI-based demo client
 
-The CMP demo client is implemented in [`src/cmpClient.c`](src/cmpClient.c)
-as part of the CLI.
+The Command-Line Interface (CLI) of the CMP client is implemented in
+[`src/cmpClient.c`](src/cmpClient.c).
+It supports most of the features of the genCMPClient library.
+The CLI use with the available options are documented in [`cmpClient.pod`](doc/cmpClient.pod).
 
 For simple test invocations the Insta Certifier Demo CA server may be used,
 for instance as follows:
 ```
 openssl ecparam -genkey -name prime256v1 -out test.key.pem
-cmpClient -config "" -server pki.certificate.fi:8700/pkix/ \
+./cmpClient -config "" -server pki.certificate.fi:8700/pkix/ \
   -recipient "/C=FI/O=Insta Demo/CN=Insta Demo CA" \
   -secret pass:insta -ref 3078 \
   -cmd cr -newkey test.key.pem -subject "/CN=test" -certout test.cert.pem
@@ -387,15 +389,7 @@ You can view this certificate for instance by executing
 openssl x509 -noout -text -in creds/operational.crt
 ```
 
-
-## Using the CLI-based client
-
-The Command-Line Interface (CLI) of the CMP client is implemented in
-[`src/cmpClient.c`](src/cmpClient.c).
-It supports most of the features of the genCMPClient library.
-The CLI use with the available options are documented in [`cmpClient.pod`](doc/cmpClient.pod).
-
-CLI-based tests using the external Insta Demo CA may be invoked using
+CLI-based tests using the Insta Demo CA may be invoked using
 ```
 make -f Makefile_v1 test_Insta
 ```

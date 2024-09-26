@@ -386,7 +386,10 @@ ifeq ($(CA_SECTION),Insta)
 else ifeq ($(CA_SECTION),CloudCA)
     CRL_SECTION= # no crl-based checks
     OCSP_CHECK=
-    override EXTRA_OPTS += -path /.well-known/cmp -reqexts empty -subject /CN=CloudCA-Integration-Test-User
+    ifdef CMP_PROFILE
+        PROFILE_PATH="/p/$(CMP_PROFILE)"
+    endif
+    override EXTRA_OPTS += -path "/.well-known/cmp$(PROFILE_PATH)" -reqexts empty -subject /CN=CloudCA-Integration-Test-User
 else
     CA_SECTION=EJBCA
     CRL_SECTION=crls

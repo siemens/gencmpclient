@@ -402,6 +402,14 @@ make -f Makefile_v1 test_Insta
 where the PROXY environment variable may be used to override the default
 in order to reach the Insta Demo CA.
 
+In order to obain a trace of the HTTP messages being sent and received,
+build the genCMPClient with `USE_LIBCMP=1` and
+set the environment variable `OPENSSL_TRACE` to contain the string `"HTTP"`.
+For instance:
+```
+OPENSSL_TRACE=HTTP ./cmpClient imprint -section Insta
+```
+
 
 ## Using the library in own applications
 

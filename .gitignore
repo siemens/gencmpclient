@@ -99,5 +99,5 @@ creds/trusted/ATCS*
 creds/trusted/BaltimoreCyberTrustRoot2000.crt
 creds/www.insta.fi.*
 creds/Connector_Infrastructure_CA_*
-creds/LDevID_Issuing_CA_v2_*
+creds/LDevID_Issuing_CA_v*
 creds/trusted/Manufacturer_Root_CA_*

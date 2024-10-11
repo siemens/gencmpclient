@@ -34,14 +34,14 @@
 
 int main(int argc, char *argv[])
 {
-    fprintf(stdout, "[DEBUG] Starting OpenSSL version check\n");
-    fprintf(stdout, DEBUG_MESSAGE);
+    fprintf(stderr, "[DEBUG] Starting OpenSSL version check\n");
+    fprintf(stderr, DEBUG_MESSAGE);
 
     unsigned long static_version = (unsigned long)OPENSSL_VERSION_NUMBER;
-    fprintf(stdout, "[DEBUG] OPENSSL_VERSION_NUMBER: 0x%lx\n", static_version);
+    fprintf(stderr, "[DEBUG] OPENSSL_VERSION_NUMBER: 0x%lx\n", static_version);
 
     unsigned long runtime_version = OpenSSL_version_num();
-    fprintf(stdout, "[DEBUG] runtime_version: 0x%lx\n", runtime_version);
+    fprintf(stderr, "[DEBUG] runtime_version: 0x%lx\n", runtime_version);
 
     #define MAJOR_MINOR_MASK 0xfff00000L
     if ((MAJOR_MINOR_MASK & runtime_version ) != (MAJOR_MINOR_MASK & OPENSSL_VERSION_NUMBER)) {

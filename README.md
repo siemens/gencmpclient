@@ -111,13 +111,11 @@ you can execute in a shell on a Unix-like system:
 ```
 git clone https://github.com/siemens/gencmpclient.git
 cd genCMPClient
-make -f OpenSSL_version.mk
-
+make -s -f OpenSSL_version.mk 2>/dev/null
 ```
 
 This should output on the console something like
 ```
-cc [...] OpenSSL_version.c -lcrypto -o OpenSSL_version
 OpenSSL 3.0.13 30 Jan 2024 (0x300000d0)
 ```
 
@@ -128,6 +126,12 @@ OpenSSL runtime version 0x304000d0 does not match version 0x300000d0 used by com
 make sure that the system-level configuration for finding header and library files
 as well as the optional environment variables `OPENSSL_DIR` and `OPENSSL_LIB`
 described [below](#configuring) are set up in a consistent way.
+
+When having trouble building, which may be due to unsuitably set environment variables,
+```
+make -f OpenSSL_version.mk
+```
+can provides useful diagnostics.
 
 
 ## Getting the software

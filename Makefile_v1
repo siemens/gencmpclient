@@ -338,11 +338,11 @@ clean_this: clean_test
 
 clean: clean_this clean_config
 ifeq ($(LPATH),)
-    ifneq ("$(wildcard $(SECUTILS_DIR))","")
+    ifneq ($(wildcard $(SECUTILS_DIR)),)
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s clean OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
     endif
     # ifdef USE_LIBCMP # better always try cleaning cmpossl artifacts, which may have been produced earlier with USE_LIBCMP=1
-        ifneq ("$(wildcard $(LIBCMP_DIR))","")
+        ifneq ($(wildcard $(LIBCMP_DIR)),)
 	    $(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s clean OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
         endif
     # endif
@@ -678,7 +678,7 @@ ifeq ($(LPATH),)
 	sudo dpkg -i libsecutils{,-dev}_*.deb
     endif
     ifdef USE_LIBCMP
-    ifneq ("$(wildcard $(LIBCMP_DIR))","")
+    ifneq ($(wildcard $(LIBCMP_DIR)),)
         ifeq ($(shell dpkg -l | grep "ii  libcmp "),)
 	$(MAKE) deb -C $(LIBCMP_DIR) -f Makefile_v1 LIBCMP_INC="$(LIBCMP_INC)"
 	sudo dpkg -i libcmp{,-dev}_*.deb
@@ -732,11 +732,11 @@ endif
 
 install: remind_admin
 ifeq ($(LPATH),)
-    ifneq ("$(wildcard $(SECUTILS_DIR))","")
+    ifneq ($(wildcard $(SECUTILS_DIR)),)
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 doc install OUT_DIR="$(OUT_DIR_REVERSE_DIR)" DESTDIR="$(DEST_REVERSE_DIR)"
     endif
     ifdef USE_LIBCMP
-    ifneq ("$(wildcard $(LIBCMP_DIR))","")
+    ifneq ($(wildcard $(LIBCMP_DIR)),)
 	$(MAKE) -C $(LIBCMP_DIR)  -f Makefile_v1 install OUT_DIR="$(OUT_DIR_REVERSE_DIR)" DESTDIR="$(DEST_REVERSE_DIR)"
     endif
     endif
@@ -767,11 +767,11 @@ endif
 
 uninstall: remind_admin
 ifeq ($(LPATH),)
-    ifneq ("$(wildcard $(SECUTILS_DIR))","")
+    ifneq ($(wildcard $(SECUTILS_DIR)),)
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 uninstall OUT_DIR="$(OUT_DIR_REVERSE_DIR)" DESTDIR="$(DEST_REVERSE_DIR)"
     endif
     ifdef USE_LIBCMP
-    ifneq ("$(wildcard $(LIBCMP_DIR))","")
+    ifneq ($(wildcard $(LIBCMP_DIR)),)
 	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 uninstall OUT_DIR="$(OUT_DIR_REVERSE_DIR)" DESTDIR="$(DEST_REVERSE_DIR)"
     endif
     endif

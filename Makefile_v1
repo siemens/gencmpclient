@@ -673,17 +673,19 @@ deb: doc # just to make sure that transforming the doc files will work fine
 ifneq ($(INSTALL_DEB_PKGS),)
 deb: get_submodules
 ifeq ($(LPATH),)
-    ifeq ($(shell dpkg -l | grep "ii  libsecutils "),)
-	$(MAKE) deb -C $(SECUTILS_DIR) -f Makefile_v1
-	sudo dpkg -i libsecutils{,-dev}_*.deb
-    endif
-    ifdef USE_LIBCMP
-    ifneq ($(wildcard $(LIBCMP_DIR)),)
-        ifeq ($(shell dpkg -l | grep "ii  libcmp "),)
-	$(MAKE) deb -C $(LIBCMP_DIR) -f Makefile_v1 LIBCMP_INC="$(LIBCMP_INC)"
-	sudo dpkg -i libcmp{,-dev}_*.deb
+    ifneq ($(wildcard $(SECUTILS_DIR)),)
+        ifeq ($(shell dpkg -l | grep "ii  libsecutils "),)
+            $(MAKE) deb -C $(SECUTILS_DIR) -f Makefile_v1
+            sudo dpkg -i libsecutils{,-dev}_*.deb
         endif
     endif
+    ifdef USE_LIBCMP
+        ifneq ($(wildcard $(LIBCMP_DIR)),)
+            ifeq ($(shell dpkg -l | grep "ii  libcmp "),)
+                $(MAKE) deb -C $(LIBCMP_DIR) -f Makefile_v1 LIBCMP_INC="$(LIBCMP_INC)"
+                sudo dpkg -i libcmp{,-dev}_*.deb
+            endif
+        endif
     endif
 endif
 else

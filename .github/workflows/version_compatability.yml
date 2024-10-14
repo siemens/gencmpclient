@@ -1,0 +1,44 @@
+# GitHub Actions for genCMPClient
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) Siemens AG, 2021-2024
+
+name: OpenSSL compatabilty
+
+on: push
+
+jobs:
+  openssl_version:
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [openssl-3.0, openssl-3.1, openssl-3.2, openssl-3.3, openssl-3.4]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build openssl
+        run: |
+          git clone https://github.com/openssl/openssl.git --branch ${{ matrix.branch }} --depth 1
+          cd openssl
+          ./config --banner=Configured --strict-warnings --prefix=/usr/local/${{ matrix.branch }} --openssldir=/usr/local/${{ matrix.branch }}/ssl shared zlib
+          make -s -j4
+          sudo make install_sw install_ssldirs
+          cd ..
+          echo "OPENSSL_DIR=./openssl" >> $GITHUB_ENV
+      - name: make
+        run: |
+          make -f Makefile_v1
+          make -f Makefile_v1 clean_all
+          USE_LIBCMP=1 STATIC_LIBCMP=1 make -f Makefile_v1 build_no_tls
+          make -f Makefile_v1 clean_all
+      - name: cmake
+        #TODO: Remove the if condition once the issue is resolved
+        if: matrix.branch != 'openssl-3.0' && matrix.branch != 'openssl-3.1' && matrix.branch != 'openssl-3.2'
+        run: |
+          cmake .
+          make
+          mkdir build-with-libcmp
+          cd build-with-libcmp
+          USE_LIBCMP=1 cmake -S .. -B .
+          make clean build
+          DESTDIR=tmp make install uninstall
+          make deb

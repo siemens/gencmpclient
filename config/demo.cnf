@@ -154,7 +154,8 @@ tls_trusted = creds/trusted/DigicertGlobalRootG2.crt
 # Tenant on server
 recipient = /CN=CloudPKI-Integration-Test
 cacert = creds/trusted/CloudCA_Root_v2.crt
-trusted = $cacert
+caPubs = creds/trusted/caPubs.pem
+trusted = $cacert,$caPubs
 out_trusted = $cacert
 own_trusted = $cacert
 

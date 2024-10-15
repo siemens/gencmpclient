@@ -178,9 +178,12 @@ tls_trusted = creds/trusted/DigicertGlobalRootG5.crt
 # Tenant on server
 recipient = /CN=CloudPKI-Integration-Test
 cacert = creds/trusted/PPKIPlaygroundECCRootCAv20.crt,creds/trusted/PPKIPlaygroundRSARootCAv20.crt,creds/trusted/PPKIPlaygroundMLDSARootCAv10.crt
-trusted = creds/trusted/PPKIPlaygroundInfrastructureRootCAv20.crt,$cacert
-out_trusted = $cacert
-own_trusted = $cacert
+infraCert = creds/trusted/PPKIPlaygroundInfrastructureRootCAv20.crt
+caPubs = creds/trusted/caPubs.pem
+# trusted = $infraCert,$cacert,$caPubs
+trusted = $infraCert,$caPubs
+out_trusted = $caPubs
+own_trusted = $caPubs
 
 # User in tenant
 ref = CloudPKI-Integration-Test-User

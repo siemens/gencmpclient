@@ -120,7 +120,7 @@ out_trusted = creds/trusted/ENROLL_Root.pem
 
 [Insta]
 server = pki.certificate.fi:8700/pkix/
-# path = pkix/ # gets overridden by Makefile_v1
+path = pkix/ # gets partly overridden by Makefile_v1
 secret = pass:insta
 ref = 3078
 #would need to be updated every 3 months:
@@ -147,7 +147,7 @@ tls_used = 0
 [CloudCA]
 # Server
 server = broker.sdo-qa.siemens.cloud:443
-# path = /.well-known/cmp # gets overridden by Makefile_v1
+path = /.well-known/cmp # gets overridden by Makefile_v1
 tls_used = 1
 tls_trusted = creds/trusted/DigicertGlobalRootG2.crt
 
@@ -169,8 +169,8 @@ key = creds/manufacturer.pem
 keypass = pass:12345
 
 [imprint]
-path = ${ENV::EJBCA_PATH}/${ENV::EJBCA_PATH_IMPRINT}
-subject = ${ENV::EJBCA_CMP_SUBJECT_IMPRINT}
+# path = ${ENV::EJBCA_PATH}/${ENV::EJBCA_PATH_IMPRINT} # gets overridden by Makefile_v1 for EJBCA
+# subject = ${ENV::EJBCA_CMP_SUBJECT_IMPRINT} # gets overridden by Makefile_v1 for EJBCA
 cmd = ir
 cert =
 key =

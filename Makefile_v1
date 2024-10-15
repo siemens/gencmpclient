@@ -389,9 +389,10 @@ else ifeq ($(CA_SECTION),CloudCA)
     ifdef CMP_PROFILE
         PROFILE_PATH="/p/$(CMP_PROFILE)"
     endif
-    override EXTRA_OPTS += -path "/.well-known/cmp$(PROFILE_PATH)" -reqexts empty -subject /CN=CloudCA-Integration-Test-User
+    override EXTRA_OPTS += -path "/.well-known/cmp$(PROFILE_PATH)" -reqexts empty
 else
     CA_SECTION=EJBCA
+    EXTRA_OPTS_IMPRINT= -path "$(ENV::EJBCA_PATH_IMPRINT)" -subject "$(EJBCA_CMP_SUBJECT_IMPRINT)"
     CRL_SECTION=crls
     OCSP_CHECK=$(OPENSSL) ocsp -url $(EJBCA_OCSP_URL) \
         -CAfile $(EJBCA_CMP_TRUSTED) -issuer $(EJBCA_CMP_ISSUER) \
@@ -421,7 +422,7 @@ GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signk
 run_demo: $(OUT_DIR_BIN)
 	@which $(OPENSSL) >/dev/null || (echo "cannot find $(OPENSSL)"; false)
 	@/bin/echo -e "\n##### running cmpClient demo using $(CA_SECTION) #####\n"
-	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS)
+	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS) $(EXTRA_OPTS_IMPRINT)
 	@/bin/echo -e "\nValidating own CMP client cert"
     ifeq ($(CA_SECTION),EJBCA)
 	$(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -cert $(EJBCA_CMP_CLIENT_CERT) -tls_cert "" -own_trusted $(EJBCA_CMP_TRUSTED),$(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)

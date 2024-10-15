@@ -390,7 +390,7 @@ else ifeq ($(CA_SECTION),CloudCA)
         PROFILE_PATH="/p/$(CMP_PROFILE)"
     endif
     override EXTRA_OPTS += -path "/.well-known/cmp$(PROFILE_PATH)" -reqexts empty
-    EXTRA_OPTS_IMPRINT = -trusted ""
+    EXTRA_OPTS_IMPRINT = -trusted "" -out_trusted "" -cacertsout creds/trusted/caPubs.pem
 else
     CA_SECTION=EJBCA
     EXTRA_OPTS_IMPRINT= -path "$(ENV::EJBCA_PATH_IMPRINT)" -subject "$(EJBCA_CMP_SUBJECT_IMPRINT)"

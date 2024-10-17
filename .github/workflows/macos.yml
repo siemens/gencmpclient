@@ -1,0 +1,37 @@
+# GitHub Actions for genCMPClient
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) Siemens AG, 2021-2024
+
+name: macOS
+
+on: push
+
+jobs:
+  cmake:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: make
+        run: |
+          make -f Makefile_v1
+          ./cmpClient -help
+          # make -f Makefile_v1 test_Mock  # TODO add after solving issue with CMP HTTP server hanging on startup 
+          make -f Makefile_v1 clean_all
+      - name: cmake
+        run: |
+          mkdir build
+          cd build
+          cmake -S .. -B .
+          cmake --build .
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make
+          ./cmpClient -help
+          cd ..
+
+          mkdir build-with-libcmp
+          cd build-with-libcmp
+          USE_LIBCMP=1 cmake -S .. -B .
+          make
+          ./cmpClient -help
+          DESTDIR=tmp make install uninstall  # implies "make build"
+          make clean_all

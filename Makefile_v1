@@ -231,7 +231,7 @@ submodules: build_submodules
 build_submodules: get_submodules build_secutils build_cmpossl
 # might use $(SECUTILS_LIB) $(LIBCMP_INC) instead but does not check for updates
 
-get_submodules: $(SECUTILS_DIR)/include
+get_submodules: $(SECUTILS_DIR)/src/libsecutils/include
 ifdef USE_LIBCMP
 get_submodules: $(LIBCMP_DIR)/include
 endif
@@ -241,7 +241,7 @@ update: update_secutils update_cmpossl
 	git rebase
 	git submodule update
 
-$(SECUTILS_DIR)/include:
+$(SECUTILS_DIR)/src/libsecutils/include:
 	$(MAKE) -f Makefile_v1 update_secutils
 
 SECUTILS_LIB=libsecutils$(DLL)

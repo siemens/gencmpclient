@@ -392,7 +392,7 @@ else ifeq ($(CA_SECTION),CloudCA)
     override EXTRA_OPTS += -path "/.well-known/cmp$(PROFILE_PATH)" -reqexts empty
 else
     CA_SECTION=EJBCA
-    EXTRA_OPTS_IMPRINT= -path "$(ENV::EJBCA_PATH_IMPRINT)" -subject "$(EJBCA_CMP_SUBJECT_IMPRINT)"
+    EXTRA_OPTS_IMPRINT= -path $(EJBCA_PATH)/$(EJBCA_PATH_IMPRINT) -subject "$(EJBCA_CMP_SUBJECT_IMPRINT)"
     CRL_SECTION=crls
     OCSP_CHECK=$(OPENSSL) ocsp -url $(EJBCA_OCSP_URL) \
         -CAfile $(EJBCA_CMP_TRUSTED) -issuer $(EJBCA_CMP_ISSUER) \

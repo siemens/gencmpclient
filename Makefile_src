@@ -119,10 +119,9 @@ override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for
 override CFLAGS += -I$(PREFIX)include # for genericCMPClient.h
 override CFLAGS += $(OSSL_VERSION_QUIRKS)
 
+LIBCMP_A = libcmp.a
 ifneq ($(LIBCMP_INC),)
-    ifneq ($(STATIC_LIBCMP),)
-        LIBCMP = $(LIBCMP_DIR)/libcmp.a
-    else
+    ifeq ($(STATIC_LIBCMP),)
         override LIBS += -lcmp
     endif
 endif
@@ -223,8 +222,17 @@ $(OBJS): %$(OBJ): %.c # | $(SECUTILS_LIB) # $(PREFIX)$(OUT_DIR)/libcmp$(DLL)
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"
 
+.PHONY: clean_libcmp_a
+clean_libcmp_a:
+	@if [ -f ./$(LIBCMP_A) ]; then rm ./$(LIBCMP_A); fi # workaround for Linux: if ./libcmp.a exists with an unsuitable format (e.g., from MacOS),
+	@ # dynamic library filies libcmp.so* get ignored, leading to, e.g., "undefined reference to `OSSL_CMP_ITAV_get0_caCerts'"
+
 ifneq ($(LIBCMP_INC),)
-$(OUT_DIR)/$(OUTLIBV): $(LIBCMP)
+    ifeq ($(STATIC_LIBCMP),)
+$(OUT_DIR)/$(OUTLIBV): | clean_libcmp_a
+    else
+$(OUT_DIR)/$(OUTLIBV): $(LIBCMP_DIR)/$(LIBCMP_A)
+   endif
 endif
 $(OUT_DIR)/$(OUTLIBV): src/genericCMPClient$(OBJ)
 	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-$(SONAME)$(OUTLIBV)

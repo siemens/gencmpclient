@@ -86,16 +86,16 @@ including MacOS X, [Cygwin](https://www.cygwin.com/), also on a virtual machine 
 the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
 
 The following network and development tools are needed or recommended.
-* Git (for getting the software, tested with versions 2.7.2, 2.11.0, 2.20, 2.30.2, 2.39.2)
-* CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested with versions 3.18.4, 3.26.3, 3.27.7)
-* GNU make (tested with versions 3.81, 4.1, 4.2.1, 4.3)
-* GNU C compiler (gcc, tested with versions 5.4.0, 7.3.0, 8.3.0, 10.0.1, 10.2.1)
-  or clang (tested with version 14.0.3 and 17.0.3)
-* wget (for running the demo, tested with versions 1.17, 1.18, 1.20, 1.21)
-* Perl (for running the tests, tested with versions 5.30.3 and 5.32.1)
+* Git (for getting the software, tested versions include 2.7.2, 2.11.0, 2.20, 2.30.2, 2.39.2, 2.47.0)
+* CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested versions include 3.18.4, 3.26.3, 3.27.7)
+* GNU make (tested versions include 3.81, 4.1, 4.2.1, 4.3)
+* GNU C compiler (gcc, tested versions include 5.4.0, 7.3.0, 8.3.0, 10.0.1, 10.2.1, 12.2.0)
+  or clang (tested versions include 14.0.3, 17.0.3, 19.1.1)
+* wget (for running the demo, tested versions include 1.17, 1.18, 1.20, 1.21.3, 1.24.5)
+* Perl (for running the tests, tested versions include 5.30.3, 5.32.1, 5.36.0, 5.38.2)
 
 The following OSS components are used.
-* OpenSSL development edition; supported versions: 3.0, 3.1, 3.2, 3.3, 3.4
+* OpenSSL development edition; curently supported versions include 3.0, 3.1, 3.2, 3.3, 3.4
   <!-- (formerly also versions 1.0.2, 1.1.0, and 1.1.1) -->
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
 * [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
@@ -123,11 +123,6 @@ sudo apt install cmake libssl-dev libc-dev linux-libc-dev
 while `sudo apt install git make gcc wget`
 usually is not needed as far as these tools are pre-installed.
 
-You might need to set the variable `OPENSSL_DIR` first as described below, e.g.,
-```
-export OPENSSL_DIR=/usr/local
-```
-
 ### OS X installation
 
 On a Mac OS X system the prerequisites may be installed
@@ -149,18 +144,30 @@ brew --prefix openssl@3
 
 ### Sanity checks on OpenSSL
 
-As a sanity check whether OpenSSL is usable for building the CMP client,
+As a sanity check whether OpenSSL is usable for building the CMP client and libraries,
 you can execute in a shell on a Unix-like system:
 ```
 git clone https://github.com/siemens/gencmpclient.git
 cd genCMPClient
-make -s -f OpenSSL_version.mk 2>/dev/null
+make -f OpenSSL_version.mk
 ```
 
-This should output on the console something like
+This should give various diagnostic output,
+on success ending with a line giving the detected OpenSSL version like
 ```
+...
+cc [...] OpenSSL_version.c -lcrypto -o OpenSSL_version
+...
 OpenSSL 3.0.13 30 Jan 2024 (0x300000d0)
 ```
+
+You may need to set the variable `OPENSSL_DIR` first as described [below](#configuring), e.g.,
+```
+export OPENSSL_DIR=/usr/local
+```
+
+When having trouble building, which may be due to unsuitably set environment variables,
+this can provide useful information.
 
 When getting version mismatch errors like
 ```
@@ -169,12 +176,6 @@ OpenSSL runtime version 0x304000d0 does not match version 0x300000d0 used by com
 make sure that the system-level configuration for finding header and library files
 as well as the optional environment variables `OPENSSL_DIR` and `OPENSSL_LIB`
 described [below](#configuring) are set up in a consistent way.
-
-When having trouble building, which may be due to unsuitably set environment variables,
-```
-make -f OpenSSL_version.mk
-```
-can provides useful diagnostics.
 
 
 ## Getting the software
@@ -224,19 +225,24 @@ and remove any previous possibly outdated artifacts.
 
 ## Configuring
 
-The generic CMP client (as well as its underlying libraries)
+The generic CMP client, as well as its underlying libraries,
 assumes that OpenSSL is already installed,
 including the C header files needed for development
-(as provided by, e.g., the Debian/Ubuntu package `libssl-dev`).
+(as provided by, e.g., the Debian/Ubuntu package `libssl-dev` or the MacOS brew package `openssl@3`).
 
 By default any OpenSSL installation available on the system is used.
 
-Set the optional environment variable `OPENSSL_DIR` to specify the
-absolute (or relative to `../`) path of the OpenSSL installation to use.
-
-This must point to the location in the file system from which `include/openssl`
+It is recommended to set the optional environment variable `OPENSSL_DIR` to specify
+the absolute or relative path of the OpenSSL installation to use,
+or some heuristics will try to detect the location.
+This must point to the location in the file system from which the subdirectory `include/openssl`
 is directly accessible with this relative path name.\
-In case its libraries are in a different location, set also `OPENSSL_LIB`.
+In case its libraries are in a different location than in the subdirectory `lib`,
+it is recommended to set also `OPENSSL_LIB`,
+or some heuristics will try to detect the location.
+
+For all environment variables specifying a directory, relative paths such as `.`
+are interpreted relative to the genCMPClient source directory.
 
 ### Linux
 
@@ -315,10 +321,8 @@ It defaults to the base directory of the respective library.
 If the environment variable `BIN_DIR` is not empty, the
 the CLI application `cmpClient` will be built and placed in `BIN_DIR`.
 If the variable is unset, `.` is used by default.
-For all path variables, relative paths such as `.` are interpreted
-relative to the directory of the genCMPClient module.
 The CC environment variable may be set as needed; it defaults to `gcc`.
-It is also possible to statically link with `libcmp.a`, using `STATIC_LIBCMP`.
+It is also possible to statically link with `libcmp.a`, by setting `STATIC_LIBCMP=1`.
 For further details on optional environment variables,
 see the [`Makefile_v1`](Makefile_v1) and [`Makefile_src`](Makefile_src).
 

@@ -2,16 +2,18 @@
 
 # Optional USE_LIBCMP requires the use of the intermediate libcmp
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
-# Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
-# Optional OPENSSL_LIB defines where to find the OpenSSL library installation (default: ROOTFS/usr/lib or ".").
+# Optional OPENSSL_DIR defines where to find the OpenSSL installation
+#   with header files at include/openssl (default: will try, e.g., /usr).
+# Optional OPENSSL_LIB defines where to find the OpenSSL libraries
+#   (default: will try, e.g., OPENSSL_DIR/lib).
 # Optional CFLAGS and LDFLAGS are appended by local settings.
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS. Also CFLAGS is passed to build goals.
 # Builds are done in release mode if optional NDEBUG is defined.
-# Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed, defaulting to LPATH if set, else '.'
+# Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed (default: LPATH if set, otherwise '.').
 # Optional BIN_DIR defines where the CLI application shall be placed unless it is empty. It defaults to '.' if unset.
 # Optional DESTDIR defines a prefix for the installation target directories.
-# All these paths may be absolute or relative to the dir containing this Makefile.
 # Optional OPENSSL specifies the OpenSSL CLI application (including path) to use
+# All paths may be absolute or relative to the directory containing this Makefile.
 # By default, the Insta Demo CA ist used for demonstration purposes.
 
 ifeq ($(DEB_BUILD_ARCH),)
@@ -40,10 +42,10 @@ else
     ifeq ($(shell uname -s),Darwin)
         OS=MacOS
         DLL=.dylib
-        SONAME=install_name
+#       SONAME=install_name,@rpath/
     else # assuming Linux
         DLL=.so
-        SONAME=soname
+#       SONAME=soname,
     endif
 #   LIB=lib
     PINGCOUNTOPT=-c
@@ -57,59 +59,50 @@ VERSION=2.0
 # PACKAGENAME=libgencmp
 # DIRNAME=$(PACKAGENAME)-$(VERSION)
 
-ifeq ($(shell echo $(OUT_DIR) | grep "^/"),)
-  ifeq ($(OUT_DIR),)
-        OUT_DIR_REVERSE_DIR=
-  else # $(OUT_DIR) is relative path, assumed relative to ./
-    ifeq ($(OUT_DIR),.)
-        OUT_DIR_REVERSE_DIR=..
-    else
-        OUT_DIR_REVERSE_DIR=../$(OUT_DIR)
-    endif
-  endif
-else # $(OUT_DIR) is absolute path
-    OUT_DIR_REVERSE_DIR=$(OUT_DIR)
-endif
-
 ifeq ($(LPATH),)
-    ifeq ($(OUT_DIR),)
-        override OUT_DIR = .
-    endif
+    override OUT_DIR ?= .
     ifeq ($(BIN_DIR),)
         override BIN_DIR = .
     endif
 #   ifneq ($(wildcard $(ROOTFS)/usr/local/include/openssl),)
-#       OPENSSL_DIR ?= $(ROOTFS)/usr/local
-#   else
-    ifeq ($(OPENSSL_DIR),)
-        override OPENSSL_DIR = /usr
-    endif
+#       override OPENSSL_DIR ?= $(ROOTFS)/usr/local
 #   endif
+    # override OPENSSL_DIR ?= $(ROOTFS)/usr
     SECUTILS_DIR=libsecutils
 else
-    ifeq ($(OUT_DIR),)
-        override OUT_DIR = $(LPATH)
-    endif
+    override OUT_DIR ?= $(LPATH)
     ifeq ($(BIN_DIR),)
         override BIN_DIR = $(LPATH)
     endif
-    OPENSSL_DIR ?= $(LPATH)/..
+    # override OPENSSL_DIR ?= $(LPATH)/..
     # SECUTILS and SECUTILS_LIB not needed since pre-installed
 endif
 
-ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
-# $(OPENSSL_DIR) is relative path, assumed relative to ./
-    OPENSSL_REVERSE_DIR=../$(OPENSSL_DIR)
-    OPENSSL_LIB ?= $(OPENSSL_DIR)
-else
-# $(OPENSSL_DIR) is absolute path
-    OPENSSL_REVERSE_DIR=$(OPENSSL_DIR)
-    OPENSSL_LIB ?= $(OPENSSL_DIR)
+ifeq ($(shell echo $(OUT_DIR) | grep "^/"),)
+  ifeq ($(OUT_DIR),)
+        OUT_REVERSE_DIR=
+  else # $(OUT_DIR) is relative path, assumed relative to ./
+    ifeq ($(OUT_DIR),.)
+        OUT_REVERSE_DIR=..
+    else
+        OUT_REVERSE_DIR=../$(OUT_DIR)
+    endif
+  endif
+else # $(OUT_DIR) is absolute path
+    OUT_REVERSE_DIR=$(OUT_DIR)
 endif
 
 ifeq ($(shell echo $(DESTDIR) | grep "^/"),)
-# $(DESTDIR) is relative path, assumed relative to ./
-    DEST_REVERSE_DIR=../$(DESTDIR)
+  ifeq ($(DESTDIR),)
+        DEST_REVERSE_DIR=
+  else
+  # $(DESTDIR) is relative path, assumed relative to ./
+    ifeq ($(DESTDIR),.)
+        DEST_REVERSE_DIR=..
+    else
+        DEST_REVERSE_DIR=../$(DESTDIR)
+    endif
+  endif
 else
 # $(DESTDIR) is absolute path
     DEST_REVERSE_DIR=$(DESTDIR)
@@ -117,10 +110,10 @@ endif
 
 #override CFLAGS += -DOPENSSL_FUNC=__func__ # workaround for pedantic C compiler
 #ifdef NDEBUG
-#    DEBUG_FLAGS ?= -O2
+#    override DEBUG_FLAGS ?= -O2
 #    override DEBUG_FLAGS += -DNDEBUG=1
 #else
-#    DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
+#    override DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
 #endif
 ifdef NDEBUG
   SET_NDEBUG=NDEBUG=1
@@ -137,23 +130,78 @@ endif
 # optional SET_PROXY variable can be set to override default proxy settings
 SET_PROXY ?= no_proxy=localhost,127.0.0.1
 
-# defaults for tests:
+# defaults for tests and demo:
 OPENSSL ?= openssl$(EXE)
 
 MAKECMDGOALS ?= default
 ifneq ($(filter-out doc start stop doc doc_this doc/cmpClient.md doc/cmpClient.1.gz \
     clean clean_config clean_all clean_this clean_test clean_submodules clean_openssl clean_uta clean_deb,$(MAKECMDGOALS)),)
-    ifeq (,$(wildcard $(OPENSSL_DIR)/include/openssl))
+
+    # export OPENSSL_DIR OPENSSL_LIB # gets ignored on MacOS,
+    # workaround is to explicitly pass them down to recursive calls when needed
+    GET_DIR=$(MAKE) -f OpenSSL_version.mk --no-print-directory dir OPENSSL_LIB="$(OPENSSL_LIB)"
+    ifeq ($(OPENSSL_DIR),)
+        OPENSSL_DIR := $(shell $(GET_DIR) 2>/dev/null)
+        ifeq ($(OPENSSL_DIR),)
+            $(shell $(GET_DIR))
+            $(error Error determining OPENSSL_DIR)
+        endif
+    endif
+    ifeq ($(wildcard $(OPENSSL_DIR)/include/openssl),)
+        $(shell $(GET_DIR))
         $(error cannot find directory '$(OPENSSL_DIR)/include/openssl', check OPENSSL_DIR variable)
     endif
-    OPENSSL_VERSION=$(shell $(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB=header OPENSSL_DIR="$(OPENSSL_DIR)")
+    HDR_NAME_PATTERN=include/openssl/cmp.h
+    ifeq ($(wildcard $(OPENSSL_DIR)/$(HDR_NAME_PATTERN)),)
+        $(error Error: cannot find OpenSSL header file $(OPENSSL_DIR)/$(HDR_NAME_PATTERN))
+    endif
+    # convert to absolute path
+    override OPENSSL_DIR := $(realpath $(OPENSSL_DIR))
+    OPENSSL_REVERSE_DIR=$(OPENSSL_DIR)
+
+    ifeq ($(OPENSSL_LIB),)
+        GET_LIB=$(MAKE) -f OpenSSL_version.mk -s --no-print-directory lib OPENSSL_DIR="$(OPENSSL_DIR)"
+        # https://stackoverflow.com/questions/1605623/how-can-i-affect-path-in-a-makefile-variable-why-is-my-example-not-working
+        # must use ":=" below to avoid error: Recursive variable `OPENSSL_LIB' references itself (eventually)
+        OPENSSL_LIB := $(shell $(GET_LIB) 2>/dev/null)
+        ifeq ($(OPENSSL_LIB),)
+            $(shell $(GET_LIB))
+            $(error Error determining OPENSSL_LIB)
+        endif
+    endif
+    LIB_NAME_PATTERN=libcrypto*$(DLL)*
+    ifeq ($(wildcard $(OPENSSL_LIB)/$(LIB_NAME_PATTERN)),)
+        $(shell $(GET_LIB))
+        $(error Error: cannot find OpenSSL library $(LIB_NAME_PATTERN) at $(OPENSSL_LIB)/)
+    endif
+    # convert to absolute path
+    override OPENSSL_LIB := $(realpath $(OPENSSL_LIB))
+    OPENSSL_REVERSE_LIB=$(OPENSSL_LIB)
+#   ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
+#   # $(OPENSSL_DIR) is relative path, assumed relative to ./
+#       OPENSSL_REVERSE_DIR=../$(OPENSSL_DIR)
+#   else
+#   # $(OPENSSL_DIR) is absolute path
+#       OPENSSL_REVERSE_DIR=$(OPENSSL_DIR)
+#   endif
+#   ifeq ($(shell echo $(OPENSSL_LIB) | grep "^/"),)
+#   # $(OPENSSL_LIB) is relative path, assumed relative to ./
+#       OPENSSL_REVERSE_LIB=../$(OPENSSL_LIB)
+#   else
+#   # $(OPENSSL_LIB) is absolute path
+#       OPENSSL_REVERSE_LIB=$(OPENSSL_LIB)
+#   endif
+
+    OPENSSL_VERSION=$(shell $(MAKE) -s 2>/dev/null --no-print-directory -f OpenSSL_version.mk SOURCE=header OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)")
     ifeq ($(OPENSSL_VERSION),)
         $(warning WARNING: cannot determine version of OpenSSL in directory '$(OPENSSL_DIR)', assuming 3.0)
         OPENSSL_VERSION=3.0
     endif
-    $(info detected OpenSSL version $(OPENSSL_VERSION).x)
     ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # same as comparing == 1.0
-        $(info enabling compilation quirks for OpenSSL 1.0.2)
+        ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.0),1)
+            $(error detected incompatible OpenSSL version $(OPENSSL_VERSION))
+        endif
+        $(warning enabling compilation quirks for old OpenSSL 1.0.x versions)
         OSSL_VERSION_QUIRKS+=-Wno-discarded-qualifiers -Wno-unused-parameter
     endif
     ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 3),1)
@@ -163,7 +211,6 @@ ifneq ($(filter-out doc start stop doc doc_this doc/cmpClient.md doc/cmpClient.1
 else
     OPENSSL_VERSION=3.0 # dummy
 endif
-OPENSSL_MAJOR_VERSION=$(shell echo $(OPENSSL_VERSION) | sed 's/\..*//')
 
 ifeq ($(LPATH),)
     LIBCMP_DIR=cmpossl
@@ -189,11 +236,13 @@ ifneq ($(findstring --depth,$(GIT_HELP)),)
     GIT_DEPTH=--depth 1
 endif
 
+# building #####################################################################
+
 ################################################################
 # generic CMP Client library and CLI-based client
 ################################################################
 
-OUTLIB_ ?= libgencmp
+override OUTLIB_= libgencmp
 OUTLIB=$(OUTLIB_)$(DLL)
 ifeq ($(OS),MacOS)
     OUTLIBV=$(OUTLIB_).$(VERSION)$(DLL)
@@ -245,7 +294,7 @@ $(SECUTILS_DIR)/src/libsecutils/include:
 	$(MAKE) -f Makefile_v1 update_secutils
 
 SECUTILS_LIB=libsecutils$(DLL)
-ifeq ($(OUT_DIR_REVERSE_DIR),)
+ifeq ($(OUT_REVERSE_DIR),)
   SECUTILS_OUT_LIB=$(SECUTILS_DIR)/$(SECUTILS_LIB)
 else
   SECUTILS_OUT_LIB=$(OUT_DIR)/$(SECUTILS_LIB)
@@ -257,7 +306,7 @@ $(SECUTILS_OUT_LIB):
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init $(GIT_DEPTH) $(SECUTILS_DIR)
 build_secutils: # not: update_secutils
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s build_all $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS)" SECUTILS_USE_ICV=$(SECUTILS_USE_ICV) SECUTILS_USE_UTA=$(SECUTILS_USE_UTA) SECUTILS_NO_TLS=$(SECUTILS_NO_TLS) OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s build_all $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS)" SECUTILS_USE_ICV=$(SECUTILS_USE_ICV) SECUTILS_USE_UTA=$(SECUTILS_USE_UTA) SECUTILS_NO_TLS=$(SECUTILS_NO_TLS) OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" OPENSSL_LIB="$(OPENSSL_REVERSE_LIB)" OUT_DIR="$(OUT_REVERSE_DIR)"
 
 ifdef USE_LIBCMP
 $(LIBCMP_DIR)/include:
@@ -266,7 +315,7 @@ endif
 
 ifdef USE_LIBCMP
   LIBCMP_LIB=libcmp$(DLL)
-  ifeq ($(OUT_DIR_REVERSE_DIR),)
+  ifeq ($(OUT_REVERSE_DIR),)
     LIBCMP_OUT_LIB=$(LIBCMP_DIR)/$(LIBCMP_LIB)
   else
     LIBCMP_OUT_LIB=$(OUT_DIR)/$(LIBCMP_LIB)
@@ -281,7 +330,7 @@ update_cmpossl:
 build_cmpossl: # not: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 ifdef USE_LIBCMP
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s build $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s build $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" OPENSSL_LIB="$(OPENSSL_REVERSE_LIB)" OUT_DIR="$(OUT_REVERSE_DIR)" PWD=$(PWD)/$(LIBCMP_DIR)
 endif
 
 clean_submodules:
@@ -295,15 +344,22 @@ endif # eq ($(SECUTILS_DIR),)
 .phony: build_prereq build_only build_no_tls
 build_prereq: submodules
 
+OPENSSL_MAJOR_VERSION=$(shell echo $(OPENSSL_VERSION) | sed 's/\..*//')
 build: build_prereq build_only
-ifdef USE_LIBCMP
-    ifeq ($(DEB_BUILD_ARCH),) # avoid weird syntax error on '\' with Debian packaging
-	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s --no-print-directory -f OpenSSL_version.mk LIB="$(LIBCMP_OUT_LIB)"` && \
+ifeq ($(DEB_BUILD_ARCH),) # avoid weird syntax error on '\' with Debian packaging
+    ifdef USE_LIBCMP
+	@if [ ! -e "$(LIBCMP_OUT_LIB)" ]; then echo "cannot find CMP library: $(LIBCMP_OUT_LIB)"; exit 1; fi
+	@export LIBCMP_OPENSSL_VERSION=`$(MAKE) -s 2>/dev/null --no-print-directory -f OpenSSL_version.mk SOURCE="$(LIBCMP_OUT_LIB)"` && \
 	if [[ "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" && \
-	     "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_MAJOR_VERSION)" ]]; then \
-	    echo "WARNING: OpenSSL version '$$LIBCMP_OPENSSL_VERSION' used for building libcmp does not match '$(OPENSSL_VERSION)' to be used for building client"; \
+	      "$$LIBCMP_OPENSSL_VERSION" != "$(OPENSSL_MAJOR_VERSION)" ]]; then \
+	    echo "WARNING: OpenSSL version '$$LIBCMP_OPENSSL_VERSION' used for building libcmp does not match '$(OPENSSL_VERSION)' to be used for building cmpClient"; \
 	fi
     endif
+	@export SECUTILS_OPENSSL_VERSION=`$(MAKE) -s 2>/dev/null --no-print-directory -f OpenSSL_version.mk SOURCE="$(SECUTILS_OUT_LIB)"` && \
+	if [[ "$$SECUTILS_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" && \
+	      "$$SECUTILS_OPENSSL_VERSION" != "$(OPENSSL_MAJOR_VERSION)" ]]; then \
+	    echo "WARNING: OpenSSL version '$$SECUTILS_OPENSSL_VERSION' used for building libsecutils does not match '$(OPENSSL_VERSION)' to be used for building cmpClient"; \
+	fi
 endif
 
 GENCMPCLIENT_CONFIG=include/genericCMPClient_config.h
@@ -316,12 +372,21 @@ else
 	@sed -i~ -e 's|#cmakedefine USE_LIBCMP|/* #undef USE_LIBCMP */|' $@
 endif
 
+ifneq ($(findstring build,$(MAKECMDGOALS))$(findstring default,$(MAKECMDGOALS)),)
+    $(info Build info: source directory is '$(PWD)')
+    $(info detected OpenSSL base directory '$(OPENSSL_DIR)')
+    $(info detected OpenSSL lib  directory '$(OPENSSL_LIB)')
+    $(info detected OpenSSL version         $(OPENSSL_VERSION))
+endif
 build_only: $(GENCMPCLIENT_CONFIG)
 	$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" INSTALL_DEB_PKGS=$(INSTALL_DEB_PKGS) DEB_TARGET_ARCH=$(DEB_TARGET_ARCH)
 
 build_no_tls:
-	$(MAKE) -C libsecutils -f Makefile_v1 clean_config
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 clean_config
 	$(MAKE) -f Makefile_v1 build $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
+
+
+# cleaning #####################################################################
 
 .phony: clean_test clean clean_config clean_uta clean_this
 
@@ -338,16 +403,21 @@ OUT_DEV_DOC=Generic_CMP_client_API.pdf
 clean_this: clean_test
 	$(MAKE) -f Makefile_src -s clean OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)"
 	rm -f libgencmp-*.zip
-	rm -f doc/*.1{,.gz}
+	rm -f doc/{*.1{,.gz},*.md}
 
+ifeq ($(findstring clean_all,$(MAKECMDGOALS)),)
+    CLEAN=clean
+else
+    CLEAN=clean_all
+endif
 clean: clean_this clean_config
 ifeq ($(LPATH),)
     ifneq ($(wildcard $(SECUTILS_DIR)),)
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s clean OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)" || true
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s $(CLEAN) OUT_DIR="$(OUT_REVERSE_DIR)"
     endif
     # ifdef USE_LIBCMP # better always try cleaning cmpossl artifacts, which may have been produced earlier with USE_LIBCMP=1
         ifneq ($(wildcard $(LIBCMP_DIR)/Makefile_v1),)
-	    $(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s clean OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
+	    $(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s $(CLEAN) OUT_DIR="$(OUT_REVERSE_DIR)"
         endif
     # endif
 endif
@@ -590,8 +660,8 @@ test_all: test_Insta
 endif
 
 test: clean build_no_tls
-	$(MAKE) -C libsecutils -f Makefile_v1 clean_config
-	@$(MAKE) -f Makefile_v1 clean $(OUT_DIR_BIN) demo_Insta $(SET_NDEBUG) DEBUG_FLAGS="$(DEBUG_FLAGS)" CFLAGS="$(CFLAGS)"
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 clean_config
+	@$(MAKE) -f Makefile_v1 clean $(OUT_DIR_BIN) demo_Insta $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)"
 
 # doc and zip ##################################################################
 
@@ -629,6 +699,8 @@ zip:
 # build CMPforOpenSSL (i.e., OpenSSL with CMP patch) with debug symbols
 ## 'install' static libs to lib, headers to include, dynamic libs and bin to bin
 ################################################################
+
+# triggering build #############################################################
 
 ROOTDIR=$(PWD)
 TAR=$(SECUTILS_DIR)/tar
@@ -671,6 +743,8 @@ clean_openssl:
 .phony: buildCMPforOpenSSL
 buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 
+
+# Debian packaging #############################################################
 
 ifeq ($(INSTALL_DEB_PKGS),)
     IGNORE_DEB_DEPEND=-d
@@ -723,6 +797,9 @@ clean_deb:
 	rm -f {libgencmp,cmpclient}*.{deb,tar.gz}
 	@# sudo dpkg -r lib{gen,}cmp{,-dev} libsecutils{,-dev,-bin} cmpclient
 
+
+# installation #################################################################
+
 # installation target - append ROOTFS=<path> to install into virtual root filesystem
 DEST_PRE=$(ROOTFS)/usr
 DEST_LIB=$(DEST_PRE)/lib
@@ -742,15 +819,15 @@ endif
 install: remind_admin
 ifeq ($(LPATH),)
     ifneq ($(wildcard $(SECUTILS_DIR)),)
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 doc install OUT_DIR="$(OUT_DIR_REVERSE_DIR)" DESTDIR="$(DEST_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 doc install OUT_DIR="$(OUT_REVERSE_DIR)" DESTDIR="$(DEST_REVERSE_DIR)"
     endif
     ifdef USE_LIBCMP
     ifneq ($(wildcard $(LIBCMP_DIR)),)
-	$(MAKE) -C $(LIBCMP_DIR)  -f Makefile_v1 install OUT_DIR="$(OUT_DIR_REVERSE_DIR)" DESTDIR="$(DEST_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 install OUT_DIR="$(OUT_REVERSE_DIR)" DESTDIR="$(DEST_REVERSE_DIR)"
     endif
     endif
 endif
-	mkdir -p $(DEST_LIB)
+	@mkdir -p $(DEST_LIB)
 	install -D $(OUT_DIR)/$(OUTLIBV) $(DEST_LIB)/
 	ln -sf $(OUTLIBV) $(DEST_LIB)/$(OUTLIB)
 ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
@@ -777,11 +854,11 @@ endif
 uninstall: remind_admin
 ifeq ($(LPATH),)
     ifneq ($(wildcard $(SECUTILS_DIR)),)
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 uninstall OUT_DIR="$(OUT_DIR_REVERSE_DIR)" DESTDIR="$(DEST_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 uninstall OUT_DIR="$(OUT_REVERSE_DIR)" DESTDIR="$(DEST_REVERSE_DIR)"
     endif
     ifdef USE_LIBCMP
     ifneq ($(wildcard $(LIBCMP_DIR)),)
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 uninstall OUT_DIR="$(OUT_DIR_REVERSE_DIR)" DESTDIR="$(DEST_REVERSE_DIR)"
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 uninstall OUT_DIR="$(OUT_REVERSE_DIR)" DESTDIR="$(DEST_REVERSE_DIR)"
     endif
     endif
 endif

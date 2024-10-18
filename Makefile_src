@@ -64,20 +64,19 @@ endif
 
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 # $(OPENSSL_DIR) is relative path
-    OPENSSL=$(PREFIX)$(OPENSSL_DIR)
+    PREFIX_OPENSSL_DIR=$(PREFIX)$(OPENSSL_DIR)
     ifeq ($(OPENSSL_LIB),)
-      override OPENSSL_LIB = $(OPENSSL)
+        override OPENSSL_LIB = $(PREFIX_OPENSSL_DIR)
     endif
-    OPENSSL_RPATH=$(OPENSSL_DIR)
-    OPENSSL_RPATH_LIB=$(OPENSSL_DIR)
-else
-# $(OPENSSL_DIR) is absolute path
-    OPENSSL=$(OPENSSL_DIR)
+#   OPENSSL_RPATH=$(OPENSSL_DIR)
+#   OPENSSL_RPATH_LIB=$(OPENSSL_DIR)
+else # $(OPENSSL_DIR) is absolute path
+    PREFIX_OPENSSL_DIR=$(OPENSSL_DIR)
     ifeq ($(OPENSSL_LIB),)
-      override OPENSSL_LIB = $(OPENSSL)/$(LIB)
+        override OPENSSL_LIB = $(PREFIX_OPENSSL_DIR)/$(LIB)
     endif
-    OPENSSL_RPATH=$(OPENSSL)
-    OPENSSL_RPATH_LIB=$(OPENSSL_LIB)
+#   OPENSSL_RPATH=$(PREFIX_OPENSSL_DIR)
+#   OPENSSL_RPATH_LIB=$(OPENSSL_LIB)
 endif
 
 ARCHIVE=$(PREFIX)bin # for Jenkins
@@ -115,7 +114,7 @@ ifneq ($(LIBCMP_INC),)
 # use of -isystem is important for taking precedence over any (older) OpenSSL CMP headers
     override CFLAGS += -DUSE_LIBCMP
 endif
-override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
+override CFLAGS += -isystem $(PREFIX_OPENSSL_DIR)/include # use of -isystem is critical for selecting wanted OpenSSL version
 override CFLAGS += -I$(PREFIX)include # for genericCMPClient.h
 override CFLAGS += $(OSSL_VERSION_QUIRKS)
 
@@ -168,12 +167,13 @@ ifeq ($(LPATH),)
             endif
         endif
     endif
-    override LDFLAGS += -L $(OPENSSL_LIB) -L $(OPENSSL)
+    override LDFLAGS += -L $(OPENSSL_LIB)# -L $(PREFIX_OPENSSL_DIR)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
-        override LDFLAGS += -Wl,-rpath,$(OPENSSL_RPATH_LIB)
-	ifneq ($(OPENSSL_RPATH_LIB),$(OPENSSL_RPATH))
-        override LDFLAGS += -Wl,-rpath,$(OPENSSL_RPATH)
-        endif
+#         override LDFLAGS += -Wl,-rpath,$(OPENSSL_RPATH_LIB)
+#         ifneq ($(OPENSSL_RPATH_LIB),$(OPENSSL_RPATH))
+#             override LDFLAGS += -Wl,-rpath,$(OPENSSL_RPATH)
+#         endif
+    override LDFLAGS += -Wl,-rpath,$(OPENSSL_LIB)
     endif
 else
     override LDFLAGS += -L $(LPATH)

@@ -370,7 +370,9 @@ get_EJBCA_crls: | creds/crls
 	@for CA in $(EJBCA_CDPS); \
 	do \
 		export ca=`echo $$CA | sed  's/\+//g; s/\.//;'`; \
-		wget --tries=1 -nv "$(EJBCA_CDP_URL_PREFIX)$$CA$(EJBCA_CDP_URL_POSTFIX)" -O "creds/crls/EJBCA-$$CA.crl"; \
+		export postfix="$(EJBCA_CDP_URL_POSTFIX)"; \
+		[[ $$CA =~ "v1.1" ]] && export postfix="$(EJBCA_CDP_URL_POSTFIX_v11)"; \
+		wget --tries=1 -nv "$(EJBCA_CDP_URL_PREFIX)$$CA$$postfix" -O "creds/crls/EJBCA-$$CA.crl"; \
 	done
 
 .phony: get_Insta_crls

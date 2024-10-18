@@ -86,7 +86,7 @@ OPENSSL_DLLS = *{crypto,ssl}*.dll
 CC ?= gcc
 ifdef NDEBUG
     DEBUG_FLAGS ?= -O2
-    override DEBUG_FLAGS += -DNDEBUG=1
+    override DEBUG_FLAGS += -DNDEBUG=1 -Werror
 else
     DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
 endif
@@ -96,7 +96,7 @@ override CFLAGS += \
   -Wall -Woverflow -Wextra -Wswitch -Wmissing-prototypes -Wstrict-prototypes \
   -Wformat -Wformat-security -Wtype-limits -Wundef -Wconversion \
   -Wsign-compare -Wpointer-arith -Wunused-parameter -Wshadow \
-  -pedantic -DPEDANTIC -Werror
+  -pedantic -DPEDANTIC
 override CFLAGS +=-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement \
   -Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow # due to libsecutils
 ifeq ($(LPATH),)

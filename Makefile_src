@@ -145,10 +145,14 @@ ifeq ($(LPATH),)
         # ifeq ($(PREFIX),)
         # TODO maybe better use absolute path here, as done by CMake
         override LDFLAGS += -Wl,-rpath,$(OUT_DIR) -Wl,-rpath,$(SECUTILS_DIR)
-        override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../.. -Wl,-rpath,$(OUT_DIR)/../../../../$(SECUTILS_DIR) # for CLI-based tests
+        ifndef NDEBUG
+            override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../.. -Wl,-rpath,$(OUT_DIR)/../../../../$(SECUTILS_DIR) # for CLI-based tests
+        endif
         ifneq ($(LIBCMP_INC),)
             override LDFLAGS += -Wl,-rpath,$(LIBCMP_DIR)
-            override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../../$(LIBCMP_DIR) # for CLI-based tests
+            ifndef NDEBUG
+                override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../../$(LIBCMP_DIR) # for CLI-based tests
+            endif
         endif
         # endif
     endif

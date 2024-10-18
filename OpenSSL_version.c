@@ -2,9 +2,9 @@
  * @file   OpenSSL_version.c
  * @brief  OpenSSL version checking utility
  *
- * @author David von Oheimb, CT RDA CST SEA, David.von.Oheimb@siemens.com
+ * @author David von Oheimb, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2021 Siemens AG
+ *  Copyright (c) 2021-2024 Siemens AG
  *  Licensed under the Apache License, Version 2.0
  *  SPDX-License-Identifier: Apache-2.0
  ******************************************************************************/
@@ -38,10 +38,10 @@ int main(int argc, char *argv[])
     fprintf(stderr, DEBUG_MESSAGE);
 
     unsigned long static_version = (unsigned long)OPENSSL_VERSION_NUMBER;
-    fprintf(stderr, "[DEBUG] OPENSSL_VERSION_NUMBER: 0x%lx\n", static_version);
+    fprintf(stderr, "[TRACE] OPENSSL_VERSION_NUMBER:  0x%lx\n", static_version);
 
     unsigned long runtime_version = OpenSSL_version_num();
-    fprintf(stderr, "[DEBUG] runtime_version: 0x%lx\n", runtime_version);
+    fprintf(stderr, "[TRACE] OpenSSL runtime_version: 0x%lx\n", runtime_version);
 
     #define MAJOR_MINOR_MASK 0xfff00000L
     if ((MAJOR_MINOR_MASK & runtime_version ) != (MAJOR_MINOR_MASK & OPENSSL_VERSION_NUMBER)) {

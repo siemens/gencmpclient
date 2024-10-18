@@ -64,20 +64,19 @@ endif
 
 ifeq ($(shell echo $(OPENSSL_DIR) | grep "^/"),)
 # $(OPENSSL_DIR) is relative path
-    OPENSSL=$(PREFIX)$(OPENSSL_DIR)
+    PREFIX_OPENSSL_DIR=$(PREFIX)$(OPENSSL_DIR)
     ifeq ($(OPENSSL_LIB),)
-      override OPENSSL_LIB = $(OPENSSL)
+        override OPENSSL_LIB = $(PREFIX_OPENSSL_DIR)
     endif
-    OPENSSL_RPATH=$(OPENSSL_DIR)
-    OPENSSL_RPATH_LIB=$(OPENSSL_DIR)
-else
-# $(OPENSSL_DIR) is absolute path
-    OPENSSL=$(OPENSSL_DIR)
+#   OPENSSL_RPATH=$(OPENSSL_DIR)
+#   OPENSSL_RPATH_LIB=$(OPENSSL_DIR)
+else # $(OPENSSL_DIR) is absolute path
+    PREFIX_OPENSSL_DIR=$(OPENSSL_DIR)
     ifeq ($(OPENSSL_LIB),)
-      override OPENSSL_LIB = $(OPENSSL)/$(LIB)
+        override OPENSSL_LIB = $(PREFIX_OPENSSL_DIR)/$(LIB)
     endif
-    OPENSSL_RPATH=$(OPENSSL)
-    OPENSSL_RPATH_LIB=$(OPENSSL_LIB)
+#   OPENSSL_RPATH=$(PREFIX_OPENSSL_DIR)
+#   OPENSSL_RPATH_LIB=$(OPENSSL_LIB)
 endif
 
 ARCHIVE=$(PREFIX)bin # for Jenkins
@@ -86,7 +85,7 @@ OPENSSL_DLLS = *{crypto,ssl}*.dll
 CC ?= gcc
 ifdef NDEBUG
     DEBUG_FLAGS ?= -O2
-    override DEBUG_FLAGS += -DNDEBUG=1
+    override DEBUG_FLAGS += -DNDEBUG=1 -Werror
 else
     DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
 endif
@@ -96,7 +95,7 @@ override CFLAGS += \
   -Wall -Woverflow -Wextra -Wswitch -Wmissing-prototypes -Wstrict-prototypes \
   -Wformat -Wformat-security -Wtype-limits -Wundef -Wconversion \
   -Wsign-compare -Wpointer-arith -Wunused-parameter -Wshadow \
-  -pedantic -DPEDANTIC -Werror
+  -pedantic -DPEDANTIC
 override CFLAGS +=-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement \
   -Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow # due to libsecutils
 ifeq ($(LPATH),)
@@ -115,14 +114,13 @@ ifneq ($(LIBCMP_INC),)
 # use of -isystem is important for taking precedence over any (older) OpenSSL CMP headers
     override CFLAGS += -DUSE_LIBCMP
 endif
-override CFLAGS += -isystem $(OPENSSL)/include # use of -isystem is critical for selecting wanted OpenSSL version
+override CFLAGS += -isystem $(PREFIX_OPENSSL_DIR)/include # use of -isystem is critical for selecting wanted OpenSSL version
 override CFLAGS += -I$(PREFIX)include # for genericCMPClient.h
 override CFLAGS += $(OSSL_VERSION_QUIRKS)
 
+LIBCMP_A = libcmp.a
 ifneq ($(LIBCMP_INC),)
-    ifneq ($(STATIC_LIBCMP),)
-        LIBCMP = $(LIBCMP_DIR)/libcmp.a
-    else
+    ifeq ($(STATIC_LIBCMP),)
         override LIBS += -lcmp
     endif
 endif
@@ -146,10 +144,14 @@ ifeq ($(LPATH),)
         # ifeq ($(PREFIX),)
         # TODO maybe better use absolute path here, as done by CMake
         override LDFLAGS += -Wl,-rpath,$(OUT_DIR) -Wl,-rpath,$(SECUTILS_DIR)
-        override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../.. -Wl,-rpath,$(OUT_DIR)/../../../../$(SECUTILS_DIR) # for CLI-based tests
+        ifndef NDEBUG
+            override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../.. -Wl,-rpath,$(OUT_DIR)/../../../../$(SECUTILS_DIR) # for CLI-based tests
+        endif
         ifneq ($(LIBCMP_INC),)
             override LDFLAGS += -Wl,-rpath,$(LIBCMP_DIR)
-            override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../../$(LIBCMP_DIR) # for CLI-based tests
+            ifndef NDEBUG
+                override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../../$(LIBCMP_DIR) # for CLI-based tests
+            endif
         endif
         # endif
     endif
@@ -165,12 +167,13 @@ ifeq ($(LPATH),)
             endif
         endif
     endif
-    override LDFLAGS += -L $(OPENSSL_LIB) -L $(OPENSSL)
+    override LDFLAGS += -L $(OPENSSL_LIB)# -L $(PREFIX_OPENSSL_DIR)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
-        override LDFLAGS += -Wl,-rpath,$(OPENSSL_RPATH_LIB)
-	ifneq ($(OPENSSL_RPATH_LIB),$(OPENSSL_RPATH))
-        override LDFLAGS += -Wl,-rpath,$(OPENSSL_RPATH)
-        endif
+#         override LDFLAGS += -Wl,-rpath,$(OPENSSL_RPATH_LIB)
+#         ifneq ($(OPENSSL_RPATH_LIB),$(OPENSSL_RPATH))
+#             override LDFLAGS += -Wl,-rpath,$(OPENSSL_RPATH)
+#         endif
+    override LDFLAGS += -Wl,-rpath,$(OPENSSL_LIB)
     endif
 else
     override LDFLAGS += -L $(LPATH)
@@ -223,8 +226,17 @@ $(OBJS): %$(OBJ): %.c # | $(SECUTILS_LIB) # $(PREFIX)$(OUT_DIR)/libcmp$(DLL)
 #%$(OBJ): %.c
 #	$(CC) $(CFLAGS) -o "$@" "$<"
 
+.PHONY: clean_libcmp_a
+clean_libcmp_a:
+	@if [ -f ./$(LIBCMP_A) ]; then rm ./$(LIBCMP_A); fi # workaround for Linux: if ./libcmp.a exists with an unsuitable format (e.g., from MacOS),
+	@ # dynamic library filies libcmp.so* get ignored, leading to, e.g., "undefined reference to `OSSL_CMP_ITAV_get0_caCerts'"
+
 ifneq ($(LIBCMP_INC),)
-$(OUT_DIR)/$(OUTLIBV): $(LIBCMP)
+    ifeq ($(STATIC_LIBCMP),)
+$(OUT_DIR)/$(OUTLIBV): | clean_libcmp_a
+    else
+$(OUT_DIR)/$(OUTLIBV): $(LIBCMP_DIR)/$(LIBCMP_A)
+   endif
 endif
 $(OUT_DIR)/$(OUTLIBV): src/genericCMPClient$(OBJ)
 	$(CC) $^ $(LDFLAGS) $(LIBS) -shared -o $@ -Wl,-$(SONAME)$(OUTLIBV)

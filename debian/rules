@@ -33,7 +33,7 @@ override_dh_auto_install:
 	dh_auto_install --destdir debian/tmp -- -f Makefile_v1
 
 override_dh_shlibdeps:
-	dh_shlibdeps --dpkg-shlibdeps-params="--ignore-missing-info -llibsecutils -lcmpossl -l$(OPENSSL_DIR) -l$(OPENSSL_LIB)"
+	dh_shlibdeps --dpkg-shlibdeps-params="--ignore-missing-info -l. -l$(OPENSSL_DIR) -l$(OPENSSL_LIB)" # -llibsecutils -lcmpossl
 
 # https://stackoverflow.com/questions/11238134/dpkg-shlibdeps-error-no-dependency-information-found-for
 # alternatively to  --dpkg-shlibdeps-params=--ignore-missing-info

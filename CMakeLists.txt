@@ -138,7 +138,7 @@ message(STATUS "build mode: ${CMAKE_BUILD_TYPE}")
 
 add_compile_definitions(DEBUG_UNUSED)
 add_compile_definitions(PEDANTIC)
-add_compile_options(-pedantic -Werror)
+add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
 add_compile_options(
   -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
   -Wsign-compare -Wformat -Wtype-limits -Wundef -Wconversion -Wunused-parameter)

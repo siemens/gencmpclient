@@ -1,0 +1,29 @@
+# GitHub Actions for genCMPClient
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) Siemens AG, 2021-2024
+
+name: macos-CI
+
+on: push
+
+jobs:
+  cmake:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: cmake
+        run: |
+          cmake .
+          make
+          mkdir build
+          cd build
+          cmake -S .. -B .
+          cmake --build .
+          cmake -DCMAKE_BUILD_TYPE=Release ..
+          make clean build
+          cd ..
+          mkdir build-with-libcmp
+          cd build-with-libcmp
+          USE_LIBCMP=1 cmake -S .. -B .
+          make clean build
+          DESTDIR=tmp make install uninstall

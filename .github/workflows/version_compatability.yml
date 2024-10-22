@@ -17,14 +17,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: build openssl
         run: |
-          git clone https://github.com/openssl/openssl.git --branch ${{ matrix.branch }}
+          git clone https://github.com/openssl/openssl.git --branch ${{ matrix.branch }} --depth 1
           cd openssl
           ./config --banner=Configured --strict-warnings --prefix=/usr/local/${{ matrix.branch }} --openssldir=/usr/local/${{ matrix.branch }}/ssl shared zlib
           make -s -j4
           sudo make install_sw install_ssldirs
           cd ..
           echo "OPENSSL_DIR=/usr/local/${{ matrix.branch }}" >> $GITHUB_ENV
+          echo "OpenSSL_DIR=/usr/local/${{ matrix.branch }}" >> $GITHUB_ENV
           echo "OPENSSL_LIB=/usr/local/${{ matrix.branch }}/lib64" >> $GITHUB_ENV
+          echo "OpenSSL_LIB=/usr/local/${{ matrix.branch }}/lib64" >> $GITHUB_ENV
           echo "PATH=/usr/local/${{ matrix.branch }}/bin:$PATH" >> $GITHUB_ENV
       - name: make
         run: |
@@ -36,13 +38,6 @@ jobs:
         run: |
           cmake .
           make
-          mkdir build
-          cd build
-          cmake -S .. -B .
-          cmake --build .
-          cmake -DCMAKE_BUILD_TYPE=Release ..
-          make clean build
-          cd ..
           mkdir build-with-libcmp
           cd build-with-libcmp
           USE_LIBCMP=1 cmake -S .. -B .

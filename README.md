@@ -1,18 +1,22 @@
 # generic CMP client
 
 This is a generic Certificate Management Protocol (CMP) client library
-with a high-level API
+with a high-level API for use with the C and C++ languages
 and associated CLI-based demo client, tests, and documentation.
 
 ## Purpose
 
-The purpose of this software is to provide a high-level API
-on top of the detailed CMP (and CRMF) API of
-[OpenSSL](https://www.openssl.org/) since version 3.0.
-It can be used with OpenSSL and optionally the intermediate CMP library
-[CMPforOpenSSL](https://github.com/mpeylo/cmpossl), called `libcmp` below,
-providing the CMPv3 features defined in
-[CMP Updates](https://www.rfc-editor.org/rfc/rfc9480).
+The purpose of this software is to provide a high-level C-based API
+on top of the detailed CMP (and CRMF) API of the
+[OpenSSL library](https://www.openssl-library.org/) since version 3.0.
+
+Until using an OpenSSL version > 3.0 that provides all those new CMP(v3) features
+needed for a given application, a further use case of this software may be
+to provide early access to all features of CMP
+as defined in [CMP Updates](https://www.rfc-editor.org/rfc/rfc9480)
+and the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483).
+To this end, it may be linked in addition to the intermediate CMP library
+[CMPforOpenSSL](https://github.com/mpeylo/cmpossl), called `libcmp` below.
 
 The high-level API is on the one hand convenient to use for application
 programmers and on the other hand complete and flexible enough
@@ -20,8 +24,15 @@ to cover the major certificate management use cases.
 The library supports developing CMP clients that adhere to
 the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483),
 which is geared towards simple and interoperable industrial use.
+
 The software also provides a command-line interface (CLI)
 that is handy for interactive exploration of using CMP in a PKI.
+
+Note: An OSS CMP client and registration authority (RA) implementation in Java
+is available in the form of a
+[generic CMP RA and client component](https://github.com/siemens/cmp-ra-component)
+and the [LightweightCmpRa](), which is a demo CLI application using it.
+
 
 ## Support model
 
@@ -35,14 +46,34 @@ The [maintainers](MAINTAINERS) offer two levels of support.
   in the form of [pull requests](../../pulls).
 
 
-## Status and changelog
+## Status
 
-See the [CHANGELOG.md](CHANGELOG.md) file in the top-level directory.
+This software provides all features of CMP version 3
+as defined in [CMP Updates](https://www.rfc-editor.org/rfc/rfc9480) according
+to the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483),
+which has been defined for simple and interoperable industrial use of CMP.
 
+<!--
+As of November 2024, upstream contribution of the new CMP version 3 features
+to OpenSSL is nearly finished. OpenSSL version 3.4 contains all of them except
+for [central key generation](https://github.com/openssl/openssl/pull/25132).
+-->
+
+Note: The successor of both RFC 4210 and CMP Updates, called
+[RFC 4210bis](https://datatracker.ietf.org/doc/draft-ietf-lamps-rfc4210bis/),
+has been submitted to IESG for publication, as well as
+[RFC 6712bis](https://datatracker.ietf.org/doc/draft-ietf-lamps-rfc6712bis/).
+As of end-2024, the main novelty of RFC 4210bis, which provides KEM support,
+is not yet implemented here.
+
+<!--
+The [CHANGELOG.md](CHANGELOG.md) contains a coarse release history.
+-->
 
 ## Documentation
 
-The Generic CMP client API specification and CLI documentation are available in the [`doc`](doc/) folder.
+The Generic CMP client API specification and CLI documentation
+are available in the [`doc`](doc/) folder.
 
 The Doxygen documentation of the underlying Security Utilities library is available
 via a link in its [README file](https://github.com/siemens/libsecutils/blob/master/README.md).
@@ -50,9 +81,9 @@ via a link in its [README file](https://github.com/siemens/libsecutils/blob/mast
 
 ## Prerequisites
 
-This software should work with any flavor of Linux, including [Cygwin](https://www.cygwin.com/),
-also on a virtual machine or the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)),
-and with MacOS X.
+This software should work with any flavor of Linux,
+including MacOS X, [Cygwin](https://www.cygwin.com/), also on a virtual machine or
+the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
 
 The following network and development tools are needed or recommended.
 * Git (for getting the software, tested with versions 2.7.2, 2.11.0, 2.20, 2.30.2, 2.39.2)
@@ -77,7 +108,7 @@ related development header files at a sufficiently new patch level,
 better not manually install in addition a different OpenSSL version unless
 you need newer CMP features without using the intermediate CMP library `libcmp`.
 Such a manual installation can interfere with the more or less implicit
-references to the locations of OpenSSL header files and binary libary files.
+references to the locations of OpenSSL header files and binary library files.
 So unless you know exactly what you are doing, you may receive
 version mismatch errors like the one mentioned [below](#sanity-checks-on-openssl).
 <!-- https://github.com/orgs/community/discussions/60861-->
@@ -89,7 +120,8 @@ For instance, on a Debian or Ubuntu system the prerequisites may be installed si
 ```
 sudo apt install cmake libssl-dev libc-dev linux-libc-dev
 ```
-while `sudo apt install git make gcc wget` usually is not needed as far as these tools are pre-installed.
+while `sudo apt install git make gcc wget`
+usually is not needed as far as these tools are pre-installed.
 
 You might need to set the variable `OPENSSL_DIR` first as described below, e.g.,
 ```
@@ -161,7 +193,8 @@ cd genCMPClient
 make -f Makefile_v1 get_submodules
 ```
 
-This will fetch also the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) if needed and
+This will fetch also the underlying
+[CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) if needed and
 the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils) library.
 
 For using the project as a git submodule,
@@ -305,7 +338,8 @@ for demonstration, test, and exploration purposes.
 When getting the compiler error: `'openssl/openssl_backport.h' file not found`
 likely `include/genericCMPClient_config.h` is outdated
 and contains `#define USE_LIBCMP` although the environment variable `USE_LIBCMP`
-is not set. In such situations, `make -f Makfile_v1 clean` helps to reset it to a consistent state.
+is not set.
+In such situations, `make -f Makefile_v1 clean` helps to reset it to a consistent state.
 
 
 ### Installing and uninstalling
@@ -340,7 +374,7 @@ The recommended way is to use CPack with the files produced by CMake as follows:
 ```
 make deb
 ```
-which requries the `file` utility.
+which requires the `file` utility.
 
 Alternatively, [`Makefile_v1`](Makefile_v1) may be used like this:
 ```
@@ -411,7 +445,7 @@ make -f Makefile_v1 test_Insta
 where the PROXY environment variable may be used to override the default
 in order to reach the Insta Demo CA.
 
-In order to obain a trace of the HTTP messages being sent and received,
+In order to obtain a trace of the HTTP messages being sent and received,
 build the genCMPClient with `USE_LIBCMP=1` and
 set the environment variable `OPENSSL_TRACE` to contain the string `"HTTP"`.
 For instance:
@@ -419,7 +453,7 @@ For instance:
 OPENSSL_TRACE=HTTP ./cmpClient imprint -section Insta
 ```
 
-To select a specific CMP profile on the cloudCA server, set the environment
+To select a specific CMP profile on the CloudCA server, set the environment
 variable `CMP_PROFILE` to the profile name.
 For instance:
 ```
@@ -438,9 +472,11 @@ for instance as given in the example outer [`Makefile.mk`](Makefile.mk).
 For compiling applications using the library,
 you will need to `#include` the header file [`genericCMPClient.h`](include/genericCMPClient.h)
 and add the directories [`include`](include/) and
-[`libsecutils/include`](https://github.com/siemens/libsecutils/blob/master/include/) to your C headers path.
+[`libsecutils/include`](
+https://github.com/siemens/libsecutils/blob/master/include/) to your C headers path.
 When the intermediate library `libcmp` is used, you need to
-add also the directory [`cmpossl/include/cmp`](https://github.com/mpeylo/cmpossl/tree/cmp/include/cmp/),
+add also the directory [`cmpossl/include/cmp`](
+https://github.com/mpeylo/cmpossl/tree/cmp/include/cmp/),
 define the C macro `USE_LIBCMP`, and
 make sure that any OpenSSL header files included have the same version
 as the one used to build `libcmp`.
@@ -456,9 +492,10 @@ for helping the Linux loader find the libraries at run time.
 
 Also make sure that the OpenSSL libraries
 (typically referred to via `-lssl -lcrypto`) are in your library path and
-(the version of) the libraries found there by the linker match the header files found by the compiler.
+(the version of) the libraries found there by the linker
+match the header files found by the compiler.
 
-All this is already done for the cmp client application.
+All this is already done for the CMP client application `cmpClient`.
 
 
 ## Disclaimer
@@ -473,3 +510,14 @@ This work is licensed under the terms of the Apache Software License 2.0.
 See the [LICENSE.txt](LICENSE.txt) file in the top-level directory.
 
 SPDX-License-Identifier: Apache-2.0
+
+<!--
+LocalWords:  md bis CHANGELOG doc libcmp openssl sudo cmake libssl cd
+LocalWords:  dev libc linux DIR perl ccache mk LIB ldd grep awk lcrypto
+LocalWords:  libcrypto sed zshrc LDFLAGS lib CPPFLAGS SECUTILS lsecutils
+LocalWords:  util icvutil NDEBUG DCMAKE ln usr libgencmp CC lssl lcmp
+LocalWords:  cmpClient src DESTDIR ROOTFS cmpclient tarball deb rpath
+LocalWords:  debhelper dh devscripts debuild dpkg ecparam FI cr lgencmp
+LocalWords:  genkey insta ref cmd newkey certout noout creds Wl ICV
+LocalWords:  genericCMPClient
+-->

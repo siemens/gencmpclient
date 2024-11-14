@@ -179,10 +179,14 @@ else
     endif
 endif
 
-ifeq ($(shell git help submodule | grep progress),)
+GIT_HELP=$(shell git help submodule)
+ifeq ($(findstring --progress,$(GIT_HELP)),)
     GIT_PROGRESS=
 else
     # GIT_PROGRESS=--progress # disabled as gives lengthy output in CI runs
+endif
+ifneq ($(findstring --depth,$(GIT_HELP)),)
+    GIT_DEPTH=--depth 1
 endif
 
 ################################################################
@@ -251,7 +255,7 @@ $(SECUTILS_OUT_LIB):
 
 .phony: update_secutils build_secutils
 update_secutils:
-	git submodule update $(GIT_PROGRESS) --init --depth 1 $(SECUTILS_DIR)
+	git submodule update $(GIT_PROGRESS) --init $(GIT_DEPTH) $(SECUTILS_DIR)
 build_secutils: # not: update_secutils
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s build_all $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS)" SECUTILS_USE_ICV=$(SECUTILS_USE_ICV) SECUTILS_USE_UTA=$(SECUTILS_USE_UTA) SECUTILS_NO_TLS=$(SECUTILS_NO_TLS) OPENSSL_DIR="$(OPENSSL_DIR)" OUT_DIR="$(OUT_DIR_REVERSE_DIR)"
 
@@ -273,7 +277,7 @@ endif
 
 .phony: update_cmpossl build_cmpossl
 update_cmpossl:
-	git submodule update $(GIT_PROGRESS) --init --depth 1 $(LIBCMP_DIR)
+	git submodule update $(GIT_PROGRESS) --init $(GIT_DEPTH) $(LIBCMP_DIR)
 build_cmpossl: # not: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 ifdef USE_LIBCMP

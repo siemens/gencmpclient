@@ -2,7 +2,7 @@
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation, defaulting to LPATH/.. if set, else ROOTFS/usr
 # Optional OPENSSL_LIB defines where to find the OpenSSL library installation (default: OPENSSL_DIR/lib or OPENSSL_DIR).
-# Optional OUT_DIR defines where libgencmp shall be placed, defaulting to LPATH if set, else '.'
+# Optional OUT_DIR defines where libgencmp shall be placed, defaulting to LPATH if nonempty, else '.'
 # BIN_DIR defines where the CLI application shall be placed, unless it is empty or unset.
 # Optional LIBCMP_INC defines the directory of the libcmp header files, must be non-empty if and only if libcmp is used (USE_LIBCMP).
 # All paths may be absolute or relative to the directory containing this Makefile.
@@ -141,7 +141,7 @@ ifeq ($(LPATH),)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
         # ifeq ($(PREFIX),)
         # TODO maybe better use absolute path here, as done by CMake
-        override LDFLAGS += -Wl,-rpath,$(OUT_DIR) -Wl,-rpath,$(SECUTILS_DIR)
+        override LDFLAGS += -Wl,-rpath,$(OUT_DIR) # no more needed: -Wl,-rpath,$(SECUTILS_DIR)
         ifndef NDEBUG # for CLI-based tests
             override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../..
 #           not needed due to OUT_DIR set also for libsecutils:
@@ -249,7 +249,7 @@ $(OUT_DIR)/$(OUTLIBV): src/genericCMPClient$(OBJ)
 $(OUT_DIR)/$(OUTLIB): $(OUT_DIR)/$(OUTLIBV)
 	ln -sf $(OUTLIBV) $(OUT_DIR)/$(OUTLIB)
 
-$(CMPCLIENT): src/cmpClient$(OBJ) $(OUT_DIR)/$(OUTLIB)
+$(OUT_DIR)/$(CMPCLIENT): src/cmpClient$(OBJ) $(OUT_DIR)/$(OUTLIB)
 	$(CC) $(LDFLAGS) $< -lgencmp $(LIBS) -o $@
 
 .PHONY: all archive

@@ -10,7 +10,7 @@
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS. Also CFLAGS is passed to build goals.
 # Builds are done in release mode if optional NDEBUG is defined.
 # Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed (default: LPATH if set, otherwise '.').
-# Optional BIN_DIR defines where the CLI application shall be placed unless it is empty. It defaults to '.' if unset.
+# Optional BIN_DIR defines where the CLI application shall be placed (default: OUT_DIR)
 # Optional DESTDIR defines a prefix for the installation target directories.
 # Optional OPENSSL specifies the OpenSSL CLI application (including path) to use
 # All paths may be absolute or relative to the directory containing this Makefile.
@@ -60,9 +60,8 @@ VERSION=2.0
 # DIRNAME=$(PACKAGENAME)-$(VERSION)
 
 ifeq ($(LPATH),)
-    override OUT_DIR ?= .
-    ifeq ($(BIN_DIR),)
-        override BIN_DIR = .
+    ifeq ($(OUT_DIR),)
+        override OUT_DIR = .
     endif
 #   ifneq ($(wildcard $(ROOTFS)/usr/local/include/openssl),)
 #       override OPENSSL_DIR ?= $(ROOTFS)/usr/local
@@ -70,12 +69,14 @@ ifeq ($(LPATH),)
     # override OPENSSL_DIR ?= $(ROOTFS)/usr
     SECUTILS_DIR=libsecutils
 else
-    override OUT_DIR ?= $(LPATH)
-    ifeq ($(BIN_DIR),)
-        override BIN_DIR = $(LPATH)
+    ifeq ($(OUT_DIR),)
+        override OUT_DIR = $(LPATH)
     endif
     # override OPENSSL_DIR ?= $(LPATH)/..
     # SECUTILS and SECUTILS_LIB not needed since pre-installed
+endif
+ifeq ($(BIN_DIR),)
+    BIN_DIR = $(OUT_DIR)
 endif
 
 ifeq ($(shell echo $(OUT_DIR) | grep "^/"),)

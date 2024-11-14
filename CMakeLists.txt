@@ -149,7 +149,6 @@ set_target_properties(${LIBGENCMP_NAME} PROPERTIES
 
 find_package(Git)
 if(GIT_FOUND)
-  set(GIT_DEPTH --depth 1) # used to speed up getting submodules
   # add --progress if the tool supports it
   execute_process(COMMAND ${CMAKE_COMMAND} -E env LC_ALL=C ${GIT_EXECUTABLE} --help submodule
     OUTPUT_VARIABLE _TMP_HELP
@@ -157,6 +156,9 @@ if(GIT_FOUND)
     OUTPUT_STRIP_TRAILING_WHITESPACE)
   if("${_TMP_HELP}" MATCHES "--progress")
     set(GIT_PROGRESS "--progress") # gives lengthy output in CI runs
+  endif()
+  if("${_TMP_HELP}" MATCHES "--depth")
+    set(GIT_DEPTH --depth 1) # used to speed up getting submodules
   endif()
   if(DEFINED USE_LIBCMP)
     set(submodules libsecutils cmpossl)

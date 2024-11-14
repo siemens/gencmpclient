@@ -23,6 +23,17 @@ which is geared towards simple and interoperable industrial use.
 The software also provides a command-line interface (CLI)
 that is handy for interactive exploration of using CMP in a PKI.
 
+## Support model
+
+The [maintainers](MAINTAINERS) offer two levels of support.
+* Community support is provided on a best-effort basis
+  and can be requested via [issues](../../issues).
+* Paid professional support and consulting can be ordered
+  from Siemens by reaching out to the maintainers.
+
+[Contributions](CONTRIBUTING.md) are appreciated
+  in the form of [pull requests](../../pulls).
+
 
 ## Status and changelog
 

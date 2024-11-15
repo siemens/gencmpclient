@@ -1,6 +1,11 @@
 genCMPClient changes
 ====================
 
+genCMPClient 2.0
+----------------
+
+* Released on Wed, 12 Apr 2023 23:04:14 +0200
+
 genCMPClient 1.0
 ----------------
 

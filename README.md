@@ -18,20 +18,24 @@ and the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483
 To this end, it may be linked in addition to the intermediate CMP library
 [CMPforOpenSSL](https://github.com/mpeylo/cmpossl), called `libcmp` below.
 
-The high-level API is on the one hand convenient to use for application
-programmers and on the other hand complete and flexible enough
-to cover the major certificate management use cases.
 The library supports developing CMP clients that adhere to
 the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483),
 which is geared towards simple and interoperable industrial use.
 
-The software also provides a command-line interface (CLI)
-that is handy for interactive exploration of using CMP in a PKI.
+The [high-level API](doc/Generic_CMP_client_API.pdf)
+is convenient to use for application programmers
+while being sufficiently complete and flexible
+to cover all major certificate management use cases.
+
+The software also provides a command-line interface (CLI) that is handy
+for demonstrating and interactively exploring the use of CMP in a PKI.\
+Yet interfacing at API level is more direct and secure for productive use.
 
 Note: An OSS CMP client and registration authority (RA) implementation in Java
 is available in the form of a
 [generic CMP RA and client component](https://github.com/siemens/cmp-ra-component)
-and the [LightweightCmpRa](), which is a demo CLI application using it.
+and the [LightweightCmpRa](https://github.com/siemens/LightweightCmpRa),
+which is a demo application making use of the component.
 
 
 ## Support model
@@ -103,14 +107,38 @@ The following OSS components are used.
   or if the latest CMP features not yet available in OpenSSL are required,
   which can be indicated by setting the environment variable `USE_LIBCMP`.
 
+For an overview of CMP features relevant in industrial use cases see
+[LCMPP section 7.1](https://datatracker.ietf.org/doc/html/rfc9483#section-7.1).
+CMP client (EE) features are supported by the genCMPClient as follows.
+* CMPv2 features defined in [RFC 4210](https://www.rfc-editor.org/rfc/rfc4210)
+  are sufficiently covered by using OpenSSL 3.0.\
+  This includes most of the
+  "Generic Aspects of PKI Messages and PKI Management Operations",
+  IR, CR, KUR, P10CR, MAC, RR, and polling for certification responses.
+* In OpenSSL 3.2, "Get CA Certificates" and "Get Root CA Certificate Update"
+  were added.
+* In OpenSSL 3.3, "Get Certificate Request Template" and support for certificate
+  profiles and generalized polling ("Handling Delayed Delivery") were added.
+* In OpenSSL 3.4, "CRL Update Retrieval" was added.
+* In OpenSSL 3.5, support for central key generation is going to be added.
+
+The features newly defined with CMPv3
+in [RFC 9480 (CMP Updates)](https://www.rfc-editor.org/rfc/rfc9480)
+are fully covered by the [intermediate CMP library `libcmp`](
+https://github.com/mpeylo/cmpossl) and will be covered by OpenSSL 3.5.\
+Since the intermediate CMP library `libcmp` constitutes an extra dependency
+and its maintenance will likely end soon after the release of OpenSSL 3.5,
+better avoid using it. This is possible if all the CMP features needed
+by the application scenario are covered by the OpenSSL version being used.
+
 Hint: As long as your system provides at least OpenSSL 3.0 and
 related development header files at a sufficiently new patch level,
 better not manually install in addition a different OpenSSL version unless
 you need newer CMP features without using the intermediate CMP library `libcmp`.
-Such a manual installation can interfere with the more or less implicit
-references to the locations of OpenSSL header files and binary library files.
-So unless you know exactly what you are doing, you may receive
-version mismatch errors like the one mentioned [below](#sanity-checks-on-openssl).
+Such an extra installation can interfere with the more or less implicit references
+to the default locations of OpenSSL header files and binary library files.
+So unless knowing exactly what to do and being careful, one may receive version
+mismatch errors like the one mentioned [below](#sanity-checks-on-openssl).
 <!-- https://github.com/orgs/community/discussions/60861-->
 
 
@@ -519,8 +547,8 @@ SPDX-License-Identifier: Apache-2.0
 
 <!--
 LocalWords:  md bis CHANGELOG doc libcmp openssl sudo cmake libssl cd
-LocalWords:  dev libc linux DIR perl ccache mk LIB ldd grep awk lcrypto
-LocalWords:  libcrypto sed zshrc LDFLAGS lib CPPFLAGS SECUTILS lsecutils
+LocalWords:  dev libc linux DIR perl ccache mk LIB ldd grep awk lcrypto KUR RR
+LocalWords:  libcrypto sed zshrc LDFLAGS lib CPPFLAGS SECUTILS lsecutils CMPv
 LocalWords:  util icvutil NDEBUG DCMAKE ln usr libgencmp CC lssl lcmp
 LocalWords:  cmpClient src DESTDIR ROOTFS cmpclient tarball deb rpath
 LocalWords:  debhelper dh devscripts debuild dpkg ecparam FI cr lgencmp

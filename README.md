@@ -110,8 +110,18 @@ The following OSS components are used.
 For an overview of CMP features relevant in industrial use cases see
 [LCMPP section 7.1](https://datatracker.ietf.org/doc/html/rfc9483#section-7.1).
 CMP client (EE) features are supported by the genCMPClient as follows.
+
+The features newly defined with CMPv3
+in [RFC 9480 (CMP Updates)](https://www.rfc-editor.org/rfc/rfc9480)
+are fully covered when using the [intermediate CMP library `libcmp`](
+https://github.com/mpeylo/cmpossl) or when using at least OpenSSL 3.5.\
+Since the intermediate CMP library `libcmp` constitutes an extra dependency
+and its maintenance may end soon after the release of OpenSSL 3.5,
+better avoid using it. This is possible if all the CMP features needed
+by the application scenario are covered by the OpenSSL version being used.
+
 * CMPv2 features defined in [RFC 4210](https://www.rfc-editor.org/rfc/rfc4210)
-  are sufficiently covered by using OpenSSL 3.0.\
+  are already sufficiently covered by using at least OpenSSL 3.0.\
   This includes most of the
   "Generic Aspects of PKI Messages and PKI Management Operations",
   IR, CR, KUR, P10CR, MAC, RR, and polling for certification responses.

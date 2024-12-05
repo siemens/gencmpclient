@@ -17,7 +17,7 @@ TODO,TODO,TODO,TODO,missing attribute in recipient name, -section,, -recipient,/
 0,*,*,*,wrong syntax in recipient name: trailing double '/' after value, -section,, -recipient,_CA_DN//,BLANK,,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,*,*,*,wrong syntax in recipient name: missing '=', -section,, -recipient,/CDE,BLANK,,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,*,*,*,wrong syntax in recipient name: C too long, -section,, -recipient,/CN=ECC Issuing CA v10/OU=For test purpose only/O=CMPforOpenSSL/C=DEE,BLANK,,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
-1,1,1,0,recipient name empty attribute (ignored by server), -section,, -recipient,/CN=/OU=/O=/C=,BLANK,,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
+0,1,1,0,recipient name empty attribute (ignored by EJBCA), -section,, -recipient,/CN=/OU=/O=/C=,BLANK,,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,
 1,*,1,1,config default with expected sender, -section,, -recipient,_CA_DN, -expect_sender,_SERVER_DN,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,*,*,*,expected sender missing arg, -section,, -recipient,_CA_DN, -expect_sender,,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,

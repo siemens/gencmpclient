@@ -122,6 +122,8 @@ endif
 ifdef DEBUG_FLAGS
   SET_DEBUG_FLAGS=DEBUG_FLAGS="$(DEBUG_FLAGS)"
 endif
+BUILD_FLAGS = \
+    $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS)"
 
 ifneq ($(EJBCA_CONFIG),)
     include $(EJBCA_CONFIG)
@@ -192,6 +194,8 @@ ifneq ($(filter-out doc start stop doc doc_this doc/cmpClient.md doc/cmpClient.1
 #   # $(OPENSSL_LIB) is absolute path
 #       OPENSSL_REVERSE_LIB=$(OPENSSL_LIB)
 #   endif
+BUILD_SUBDIRS = OUT_DIR="$(OUT_REVERSE_DIR)" \
+    OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" OPENSSL_LIB="$(OPENSSL_REVERSE_LIB)"
 
     OPENSSL_VERSION=$(shell $(MAKE) -s 2>/dev/null --no-print-directory -f OpenSSL_version.mk SOURCE=header OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)")
     ifeq ($(OPENSSL_VERSION),)
@@ -306,8 +310,11 @@ $(SECUTILS_OUT_LIB):
 .phony: update_secutils build_secutils
 update_secutils:
 	git submodule update $(GIT_PROGRESS) --init $(GIT_DEPTH) $(SECUTILS_DIR)
+SECUTILS_FLAGS = SECUTILS_NO_TLS=$(SECUTILS_NO_TLS) \
+    SECUTILS_USE_ICV=$(SECUTILS_USE_ICV) SECUTILS_USE_UTA=$(SECUTILS_USE_UTA)
 build_secutils: # not: update_secutils
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s build_all $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS) $(OSSL_VERSION_QUIRKS)" SECUTILS_USE_ICV=$(SECUTILS_USE_ICV) SECUTILS_USE_UTA=$(SECUTILS_USE_UTA) SECUTILS_NO_TLS=$(SECUTILS_NO_TLS) OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" OPENSSL_LIB="$(OPENSSL_REVERSE_LIB)" OUT_DIR="$(OUT_REVERSE_DIR)"
+	@ # cannot split line using '\' as Debian packaging cannot handle this
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 build_all $(SECUTILS_FLAGS) $(BUILD_SUBDIRS) $(BUILD_FLAGS) -s
 
 ifdef USE_LIBCMP
 $(LIBCMP_DIR)/include:
@@ -331,7 +338,8 @@ update_cmpossl:
 build_cmpossl: # not: update_cmpossl
 	@ # the old way to build with CMP was: buildCMPforOpenSSL
 ifdef USE_LIBCMP
-	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s build $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_REVERSE_DIR)" OPENSSL_LIB="$(OPENSSL_REVERSE_LIB)" OUT_DIR="$(OUT_REVERSE_DIR)" PWD=$(PWD)/$(LIBCMP_DIR)
+	@ # cannot split line using '\' as Debian packaging cannot handle this
+	$(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 build PWD=$(PWD)/$(LIBCMP_DIR) $(BUILD_SUBDIRS) $(BUILD_FLAGS) -s
 endif
 
 clean_submodules:
@@ -379,12 +387,17 @@ ifneq ($(findstring build,$(MAKECMDGOALS))$(findstring default,$(MAKECMDGOALS)),
     $(info detected OpenSSL lib  directory '$(OPENSSL_LIB)')
     $(info detected OpenSSL version         $(OPENSSL_VERSION))
 endif
+BUILD_ONLY_DIRS = OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" \
+    LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" LIBCMP_INC="$(LIBCMP_INC)" \
+    OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)" \
+    INSTALL_DEB_PKGS=$(INSTALL_DEB_PKGS) DEB_TARGET_ARCH=$(DEB_TARGET_ARCH)
 build_only: $(GENCMPCLIENT_CONFIG)
-	$(MAKE) -f Makefile_src build OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)" LIBCMP_INC="$(LIBCMP_INC)" OSSL_VERSION_QUIRKS="$(OSSL_VERSION_QUIRKS)" INSTALL_DEB_PKGS=$(INSTALL_DEB_PKGS) DEB_TARGET_ARCH=$(DEB_TARGET_ARCH)
+	@ # cannot split line using '\' as Debian packaging cannot handle this
+	$(MAKE) -f Makefile_src build $(BUILD_ONLY_DIRS) $(BUILD_FLAGS)
 
 build_no_tls:
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 clean_config
-	$(MAKE) -f Makefile_v1 build $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)" SECUTILS_NO_TLS=1
+	$(MAKE) -f Makefile_v1 build $(BUILD_FLAGS) SECUTILS_NO_TLS=1
 
 
 # cleaning #####################################################################
@@ -393,7 +406,7 @@ build_no_tls:
 
 ifeq ($(LPATH),)
 clean_uta:
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s clean_uta
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 clean_uta -s
 endif
 
 clean_test:
@@ -402,7 +415,7 @@ clean_test:
 OUT_DOC=cmpClient.1.gz
 OUT_DEV_DOC=Generic_CMP_client_API.pdf
 clean_this: clean_test
-	$(MAKE) -f Makefile_src -s clean OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)"
+	$(MAKE) -f Makefile_src clean OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" -s
 	rm -f libgencmp-*.zip
 	rm -f doc/{*.1{,.gz},*.md}
 
@@ -414,11 +427,11 @@ endif
 clean: clean_this clean_config
 ifeq ($(LPATH),)
     ifneq ($(wildcard $(SECUTILS_DIR)),)
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s $(CLEAN) OUT_DIR="$(OUT_REVERSE_DIR)"
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 $(CLEAN) OUT_DIR="$(OUT_REVERSE_DIR)" -s
     endif
     # ifdef USE_LIBCMP # better always try cleaning cmpossl artifacts, which may have been produced earlier with USE_LIBCMP=1
         ifneq ($(wildcard $(LIBCMP_DIR)/Makefile_v1),)
-	    $(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 -s $(CLEAN) OUT_DIR="$(OUT_REVERSE_DIR)"
+	    $(MAKE) -C $(LIBCMP_DIR) -f Makefile_v1 $(CLEAN) OUT_DIR="$(OUT_REVERSE_DIR)" -s
         endif
     # endif
 endif
@@ -662,12 +675,12 @@ endif
 
 test: clean build_no_tls
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 clean_config
-	@$(MAKE) -f Makefile_v1 clean $(OUT_DIR_BIN) demo_Insta $(SET_NDEBUG) $(SET_DEBUG_FLAGS) CFLAGS="$(CFLAGS)"
+	@$(MAKE) -f Makefile_v1 clean $(OUT_DIR_BIN) demo_Insta $(BUILD_FLAGS)
 
 # doc and zip ##################################################################
 
 doc: doc_this get_submodules
-	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 -s doc
+	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 doc -s
 
 doc/$(OUT_DEV_DOC): doc/Generic_CMP_client_API.odt # to be done manually
 

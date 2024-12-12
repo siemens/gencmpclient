@@ -14,8 +14,10 @@ jobs:
       - name: cmake
         run: |
           cmake .
-          make
-          make clean_all
+                                               make; make clean
+          GENCMP_NO_TLS=1                      make; make clean
+          GENCMP_NO_TLS=1 GENCMP_NO_SECUTILS=1 make; make clean
+                          GENCMP_NO_SECUTILS=1 make; make clean
 
           mkdir build
           cd build
@@ -23,6 +25,7 @@ jobs:
           cmake --build .
           cmake -DCMAKE_BUILD_TYPE=Release ..
           make clean build
+          DESTDIR=tmp make install uninstall
           cd ..
 
           mkdir build-with-libcmp
@@ -42,12 +45,18 @@ jobs:
           # would need access to azure.archive.ubuntu.com:
           # sudo apt-get update
           # sudo apt-get install -y >/dev/null libssl-dev build-essential # not needed
-          make -f Makefile_v1
-          USE_LIBCMP=1                 make -f Makefile_v1 clean build_no_tls
-          USE_LIBCMP=1 STATIC_LIBCMP=1 make -f Makefile_v1 clean build_no_tls
+                                               make -f Makefile_v1
+          GENCMP_NO_TLS=1                      make -f Makefile_v1 clean build
+          GENCMP_NO_TLS=1 GENCMP_NO_SECUTILS=1 make -f Makefile_v1 clean build
+                          GENCMP_NO_SECUTILS=1 make -f Makefile_v1 clean build
+
+          USE_LIBCMP=1                         make -f Makefile_v1 clean build
+          USE_LIBCMP=1 STATIC_LIBCMP=1         make -f Makefile_v1 clean build_no_tls
+
           make -C libsecutils -f Makefile_v1 clean_config
           SKIP_pod2markdown=1 DESTDIR=tmp make -f Makefile_v1 install uninstall
           make -f Makefile_v1 clean_all
+
   doc_deb:
     runs-on: ubuntu-latest
     steps:

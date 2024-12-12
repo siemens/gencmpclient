@@ -7,6 +7,7 @@
 # Optional LIBCMP_INC defines the directory of the libcmp header files, must be non-empty if and only if libcmp is used (USE_LIBCMP).
 # All paths may be absolute or relative to the directory containing this Makefile.
 # With USE_LIBCMP, setting STATIC_LIBCMP leads to static linking with libcmp.a .
+# Optional GENCMP_NO_SECUTILS disables libSecUtils use, CLI, demos, and tests
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS (default see below).
 # OSSL_VERSION_QUIRKS maybe be needed to provide for setting OpenSSL compilation version quirks.
 
@@ -97,7 +98,9 @@ override CFLAGS += \
 override CFLAGS +=-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined \
   -Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow # due to libsecutils
 ifeq ($(LPATH),)
-   override CFLAGS += -I$(SECUTILS_DIR)/src/libsecutils/include
+  ifndef GENCMP_NO_SECUTILS
+    override CFLAGS += -I$(SECUTILS_DIR)/src/libsecutils/include
+  endif
 endif
 ifneq ($(LIBCMP_INC),)
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
@@ -124,15 +127,25 @@ ifneq ($(LIBCMP_INC),)
 endif
 # important: place libcmp before libcrypto such that its contents are preferred
 
-override LIBS += -lsecutils
+ifndef GENCMP_NO_SECUTILS
+    override LIBS += -lsecutils
+else
+    override CFLAGS += -DGENCMP_NO_SECUTILS=1
+endif
+
 ifdef SECUTILS_NO_TLS
-    override CFLAGS += -DSECUTILS_NO_TLS=1
+    GENCMP_NO_TLS=1
+endif
+ifdef GENCMP_NO_TLS
+    override CFLAGS += -DGENCMP_NO_TLS=1
 else
     override LIBS += -lssl
 endif
 override LIBS += -lcrypto
-ifdef SECUTILS_USE_UTA
+ifndef GENCMP_NO_SECUTILS
+  ifdef SECUTILS_USE_UTA
     override LIBS += -luta
+  endif
 endif
 
 override LDFLAGS += $(DEBUG_FLAGS) # needed for -fsanitize=...
@@ -157,14 +170,18 @@ ifeq ($(LPATH),)
         # endif
     endif
 #   not needed due to OUT_DIR set also for libsecutils and cmpossl:
-#   override LDFLAGS += -L $(SECUTILS_DIR)
+#   ifndef GENCMP_NO_SECUTILS
+#       override LDFLAGS += -L $(SECUTILS_DIR)
+#   endif
 #   ifneq ($(LIBCMP_INC),)
 #       override LDFLAGS += -L $(LIBCMP_DIR)
 #   endif
     ifeq ($(DEB_TARGET_ARCH),) # not during Debian packaging
         ifneq ($(PREFIX),)
 #           not needed due to OUT_DIR set also for libsecutils and cmpossl:
-#           override LDFLAGS += -Wl,-rpath,$(SECUTILS_DIR_)
+#           ifndef GENCMP_NO_SECUTILS
+#               override LDFLAGS += -Wl,-rpath,$(SECUTILS_DIR_)
+#           endif
 #           ifneq ($(LIBCMP_INC),)
 #               override LDFLAGS += -Wl,-rpath,$(LIBCMP_DIR_)
 #           endif
@@ -204,10 +221,14 @@ DEPS = $(SRCS:.c=.d)
 
 CMPCLIENT = $(PREFIX)$(BIN_DIR)/cmpClient$(EXE)
 
-ifeq ($(BIN_DIR),)
-BINARIES =
+ifdef GENCMP_NO_SECUTILS
+    BINARIES =
 else
-BINARIES = $(CMPCLIENT)
+    ifeq ($(BIN_DIR),)
+        BINARIES =
+    else
+        BINARIES = $(CMPCLIENT)
+    endif
 endif
 
 ########## rules and targets
@@ -219,8 +240,10 @@ ifeq ($(LPATH),)
 	@echo "Copying OpenSSL DLLs to base directory for convenient use with Windows"
 	@cp --preserve=timestamps $(OPENSSL_LIB)/$(OPENSSL_DLLS) $(PREFIX_DEST)
 endif
+ifndef GENCMP_NO_SECUTILS
 	@echo "Copying SecUtils DLL to base directory for convenient use with Windows"
 	@cp --preserve=timestamps $(SECUTILS_LIB) $(PREFIX_DEST) # $(OPENSSL_LIB)/*{crypto,ssl}*.dll
+endif
 endif
 
 ifeq ($(findstring clean,$(MAKECMDGOALS)),)

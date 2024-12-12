@@ -97,7 +97,7 @@ The [CHANGELOG.md](CHANGELOG.md) contains a coarse release history.
 The Generic CMP client API specification and CLI documentation
 are available in the [`doc`](doc/) folder.
 
-The Doxygen documentation of the underlying Security Utilities library is available
+The Doxygen documentation of the Security Utilities library is available
 via a link in its [README file](https://github.com/siemens/libsecutils/blob/master/README.md).
 
 ## Prerequisites
@@ -120,10 +120,11 @@ The following development and network tools are needed or recommended.
 The following OSS components are used.
 
 * OpenSSL development edition;
-  currently supported versions include 3.0, 3.1, 3.2, 3.3, 3.4
+  currently supported versions include 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
   <!-- (formerly also versions 1.0.2, 1.1.0, and 1.1.1) -->
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
-  for support (not core) functionality needed mostly for the CLI
+  for support of (not core) functionality needed mostly for the CLI
+  unless the environment variable `GENCMP_NO_SECUTILS` is defined.
 * [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
   an intermediate CMP+CRMF+HTTP extension to OpenSSL,
   needed only if the OpenSSL version being used does not yet include
@@ -262,8 +263,9 @@ make -f Makefile_v1 get_submodules
 ```
 
 This will fetch also the underlying
-[CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) if needed and
-the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils) library.
+[CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
+the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
+library if needed.
 
 For using the project as a git submodule,
 do for instance the following in the directory where you want to integrate it:
@@ -372,7 +374,7 @@ not all of the CMP features newly defined in CMP Updates
 and in the Lightweight CMP Profile (LCMPP) are supported,
 which usually is not a problem.
 
-From use with the underlying Security Utilities library
+From use with the Security Utilities library
 the following environment variables may be set
 when calling `cmake` (at generation time) or when using `Makefile_v1`.
 
@@ -381,7 +383,7 @@ to be integrity protected with an Integrity Check Value (ICV),
 which may be produced using `util/icvutil`.
 * Use of the UTA library can be enabled by setting `SECUTILS_USE_UTA`.
   The UTA library must have been pre-installed on the system.
-* The TLS-related functions may be disabled by setting `SECUTILS_NO_TLS`,
+* The TLS-related functions may be disabled by setting `SECUTILS_NO_TLS` or `GENCMP_NO_TLS`,
   which also needs to be done when calling `make` at build time.
 
 ### Using CMake or `Makefile_v1`
@@ -630,9 +632,9 @@ for instance as given in the example outer [`Makefile.mk`](Makefile.mk).
 
 For compiling applications using the library,
 you will need to `#include` the header file [`genericCMPClient.h`](include/genericCMPClient.h)
-and add the directories [`include`](include/) and
-[`libsecutils/include`](
-https://github.com/siemens/libsecutils/blob/master/include/) to your C headers path.
+and add [`include`](include/) to your C headers path the directories.
+Unless `GENCMP_NO_SECUTILS` is set, also [`libsecutils/src/libsecutils/include`](
+https://github.com/siemens/libsecutils/blob/master/include/) needs to be added.
 When the intermediate library `libcmp` is used, you need to
 add also the directory [`cmpossl/include/cmp`](
 https://github.com/mpeylo/cmpossl/tree/cmp/include/cmp/),
@@ -675,5 +677,5 @@ LocalWords:  libcrypto sed zshrc LDFLAGS lib CPPFLAGS SECUTILS lsecutils CMPv
 LocalWords:  util icvutil NDEBUG DCMAKE ln usr libgencmp CC lssl lcmp md bis
 LocalWords:  cmpClient src DESTDIR ROOTFS cmpclient tarball deb rpath
 LocalWords:  debhelper dh devscripts debuild dpkg ecparam FI cr lgencmp cc cnf
-LocalWords:  genkey insta ref cmd newkey certout noout creds Wl ICV
+LocalWords:  genkey insta ref cmd newkey certout noout creds Wl ICV GENCMP
 -->

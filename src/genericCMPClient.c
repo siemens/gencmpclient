@@ -25,18 +25,23 @@ STACK_OF(X509_EXTENSION)
 *(*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTENSION) *a);
 #endif
 
-#ifdef LOCAL_DEFS /* internal helper functions not documented in API spec */
-# include "genericCMPClient_use.h"
-#else
-# include <secutils/storage/files.h>
-# include <secutils/credentials/cert.h>
-# include <secutils/credentials/store.h>
-# include <secutils/credentials/verify.h>
-# include <secutils/connections/conn.h> /* for CONN_IS_IP_ADDR() */
-# ifndef SECUTILS_NO_TLS
+#ifndef GENCMP_NO_SECUTILS
+# ifdef LOCAL_DEFS /* internal helper functions not documented in API spec */
+#  include "genericCMPClient_use.h"
+# else
+#  include <secutils/storage/files.h>
+#  include <secutils/credentials/cert.h>
+#  include <secutils/credentials/store.h>
+#  include <secutils/credentials/verify.h>
+#  include <secutils/connections/conn.h> /* for CONN_IS_IP_ADDR() */
 #  include <secutils/connections/tls.h>
 # endif
-#endif
+#else
+# ifndef GENCMP_NO_TLS
+#  include <openssl/ssl.h>
+# endif
+# include "genericCMPClient_util.c"
+#endif /* ndef GENCMP_NO_SECUTILS */
 
 #if OPENSSL_VERSION_NUMBER < 0x10100006L
 # define SSL_CTX_up_ref(x)((x)->references++)
@@ -81,16 +86,18 @@ CMP_err CMPclient_init(OPTIONAL const char *name, OPTIONAL LOG_cb_t log_fn)
         exit(EXIT_FAILURE);
     }
 
+#ifndef GENCMP_NO_TLS
     if (!STORE_EX_check_index()) {
         LOG(FL_ERR, "Failed to initialize STORE_EX index\n");
         return ERR_R_INIT_FAIL;
     }
+#endif
 
     if (!OSSL_CMP_log_open()) {
         LOG(FL_ERR, "Failed to initialize logging of genCMPClient\n");
         return ERR_R_INIT_FAIL;
     }
-#ifndef SECUTILS_NO_TLS
+#ifndef GENCMP_NO_TLS
     if (!TLS_init()) {
         LOG(FL_ERR, "Failed to initialize TLS library of genCMPClient\n");
         return ERR_R_INIT_FAIL;
@@ -304,7 +311,7 @@ CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, OPTIONAL const char *path,
     return CMP_OK;
 }
 
-#ifndef SECUTILS_NO_TLS
+#ifndef GENCMP_NO_TLS
 /* yields the name of the SW component, not the name of an executable */
 static char *opt_getprog(void)
 {
@@ -413,16 +420,14 @@ static void APP_HTTP_TLS_INFO_free(APP_HTTP_TLS_INFO *info)
         OPENSSL_free(info);
     }
 }
-#endif /* ndef SECUTILS_NO_TLS */
 
-#ifndef SECUTILS_NO_TLS
 static int is_localhost(const char *host)
 {
     return strcmp(host, "localhost") == 0
         || strcmp(host, "127.0.0.1") == 0
         || strcmp(host, "::1") == 0;
 }
-#endif
+#endif /* ndef GENCMP_NO_TLS */
 
 /* Will return error when used with OpenSSL compiled with OPENSSL_NO_SOCK. */
 CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *path,
@@ -440,7 +445,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
         LOG(FL_ERR, "No server parameter given");
         return CMP_R_INVALID_CONTEXT;
     }
-#ifdef SECUTILS_NO_TLS
+#ifdef GENCMP_NO_TLS
     if (tls != NULL) {
         LOG(FL_ERR, "TLS is not supported by this build");
         return err;
@@ -472,7 +477,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
     }
     proxy_host =
         OSSL_HTTP_adapt_proxy(proxy, no_proxy, host, tls != NULL);
-#ifndef SECUTILS_NO_TLS
+#ifndef GENCMP_NO_TLS
     if (tls != NULL) {
         X509_STORE *ts = SSL_CTX_get_cert_store(tls);
         X509_VERIFY_PARAM *vpm = ts != NULL ? X509_STORE_get0_param(ts) : NULL;
@@ -1369,19 +1374,21 @@ void CMPclient_finish(OPTIONAL OSSL_CMP_CTX *ctx)
 {
     OSSL_CMP_CTX_print_errors(ctx /* may be NULL */);
     if (ctx != NULL) {
-#ifndef SECUTILS_NO_TLS
+#ifndef GENCMP_NO_TLS
         BIO *rw = OSSL_CMP_CTX_get_transfer_cb_arg(ctx);
         APP_HTTP_TLS_INFO *info = OSSL_CMP_CTX_get_http_cb_arg(ctx);
 
 #endif
         X509_STORE_free(OSSL_CMP_CTX_get_certConf_cb_arg(ctx));
         OSSL_CMP_CTX_free(ctx);
-#ifndef SECUTILS_NO_TLS
+#ifndef GENCMP_NO_TLS
         if (rw == NULL)
             APP_HTTP_TLS_INFO_free(info);
 #endif
     }
 }
+
+#ifndef GENCMP_NO_HELPERS
 
 /*
  * Support functionality
@@ -1431,7 +1438,7 @@ void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls)
     sk_X509_CRL_pop_free(crls, X509_CRL_free);
 }
 
-#ifndef SECUTILS_NO_TLS
+# ifndef GENCMP_NO_TLS
 /* SSL_CTX helpers for HTTPS */
 
 inline
@@ -1451,4 +1458,5 @@ void TLS_free(OPTIONAL SSL_CTX *tls)
 {
     TLS_CTX_free(tls);
 }
-#endif
+# endif /* ndef GENCMP_NO_TLS */
+#endif /* def GENCMP_NO_HELPERS */

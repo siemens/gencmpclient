@@ -13,6 +13,25 @@ message(STATUS "generic CMP client version " ${GENCMPCLIENT_VERSION})
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 # set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner when using CMake
 
+if(DEFINED ENV{GENCMP_NO_SECUTILS})
+  message(STATUS "will build without libSecUtils and CLI")
+  add_compile_definitions(GENCMP_NO_SECUTILS)
+  set(GENCMP_NO_SECUTILS 1)
+  set(GENCMP_NO_CLI 1)
+endif()
+
+if(DEFINED ENV{SECUTILS_NO_TLS})
+  set(GENCMP_NO_TLS 1)
+endif()
+if(DEFINED ENV{GENCMP_NO_TLS})
+  set(GENCMP_NO_TLS 1)
+endif()
+if(${GENCMP_NO_TLS})
+  message(STATUS "will build without TLS support")
+  add_compile_definitions(GENCMP_NO_TLS)
+  add_compile_definitions(SECUTILS_NO_TLS)
+endif()
+
 # improved from https://cmake.org/cmake/help/v3.6/module/FindOpenSSL.html
 if(NOT DEFINED OPENSSL_ROOT_DIR AND NOT "$ENV{OPENSSL_DIR}" STREQUAL "")
   get_filename_component(OPENSSL_ROOT_DIR "$ENV{OPENSSL_DIR}" ABSOLUTE)
@@ -20,7 +39,11 @@ if(NOT DEFINED OPENSSL_ROOT_DIR AND NOT "$ENV{OPENSSL_DIR}" STREQUAL "")
 endif()
 if(NOT DEFINED OPENSSL_FOUND) # not already done by superordinate module
   set(OPENSSL_VERSION "(unknown)")
-  set(OPENSSL_COMPONENTS COMPONENTS Crypto SSL) # TODO SSL should not be needed if SECUTILS_NO_TLS
+  if(${GENCMP_NO_TLS})
+    set(OPENSSL_COMPONENTS COMPONENTS Crypto)
+  else()
+    set(OPENSSL_COMPONENTS COMPONENTS Crypto SSL)
+  endif()
   # set(CMAKE_FIND_DEBUG_MODE TRUE)
   if(DEFINED OPENSSL_ROOT_DIR)
     find_package(OpenSSL HINTS "${OPENSSL_ROOT_DIR}" NO_DEFAULT_PATH ${OPENSSL_COMPONENTS})
@@ -139,6 +162,8 @@ else()
 endif()
 message(STATUS "build mode: ${CMAKE_BUILD_TYPE}")
 
+# must do add_compile_options() before add_library() and add_executable() see
+# https://stackoverflow.com/questions/40516794/cmake-not-applying-compile-option-using-add-compile-options
 add_compile_definitions(DEBUG_UNUSED)
 add_compile_definitions(PEDANTIC)
 add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
@@ -146,8 +171,9 @@ add_compile_options(
   -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
   -Wsign-compare -Wformat -Wtype-limits -Wundef -Wconversion -Wunused-parameter)
 add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined)
-# because of libsecutils:
-add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
+if(NOT DEFINED GENCMP_NO_SECUTILS)
+  add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
+endif()
 # TODO maybe clean up code and re-enable property
 # set_property(TARGET ${LIBGENCMP_NAME} PROPERTY C_STANDARD 90)
 # set_property(TARGET cmpClient         PROPERTY C_STANDARD 90)
@@ -164,6 +190,7 @@ if(UNIX AND NOT APPLE AND CMAKE_BUILD_TYPE MATCHES Debug)
   target_link_libraries(${LIBGENCMP_NAME} ${COVERAGE_FLAGS})
 endif()
 
+if(NOT DEFINED GENCMP_NO_CLI)
 add_executable(cmpClient
   ${SRC_DIR}/cmpClient.c
   ${SRC_DIR}/credential_loading.h
@@ -176,23 +203,21 @@ target_link_libraries(cmpClient
   $<$<BOOL:${USE_LIBCMP}>:cmp>
   # important: libcmp before libcrypto such that its contents are preferred
   OpenSSL::Crypto
-  $<$<NOT:$<BOOL:$ENV{SECUTILS_NO_TLS}>>:OpenSSL::SSL>
+  $<$<NOT:$<BOOL:${GENCMP_NO_TLS}>>:OpenSSL::SSL>
 )
 if(DEFINED ENV{SECUTILS_USE_UTA})
   target_link_libraries(cmpClient uta)
   target_link_directories(cmpClient PRIVATE "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}") # usually expands to /usr/local/lib
 # set(CMAKE_INSTALL_RPATH "/usr/local/lib")
 endif()
-if(DEFINED ENV{SECUTILS_NO_TLS})
-  add_compile_definitions(SECUTILS_NO_TLS=1)
-endif()
+endif(NOT DEFINED GENCMP_NO_CLI)
 
 target_link_libraries(${LIBGENCMP_NAME}
-  security-utilities::library
+  $<$<NOT:$<BOOL:${GENCMP_NO_SECUTILS}>>:security-utilities::library>
   $<$<BOOL:${USE_LIBCMP}>:cmp>
   # important: libcmp before libcrypto such that its contents are preferred
   OpenSSL::Crypto
-  $<$<NOT:$<BOOL:$ENV{SECUTILS_NO_TLS}>>:OpenSSL::SSL>
+  $<$<NOT:$<BOOL:${GENCMP_NO_TLS}>>:OpenSSL::SSL>
 )
 
 set(INC_PUBLIC_HDRS
@@ -217,11 +242,13 @@ if(GIT_FOUND)
   if("${_TMP_HELP}" MATCHES "--depth")
     set(GIT_DEPTH --depth 1) # used to speed up getting submodules
   endif()
-  if(DEFINED USE_LIBCMP)
-    set(submodules libsecutils cmpossl)
-  else()
+
+  if(NOT DEFINED GENCMP_NO_SECUTILS)
     set(submodules libsecutils)
-    endif()
+  endif()
+  if(DEFINED USE_LIBCMP)
+    set(submodules ${submodules} cmpossl)
+  endif()
 
   add_custom_target(update
     COMMAND echo "updating repo and submodules"
@@ -256,8 +283,10 @@ install(FILES doc/Generic_CMP_client_API.pdf
   COMPONENT dev
   )
 
+if(NOT DEFINED GENCMP_NO_CLI)
 include(./Pod2Man)
 POD2MAN("${CMAKE_CURRENT_SOURCE_DIR}/doc" cmpClient 1 "${CMAKE_INSTALL_MANDIR}" bin)
+endif()
 
 install(TARGETS ${LIBGENCMP_NAME}
   LIBRARY
@@ -268,11 +297,13 @@ install(TARGETS ${LIBGENCMP_NAME}
     COMPONENT dev
 )
 
+if(NOT DEFINED GENCMP_NO_CLI)
 install(TARGETS cmpClient
   RUNTIME
   DESTINATION "${CMAKE_INSTALL_BINDIR}"
   COMPONENT bin
 )
+endif()
 
 if(NOT TARGET uninstall)
   add_custom_target(uninstall
@@ -356,7 +387,7 @@ set(CPACK_PACKAGE_VERSION_MINOR ${GENCMPCLIENT_VERSION_MINOR})
 set(CPACK_STRIP_FILES ON)
 
 set(CPACK_COMPONENT_LIB_DESCRIPTION "generic CMP client library
-Generic CMP client library based on OpenSSL and otionally libcmp
+Generic CMP client library based on OpenSSL and optionally libcmp
 With extended support for certficate status checking using CRLs and/or OCSP")
 set(CPACK_COMPONENT_DEV_DESCRIPTION "libgencmp C headers and documentation
 Development support for libgencmp and cmpclient")
@@ -382,7 +413,9 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   set(CPACK_DEB_COMPONENT_INSTALL ON)
   set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
   set(CPACK_DEBIAN_LIB_PACKAGE_NAME "${PROJECT_NAME}")
-  set(CPACK_DEBIAN_BIN_PACKAGE_NAME "cmpclient")
+  if(NOT DEFINED GENCMP_NO_CLI)
+    set(CPACK_DEBIAN_BIN_PACKAGE_NAME "cmpclient")
+  endif()
   set(CPACK_DEBIAN_DEV_PACKAGE_ARCHITECTURE "all")
   set(CPACK_DEBIAN_LIB_PACKAGE_SECTION "libs")
   set(CPACK_DEBIAN_DEV_PACKAGE_SECTION "devel")
@@ -395,13 +428,21 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   # to CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS or CMAKE_INSTALL_RPATH
 
   if(FALSE) # for now, disable dependencies to libs of subprojectx because their .so files for some reason already get included in the package:
-  if(DEFINED USE_LIBCMP)
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS
-      "libcmp (>= ${CPACK_PACKAGE_VERSION}), libsecutils (>= ${CPACK_PACKAGE_VERSION})")
-  else()
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsecutils (>= ${CPACK_PACKAGE_VERSION})")
-  endif()
-  endif()
+    if(NOT DEFINED GENCMP_NO_SECUTILS)
+      if(DEFINED USE_LIBCMP)
+        set(CPACK_DEBIAN_PACKAGE_DEPENDS
+            "libcmp (>= ${CPACK_PACKAGE_VERSION}), libsecutils (>= ${CPACK_PACKAGE_VERSION})")
+      else()
+        set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsecutils (>= ${CPACK_PACKAGE_VERSION})")
+      endif()
+    else()
+      if(DEFINED USE_LIBCMP)
+        set(CPACK_DEBIAN_PACKAGE_DEPENDS "libcmp (>= ${CPACK_PACKAGE_VERSION})")
+      else()
+        set(CPACK_DEBIAN_PACKAGE_DEPENDS "")
+      endif()
+    endif()
+  endif(FALSE)
 
   set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "libgencmp (>= ${CPACK_PACKAGE_VERSION})")
   set(CPACK_DEBIAN_DEV_PACKAGE_SUGGESTS "libcmp-dev (>= ${CPACK_PACKAGE_VERSION}), libsecutils-dev (>= ${CPACK_PACKAGE_VERSION}), libssl-dev")
@@ -521,7 +562,7 @@ endmacro(add_clean_target)
 if(NOT YOCTO_BUILD)
 
   # find_package(secutils ${CPACK_PACKAGE_VERSION})
-  if(NOT secutils_FOUND)
+  if(NOT DEFINED GENCMP_NO_SECUTILS AND NOT secutils_FOUND)
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libsecutils/CMakeLists.txt")
       if(GIT_FOUND)
         message(STATUS "fetching git submodule libsecutils")

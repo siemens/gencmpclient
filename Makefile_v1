@@ -1,6 +1,8 @@
 #!/usr/bin/make
 
 # Optional USE_LIBCMP requires the use of the intermediate libcmp
+# Optional GENCMP_NO_SECUTILS disables libSecUtils use, CLI, demos, and tests
+# Optional GENCMP_NO_TLS disables SSL/TLS use
 # Optional LPATH defines where to find any pre-installed libsecutils and UTA libraries, e.g., /usr/lib
 # Optional OPENSSL_DIR defines where to find the OpenSSL installation
 #   with header files at include/openssl (default: will try, e.g., /usr).
@@ -9,7 +11,7 @@
 # Optional CFLAGS and LDFLAGS are appended by local settings.
 # Optional DEBUG_FLAGS may set to prepend to local CFLAGS and LDFLAGS. Also CFLAGS is passed to build goals.
 # Builds are done in release mode if optional NDEBUG is defined.
-# Optional OUT_DIR defines where libsecutils, libgencmp, and (optional) libcmp shall be placed (default: LPATH if set, otherwise '.').
+# Optional OUT_DIR defines where libsecutils (unless disabled), libgencmp, and (optional) libcmp shall be placed (default: LPATH if set, otherwise '.').
 # Optional BIN_DIR defines where the CLI application shall be placed (default: OUT_DIR)
 # Optional DESTDIR defines a prefix for the installation target directories.
 # Optional OPENSSL specifies the OpenSSL CLI application (including path) to use
@@ -269,15 +271,25 @@ default: $(OUT_DIR_BIN)
 $(OUT_DIR_BIN): | build # if $OUT_DIR_BIN already exists, would be nice not to run 'build'
 # but even the 'order-only' prerequisite does not prevent running 'build'
 
-ifdef SECUTILS_USE_ICV
-    export SECUTILS_USE_ICV=1
-endif
-ifdef SECUTILS_USE_UTA
-    export SECUTILS_USE_UTA=1
-endif
-ifdef SECUTILS_NO_TLS
+ifdef GENCMP_NO_TLS
+    export GENCMP_NO_TLS=1
     export SECUTILS_NO_TLS=1
 endif
+ifdef GENCMP_NO_SECUTILS
+    export GENCMP_NO_SECUTILS=1
+    export GENCMP_NO_CLI=1
+else
+  ifdef SECUTILS_USE_ICV
+    export SECUTILS_USE_ICV=1
+  endif
+  ifdef SECUTILS_USE_UTA
+    export SECUTILS_USE_UTA=1
+  endif
+  ifdef SECUTILS_NO_TLS
+    export GENCMP_NO_TLS=1
+    export SECUTILS_NO_TLS=1
+  endif
+endif # def GENCMP_NO_SECUTILS
 
 .phony: submodules
 ifneq ($(LPATH),)
@@ -289,7 +301,10 @@ submodules: build_submodules
 build_submodules: get_submodules build_secutils build_cmpossl
 # might use $(SECUTILS_LIB) $(LIBCMP_INC) instead but does not check for updates
 
+get_submodules:
+ifndef GENCMP_NO_SECUTILS
 get_submodules: $(SECUTILS_DIR)/src/libsecutils/include
+endif
 ifdef USE_LIBCMP
 get_submodules: $(LIBCMP_DIR)/include
 endif
@@ -299,6 +314,7 @@ update: update_secutils update_cmpossl
 	git rebase
 	git submodule update
 
+ifndef GENCMP_NO_SECUTILS
 $(SECUTILS_DIR)/src/libsecutils/include:
 	$(MAKE) -f Makefile_v1 update_secutils
 
@@ -310,15 +326,20 @@ else
 endif
 $(SECUTILS_OUT_LIB):
 	build_secutils
+endif
 
 .phony: update_secutils build_secutils
 update_secutils:
+ifndef GENCMP_NO_SECUTILS
 	git submodule update $(GIT_PROGRESS) --init $(GIT_DEPTH) $(SECUTILS_DIR)
 SECUTILS_FLAGS = SECUTILS_NO_TLS=$(SECUTILS_NO_TLS) \
     SECUTILS_USE_ICV=$(SECUTILS_USE_ICV) SECUTILS_USE_UTA=$(SECUTILS_USE_UTA)
+endif
 build_secutils: # not: update_secutils
+ifndef GENCMP_NO_SECUTILS
 	@ # cannot split line using '\' as Debian packaging cannot handle this
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 build_all $(SECUTILS_FLAGS) $(BUILD_SUBDIRS) $(BUILD_FLAGS) -s
+endif
 
 ifdef USE_LIBCMP
 $(LIBCMP_DIR)/include:
@@ -347,7 +368,9 @@ ifdef USE_LIBCMP
 endif
 
 clean_submodules:
+ifndef GENCMP_NO_SECUTILS
 	rm -rf $(SECUTILS_DIR) $(SECUTILS_OUT_LIB)*
+endif
 ifdef USE_LIBCMP
 	rm -rf $(LIBCMP_DIR) $(LIBCMP_OUT_LIB)*
 endif
@@ -368,11 +391,13 @@ ifeq ($(DEB_BUILD_ARCH),) # avoid weird syntax error on '\' with Debian packagin
 	    echo "WARNING: OpenSSL version '$$LIBCMP_OPENSSL_VERSION' used for building libcmp does not match '$(OPENSSL_VERSION)' to be used for building cmpClient"; \
 	fi
     endif
+    ifndef GENCMP_NO_SECUTILS
 	@export SECUTILS_OPENSSL_VERSION=`$(MAKE) -s 2>/dev/null --no-print-directory -f OpenSSL_version.mk SOURCE="$(SECUTILS_OUT_LIB)"` && \
 	if [[ "$$SECUTILS_OPENSSL_VERSION" != "$(OPENSSL_VERSION)" && \
 	      "$$SECUTILS_OPENSSL_VERSION" != "$(OPENSSL_MAJOR_VERSION)" ]]; then \
 	    echo "WARNING: OpenSSL version '$$SECUTILS_OPENSSL_VERSION' used for building libsecutils does not match '$(OPENSSL_VERSION)' to be used for building cmpClient"; \
 	fi
+    endif
 endif
 
 GENCMPCLIENT_CONFIG=include/genericCMPClient_config.h
@@ -394,14 +419,17 @@ endif
 BUILD_ONLY_DIRS = OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" \
     LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" LIBCMP_INC="$(LIBCMP_INC)" \
     OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)" \
+    GENCMP_NO_SECUTILS=$(GENCMP_NO_SECUTILS) GENCMP_NO_TLS=$(GENCMP_NO_TLS) \
     INSTALL_DEB_PKGS=$(INSTALL_DEB_PKGS) DEB_TARGET_ARCH=$(DEB_TARGET_ARCH)
 build_only: $(GENCMPCLIENT_CONFIG)
 	@ # cannot split line using '\' as Debian packaging cannot handle this
 	$(MAKE) -f Makefile_src build $(BUILD_ONLY_DIRS) $(BUILD_FLAGS)
 
 build_no_tls:
+ifndef GENCMP_NO_SECUTILS
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 clean_config
-	$(MAKE) -f Makefile_v1 build $(BUILD_FLAGS) SECUTILS_NO_TLS=1
+endif
+	$(MAKE) -f Makefile_v1 build $(BUILD_FLAGS) GENCMP_NO_TLS=1
 
 
 # cleaning #####################################################################
@@ -447,6 +475,9 @@ clean_all: clean clean_deb
 	rm -fr Makefile CMakeCache.txt *.cmake CMakeFiles/
 	rm -f install_manifest*.txt compile_commands.json
 	rm -f doc/$(OUT_DOC) doc/cmpClient.md CMakeDoxyfile.in
+
+
+ifndef GENCMP_NO_CLI
 
 # get CRLs #####################################################################
 
@@ -740,11 +771,15 @@ test: clean build_no_tls
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 clean_config
 	@$(MAKE) -f Makefile_v1 clean $(OUT_DIR_BIN) demo_Insta $(BUILD_FLAGS)
 
+endif # ndef GENCMP_NO_CLI
+
 # doc and zip ##################################################################
 
 doc: doc_this get_submodules
+ifndef GENCMP_NO_SECUTILS
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 doc -s
         # not needed for cmpossl
+endif
 
 doc/$(OUT_DEV_DOC): doc/Generic_CMP_client_API.odt # to be done manually
 
@@ -778,7 +813,10 @@ zip:
 ## 'install' static libs to lib, headers to include, dynamic libs and bin to bin
 ################################################################
 
+
 # triggering build #############################################################
+
+ifndef GENCMP_NO_CLI
 
 ROOTDIR=$(PWD)
 TAR=$(SECUTILS_DIR)/tar
@@ -821,6 +859,7 @@ clean_openssl:
 .phony: buildCMPforOpenSSL
 buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 
+endif # ndef GENCMP_NO_CLI
 
 ################################################################
 # Debian packaging
@@ -834,10 +873,12 @@ deb: doc # just to make sure that transforming the doc files will work fine
 ifneq ($(INSTALL_DEB_PKGS),)
 deb: get_submodules
 ifeq ($(LPATH),)
-    ifneq ($(wildcard $(SECUTILS_DIR)),)
-        ifeq ($(shell dpkg -l | grep "ii  libsecutils "),)
-            $(MAKE) deb -C $(SECUTILS_DIR) -f Makefile_v1
-            sudo dpkg -i libsecutils{,-dev}_*.deb
+    ifndef GENCMP_NO_SECUTILS
+        ifneq ($(wildcard $(SECUTILS_DIR)),)
+            ifeq ($(shell dpkg -l | grep "ii  libsecutils "),)
+                $(MAKE) deb -C $(SECUTILS_DIR) -f Makefile_v1
+                sudo dpkg -i libsecutils{,-dev}_*.deb
+            endif
         endif
     endif
     ifdef USE_LIBCMP

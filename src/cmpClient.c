@@ -24,6 +24,8 @@
 #include <secutils/connections/conn.h> /* for CONN_IS_HTTPS */
 #include <secutils/credentials/verify.h>
 #include <secutils/certstatus/crl_mgmt.h> /* for CRLMGMT_load_crl_cb */
+#include <secutils/credentials/credentials.h> /* for CERT{,S}_save and CERTS_free */
+#include <secutils/credentials/cert.h> /* for UTIL_parse_name */
 
 #ifdef LOCAL_DEFS
 # include "genericCMPClient_use.h"
@@ -484,7 +486,7 @@ opt_t cmp_opts[] = {
     OPT_END
 };
 
-#ifndef SECUTILS_NO_TLS
+#ifndef GENCMP_NO_TLS
 static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
 {
     int i;
@@ -543,7 +545,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
 
 static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 {
-#ifdef SECUTILS_NO_TLS
+#ifdef GENCMP_NO_TLS
     (void)untrusted_certs;
     LOG_err("TLS is not enabled in this build");
     return NULL;
@@ -1371,7 +1373,7 @@ static int setup_transfer(CMP_CTX *ctx)
                                (int)opt_keep_alive, (int)opt_msg_timeout,
                                tls, opt_proxy, opt_no_proxy);
 
-#ifndef SECUTILS_NO_TLS
+#ifndef GENCMP_NO_TLS
     TLS_free(tls);
 #endif
     if (err != CMP_OK) {

@@ -276,7 +276,7 @@ ifdef SECUTILS_NO_TLS
 endif
 
 .phony: submodules
-ifeq ($(SECUTILS_DIR),)
+ifneq ($(LPATH),)
 submodules:
 else
 .phony: get_submodules build_submodules clean_submodules
@@ -404,8 +404,8 @@ build_no_tls:
 
 .phony: clean_test clean clean_config clean_uta clean_this
 
-ifeq ($(LPATH),)
 clean_uta:
+ifneq ($(wildcard $(SECUTILS_DIR)),)
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 clean_uta -s
 endif
 
@@ -758,7 +758,9 @@ clean_openssl:
 buildCMPforOpenSSL: openssl ${makeCMPforOpenSSL_trigger}
 
 
-# Debian packaging #############################################################
+################################################################
+# Debian packaging
+################################################################
 
 ifeq ($(INSTALL_DEB_PKGS),)
     IGNORE_DEB_DEPEND=-d

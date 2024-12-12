@@ -125,16 +125,14 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
 {
     OSSL_CMP_CTX *ctx = NULL;
 
-    if (pctx == NULL) {
+    if (pctx == NULL)
         return CMP_R_NULL_ARGUMENT;
-    }
     if ((ctx = OSSL_CMP_CTX_new(libctx, propq)) == NULL ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn != NULL ?
                                  (OSSL_CMP_log_cb_t)log_fn :
                                  /* difference is in 'int' vs. 'bool' and additional TRACE value */
-                                 (OSSL_CMP_log_cb_t)LOG_console)) {
+                                 (OSSL_CMP_log_cb_t)LOG_console))
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
-    }
     if (cmp_truststore != NULL
         && (!X509_STORE_up_ref(cmp_truststore) ||
             !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)))
@@ -158,17 +156,15 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
              && !OSSL_CMP_CTX_set1_referenceValue(ctx, (unsigned char *)pwdref,
                                                   (int)strlen(pwdref))) ||
             (pkey != NULL && !OSSL_CMP_CTX_set1_pkey(ctx, pkey)) ||
-            (cert != NULL && !OSSL_CMP_CTX_set1_cert(ctx, cert))) {
+            (cert != NULL && !OSSL_CMP_CTX_set1_cert(ctx, cert)))
             goto err;
-        }
 
         if (cert != NULL &&
             !OSSL_CMP_CTX_build_cert_chain(ctx, creds_truststore, chain))
             goto err;
     } else {
-        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, 1)) {
+        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND, 1))
             goto err;
-        }
     }
 
     /* need recipient for unprotected and PBM-protected messages */
@@ -213,9 +209,8 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
             return CMP_R_UNKNOWN_ALGORITHM_ID;
         }
         if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DIGEST_ALGNID, nid)
-            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_OWF_ALGNID, nid)) {
+            || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_OWF_ALGNID, nid))
             goto err;
-        }
     }
 
     if (mac != NULL) {
@@ -234,13 +229,11 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
          && !OSSL_CMP_CTX_set_transfer_cb(ctx, transfer_fn)) ||
         (total_timeout >= 0
          && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_TOTAL_TIMEOUT,
-                                     total_timeout))) {
+                                     total_timeout)))
         goto err;
-    }
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IMPLICIT_CONFIRM,
-                                 implicit_confirm ? 1 : 0)) {
+                                 implicit_confirm ? 1 : 0))
         goto err;
-    }
     if (new_cert_truststore != NULL) {
         /* ignore any -attime option here, since new certs are current anyway */
         X509_VERIFY_PARAM *out_vpm = X509_STORE_get0_param(new_cert_truststore);
@@ -264,18 +257,16 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
 CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, const char *path,
                             int keep_alive, int timeout)
 {
-    if (ctx == NULL) {
+    if (ctx == NULL)
         return CMP_R_INVALID_CONTEXT;
-    }
     if (!OSSL_CMP_CTX_set1_serverPath(ctx, path) ||
         (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT,
                                                   timeout)) ||
         (keep_alive >= 0 && !OSSL_CMP_CTX_set_option(ctx,
                                                      OSSL_CMP_OPT_KEEP_ALIVE,
                                                      keep_alive)) ||
-        !OSSL_CMP_CTX_set_transfer_cb_arg(ctx, rw)) {
+        !OSSL_CMP_CTX_set_transfer_cb_arg(ctx, rw))
         return CMPOSSL_error();
-    }
 
     if (rw != NULL) {
         if (path == NULL)
@@ -345,9 +336,8 @@ static BIO *app_http_tls_cb(BIO *bio, void *arg, int connect, int detail)
              && !OSSL_HTTP_proxy_connect(bio, info->server, info->port,
                                          NULL, NULL, /* no proxy credentials */
                                          info->timeout, bio_err, opt_getprog()))
-                || (sbio = BIO_new(BIO_f_ssl())) == NULL) {
+                || (sbio = BIO_new(BIO_f_ssl())) == NULL)
             return NULL;
-        }
         if ((ssl = SSL_new(ssl_ctx)) == NULL) {
             BIO_free(sbio);
             return NULL;
@@ -517,7 +507,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     return err;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30300000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER > 0x30300000L || defined(USE_LIBCMP)
 static int ossl_cmp_sk_ASN1_UTF8STRING_push_str(STACK_OF(ASN1_UTF8STRING) *sk,
                                                 const char *text, int len)
 {
@@ -572,7 +562,7 @@ CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name)
  err:
     return CMPOSSL_error();
 }
-#endif /* OPENSSL_VERSION_NUMBER >= 0x30300000L || defined USE_LIBCMP */
+#endif /* OPENSSL_VERSION_NUMBER > 0x30300000L || defined USE_LIBCMP */
 
 CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                 OPTIONAL const EVP_PKEY *new_key,
@@ -609,14 +599,12 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                         X509_EXTENSION_free);
 
         if (exts_copy == NULL
-            || !OSSL_CMP_CTX_set0_reqExtensions(ctx, exts_copy)) {
+            || !OSSL_CMP_CTX_set0_reqExtensions(ctx, exts_copy))
             goto err;
-        }
     }
 
-    if (csr != NULL && !OSSL_CMP_CTX_set1_p10CSR(ctx, csr)) {
+    if (csr != NULL && !OSSL_CMP_CTX_set1_p10CSR(ctx, csr))
         goto err;
-    }
 
     return CMP_OK;
 
@@ -624,7 +612,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
     return CMPOSSL_error();
 }
 
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP /* TODO remove decls when exported by OpenSSL */
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined(USE_LIBCMP) /* TODO remove decls when exported by OpenSSL */
 static int ossl_x509_add_cert_new_(STACK_OF(X509) **p_sk, X509 *cert, int flags)
 {
     if (*p_sk == NULL && (*p_sk = sk_X509_new_null()) == NULL) {
@@ -634,7 +622,7 @@ static int ossl_x509_add_cert_new_(STACK_OF(X509) **p_sk, X509 *cert, int flags)
     return X509_add_cert(*p_sk, cert, flags);
 }
 
-#if 0 // TODO remove?
+# if 0 /* TODO remove? */
 static int ossl_x509_add_certs_new(STACK_OF(X509) **p_sk, STACK_OF(X509) *certs,
                                    int flags)
 /* compiler would allow 'const' for the certs, yet they may get up-ref'ed */
@@ -673,9 +661,9 @@ int ossl_cmp_X509_STORE_add1_certs(X509_STORE *store, STACK_OF(X509) *certs,
     }
     return 1;
 }
-#endif
+# endif
 
-#if 0 // TODO remove?
+# if 0 /* TODO remove? */
 /*-
  * Builds a certificate chain starting from <cert>
  * using the optional list of intermediate CA certificates <certs>.
@@ -737,7 +725,7 @@ STACK_OF(X509) *ossl_cmp_build_cert_chain(OSSL_LIB_CTX *libctx,
     X509_STORE_CTX_free(csc);
     return res;
 }
-#endif
+# endif
 #endif /* end TODO remove decls when exported by OpenSSL */
 
 CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
@@ -775,9 +763,8 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
         return CMP_R_INVALID_PARAMETERS;
         break;
     }
-    if (newcert == NULL) {
+    if (newcert == NULL)
         goto err;
-    }
 
     EVP_PKEY *new_key =
         OSSL_CMP_CTX_get0_newPkey(ctx, 1 /* priv */); /* NULL in case P10CR */
@@ -806,9 +793,8 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
 
     CREDENTIALS *creds = CREDENTIALS_new(new_key, newcert, chain, NULL, NULL);
     CERTS_free(chain);
-    if (creds == NULL) {
+    if (creds == NULL)
         return ERR_R_MALLOC_FAILURE;
-    }
     *new_creds = creds;
     ERR_clear_error(); /* empty the OpenSSL error queue */
     return CMP_OK;
@@ -838,9 +824,8 @@ CMP_err CMPclient_imprint(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
         return CMP_R_INVALID_PARAMETERS;
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
                                           subj, exts, NULL /* csr */);
-    if (err == CMP_OK) {
+    if (err == CMP_OK)
         err = CMPclient_enroll(ctx, new_creds, CMP_IR);
-    }
     X509_NAME_free(subj);
     return err;
 }
@@ -866,9 +851,8 @@ CMP_err CMPclient_bootstrap(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
         return CMP_R_INVALID_PARAMETERS;
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, NULL /* old_cert */,
                                           subj, exts, NULL /* csr */);
-    if (err == CMP_OK) {
+    if (err == CMP_OK)
         err = CMPclient_enroll(ctx, new_creds, CMP_CR);
-    }
     X509_NAME_free(subj);
     return err;
 }
@@ -884,9 +868,8 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
     CMP_err err =
         CMPclient_setup_certreq(ctx, NULL /* new_key */, NULL /* old_cert */,
                                 NULL /* subject */, NULL /* exts */, csr);
-    if (err == CMP_OK) {
+    if (err == CMP_OK)
         err = CMPclient_enroll(ctx, new_creds, CMP_P10CR);
-    }
     return err;
 }
 
@@ -898,9 +881,8 @@ CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                                           NULL /* subject */, NULL /* exts */,
                                           NULL /* csr */);
 
-    if (err == CMP_OK) {
+    if (err == CMP_OK)
         err = CMPclient_enroll(ctx, new_creds, CMP_KUR);
-    }
     return err;
 }
 
@@ -939,9 +921,8 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
 
     if ((reason >= CRL_REASON_UNSPECIFIED &&
          !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_REVOCATION_REASON, reason))
-        || !OSSL_CMP_exec_RR_ses(ctx)) {
+        || !OSSL_CMP_exec_RR_ses(ctx))
         goto err;
-    }
     ERR_clear_error(); /* empty the OpenSSL error queue */
     return CMP_OK;
 
@@ -949,7 +930,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
     return CMPOSSL_error();
 }
 
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined(USE_LIBCMP)
 static OSSL_CMP_ITAV *get_genm_itav(CMP_CTX *ctx,
                                     OSSL_CMP_ITAV *req, /* gets consumed */
                                     int expected, const char *desc)
@@ -1025,9 +1006,7 @@ static const X509_VERIFY_PARAM *get0_trustedStore_vpm(const CMP_CTX *ctx)
 
     return ts == NULL ? NULL : X509_STORE_get0_param(ts);
 }
-#endif
 
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
 CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out)
 {
     OSSL_CMP_ITAV *req, *itav;
@@ -1072,9 +1051,9 @@ CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out)
     OSSL_CMP_ITAV_free(itav);
     return err;
 }
-#endif
+#endif /* OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP */
 
-#if OPENSSL_VERSION_NUMBER > 0x30400000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER > 0x30400000L || defined(USE_LIBCMP)
 CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
                                   OSSL_CRMF_CERTTEMPLATE **certTemplate,
                                   OPTIONAL OSSL_CMP_ATAVS **keySpec)
@@ -1104,9 +1083,9 @@ CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
     OSSL_CMP_ITAV_free(itav);
     return err;
 }
-#endif
+#endif /* OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP */
 
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined(USE_LIBCMP)
 static int selfsigned_verify_cb(int ok, X509_STORE_CTX *store_ctx)
 {
     if (ok == 0 && store_ctx != NULL
@@ -1255,9 +1234,9 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
     OSSL_CMP_ITAV_free(itav);
     return err;
 }
-#endif
+#endif /* OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP */
 
-#if OPENSSL_VERSION_NUMBER > 0x30400000L || defined USE_LIBCMP
+#if OPENSSL_VERSION_NUMBER > 0x30400000L || defined(USE_LIBCMP)
 CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, OPTIONAL const X509 *cert,
                             OPTIONAL const X509_CRL *last_crl, X509_CRL **crl)
 {
@@ -1323,7 +1302,7 @@ CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, OPTIONAL const X509 *cert,
     OSSL_CMP_ITAV_free(itav);
     return err;
 }
-#endif
+#endif /* OPENSSL_VERSION_NUMBER > 0x30400000L || defined USE_LIBCMP */
 
 char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx, char *buf,
                                   size_t bufsize)

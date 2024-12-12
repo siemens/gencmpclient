@@ -107,8 +107,10 @@ Server authentication options:
 [B<-newwithnew> I<filename>]
 [B<-newwithold> I<filename>]
 [B<-oldwithnew> I<filename>]
+[B<-crlcert> I<filename>]
 [B<-oldcrl> I<filename>]
 [B<-crlout> I<filename>]
+[B<-otherpass> I<arg>]
 
 Client authentication and protection options:
 
@@ -539,8 +541,9 @@ Its subject is used as sender in CMP message headers if B<-cert> is not given.
 Its issuer is used as default recipient in CMP message headers
 if neither B<-recipient>, B<-srvcert>, nor B<-issuer> is given.
 
-This option is also used, along with B<-oldcrl>, to determine CRLSource data
-in a general message (genm) request of infoType C<crlStatusList>.
+This option is also used as a fallback to determine CRL source data
+in a general message (genm) request of infoType C<crlStatusList>
+if neither the B<-crlcert> nor the B<-oldcrl> option is provided.
 
 =item B<-revreason> I<number>
 
@@ -835,16 +838,35 @@ The file to save any oldWithNew certificate
 received in a genp message of infoType C<rootCaKeyUpdate>.
 If on success no such cert was received, this is indicated by deleting the file.
 
+=item B<-crlcert> I<filename>
+
+Certificate to derive CRL issuer data for the source field
+when requesting a CRL in a genm message with infoType C<crlStatusList>.
+Any available distribution point name is preferred over issuer names.
+If neither the B<-crlcert> nor the B<-oldcrl> option is provided,
+any certificate given with the B<-oldcert> option is taken as a fallback.
+
 =item B<-oldcrl> I<filename>
 
-The CRL to use for obtaining CRLSource and thisUpdate data
-in a genm request of infoType C<crlStatusList>.
+Unless the B<-crlcert> option is provided as well,
+the given CRL is used for deriving CRL issuer data for the source field
+when requesting a CRL in a genm message with infoType C<crlStatusList>.
+Any available distribution point name is preferred over issuer names.
+If the CRL contains a thisUpdate field, its value is copied to the request.
 
 =item B<-crlout> I<filename>
 
 The file to save any CRL in DER format
 received in a genp message of infoType C<crls>.
 If on success no such CRL was received, this is indicated by deleting the file.
+
+=item B<-otherpass> I<arg>
+
+Pass phrase source for certificate given with the
+<!-- B<-trusted>, B<-untrusted>, B<-own_trusted>, -->
+B<-srvcert> and B<-crlcert> <!-- , B<-out_trusted>, B<-extracerts>,
+B<-tls_extra>, and B<-tls_trusted> --> options.
+If not given here, the password will be prompted for if needed.
 
 =back
 

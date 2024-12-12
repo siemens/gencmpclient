@@ -79,7 +79,7 @@ The [CHANGELOG.md](CHANGELOG.md) contains a coarse release history.
 The Generic CMP client API specification and CLI documentation
 are available in the [`doc`](doc/) folder.
 
-The Doxygen documentation of the underlying Security Utilities library is available
+The Doxygen documentation of the Security Utilities library is available
 via a link in its [README file](https://github.com/siemens/libsecutils/blob/master/README.md).
 
 
@@ -102,6 +102,7 @@ The following OSS components are used.
 * OpenSSL development edition; curently supported versions include 3.0, 3.1, 3.2, 3.3, 3.4
   <!-- (formerly also versions 1.0.2, 1.1.0, and 1.1.1) -->
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
+  unless the environment variable `GENCMP_NO_SECUTILS` is defined.
 * [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
   a CMP+CRMF+HTTP extension to OpenSSL, needed when using OpenSSL 1.x
   or if the latest CMP features not yet available in OpenSSL are required,
@@ -233,8 +234,9 @@ make -f Makefile_v1 get_submodules
 ```
 
 This will fetch also the underlying
-[CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) if needed and
-the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils) library.
+[CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
+the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
+library if needed.
 
 For using the project as a git submodule,
 do for instance the following in the directory where you want to integrate it:
@@ -322,7 +324,7 @@ the following environment variables are inherited.
 to be integrity protected with an Integrity Check Value (ICV),
 which may be produced using `util/icvutil`.
 * Use of the UTA library can be enabled by setting `SECUTILS_USE_UTA`.
-* The TLS-related functions may be disabled by setting `SECUTILS_NO_TLS`.
+* The TLS-related functions may be disabled by setting `SECUTILS_NO_TLS` or `GENCMP_NO_TLS`.
 
 Since genCMPClient version 2, it is recommended to use CMake
 to produce the `Makefile`, for instance as follows:
@@ -517,9 +519,9 @@ for instance as given in the example outer [`Makefile.mk`](Makefile.mk).
 
 For compiling applications using the library,
 you will need to `#include` the header file [`genericCMPClient.h`](include/genericCMPClient.h)
-and add the directories [`include`](include/) and
-[`libsecutils/include`](
-https://github.com/siemens/libsecutils/blob/master/include/) to your C headers path.
+and add [`include`](include/) to your C headers path the directories.
+Unless `GENCMP_NO_SECUTILS` is set, also [`libsecutils/src/libsecutils/include`](
+https://github.com/siemens/libsecutils/blob/master/include/) needs to be added.
 When the intermediate library `libcmp` is used, you need to
 add also the directory [`cmpossl/include/cmp`](
 https://github.com/mpeylo/cmpossl/tree/cmp/include/cmp/),
@@ -565,5 +567,5 @@ LocalWords:  util icvutil NDEBUG DCMAKE ln usr libgencmp CC lssl lcmp
 LocalWords:  cmpClient src DESTDIR ROOTFS cmpclient tarball deb rpath
 LocalWords:  debhelper dh devscripts debuild dpkg ecparam FI cr lgencmp
 LocalWords:  genkey insta ref cmd newkey certout noout creds Wl ICV
-LocalWords:  genericCMPClient
+LocalWords:  genericCMPClient GENCMP
 -->

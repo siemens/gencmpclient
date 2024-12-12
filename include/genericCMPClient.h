@@ -111,14 +111,19 @@ typedef int CMP_err;
 # define CMP_P10CR 4 /* OSSL_CMP_PKIBODY_P10CR */
 # define CMP_KUR   7 /* OSSL_CMP_PKIBODY_KUR */
 
+# ifndef GENCMP_NO_SECUTILS
 /* # define LOCAL_DEFS */
-# ifdef LOCAL_DEFS
-#  include "genericCMPClient_imports.h"
+#  ifdef LOCAL_DEFS
+#   include "genericCMPClient_imports.h"
+#  else
+/* #  include <secutils/credentials/credentials.h> */
+/* #  include <secutils/credentials/cert.h> */ /* for ? */
+#   include <secutils/util/log.h> /* for severity and LOG_cb_t */
+#  endif
 # else
-#  include <secutils/credentials/credentials.h>
-#  include <secutils/credentials/cert.h>
-#  include <secutils/util/log.h>
-# endif
+#  define GENCMP_NO_HELPERS
+#  include "genericCMPClient_util.h"
+# endif /* ndef GENCMP_NO_SECUTILS */
 
 /* CMP client core functions */
 /* should be called once, as soon as the application starts */
@@ -251,12 +256,14 @@ CMP_err CMPclient_reinit(CMP_CTX *ctx);
 /* should be called on application termination */
 void CMPclient_finish(OPTIONAL CMP_CTX *ctx);
 
+# ifndef GENCMP_NO_HELPERS
+
 /* CREDENTIALS helpers */
-# ifdef LOCAL_DEFS
-#  include "genericCMPClient_imports.h"
-# else
-#  include <secutils/credentials/key.h>
-# endif
+#  ifdef LOCAL_DEFS
+#   include "genericCMPClient_imports.h"
+#  else
+#   include <secutils/credentials/key.h>
+#  endif
 
 /* X509_STORE helpers */
 EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
@@ -269,19 +276,19 @@ STACK_OF(X509_CRL) *CRLs_load(const char *files, int timeout,
 void CRLs_free(OPTIONAL STACK_OF(X509_CRL) *crls);
 X509_STORE *STORE_load(const char *trusted_certs, OPTIONAL const char *desc,
                        OPTIONAL X509_VERIFY_PARAM *vpm);
-# ifdef LOCAL_DEFS
-#  include "genericCMPClient_imports.h"
-# else
-#  include <secutils/credentials/store.h>
-# endif
-
-/* SSL_CTX helpers for HTTPS */
-# ifndef SEC_NO_TLS
 #  ifdef LOCAL_DEFS
 #   include "genericCMPClient_imports.h"
 #  else
-#   include <secutils/connections/tls.h>
+#   include <secutils/credentials/store.h>
 #  endif
+
+/* SSL_CTX helpers for HTTPS */
+#  ifndef GENCMP_NO_TLS
+#   ifdef LOCAL_DEFS
+#    include "genericCMPClient_imports.h"
+#   else
+#    include <secutils/connections/tls.h>
+#   endif
 SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
                  OPTIONAL const STACK_OF(X509) *untrusted,
                  OPTIONAL const CREDENTIALS *creds,
@@ -290,11 +297,13 @@ void TLS_free(OPTIONAL SSL_CTX *tls);
 #  endif
 
 /* X509_EXTENSIONS helpers */
-# ifdef LOCAL_DEFS
-#  include "genericCMPClient_imports.h"
-# else
-#  include <secutils/util/extensions.h>
-# endif
+#  ifdef LOCAL_DEFS
+#   include "genericCMPClient_imports.h"
+#  else
+#   include <secutils/util/extensions.h>
+#  endif
+
+# endif /* ndef GENCMP_NO_HELPERS */
 
 # ifdef __cplusplus
 }

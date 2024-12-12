@@ -116,6 +116,9 @@ add_executable(cmpClient
   ${SRC_DIR}/cmpClient.c
 )
 
+# TODO support GENCMP_NO_SECUTILS, which disables libSecUtils use and CLI
+# TODO support GENCMP_NO_TLS     , which disables SSL/TLS use
+
 target_link_libraries(cmpClient
   ${LIBGENCMP_NAME}
   security-utilities::library

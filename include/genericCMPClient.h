@@ -30,7 +30,6 @@ extern "C" {
 # include <openssl/cmp.h>
 /* for abbreviation and backward compatibility: */
 typedef OSSL_CMP_CTX CMP_CTX;
-/* typedef OSSL_CMP_severity severity; already defined by libsecutils */
 
 # if OPENSSL_VERSION_NUMBER < 0x30000080L
 #  define OSSL_CMP_PKISTATUS_request                -3
@@ -231,6 +230,8 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
                              const X509 *oldWithOld, X509 **newWithNew,
                              OPTIONAL X509 **newWithOld,
                              OPTIONAL X509 **oldWithNew);
+# endif
+# if OPENSSL_VERSION_NUMBER > 0x30400000L || defined(USE_LIBCMP)
 /* get latest CRL according to cert DPN/issuer or get any update on given CRL */
 CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, OPTIONAL const X509 *cert,
                             OPTIONAL const X509_CRL *last_crl, X509_CRL **crl);
@@ -282,7 +283,7 @@ SSL_CTX *TLS_new(OPTIONAL const X509_STORE *truststore,
                  OPTIONAL const CREDENTIALS *creds,
                  OPTIONAL const char *ciphers, int security_level);
 void TLS_free(OPTIONAL SSL_CTX *tls);
-# endif
+#  endif
 
 /* X509_EXTENSIONS helpers */
 # ifdef LOCAL_DEFS

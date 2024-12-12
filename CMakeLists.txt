@@ -278,15 +278,17 @@ if(NOT TARGET clean_all)
   add_custom_target(clean_all
     COMMAND ${CMAKE_BUILD_TOOL} clean
     COMMAND find . -name "*.o" -o -name "*.d" -o -regex "./libgencmp-.*" | xargs rm
+    COMMAND find . -name build -type dir | xargs rm -r
+    COMMAND find . -path ./libsecutils/Makefile | xargs -I % ${CMAKE_BUILD_TOOL} -C libsecutils clean_all || true
+    COMMAND find . -path ./cmpossl/Makefile | xargs -I % ${CMAKE_BUILD_TOOL} -C cmpossl clean_all || true
+    COMMAND rm CMakeCache.txt
     # after the following, cannot call this target again:
-    COMMAND rm -r build
     COMMAND find . ( -name "*.cmake" -o -name Makefile )
-            -not -path ./libsecutils -not -path ./cmpossl
+            -not -path ./libsecutils/* -not -path ./cmpossl/*
             | xargs rm
     COMMAND find . -name CMakeFiles
-            -not -path ./libsecutils -not -path ./cmpossl
+            -not -path ./libsecutils/* -not -path ./cmpossl/*
             | xargs rm -r
-    COMMAND rm CMakeCache.txt
     VERBATIM
  )
  endif()

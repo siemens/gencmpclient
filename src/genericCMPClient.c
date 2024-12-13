@@ -500,7 +500,8 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     if (path == NULL)
         path = "";
     if (server == NULL)
-        LOG_info("will not contact any server"); /* since -rspin is given */
+        LOG_info("will not contact any server");
+    /* since -reqout_only or -rspin is given */
     else
         LOG(FL_INFO, "will contact http%s://%s:%d%s%s%s%s",
             tls != NULL ? "s" : "",

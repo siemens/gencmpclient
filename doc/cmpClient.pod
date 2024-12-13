@@ -1034,6 +1034,14 @@ These requests are not sent to the server if the B<-reqin> option is used, too.
 Multiple filenames may be given, separated by commas and/or whitespace.
 As many files are written as needed to store the complete transaction.
 
+=item B<-reqout_only> I<filename>
+
+Save the first CMP requests created by the client to the given file and exit.
+Any options related to CMP servers and their reponses are ignored.
+
+This option is useful for supporting offline scenarios where the certificate
+request (or any other CMP request) is produced beforehand and sent out later.
+
 =item B<-rspin> I<filenames>
 
 Process the sequence of CMP responses provided in file(s), skipping server.

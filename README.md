@@ -446,6 +446,8 @@ The Command-Line Interface (CLI) of the CMP client is implemented in
 [`src/cmpClient.c`](src/cmpClient.c).
 It supports most of the features of the genCMPClient library.
 The CLI use with the available options are documented in [`cmpClient.pod`](doc/cmpClient.pod).
+An example configuration used by the below mentioned demo invocations
+can be found in [`demo.cnf`](config/demo.cnf).
 
 For simple test invocations the Insta Certifier Demo CA server may be used,
 for instance as follows:
@@ -482,6 +484,13 @@ You can view this certificate for instance by executing
 openssl x509 -noout -text -in creds/operational.crt
 ```
 
+To select a specific CMP profile on the CloudCA server, set the environment
+variable `CMP_PROFILE` to the profile name.
+For instance:
+```
+CMP_PROFILE=Nested make -f Makefile_v1 demo_CloudCA
+```
+
 CLI-based tests using the Insta Demo CA may be invoked using
 ```
 make -f Makefile_v1 test_Insta
@@ -490,18 +499,11 @@ where the PROXY environment variable may be used to override the default
 in order to reach the Insta Demo CA.
 
 In order to obtain a trace of the HTTP messages being sent and received,
-build the genCMPClient with `USE_LIBCMP=1` and
+one can build the genCMPClient with `USE_LIBCMP=1` and
 set the environment variable `OPENSSL_TRACE` to contain the string `"HTTP"`.
 For instance:
 ```
 OPENSSL_TRACE=HTTP ./cmpClient imprint -section Insta
-```
-
-To select a specific CMP profile on the CloudCA server, set the environment
-variable `CMP_PROFILE` to the profile name.
-For instance:
-```
-CMP_PROFILE=Nested make -f Makefile_v1 demo_CloudCA
 ```
 
 

@@ -161,6 +161,8 @@ const char *opt_tls_host;
 static char *opt_reqin = NULL;
 static bool opt_reqin_new_tid = 0;
 static char *opt_reqout = NULL;
+static char *opt_reqout_only = NULL;
+static int reqout_only_done = 0;
 static char *opt_rspin = NULL;
 static char *opt_rspout = NULL;
 
@@ -422,6 +424,8 @@ opt_t cmp_opts[] = {
      "Use fresh transactionID for CMP requests read from -reqin"},
     {"reqout", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqout},
      "Save sequence of CMP requests to file(s)"},
+    {"reqout_only", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqout_only},
+     "Save first CMP request created by the client to file and exit"},
     {"rspin", OPT_TXT, {.txt = NULL}, { (const char **) &opt_rspin},
      "Process sequence of CMP responses provided in file(s), skipping server"},
     {"rspout", OPT_TXT, {.txt = NULL}, { (const char **) &opt_rspout},
@@ -773,6 +777,11 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
     OSSL_CMP_PKIHEADER *hdr;
     const char *prev_opt_rspin = opt_rspin;
 
+    if (opt_reqout_only != NULL) {
+        if (write_PKIMESSAGE(req, &opt_reqout_only))
+            reqout_only_done = 1;
+        return NULL; /* stop at this point, not contacting any server */
+    }
     if (opt_reqout != NULL && !write_PKIMESSAGE(req, &opt_reqout))
         goto err;
     if (opt_reqin != NULL && opt_rspin == NULL) {
@@ -1180,7 +1189,7 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
         LOG_warn("-reqin is ignored since -rspin is present");
     if (opt_reqin_new_tid && opt_reqin == NULL)
         LOG_warn("-reqin_new_tid is ignored since -reqin is not present");
-    if (opt_reqin != NULL || opt_reqout != NULL
+    if (opt_reqin != NULL || opt_reqout != NULL || opt_reqout_only != NULL
             || opt_rspin != NULL || opt_rspout != NULL)
         transfer_fn = read_write_req_resp;
 
@@ -1247,9 +1256,36 @@ static int setup_transfer(CMP_CTX *ctx)
         goto err;
     }
 
+    if (opt_reqout_only != NULL) {
+        const char *msg = "option is ignored since -reqout_only option is given";
+
+        if (opt_server != NULL) {
+            LOG(FL_WARN, "-server %s", msg);
+            opt_server = NULL;
+        }
+        if (opt_path != NULL) {
+            LOG(FL_WARN, "-path %s", msg);
+            opt_path = NULL;
+        }
+#if 0 /* TODO add in case mock server functionality is included */
+        if (opt_use_mock_srv)
+            LOG(FL_WARN, "-use_mock_srv %s", msg);
+#endif
+        if (opt_reqout != NULL)
+            LOG(FL_WARN, "-reqout %s", msg);
+        if (opt_rspin != NULL)
+            LOG(FL_WARN, "-rspin %s", msg);
+        if (opt_rspout != NULL)
+            LOG(FL_WARN, "-rspout %s", msg);
+    }
     if (opt_server == NULL) {
-        if (opt_rspin == NULL) {
-            LOG_err("missing -server or -rspin option");
+        /*
+         * TODO add below in case mock server functionality is included:
+         * !opt_use_mock_srv &&
+         */
+        if (opt_reqout_only == NULL && opt_rspin == NULL) {
+            /* TODO add in that case also: "or -use_mock_srv" */
+            LOG_err("missing -server or -reqout_only or -rspin option");
             err = -15;
             goto err;
         }
@@ -1775,7 +1811,7 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
             LOG_err("Cannot have Subject Alternative Names both via -reqexts and via -sans");
             return CMP_R_MULTIPLE_SAN_SOURCES;
         }
-        if (opt_certout == NULL) {
+        if (opt_certout == NULL && opt_reqout_only == NULL) {
             LOG_err("-certout not given, nowhere to save certificate");
             return -45;
         }
@@ -2352,6 +2388,12 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
 
     int status = OSSL_CMP_CTX_get_status(ctx);
+    if (status < OSSL_CMP_PKISTATUS_accepted && reqout_only_done) {
+        /* we got no response because we did not send request */
+        ERR_clear_error();
+        err = CMP_OK;
+        goto err;
+    }
     if (err != -19 && use_case != genm && status >= 0) {
         /* we got some response, print PKIStatusInfo */
         char buf[OSSL_CMP_PKISI_BUFLEN];

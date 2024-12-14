@@ -558,7 +558,7 @@ run_demo: $(OUT_DIR_BIN)
 # tests ########################################################################
 
 .phony: test_EJBCA-AWS
-test_EJBCA-AWS: get_EJBCA_crls
+test_EJBCA-AWS: build get_EJBCA_crls
 ifeq ($(filter-out EJBCA Simple,$(OPENSSL_CMP_SERVER)),)
 	$(warning "### skipping test_$(OPENSSL_CMP_SERVER) since not supported in this environment ###")
 else
@@ -658,11 +658,11 @@ endif
 all:	build doc
 
 .phony: test_Mock
-test_Mock:
+test_Mock: build
 	$(MAKE) -f Makefile_tests test_Mock CMPCLIENT="$(OUT_DIR_BIN)" OPENSSL=$(OPENSSL) OPENSSL_VERSION=$(OPENSSL_VERSION)
 
 .phony: tests_LwCmp
-tests_LwCmp: $(OUT_DIR_BIN)
+tests_LwCmp: build
 	$(MAKE) -f Makefile_tests tests_LwCmp CMPCLIENT="$(OUT_DIR_BIN)" OPENSSL=$(OPENSSL) OPENSSL_VERSION=$(OPENSSL_VERSION)
 
 test_all: demo_all test test_Mock tests_LwCmp

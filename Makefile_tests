@@ -101,7 +101,7 @@ conformance: $(CMPCLIENT)
 
 OPENSSL_CMP_CONFIG ?= test.cnf
 .phony: test_cli
-test_cli: $(CMPCLIENT)
+test_cli:
 	@which $(PERL) || (echo "cannot find Perl, please install it"; false)
 	@echo -en "\n#### running CLI-based tests #### "
 	@if [ -n "$$OPENSSL_CMP_SERVER" ]; then echo -en "with server=$$OPENSSL_CMP_SERVER"; else echo -n "without server"; fi

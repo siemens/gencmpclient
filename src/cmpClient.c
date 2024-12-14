@@ -206,12 +206,10 @@ opt_t cmp_opts[] = {
       ", with specific"
 #endif
     },
-#if OPENSSL_3_2_FEATURES
-    OPT_MORE("support for 'caCerts', 'rootCaCert'"
 # if OPENSSL_3_4_FEATURES
-             ", 'certReqTemplate', and 'crlStatusList'"
-# endif
-             ),
+    OPT_MORE("support for 'caCerts', 'rootCaCert', 'certReqTemplate', and 'crlStatusList'"),
+# elif OPENSSL_3_2_FEATURES
+    OPT_MORE("support for 'caCerts' and 'rootCaCert'"),
 #endif
     { "profile", OPT_TXT, {.txt = NULL}, { &opt_profile },
       "Cert profile name to place in generalInfo field of PKIHeader of requests"},
@@ -230,8 +228,8 @@ opt_t cmp_opts[] = {
       { (const char **) &opt_centralkeygen},
       "Request central (server-side) key generation. Default is local generation"},
     { "newkey", OPT_TXT, {.txt = NULL}, { &opt_newkey },
-      "Private or public key for for ir/cr/kur (defaulting to pubkey of -csr) if -newkeytype not given."},
-    OPT_MORE("File to save new key if -newkeytype is given"),
+      "Private or public key for for ir/cr/kur (defaulting to pubkey of -csr)"},
+    OPT_MORE("if -newkeytype is not given, otherwise file to save new key"),
     { "newkeypass", OPT_TXT, {.txt = NULL}, { &opt_newkeypass },
       "Pass phrase source for -newkey"},
     { "subject", OPT_TXT, {.txt = NULL}, { &opt_subject },

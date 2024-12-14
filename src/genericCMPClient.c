@@ -507,7 +507,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     return err;
 }
 
-#if OPENSSL_VERSION_NUMBER > 0x30300000L || defined(USE_LIBCMP)
+#if OPENSSL_3_3_FEATURES
 static int ossl_cmp_sk_ASN1_UTF8STRING_push_str(STACK_OF(ASN1_UTF8STRING) *sk,
                                                 const char *text, int len)
 {
@@ -562,7 +562,7 @@ CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name)
  err:
     return CMPOSSL_error();
 }
-#endif /* OPENSSL_VERSION_NUMBER > 0x30300000L || defined USE_LIBCMP */
+#endif /* OPENSSL_3_3_FEATURES */
 
 CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                 OPTIONAL const EVP_PKEY *new_key,
@@ -612,7 +612,7 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
     return CMPOSSL_error();
 }
 
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined(USE_LIBCMP) /* TODO remove decls when exported by OpenSSL */
+#if OPENSSL_3_2_FEATURES /* TODO remove decls when exported by OpenSSL */
 static int ossl_x509_add_cert_new_(STACK_OF(X509) **p_sk, X509 *cert, int flags)
 {
     if (*p_sk == NULL && (*p_sk = sk_X509_new_null()) == NULL) {
@@ -930,7 +930,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
     return CMPOSSL_error();
 }
 
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined(USE_LIBCMP)
+#if OPENSSL_3_2_FEATURES
 static OSSL_CMP_ITAV *get_genm_itav(CMP_CTX *ctx,
                                     OSSL_CMP_ITAV *req, /* gets consumed */
                                     int expected, const char *desc)
@@ -1051,9 +1051,9 @@ CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out)
     OSSL_CMP_ITAV_free(itav);
     return err;
 }
-#endif /* OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP */
+#endif /* OPENSSL_3_2_FEATURES */
 
-#if OPENSSL_VERSION_NUMBER > 0x30400000L || defined(USE_LIBCMP)
+#if OPENSSL_3_4_FEATURES
 CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
                                   OSSL_CRMF_CERTTEMPLATE **certTemplate,
                                   OPTIONAL OSSL_CMP_ATAVS **keySpec)
@@ -1083,9 +1083,9 @@ CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
     OSSL_CMP_ITAV_free(itav);
     return err;
 }
-#endif /* OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP */
+#endif /* OPENSSL_3_2_FEATURES */
 
-#if OPENSSL_VERSION_NUMBER > 0x30200000L || defined(USE_LIBCMP)
+#if OPENSSL_3_2_FEATURES
 static int selfsigned_verify_cb(int ok, X509_STORE_CTX *store_ctx)
 {
     if (ok == 0 && store_ctx != NULL
@@ -1234,9 +1234,9 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
     OSSL_CMP_ITAV_free(itav);
     return err;
 }
-#endif /* OPENSSL_VERSION_NUMBER > 0x30200000L || defined USE_LIBCMP */
+#endif /* OPENSSL_3_2_FEATURES */
 
-#if OPENSSL_VERSION_NUMBER > 0x30400000L || defined(USE_LIBCMP)
+#if OPENSSL_3_4_FEATURES
 CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, OPTIONAL const X509 *cert,
                             OPTIONAL const X509_CRL *last_crl, X509_CRL **crl)
 {
@@ -1302,7 +1302,7 @@ CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, OPTIONAL const X509 *cert,
     OSSL_CMP_ITAV_free(itav);
     return err;
 }
-#endif /* OPENSSL_VERSION_NUMBER > 0x30400000L || defined USE_LIBCMP */
+#endif /* OPENSSL_3_4_FEATURES */
 
 char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx, char *buf,
                                   size_t bufsize)

@@ -209,7 +209,7 @@ this can provide useful information.
 
 When getting version mismatch errors like
 ```
-OpenSSL runtime version 0x304000d0 does not match version 0x300000d0 used by compiler
+OpenSSL runtime version 0x30400000 does not match version 0x300000d0 used by compiler
 ```
 make sure that the system-level configuration for finding header and library files
 as well as the optional environment variables `OPENSSL_DIR` and `OPENSSL_LIB`

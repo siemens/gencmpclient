@@ -158,7 +158,7 @@ add_compile_options(-pedantic) # -Werror is enabled only for development and CI,
 add_compile_options(
   -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
   -Wsign-compare -Wformat -Wtype-limits -Wundef -Wconversion -Wunused-parameter)
-add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-embedded-directive)
+add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-embedded-directive -Wno-expansion-to-defined)
 # because of libsecutils:
 add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
 # TODO maybe clean up code and re-enable property

@@ -138,6 +138,7 @@ my @server_configurations = ("Mock");
 # ("Mock", "EJBCA", "Insta", "Simple");
 @server_configurations = split /\s+/, $ENV{OPENSSL_CMP_SERVER} if $ENV{OPENSSL_CMP_SERVER};
 # set env variable, e.g., OPENSSL_CMP_SERVER="Mock Insta" to include further CMP servers
+my $mock_openssl_version = `$ENV{OPENSSL} version | perl -pe 's/OpenSSL (\\d\\.\\d).*/\$1/es;'` if grep(/^Mock$/, @server_configurations);
 
 my @all_aspects = ("connection", "verification", "credentials", "commands", "enrollment");
 push (@all_aspects, "certstatus");
@@ -162,7 +163,6 @@ sub test_cmp_http {
         if ($server_name eq "Mock" && !(grep { $_ eq '-server' } @$params));
     my $cmd = app([@app, @$params]);
 
-    $expected_result = 1 if $server_name eq "Mock" && $title =~ m/- ok for Mock/;
     sleep($sleep) if $server_name eq "Insta";
     sleep($sleep) if $server_name eq "Insta"
         && $title eq "path with additional '/'s fine according to RFC 3986"
@@ -247,7 +247,7 @@ sub test_cmp_http_aspect {
 indir data_dir() => sub {
     plan tests => 1 + @server_configurations * @all_aspects
         + 2
-        - (grep(/^Mock$/, @server_configurations)
+        - (grep(/^Mock$/, @server_configurations) # && $mock_openssl_version < 3.x
            && grep(/^certstatus$/, @all_aspects));
 
     indir "Mock" => sub {
@@ -270,8 +270,9 @@ indir data_dir() => sub {
             }
             foreach my $aspect (@all_aspects) {
                 $aspect = chop_dblquot($aspect);
-                if ($server_name eq "Mock" && $aspect eq "certstatus") {
-                    print "Skipping certstatus check as not supported by $server_name server\n";
+                if (# $mock_openssl_version < 3.x &&
+                    $server_name eq "Mock" && $aspect eq "certstatus") {
+                    print "Skipping certstatus check as not supported by $server_name server with OpenSSL version $mock_openssl_version\n";
                     next;
                 }
                 if (not($server_name =~ m/Insta/)) { # do not update aspect-specific settings for Insta
@@ -342,6 +343,11 @@ sub load_tests {
         my $description = 1;
         $description += 3;
         my $title = $fields[$description];
+        if ($server_name eq "Mock" && defined $expected_result && $expected_result =~ m/^\s*(3(\.\d+)+)\s*([01]?)\s*$/) {
+            my ($min_openssl_version, $val) = ($1, $3);
+            $expected_result = ($val eq "0" ? 0 : 1) if $mock_openssl_version >= $min_openssl_version;
+        }
+        # $expected_result = 1 if $server_name eq "Mock" && $title =~ m/- ok for Mock/;
         next LOOP if (!defined($expected_result)
                       || ($expected_result ne 0 && $expected_result ne 1));
         @fields = grep {$_ ne 'BLANK'} @fields[$description + 1 .. @fields - 1];

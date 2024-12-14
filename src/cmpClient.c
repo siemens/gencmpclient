@@ -2546,7 +2546,7 @@ int main(int argc, char *argv[])
         if (argv[i][0] == '-') {
             if (argv[i][1] == '-')
                 argv[i]++;
-            if (strcmp(argv[i] + 1, "help") == 0) {
+            if (strcmp(argv[i] + 1, "help") == 0 || strcmp(argv[i] + 1, "h") == 0) {
                 rc = print_help(prog);
                 goto end;
             } else if (i + 1 < argc) {

@@ -143,7 +143,7 @@ ifeq ($(LPATH),)
         # TODO maybe better use absolute path here, as done by CMake
         override LDFLAGS += -Wl,-rpath,$(OUT_DIR) # no more needed: -Wl,-rpath,$(SECUTILS_DIR)
         ifndef NDEBUG # for CLI-based tests
-            override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../..
+#           override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../..
 #           not needed due to OUT_DIR set also for libsecutils:
 #           override LDFLAGS += -Wl,-rpath,$(OUT_DIR)/../../../../$(SECUTILS_DIR)
         endif

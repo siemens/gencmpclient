@@ -601,7 +601,7 @@ endif
 .phony: start_Simple stop_Simple
 start_Simple:
 	@echo "start SimpleLra"
-	@cd SimpleLra && ./RunLra.sh &
+	@cd SimpleLra && ./RunLra.sh & # requires Java 8
 	@sleep 2
 
 stop_Simple:

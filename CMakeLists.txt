@@ -473,7 +473,7 @@ if(NOT YOCTO_BUILD)
 
   # find_package(secutils ${CPACK_PACKAGE_VERSION})
   if(NOT secutils_FOUND)
-    if(NOT EXISTS libsecutils/CMakeLists.txt)
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libsecutils/CMakeLists.txt")
       if(GIT_FOUND)
         message(STATUS "fetching git submodule libsecutils")
         execute_process(COMMAND
@@ -494,7 +494,7 @@ if(NOT YOCTO_BUILD)
 
   # find_package(cmp ${CPACK_PACKAGE_VERSION})
   if(DEFINED USE_LIBCMP AND NOT libcmp_FOUND)
-    if(NOT EXISTS cmpossl/CMakeLists.txt)
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmpossl/CMakeLists.txt")
       if(GIT_FOUND)
         message(STATUS "fetching git submodule cmpossl")
         execute_process(COMMAND

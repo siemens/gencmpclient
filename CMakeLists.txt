@@ -282,21 +282,34 @@ set_property(
       _CPack_Packages changelog.gz debian/.debhelper/
       )
 
+# https://stackoverflow.com/a/78133906/2145180
 if(NOT TARGET clean_all)
   add_custom_target(clean_all
+    # cowardly not doing rm -r ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}
     COMMAND ${CMAKE_BUILD_TOOL} clean
-    COMMAND find . -name "*.o" -o -name "*.d" -o -regex "./libgencmp-.*" | xargs rm
-    COMMAND find . -name build -type dir | xargs rm -r
-    COMMAND find . -path ./libsecutils/Makefile | xargs -I % ${CMAKE_BUILD_TOOL} -C libsecutils clean_all || true
-    COMMAND find . -path ./cmpossl/Makefile | xargs -I % ${CMAKE_BUILD_TOOL} -C cmpossl clean_all || true
+    COMMAND find . -name "*.o" -o -name "*.d" -o -regex "./libgencmp-.*" | xargs rm || true
+    COMMAND find . -path ./libsecutils/Makefile
+        | xargs -I% ${CMAKE_BUILD_TOOL} -C libsecutils clean
+    COMMAND find . -path     ./cmpossl/Makefile
+        | xargs -I% ${CMAKE_BUILD_TOOL} -C cmpossl     clean
     COMMAND rm CMakeCache.txt
     # after the following, cannot call this target again:
     COMMAND find . ( -name "*.cmake" -o -name Makefile )
-            -not -path ./libsecutils/* -not -path ./cmpossl/*
+#           -not -path ./libsecutils/* -not -path ./cmpossl/*
+            -not -path ./libsecutils/src/libsecutils/security-utilities_libraryConfig.cmake
+            -not -path ./libsecutils/src/util/security-utilities_icvutilConfig.cmake
+            -not -path ./libsecutils/coverage/Makefile
             | xargs rm
     COMMAND find . -name CMakeFiles
-            -not -path ./libsecutils/* -not -path ./cmpossl/*
+#           -not -path ./libsecutils/* -not -path ./cmpossl/*
             | xargs rm -r
+    COMMAND find . -name build -type dir | xargs rm -r || true
+    COMMAND find . -type dir -empty | xargs rmdir || true
+    COMMAND find . -type dir -empty | xargs rmdir || true
+    COMMAND find . -type dir -empty | xargs rmdir || true
+    COMMAND find . -type dir -empty | xargs rmdir || true
+    COMMAND find . -type dir -empty | xargs rmdir || true
+    COMMAND find . -type dir -empty | xargs rmdir || true
     VERBATIM
  )
  endif()

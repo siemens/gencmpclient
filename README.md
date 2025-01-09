@@ -1,22 +1,17 @@
 # generic CMP client
 
-This is a generic Certificate Management Protocol (CMP) client library
-with a high-level API for use with the C and C++ languages
-and associated CLI-based demo client, tests, and documentation.
+This is a generic Certificate Management Protocol (CMP) client library with
+* a high-level API for use with C(++)
+* an associated CLI-based demo client
+* CLI-based demo invocations and tests
+* documentation for the API and CLI
+
 
 ## Purpose
 
-The purpose of this software is to provide a high-level C-based API
-on top of the detailed CMP (and CRMF) API of the
-[OpenSSL library](https://www.openssl-library.org/) since version 3.0.
-
-Until using an OpenSSL version > 3.0 that provides all those new CMP(v3) features
-needed for a given application, a further use case of this software may be
-to provide early access to all features of CMP
-as defined in [CMP Updates](https://www.rfc-editor.org/rfc/rfc9480)
-and the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483).
-To this end, it may be linked in addition to the intermediate CMP library
-[CMPforOpenSSL](https://github.com/mpeylo/cmpossl), called `libcmp` below.
+The purpose of this software is to provide the latest CMP features
+and an easy-to-use high-level C-based CMP API
+on top of the [OpenSSL library](https://www.openssl-library.org/).
 
 The library supports developing CMP clients that adhere to
 the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483),
@@ -27,15 +22,31 @@ is convenient to use for application programmers
 while being sufficiently complete and flexible
 to cover all major certificate management use cases.
 
-The software also provides a command-line interface (CLI) that is handy
-for demonstrating and interactively exploring the use of CMP in a PKI.\
-Yet interfacing at API level is more direct and secure for productive use.
+The software also provides a [command-line interface](doc/cmpClient.pod) (CLI),
+which is handy for demonstrating and interactively exploring the use of CMP
+with a given CMP server, which may be part of a PKI.\
+Yet for productive use, interfacing at API level is more direct and secure.
+
+The underlying OpenSSL library implements CMP, CRMF, HTTP, etc.
+with a detailed low-level API, which is rather difficult to use.
+Its version 3.0 covers CMPv2 (as originally defined in
+[RFC 4210](https://www.rfc-editor.org/rfc/rfc4210)),
+which is sufficient for most scenarios.
+Later OpenSSL versions cover also more recent and special CMP features.
+
+A further use case of this software is to provide early access to all new CMP
+features defined in [CMP Updates](https://www.rfc-editor.org/rfc/rfc9480) and
+the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483).
+To this end, the software can use in addition the intermediate CMP library
+[CMPforOpenSSL](https://github.com/mpeylo/cmpossl), called `libcmp` below.
+This is needed only as long as special new CMP(v3) features are required
+that are not covered by the OpenSSL version being used.
 
 Note: An OSS CMP client and registration authority (RA) implementation in Java
 is available in the form of a
-[generic CMP RA and client component](https://github.com/siemens/cmp-ra-component)
-and the [LightweightCmpRa](https://github.com/siemens/LightweightCmpRa),
-which is a demo application making use of the component.
+[generic CMP RA and client component](https://github.com/siemens/cmp-ra-component).
+The [LightweightCmpRa](https://github.com/siemens/LightweightCmpRa)
+is a CLI-based demo CMP client and RA application making use of this component.
 
 
 ## Support model
@@ -85,11 +96,12 @@ via a link in its [README file](https://github.com/siemens/libsecutils/blob/mast
 
 ## Prerequisites
 
-This software should work with any flavor of Linux,
-including MacOS X, [Cygwin](https://www.cygwin.com/), also on a virtual machine or
-the Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
+This software should work with any flavor of Linux
+including Debian, macOS and [Cygwin](https://www.cygwin.com/),
+on a native system, a Docker image, or on a virtual machine including the
+Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
 
-The following network and development tools are needed or recommended.
+The following development and network tools are needed or recommended.
 * Git (for getting the software, tested versions include 2.7.2, 2.11.0, 2.20, 2.30.2, 2.39.2, 2.47.0)
 * CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested versions include 3.18.4, 3.26.3, 3.27.7, 3.30.5)
 * GNU make (tested versions include 3.81, 4.1, 4.2.1, 4.3)
@@ -99,12 +111,15 @@ The following network and development tools are needed or recommended.
 * Perl (for running the tests, tested versions include 5.30.3, 5.32.1, 5.36.0, 5.38.2)
 
 The following OSS components are used.
-* OpenSSL development edition; curently supported versions include 3.0, 3.1, 3.2, 3.3, 3.4
+* OpenSSL development edition;
+  currently supported versions include 3.0, 3.1, 3.2, 3.3, 3.4
   <!-- (formerly also versions 1.0.2, 1.1.0, and 1.1.1) -->
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
+  for support (not core) functionality needed mostly for the CLI
 * [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
-  a CMP+CRMF+HTTP extension to OpenSSL, needed when using OpenSSL 1.x
-  or if the latest CMP features not yet available in OpenSSL are required,
+  an intermediate CMP+CRMF+HTTP extension to OpenSSL,
+  needed only if the OpenSSL version being used does not yet include
+  all CMP features required for the given CMP application scenario,
   which can be indicated by setting the environment variable `USE_LIBCMP`.
 
 For an overview of CMP features relevant in industrial use cases see
@@ -132,17 +147,8 @@ by the application scenario are covered by the OpenSSL version being used.
 * In OpenSSL 3.4, "CRL Update Retrieval" was added.
 * In OpenSSL 3.5, support for central key generation is going to be added.
 
-The features newly defined with CMPv3
-in [RFC 9480 (CMP Updates)](https://www.rfc-editor.org/rfc/rfc9480)
-are fully covered by the [intermediate CMP library `libcmp`](
-https://github.com/mpeylo/cmpossl) and will be covered by OpenSSL 3.5.\
-Since the intermediate CMP library `libcmp` constitutes an extra dependency
-and its maintenance will likely end soon after the release of OpenSSL 3.5,
-better avoid using it. This is possible if all the CMP features needed
-by the application scenario are covered by the OpenSSL version being used.
-
-Hint: As long as your system provides at least OpenSSL 3.0 and
-related development header files at a sufficiently new patch level,
+Hint: As long as your system provides a sufficiently recent version of OpenSSL
+and related development header files,
 better not manually install in addition a different OpenSSL version unless
 you need newer CMP features without using the intermediate CMP library `libcmp`.
 Such an extra installation can interfere with the more or less implicit references
@@ -154,23 +160,19 @@ mismatch errors like the one mentioned [below](#sanity-checks-on-openssl).
 
 ### Linux installation
 
-For instance, on a Debian or Ubuntu system the prerequisites may be installed simply as follows:
+On a Debian or Ubuntu system the prerequisites may be installed simply as follows:
 ```
 sudo apt install cmake libssl-dev libc-dev linux-libc-dev
 ```
 while `sudo apt install git make gcc wget`
 usually is not needed as far as these tools are pre-installed.
 
-### OS X installation
+### macOS installation
 
-On a Mac OS X system the prerequisites may be installed
+On macOS the prerequisites may be installed
 by executing the following in a terminal:
 ```
 brew install git make openssl cmake wget perl
-```
-When using `gcc` (instead of `clang`) and `ccache`:
-```
-brew install gcc ccache
 ```
 
 For making sure that OpenSSL version 3 is installed:
@@ -178,6 +180,11 @@ For making sure that OpenSSL version 3 is installed:
 brew uninstall --ignore-dependencies openssl@3
 brew install openssl@3
 brew --prefix openssl@3
+```
+
+For using `gcc` (instead of `clang`) and `ccache`:
+```
+brew install gcc ccache
 ```
 
 ### Sanity checks on OpenSSL
@@ -263,66 +270,84 @@ and remove any previous possibly outdated artifacts.
 
 ## Configuring
 
+### Finding OpenSSL
+
 The generic CMP client, as well as its underlying libraries,
 assumes that OpenSSL is already installed,
-including the C header files needed for development
-(as provided by, e.g., the Debian/Ubuntu package `libssl-dev` or the MacOS brew package `openssl@3`).
+including the C header files needed for development.
 
-By default any OpenSSL installation available on the system is used.
+By default, any OpenSSL installation that is
+found at the usual locations on the system is used.
+This typically works automatically (using some heuristics)
+when, e.g., the Debian/Ubuntu package `libssl-dev`
+or the macOS brew package `openssl@3` has been installed.
 
-It is recommended to set the optional environment variable `OPENSSL_DIR` to specify
-the absolute or relative path of the OpenSSL installation or local build directory to use,
-or some heuristics will try to detect the location.
-This must point to the location in the file system from which the subdirectory `include/openssl`
+Otherwise it may be needed to manually set
+the environment variable `OPENSSL_DIR` to specify
+the path of the OpenSSL installation (or local build directory) to use.
+This must point to the location in the file system
+from which the subdirectory `include/openssl`
 is directly accessible with this relative path name.\
 When used with CMake, `$OPENSSL_DIR/OpenSSLConfig.cmake` must exist.
 
-In case the OpenSSL libraries are in an unusual location, set also `OPENSSL_LIB`.
-Otherwise some heuristics will try to detect the location.
+In case the OpenSSL libraries are in an unusual location,
+it may be necessary to set also `OPENSSL_LIB`.
+Otherwise some heuristics will try to detect it,
+which may go wrong in particular if multiple OpenSSL versions are available.
 
-For all environment variables specifying a directory, relative paths such as `.`
-are interpreted relative to the genCMPClient source directory.
+For all environment variables specifying a directory,
+absolute or relative paths (including `.`) may be used.
+Relative paths are interpreted relative to the genCMPClient source directory.
 
-### Linux
+#### Linux
 
-Here are examples for Linux:
+Here are examples of typical OpenSSL directory locations for Linux:
 ```
-export OPENSSL_DIR=/usr/local
+export OPENSSL_DIR=/usr
 export OPENSSL_LIB=/lib/x86_64-linux-gnu
 ```
 The value for `OPENSSL_LIB` may be obtained by
 ```
 ldd `which openssl` | grep libcrypto.so | awk '{print $3}' | sed 's#/[^/]*$##'
 ```
+Yet for the most common cases it is not needed to set these
+environment variables manually.
 
-### OS X
+#### macOS
 
-On Mac OS X, these lines are suggested to add to ``~/.zshrc``
-
+When OpenSSL has been installed on macOS using `brew`,
+it is typically not needed to set specific environment variables.\
+Nevertheless, they may be defined for instance in ``~/.zshrc`` like this:
 ```
 export LDFLAGS="-L$(brew --prefix openssl@3)/lib"
 export CPPFLAGS="-I$(brew --prefix openssl@3)/include"
 export OPENSSL_DIR=$(brew --prefix openssl@3)
 export OPENSSL_LIB=$(brew --prefix openssl@3)/lib
 ```
-After doing so, restart the terminal or copy&paste them there, too.
+After doing so, restart the terminal or copy&paste these line there, too.
 
-### Common steps
+### Using of `libcmp` and `libsecutils`
 
-Define the environment variable `USE_LIBCMP` for using the latest CMP features
+Only if needed,
+define the environment variable `USE_LIBCMP` for using the latest CMP features
 and fixes, which implies use of the intermediate library `libcmp`.
-When using OpenSSL version 1.x, this is ensured automatically.
+When using CMake, do this both when calling `cmake` (at generation time)
+and when calling `make` (e.g., at build time).
+<!-- When using OpenSSL version 1.x, this is ensured automatically. -->
 When using OpenSSL versions before 3.5 and `USE_LIBCMP` is not defined,
 not all of the CMP features newly defined in CMP Updates
-and in the Lightweight CMP Profile (LCMPP) are supported.
+and in the Lightweight CMP Profile (LCMPP) are supported,
+which usually is not a problem.
 
-From the underlying Security Utilities library
-the following environment variables are inherited.
+From use with the underlying Security Utilities library
+the following environment variables may be defined.
 * When `SECUTILS_USE_ICV` is set, configuration files are expected
 to be integrity protected with an Integrity Check Value (ICV),
 which may be produced using `util/icvutil`.
 * Use of the UTA library can be enabled by setting `SECUTILS_USE_UTA`.
 * The TLS-related functions may be disabled by setting `SECUTILS_NO_TLS`.
+
+### Using CMake or `Makefile_v1`
 
 Since genCMPClient version 2, it is recommended to use CMake
 to produce the `Makefile`, for instance as follows:
@@ -373,17 +398,19 @@ Build the software with
 ```
 make
 ```
-The result is in, for instance, `./libgencmp.so.2.0`.
+(or `make -f Makefile_v1`).
+
+The result is in, for instance, `libgencmp.so.2.0`.
 This also builds all required dependencies
-(such as `libsecutils/libsecutils.so.2.0` and `cmpossl/libcmp.so.2.0`)
-and an application (`./cmpClient`) that is intended
+(such as `libsecutils.so.2.0` and possibly `libcmp.so.2.0`)
+and a CLI application (`./cmpClient`), which is intended
 for demonstration, test, and exploration purposes.
 
 When getting the compiler error: `'openssl/openssl_backport.h' file not found`
 likely `include/genericCMPClient_config.h` is outdated
 and contains `#define USE_LIBCMP` although the environment variable `USE_LIBCMP`
 is not set.
-In such situations, `make -f Makefile_v1 clean` helps to reset it to a consistent state.
+In such situations, `make clean`  (or `make -f Makefile_v1 clean`) helps to reset it to a consistent state.
 
 
 ### Installing and uninstalling
@@ -397,15 +424,22 @@ and uninstalled with
 sudo make uninstall
 ```
 
-The destination is `/usr`, unless specified otherwise by `DESTDIR` or `ROOTFS`.
-
+The destination base directory is `/usr/`,\
+unless specified otherwise using `DESTDIR` or `ROOTFS`.
+With that directory, artifacts are placed in the usual subdirectories:
+* libraries below `lib/` with CMake file in the subdirectory `cmake/`
+* other binaries in `bin/`
+* documentation below `share/doc`
+* man pages below `share/man`
+* header files below `include/`
 
 ### Cleaning up
 
-`make clean` removes part of the artifacts, while
-`make clean_all` removes everything produced by `make` and `CMake`.
+`make clean` removes part of the artifacts, while\
+`make clean_all` aims at removing everything produced by `make` and `CMake`.
 
-## Building Debian packages for use also with Ubuntu
+
+## Building Debian packages (for use also with Ubuntu etc.)
 
 This repository can build the following binary and source packages.
 
@@ -424,8 +458,8 @@ Alternatively, [`Makefile_v1`](Makefile_v1) may be used like this:
 ```
 make -f Makefile_v1 deb
 ```
-In this case, the resulting packages are placed in the parent directory (`../`),
-and requires the following Debian packages:
+In this case, the resulting packages are placed in the parent directory (`../`)\
+and the following Debian packages are required:
 * `debhelper` (needed for `dh`)
 * `devscripts` (needed for `debuild`)
 * `libssl-dev`
@@ -558,12 +592,11 @@ See the [LICENSE.txt](LICENSE.txt) file in the top-level directory.
 SPDX-License-Identifier: Apache-2.0
 
 <!--
-LocalWords:  md bis CHANGELOG doc libcmp openssl sudo cmake libssl cd
+LocalWords:  genericCMPClient CHANGELOG doc libcmp openssl sudo cmake libssl cd
 LocalWords:  dev libc linux DIR perl ccache mk LIB ldd grep awk lcrypto KUR RR
 LocalWords:  libcrypto sed zshrc LDFLAGS lib CPPFLAGS SECUTILS lsecutils CMPv
-LocalWords:  util icvutil NDEBUG DCMAKE ln usr libgencmp CC lssl lcmp
+LocalWords:  util icvutil NDEBUG DCMAKE ln usr libgencmp CC lssl lcmp md bis
 LocalWords:  cmpClient src DESTDIR ROOTFS cmpclient tarball deb rpath
-LocalWords:  debhelper dh devscripts debuild dpkg ecparam FI cr lgencmp
+LocalWords:  debhelper dh devscripts debuild dpkg ecparam FI cr lgencmp cc cnf
 LocalWords:  genkey insta ref cmd newkey certout noout creds Wl ICV
-LocalWords:  genericCMPClient
 -->

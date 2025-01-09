@@ -15,6 +15,7 @@ jobs:
         run: |
           cmake .
           make
+
           mkdir build
           cd build
           cmake -S .. -B .
@@ -22,12 +23,14 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Release ..
           make clean build
           cd ..
+
           mkdir build-with-libcmp
           cd build-with-libcmp
           USE_LIBCMP=1 cmake -S .. -B .
-          make clean build
+          make build
           DESTDIR=tmp make install uninstall
           make deb
+          make clean_all
 
   build_doc_this:
     runs-on: ubuntu-latest

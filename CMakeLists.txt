@@ -107,32 +107,8 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   endif()
 endif()
 
-add_library(${LIBGENCMP_NAME} SHARED
-  "${PROJECT_SOURCE_DIR}/.github/workflows/build.yml"
-  ${SRC_DIR}/genericCMPClient.c
-)
-
-add_executable(cmpClient
-  ${SRC_DIR}/cmpClient.c
-)
-
-target_link_libraries(cmpClient
-  ${LIBGENCMP_NAME}
-  security-utilities::library
-  $<$<BOOL:${USE_LIBCMP}>:cmp>
-  # important: libcmp before libcrypto such that its contents are preferred
-  OpenSSL::Crypto
-  $<$<NOT:$<BOOL:$ENV{SECUTILS_NO_TLS}>>:OpenSSL::SSL>
-)
-if(DEFINED ENV{SECUTILS_USE_UTA})
-  target_link_libraries(cmpClient uta)
-  target_link_directories(cmpClient PRIVATE /usr/local/lib)
-# set(CMAKE_INSTALL_RPATH "/usr/local/lib")
-endif()
-if(DEFINED ENV{SECUTILS_NO_TLS})
-  add_compile_definitions(SECUTILS_NO_TLS=1)
-endif()
-
+# must do add_compile_options() before add_library() and add_executable() see
+# https://stackoverflow.com/questions/40516794/cmake-not-applying-compile-option-using-add-compile-options
 if(DEFINED ENV{NDEBUG} OR NOT CMAKE_BUILD_TYPE MATCHES Debug)
   set(CMAKE_BUILD_TYPE Release  # automatically leads to CFLAGS += -DNDEBUG -O3
       CACHE STRING "Choose the type of build." FORCE)
@@ -167,6 +143,32 @@ add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
 # would have no effect:
 # target_compile_features(${LIBGENCMP_NAME} PRIVATE c_std_90)
 # target_compile_features(cmpClient         PRIVATE c_std_90)
+
+add_library(${LIBGENCMP_NAME} SHARED
+  "${PROJECT_SOURCE_DIR}/.github/workflows/build.yml"
+  ${SRC_DIR}/genericCMPClient.c
+)
+
+add_executable(cmpClient
+  ${SRC_DIR}/cmpClient.c
+)
+
+target_link_libraries(cmpClient
+  ${LIBGENCMP_NAME}
+  security-utilities::library
+  $<$<BOOL:${USE_LIBCMP}>:cmp>
+  # important: libcmp before libcrypto such that its contents are preferred
+  OpenSSL::Crypto
+  $<$<NOT:$<BOOL:$ENV{SECUTILS_NO_TLS}>>:OpenSSL::SSL>
+)
+if(DEFINED ENV{SECUTILS_USE_UTA})
+  target_link_libraries(cmpClient uta)
+  target_link_directories(cmpClient PRIVATE /usr/local/lib)
+# set(CMAKE_INSTALL_RPATH "/usr/local/lib")
+endif()
+if(DEFINED ENV{SECUTILS_NO_TLS})
+  add_compile_definitions(SECUTILS_NO_TLS=1)
+endif()
 
 target_link_libraries(${LIBGENCMP_NAME}
   security-utilities::library

@@ -223,8 +223,9 @@ endif()
 
 # installation and uninstall
 
+# default destination on Linux and macOS: "/usr/local"
 #if(UNIX AND NOT APPLE)
-  set(CMAKE_INSTALL_PREFIX "/usr")
+#  set(CMAKE_INSTALL_PREFIX "/usr")
 #else()
 #  set(CMAKE_INSTALL_PREFIX "tmp")
 #endif()

@@ -424,7 +424,7 @@ and uninstalled with
 sudo make uninstall
 ```
 
-The destination base directory is `/usr/`,\
+The destination base directory is `/usr/local/`,\
 unless specified otherwise using `DESTDIR` or `ROOTFS`.
 With that directory, artifacts are placed in the usual subdirectories:
 * libraries below `lib/` with CMake file in the subdirectory `cmake/`

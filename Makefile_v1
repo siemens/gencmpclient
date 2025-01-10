@@ -817,7 +817,7 @@ clean_deb:
 # installation #################################################################
 
 # installation target - append ROOTFS=<path> to install into virtual root filesystem
-DEST_PRE=$(ROOTFS)/usr
+DEST_PRE=$(ROOTFS)/usr/local
 DEST_LIB=$(DEST_PRE)/lib
 DEST_INC=$(DEST_PRE)
 DEST_BIN=$(DEST_PRE)/bin

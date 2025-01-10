@@ -26,8 +26,9 @@ jobs:
           cd build-with-libcmp
           USE_LIBCMP=1 cmake -S .. -B .
           make clean build
-          DESTDIR=tmp make install uninstall
-          make deb
+          DESTDIR=tmp make install
+          make deb                       # critical to make clean and install with DESTDIR=tmp before!
+          DESTDIR=tmp make uninstall
 
   build_doc_this:
     runs-on: ubuntu-latest

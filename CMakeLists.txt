@@ -257,7 +257,12 @@ install(TARGETS cmpClient
 )
 
 if(NOT TARGET uninstall)
-  add_custom_target(uninstall COMMAND xargs -I{} rm -vf $ENV{DESTDIR}{} <install_manifest.txt)
+  add_custom_target(uninstall
+    COMMAND xargs -I% rm -vf \${DESTDIR}% <install_manifest.txt
+    COMMAND rm -vfr "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/{secutils,cmp}"
+    COMMAND rm -vfr "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DOCDIR}-dev"
+    COMMAND rm -vfr "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+)
 endif()
 
 

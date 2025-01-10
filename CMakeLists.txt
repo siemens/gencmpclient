@@ -100,7 +100,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   # help CPackDeb please dpkg-shlibdeps
   if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0")
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS
-        "${CMAKE_CURRENT_BINARY_DIR}/tmp/usr/${CMAKE_INSTALL_LIBDIR}")
+        "${CMAKE_CURRENT_BINARY_DIR}/tmp${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
   else()
     set(CMAKE_INSTALL_RPATH # must be done before add_executable()
         "../${CMAKE_INSTALL_LIBDIR}")
@@ -223,8 +223,9 @@ endif()
 
 # installation and uninstall
 
+# default destination on Linux and macOS: "/usr/local"
 #if(UNIX AND NOT APPLE)
-  set(CMAKE_INSTALL_PREFIX "/usr")
+#  set(CMAKE_INSTALL_PREFIX "/usr")
 #else()
 #  set(CMAKE_INSTALL_PREFIX "tmp")
 #endif()
@@ -381,6 +382,7 @@ else(Linux)
 endif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 
 set(CPACK_SOURCE_GENERATOR "TGZ")
+# https://stackoverflow.com/questions/6712000/cmake-cpack-package-installation-path-nightmare
 #set(CPACK_SET_DESTDIR TRUE) # prevents package creation error when using cpack
 set(CPACK_VERBATIM_VARIABLES YES)
 set(CPACK_SOURCE_IGNORE_FILES

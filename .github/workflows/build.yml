@@ -48,6 +48,22 @@ jobs:
           make -C libsecutils -f Makefile_v1 clean_config
           SKIP_pod2markdown=1 DESTDIR=tmp make -f Makefile_v1 install uninstall
           make -f Makefile_v1 clean_all
+  doc_deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: doc_deb
+        run: |
+          # needs access to azure.archive.ubuntu.com:
+          sudo apt-get update
+          sudo apt-get install -y >/dev/null libpod-markdown-perl
+          sudo apt-get install -y >/dev/null doxygen graphviz # needed only for recursive 'make doc' in libsecutils
+          make -f Makefile_v1 doc # ensures presence of cmpClient.md
+          echo
+          echo ************************* doc finished *************************
+          echo
+          sudo apt-get install -y >/dev/null debhelper devscripts
+          make -f Makefile_v1 deb
 
   test_all:
     runs-on: ubuntu-latest
@@ -65,20 +81,3 @@ jobs:
           # sudo apt-get install -y >/dev/null libssl-dev build-essential # not needed
           # USE_LIBCMP=1 make -f Makefile_v1 test_Mock OPENSSL_CMP_ASPECTS=credentials V=1 # can be helpful for debugging
             USE_LIBCMP=1 make -f Makefile_v1 test_all
-
-  doc_deb:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: doc_deb
-        run: |
-          # needs access to azure.archive.ubuntu.com:
-          sudo apt-get update
-          sudo apt-get install -y >/dev/null libpod-markdown-perl
-          sudo apt-get install -y >/dev/null doxygen graphviz # needed only for recursive 'make doc' in libsecutils
-          make -f Makefile_v1 doc # ensures presence of cmpClient.md
-          echo
-          echo ************************* doc finished *************************
-          echo
-          sudo apt-get install -y >/dev/null debhelper devscripts
-          make -f Makefile_v1 deb

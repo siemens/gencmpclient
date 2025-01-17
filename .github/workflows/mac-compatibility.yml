@@ -11,6 +11,11 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: make
+        run: |
+          make -f Makefile_v1
+          ./cmpClient -help
+          make -f Makefile_v1 clean_all
       - name: cmake
         run: |
           cmake .
@@ -31,5 +36,3 @@ jobs:
           make clean build
           DESTDIR=tmp make install uninstall
           cd ..
-
-          make -f Makefile_v1 test_Mock

@@ -20,7 +20,7 @@ jobs:
           git clone https://github.com/openssl/openssl.git --branch ${{ matrix.branch }} --depth 1
           cd openssl
           ./Configure shared --debug --strict-warnings
-          make -s -j4
+         
           cd ..
           echo "OPENSSL_DIR=$PWD/openssl" >> "$GITHUB_ENV"
           echo "$PWD/openssl/apps" >> "$GITHUB_PATH"

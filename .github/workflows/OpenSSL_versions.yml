@@ -19,9 +19,8 @@ jobs:
         run: |
           git clone https://github.com/openssl/openssl.git --branch ${{ matrix.branch }} --depth 1
           cd openssl
-          ./config --banner=Configured --strict-warnings --prefix=/usr/local/${{ matrix.branch }} --openssldir=/usr/local/${{ matrix.branch }}/ssl shared zlib
+          ./Configure shared --debug --strict-warnings
           make -s -j4
-          sudo make install_sw install_ssldirs
           cd ..
           echo "OPENSSL_DIR=./openssl" >> $GITHUB_ENV
       - name: make

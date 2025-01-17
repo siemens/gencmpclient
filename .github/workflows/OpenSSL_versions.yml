@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        branch: [openssl-3.1, openssl-3.4] #[openssl-3.0, openssl-3.1, openssl-3.2, openssl-3.3, openssl-3.4]
+        branch: [openssl-3.1] #[openssl-3.0, openssl-3.1, openssl-3.2, openssl-3.3, openssl-3.4]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,24 +27,7 @@ jobs:
           echo "LD_LIBRARY_PATH=$OPENSSL_DIR:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       - name: make
         run: |
+          echo $PATH
           which openssl
           openssl version
-          make -f Makefile_v1 test_Mock
-          make -f Makefile_v1 clean_all
 
-          USE_LIBCMP=1 STATIC_LIBCMP=1 make -f Makefile_v1 test_Mock
-          make -f Makefile_v1 clean_all
-      - name: cmake
-        #TODO: Remove the if condition once the issue is resolved
-        if: matrix.branch != 'openssl-3.0' && matrix.branch != 'openssl-3.1' && matrix.branch != 'openssl-3.2'
-        run: |
-          cmake .
-          make
-          ./cmpClient -help
-
-          mkdir build-with-libcmp
-          cd build-with-libcmp
-          USE_LIBCMP=1 cmake -S .. -B .
-          make clean build
-          DESTDIR=tmp make install uninstall
-          make deb

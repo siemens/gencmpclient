@@ -23,7 +23,7 @@ jobs:
           make -s -j4
           cd ..
           echo "OPENSSL_DIR=./openssl" >> $GITHUB_ENV
-          echo "PATH=$OPENSSL_DIR/apps:$PATH" >> $GITHUB_ENV
+          echo "$OPENSSL_DIR/apps" >> $GITHUB_PATH
           echo "LD_LIBRARY_PATH=$OPENSSL_DIR:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       - name: make
         run: |

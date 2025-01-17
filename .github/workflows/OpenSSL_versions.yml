@@ -26,10 +26,10 @@ jobs:
           echo "OPENSSL_DIR=./openssl" >> $GITHUB_ENV
       - name: make
         run: |
-          make -f Makefile_v1 test_Mock
+          make -f Makefile_v1
           make -f Makefile_v1 clean_all
 
-          USE_LIBCMP=1 STATIC_LIBCMP=1 make -f Makefile_v1 build_no_tls
+          USE_LIBCMP=1 STATIC_LIBCMP=1 make -f Makefile_v1 test_Mock
           make -f Makefile_v1 clean_all
       - name: cmake
         #TODO: Remove the if condition once the issue is resolved

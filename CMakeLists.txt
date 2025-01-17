@@ -225,7 +225,7 @@ endif()
 
 # default destination on Linux and macOS: "/usr/local"
 #if(UNIX AND NOT APPLE)
-#  set(CMAKE_INSTALL_PREFIX "/usr")
+  set(CMAKE_INSTALL_PREFIX "/usr")
 #else()
 #  set(CMAKE_INSTALL_PREFIX "tmp")
 #endif()
@@ -258,8 +258,8 @@ install(TARGETS cmpClient
 )
 
 if(NOT TARGET uninstall)
-  add_custom_target(uninstall
-    COMMAND xargs -I% rm -vf \${DESTDIR}% <install_manifest.txt
+add_custom_target(uninstall
+   COMMAND xargs -I{} rm -vf $ENV{DESTDIR}{} <install_manifest.txt
     COMMAND rm -vfr "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/{secutils,cmp}"
     COMMAND rm -vfr "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DOCDIR}-dev"
     COMMAND rm -vfr "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"

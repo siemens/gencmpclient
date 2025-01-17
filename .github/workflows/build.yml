@@ -27,7 +27,7 @@ jobs:
           mkdir build-with-libcmp
           cd build-with-libcmp
           USE_LIBCMP=1 cmake -S .. -B .
-          make build
+          make clean build
           DESTDIR=tmp make install uninstall
           make deb
           make clean_all

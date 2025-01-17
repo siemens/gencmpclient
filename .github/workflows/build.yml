@@ -62,7 +62,7 @@ jobs:
           echo
           echo ************************* doc finished *************************
           echo
-          sudo apt-get install -y >/dev/null debhelper devscripts
+          sudo apt-get install -y >/dev/null debhelper devscripts build-essential:native
           make -f Makefile_v1 deb
 
   test_all:

@@ -22,9 +22,9 @@ jobs:
           ./Configure shared --debug --strict-warnings
           make -s -j4
           cd ..
-          echo "OPENSSL_DIR=./openssl" >> $GITHUB_ENV
-          echo "$OPENSSL_DIR/apps" >> $GITHUB_PATH
-          echo "LD_LIBRARY_PATH=$OPENSSL_DIR:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "OPENSSL_DIR=$PWD/openssl" >> "$GITHUB_ENV"
+          echo "$PWD/openssl/apps" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$OPENSSL_DIR:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
       - name: make
         run: |
           echo $PATH

@@ -27,6 +27,8 @@ jobs:
           echo "LD_LIBRARY_PATH=$OPENSSL_DIR:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       - name: make
         run: |
+          which openssl
+          openssl version
           make -f Makefile_v1 test_Mock
           make -f Makefile_v1 clean_all
 

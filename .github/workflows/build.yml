@@ -31,6 +31,7 @@ jobs:
           # not needed because implied by "make deb": make build
           make deb
           DESTDIR=tmp make install uninstall
+          make clean_all
 
   Makefile_v1:
     runs-on: ubuntu-latest

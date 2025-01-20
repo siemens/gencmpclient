@@ -340,12 +340,15 @@ and in the Lightweight CMP Profile (LCMPP) are supported,
 which usually is not a problem.
 
 From use with the underlying Security Utilities library
-the following environment variables may be defined.
-* When `SECUTILS_USE_ICV` is set, configuration files are expected
+the following environment variables may be set
+when calling `cmake` (at generation time) or when using `Makefile_v1`.
+* If `SECUTILS_USE_ICV` is set, configuration files are expected
 to be integrity protected with an Integrity Check Value (ICV),
 which may be produced using `util/icvutil`.
 * Use of the UTA library can be enabled by setting `SECUTILS_USE_UTA`.
-* The TLS-related functions may be disabled by setting `SECUTILS_NO_TLS`.
+  The UTA library must have been pre-installed on the system.
+* The TLS-related functions may be disabled by setting `SECUTILS_NO_TLS`,
+  which also needs to be done when calling `make` at build time.
 
 ### Using CMake or `Makefile_v1`
 

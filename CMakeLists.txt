@@ -111,7 +111,8 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   # help CPackDeb please dpkg-shlibdeps
   if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0")
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS
-        "${CMAKE_CURRENT_BINARY_DIR}/tmp${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+        ${CMAKE_CURRENT_BINARY_DIR} "${CMAKE_CURRENT_BINARY_DIR}/cmpossl"
+        "${CMAKE_CURRENT_BINARY_DIR}/libsecutils/src/libsecutils")
   else()
     set(CMAKE_INSTALL_RPATH # must be done before add_executable()
         "../${CMAKE_INSTALL_LIBDIR}")

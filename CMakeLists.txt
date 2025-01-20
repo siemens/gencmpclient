@@ -175,7 +175,7 @@ target_link_libraries(cmpClient
 )
 if(DEFINED ENV{SECUTILS_USE_UTA})
   target_link_libraries(cmpClient uta)
-  target_link_directories(cmpClient PRIVATE /usr/local/lib)
+  target_link_directories(cmpClient PRIVATE "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}") # usually expands to /usr/local/lib
 # set(CMAKE_INSTALL_RPATH "/usr/local/lib")
 endif()
 if(DEFINED ENV{SECUTILS_NO_TLS})

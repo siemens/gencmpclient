@@ -305,13 +305,16 @@ set_property(
 # https://stackoverflow.com/a/78133906/2145180
 if(NOT TARGET clean_all)
   add_custom_target(clean_all
-    # cowardly not doing rm -r ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}
     COMMAND ${CMAKE_BUILD_TOOL} clean
     COMMAND find . -name "*.o" -o -name "*.d" -o -regex "./libgencmp-.*" | xargs -r rm
-    COMMAND find . -path ./libsecutils/Makefile
-        | xargs -r -I% ${CMAKE_BUILD_TOOL} -C libsecutils clean
-    COMMAND find . -path     ./cmpossl/Makefile
-        | xargs -r -I% ${CMAKE_BUILD_TOOL} -C cmpossl     clean
+# not needed and can go wrong for cmpossl:
+#   COMMAND find . -path ./libsecutils/Makefile
+#       | xargs -r -I% ${CMAKE_BUILD_TOOL} -C libsecutils clean
+#   COMMAND find . -path     ./cmpossl/Makefile
+#       | xargs -r -I% ${CMAKE_BUILD_TOOL} -C cmpossl     clean
+    COMMAND find . -type d -name "build" | xargs -r rm -r
+    # cowardly not doing rm -r ${CMAKE_BINARY_DIR}
+
     COMMAND rm CMakeCache.txt
     # after the following, cannot call this target again:
     COMMAND find . ( -name "*.cmake" -o -name Makefile )
@@ -323,7 +326,6 @@ if(NOT TARGET clean_all)
     COMMAND find . -name CMakeFiles
 #           -not -path ./libsecutils/* -not -path ./cmpossl/*
             | xargs -r rm -r
-    COMMAND find . -type d -name build | xargs -r rm -r
     COMMAND find . -type d -empty      | xargs -r rmdir
     COMMAND find . -type d -empty      | xargs -r rmdir
     COMMAND find . -type d -empty      | xargs -r rmdir

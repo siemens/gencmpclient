@@ -439,7 +439,7 @@ With that directory, artifacts are placed in the usual subdirectories:
 ### Cleaning up
 
 `make clean` removes part of the artifacts, while\
-`make clean_all` aims at removing everything produced by `make` and `CMake`.
+`make clean_all` removes everything produced by `make` and `CMake`.
 
 
 ## Building Debian packages (for use also with Ubuntu etc.)

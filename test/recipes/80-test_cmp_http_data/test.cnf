@@ -119,39 +119,6 @@ sleep = 3
 # A value of 3 appears to be just sufficient, with some exceptions handled
 # in 80-test_cmp_http.t, for preventing HTTP code 503 (Service Unavailable)
 
-[Simple] # for use with SimpleLra/RunLra.sh
-#no_check_time = 1  # not yet needed here
-#attime = 1564704000
-server_host = 127.0.0.1 # localhost
-server_port = 9080
-server_tls = 9085
-server_cert = server.crt
-server = $server_host:$server_port
-tls_cert = tls.p12
-tls_key = $tls_cert
-tls_keypass = pass:12345
-tls_trusted = tls_trusted.pem
-server_path = cmp/${ENV::EJBCA_PATH_RA}
-path = $server_path
-ca_dn = ${ENV::EJBCA_CMP_RECIPIENT}
-recipient = $ca_dn
-server_dn = $ca_dn # TODO was ${ENV::EJBCA_CMP_SERVER}
-expect_sender = $server_dn
-subject = ${ENV::EJBCA_CMP_SUBJECT} # TODO was ${ENV::EJBCA_CMP_SUBJECT_ECC}
-kur_port = 9083
-pbm_port = 9084
-pbm_ref =
-pbm_secret = pass:SecretCmp
-cert = signer.crt
-key  = signer.p12
-keypass = pass:12345
-ignore_keyusage = 0
-unprotected_errors = 1 # EJBCA sends error messages and negative responses without protection
-crls = ${ENV::EJBCA_CDP_URL_PREFIX}${ENV::EJBCA_CDP2}${ENV::EJBCA_CDP_URL_POSTFIX_v11}, creds/crls/EJBCA-${ENV::EJBCA_CDP3}.crl, creds/crls/EJBCA-${ENV::EJBCA_CDP1}.crl
-cdps = ${ENV::EJBCA_CDP_URL_PREFIX}${ENV::EJBCA_CDP3}${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}${ENV::EJBCA_CDP1}${ENV::EJBCA_CDP_URL_POSTFIX}
-ocsp = ${ENV::EJBCA_OCSP_URL}
-column = 2
-sleep = 0
 
 ############################# aspects
 

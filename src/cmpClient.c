@@ -138,6 +138,7 @@ bool opt_implicit_confirm;
 bool opt_disable_confirm;
 const char *opt_certout;
 const char *opt_chainout;
+bool opt_rats;
 
 /* certificate enrollment and revocation */
 const char *opt_oldcert;
@@ -270,6 +271,9 @@ opt_t cmp_opts[] = {
       "File to save newly enrolled certificate, possibly with chain and key"},
     { "chainout", OPT_TXT, {.txt = NULL}, { &opt_chainout },
       "File to save the chain of the newly enrolled certificate"},
+    { "rats", OPT_BOOL, {.bit = false}, 
+      { (const char **) &opt_rats },
+      "Request certificate with remote attestation"},
 
     OPT_HEADER("Certificate enrollment and revocation"),
     { "oldcert", OPT_TXT, {.txt = NULL}, { &opt_oldcert },
@@ -1065,7 +1069,9 @@ static int setup_ctx(CMP_CTX *ctx)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLE_CONFIRM,
                                     opt_disable_confirm ? 1 : 0)
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND,
-                                    opt_unprotected_requests ? 1 : 0)) {
+                                    opt_unprotected_requests ? 1 : 0)
+        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_INIT_RATS,
+                                    opt_rats ? 1 : 0)) {
         LOG_err("Failed to set option flags of CMP context");
         goto err;
     }

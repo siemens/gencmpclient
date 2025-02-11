@@ -110,12 +110,12 @@ else
 endif
 
 #override CFLAGS += -DOPENSSL_FUNC=__func__ # workaround for pedantic C compiler
-#ifdef NDEBUG
-#    override DEBUG_FLAGS ?= -O2
-#    override DEBUG_FLAGS += -DNDEBUG=1
-#else
-#    override DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
-#endif
+ifdef NDEBUG
+    override DEBUG_FLAGS ?= -O2
+    override DEBUG_FLAGS += -DNDEBUG=1
+else
+    override DEBUG_FLAGS ?= -g -O0 #-fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
+endif
 ifdef NDEBUG
   SET_NDEBUG=NDEBUG=1
 endif

@@ -10,3 +10,6 @@
 [submodule "cmp-ra-component"]
 	path = cmp-ra-component
 	url = https://github.com/siemens/cmp-ra-component.git
+[submodule "atg"]
+	path = atg
+	url = git@code.siemens.com:ct-rda-cst-ses-de/remote-attestation/base-functionality/attestation-token-generator.git

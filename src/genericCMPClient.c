@@ -564,91 +564,6 @@ CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name)
 }
 #endif /* OPENSSL_3_3_FEATURES */
 
-#define EVIDENCE_LEN 2000
-static X509_EXTENSIONS *getattestationExt(OSSL_CMP_CTX *ctx)
-{
-    X509_EXTENSIONS *exts = NULL;
-    X509_EXTENSION *ext = NULL;
-    unsigned char *der_data = NULL, *evidence = NULL;
-    int der_len = 0, ret = 0;
-    int len = EVIDENCE_LEN;
-    ASN1_OCTET_STRING oct;
-
-#if 0
-    fprintf(stdout, "generate_evidence_string");
-    evidence = OPENSSL_malloc(EVIDENCE_LEN);
-    if (evidence == NULL)
-        return NULL;
-    //generate_evidence_string(&evidence, &len);
-    ret = get_attestation_token(ctx->rats_nonce->data, ctx->rats_nonce->length,
-                                evidence, EVIDENCE_LEN, &len,
-                                NULL, NULL);
-#else
-    /* TODO: get evidence from library */
-    (void)ctx;
-    evidence = OPENSSL_malloc(EVIDENCE_LEN);
-    if (evidence == NULL)
-        return NULL;
-    memset(evidence, 0xAA, EVIDENCE_LEN);
-#endif
-
-    oct.data = evidence;
-    oct.length = len;
-    oct.flags = 0;
-
-    der_len = i2d_ASN1_OCTET_STRING(&oct, &der_data);
-    if (der_len < 0) {
-        goto err;
-    }
-
-    oct.data = der_data;
-    oct.length = der_len;
-    oct.flags = 0;
-
-    ext = X509_EXTENSION_create_by_NID(NULL, NID_id_smime_aa_evidenceStatement,
-                                       0, &oct);
-    if (ext == NULL
-        || (exts = sk_X509_EXTENSION_new_null()) == NULL
-        || !sk_X509_EXTENSION_push(exts, ext))
-        goto err;
-    ret = 1;
-
- err:
-    OPENSSL_free(evidence);
-    OPENSSL_free(der_data);
-    if (ret == 0) {
-        X509_EXTENSION_free(ext);
-        sk_X509_EXTENSION_free(exts);
-        exts = NULL;
-    }
-    return exts;
-}
-
-static int add_rats_extensions(OSSL_CMP_CTX *ctx, X509_EXTENSIONS **exts)
-{
-    int ret = 0;
-    X509_EXTENSIONS *rats_exts;
-
-    if (exts == NULL)
-        return 0;
-    if ((rats_exts = getattestationExt(ctx)) != NULL) {
-        ret = X509v3_add_extensions(exts, rats_exts) != NULL;
-        sk_X509_EXTENSION_pop_free(rats_exts, X509_EXTENSION_free);
-    }
-    return ret;
-}
-
-static int CMPclient_app_cb(OSSL_CMP_CTX *ctx, const OSSL_CMP_MSG *msg)
-{
-    (void)msg;
-    if(OSSL_CMP_CTX_get_option(ctx, OSSL_CMP_OPT_INIT_RATS)) {
-        X509_EXTENSIONS *req_exts = OSSL_CMP_CTX_get0_reqExtensions(ctx);
-        if (!add_rats_extensions(ctx, &req_exts))
-            return 0;
-    }
-    return 1;
-}
-
 CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
                                 OPTIONAL const EVP_PKEY *new_key,
                                 OPTIONAL const X509 *old_cert,
@@ -691,8 +606,6 @@ CMP_err CMPclient_setup_certreq(OSSL_CMP_CTX *ctx,
     if (csr != NULL && !OSSL_CMP_CTX_set1_p10CSR(ctx, csr))
         goto err;
 
-    if (OSSL_CMP_CTX_get_option(ctx, OSSL_CMP_OPT_INIT_RATS))
-        OSSL_CMP_CTX_set_app_cb(ctx, CMPclient_app_cb);
     return CMP_OK;
 
  err:

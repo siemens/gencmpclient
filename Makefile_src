@@ -115,6 +115,9 @@ endif
 override CFLAGS += -isystem $(PREFIX_OPENSSL_DIR)/include # use of -isystem is critical for selecting wanted OpenSSL version
 override CFLAGS += -I$(PREFIX)include # for genericCMPClient.h
 override CFLAGS += $(OSSL_VERSION_QUIRKS)
+ifneq ($(LIBATG_INC),)
+    override CFLAGS += -I$(LIBATG_INC)
+endif
 
 LIBCMP_A = libcmp.a
 ifneq ($(LIBCMP_INC),)
@@ -180,6 +183,10 @@ ifeq ($(LPATH),)
     endif
 else
     override LDFLAGS += -L $(LPATH)
+endif
+ifneq ($(LIBATG_LIB),)
+    override LDFLAGS += -L $(LIBATG_LIB)
+    override LIBS += -latg
 endif
 
 override OUTLIB_= libgencmp

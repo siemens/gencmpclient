@@ -58,7 +58,8 @@ VERSION=2.0
 # must be kept in sync with latest version in debian/changelog
 # PACKAGENAME=libgencmp
 # DIRNAME=$(PACKAGENAME)-$(VERSION)
-
+ATG_DIR=atg
+ATG_PREFIX ?= $(PWD)/$(ATG_DIR)/install-lib
 ifeq ($(LPATH),)
     ifeq ($(OUT_DIR),)
         override OUT_DIR = .
@@ -282,21 +283,24 @@ else
 .phony: get_submodules build_submodules clean_submodules
 submodules: build_submodules
 
-build_submodules: get_submodules build_secutils build_cmpossl
+build_submodules: get_submodules build_secutils build_cmpossl build_atg
 # might use $(SECUTILS_LIB) $(LIBCMP_INC) instead but does not check for updates
 
-get_submodules: $(SECUTILS_DIR)/src/libsecutils/include
+get_submodules: $(SECUTILS_DIR)/src/libsecutils/include $(ATG_PREFIX)/include
 ifdef USE_LIBCMP
 get_submodules: $(LIBCMP_DIR)/include
 endif
 
-update: update_secutils update_cmpossl
+update: update_secutils update_cmpossl update_atg
 	git fetch
 	git rebase
 	git submodule update
 
 $(SECUTILS_DIR)/src/libsecutils/include:
 	$(MAKE) -f Makefile_v1 update_secutils
+
+$(ATG_PREFIX)/include:
+	$(MAKE) -f Makefile_v1 update_atg
 
 SECUTILS_LIB=libsecutils$(DLL)
 ifeq ($(OUT_REVERSE_DIR),)
@@ -315,6 +319,12 @@ SECUTILS_FLAGS = SECUTILS_NO_TLS=$(SECUTILS_NO_TLS) \
 build_secutils: # not: update_secutils
 	@ # cannot split line using '\' as Debian packaging cannot handle this
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 build_all $(SECUTILS_FLAGS) $(BUILD_SUBDIRS) $(BUILD_FLAGS) -s
+
+.phony: build_atg update_atg
+update_atg:
+	git submodule update $(GIT_PROGRESS) --init $(GIT_DEPTH) $(ATG_DIR)
+build_atg: update_atg
+	PREFIX=$(ATG_PREFIX) $(MAKE) -C $(ATG_DIR) build-cli build-lib install-cli install-lib install-libdev build-plugins install-plugins
 
 ifdef USE_LIBCMP
 $(LIBCMP_DIR)/include:
@@ -390,6 +400,7 @@ endif
 BUILD_ONLY_DIRS = OUT_DIR="$(OUT_DIR)" BIN_DIR="$(BIN_DIR)" \
     LIB_NAME="$(OUTLIB)" VERSION="$(VERSION)" LIBCMP_INC="$(LIBCMP_INC)" \
     OPENSSL_DIR="$(OPENSSL_DIR)" OPENSSL_LIB="$(OPENSSL_LIB)" \
+    LIBATG_INC="$(ATG_PREFIX)/include" LIBATG_LIB="$(ATG_PREFIX)/lib" \
     INSTALL_DEB_PKGS=$(INSTALL_DEB_PKGS) DEB_TARGET_ARCH=$(DEB_TARGET_ARCH)
 build_only: $(GENCMPCLIENT_CONFIG)
 	@ # cannot split line using '\' as Debian packaging cannot handle this

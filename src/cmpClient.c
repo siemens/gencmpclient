@@ -27,6 +27,7 @@
 #ifdef LOCAL_DEFS
 # include "genericCMPClient_use.h"
 #endif
+#include <libatg.h>
 
 /*
  * Use cases are split between CMP use cases and others,
@@ -40,6 +41,12 @@ enum use_case { no_use_case,
                 /* Non-CMP use cases: */
                 validate
 };
+
+typedef struct rats_req {
+    const char *tokenname;
+    const char *tokencfgpath;
+    const char *plugincfgpath;
+} RATS_REQ;
 
 #define RSA_SPEC "RSA:2048"
 #define ECC_SPEC "EC:prime256v1"
@@ -139,6 +146,9 @@ bool opt_disable_confirm;
 const char *opt_certout;
 const char *opt_chainout;
 bool opt_rats;
+const char *opt_rats_tokenname;
+const char *opt_rats_tokencfgpath;
+const char *opt_rats_plugincfgpath;
 
 /* certificate enrollment and revocation */
 const char *opt_oldcert;
@@ -271,9 +281,15 @@ opt_t cmp_opts[] = {
       "File to save newly enrolled certificate, possibly with chain and key"},
     { "chainout", OPT_TXT, {.txt = NULL}, { &opt_chainout },
       "File to save the chain of the newly enrolled certificate"},
-    { "rats", OPT_BOOL, {.bit = false}, 
+    { "rats", OPT_BOOL, {.bit = false},
       { (const char **) &opt_rats },
       "Request certificate with remote attestation"},
+    { "rats_tokenname", OPT_TXT, {.txt = NULL}, { &opt_rats_tokenname },
+      "Token name for remote attestation"},
+    { "rats_tokencfgpath", OPT_TXT, {.txt = NULL}, { &opt_rats_tokencfgpath },
+      "Path to the RATS token configuration file"},
+    { "rats_plugincfgpath", OPT_TXT, {.txt = NULL}, { &opt_rats_plugincfgpath },
+      "Path to the RATS plugin configuration file"},
 
     OPT_HEADER("Certificate enrollment and revocation"),
     { "oldcert", OPT_TXT, {.txt = NULL}, { &opt_oldcert },
@@ -495,6 +511,120 @@ static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
     return res;
 }
 #endif
+
+#define EVIDENCE_LEN 2000
+#define NONCE_SZ 32
+static X509_EXTENSIONS *getattestationExt(OSSL_CMP_CTX *ctx, RATS_REQ *rats_config)
+{
+    X509_EXTENSIONS *exts = NULL;
+    X509_EXTENSION *ext = NULL;
+    unsigned char *der_data = NULL, *evidence = NULL;
+    int der_len = 0, ret = 0, atg_ret;
+    int evidence_len = EVIDENCE_LEN;
+    ASN1_OCTET_STRING oct, *oct_nonce;
+    struct token_req req;
+    struct token_resp resp;
+
+    if (rats_config == NULL)
+        goto err;
+    (void)ctx;
+    (void)evidence_len;
+    req.token_name = (char *)rats_config->tokenname;
+    req.config_path = (char *) rats_config->tokencfgpath;
+    req.plugconf_path = (char *)rats_config->plugincfgpath;
+    oct_nonce = OSSL_CMP_CTX_get0_rats_nonce(ctx);
+    if (oct_nonce == NULL) {
+        LOG_err("Error: No nonce available for remote attestation");
+        goto err;
+    }
+    req.nonce = oct_nonce->data;
+    req.nonce_size = oct_nonce->length;
+    req.user_data_size = 0;
+    atg_ret = get_attestation_token(req, &resp);
+    if (atg_ret == 0) {
+        printf("Token size: %lu\n", resp.token.buf_size);
+        printf("Token: [ ");
+        for (size_t i = 0; i < resp.token.buf_size; i++)
+            printf("0x%x ", resp.token.buf[i] & 0xff);
+        printf("]\n");
+
+        if (resp.num_submods > 0) {
+            printf("Error: submodules are not supported.");
+            goto err;
+        }
+        oct.data = resp.token.buf;
+        oct.length = (int)resp.token.buf_size;
+        oct.flags = 0;
+    } else {
+        printf("An error has occured. Exiting.");
+        goto err;
+    }
+
+#if TEST_DUMMY_EVIDENCE
+    /* TODO: get evidence from library */
+    (void)ctx;
+    evidence = OPENSSL_malloc(EVIDENCE_LEN);
+    if (evidence == NULL)
+        return NULL;
+    memset(evidence, 0xAA, EVIDENCE_LEN);
+    oct.data = evidence;
+    oct.length = evidence_len;
+    oct.flags = 0;
+#endif
+
+    der_len = i2d_ASN1_OCTET_STRING(&oct, &der_data);
+    if (der_len < 0)
+        goto err;
+
+    oct.data = der_data;
+    oct.length = der_len;
+    oct.flags = 0;
+
+    ext = X509_EXTENSION_create_by_NID(NULL, NID_id_smime_aa_evidenceStatement,
+                                       0, &oct);
+    if (ext == NULL
+        || (exts = sk_X509_EXTENSION_new_null()) == NULL
+        || !sk_X509_EXTENSION_push(exts, ext))
+        goto err;
+    ret = 1;
+
+ err:
+    OPENSSL_free(evidence);
+    OPENSSL_free(der_data);
+    free_attestation_token(resp);
+    if (ret == 0) {
+        X509_EXTENSION_free(ext);
+        sk_X509_EXTENSION_free(exts);
+        exts = NULL;
+    }
+    return exts;
+}
+
+static int add_rats_extensions(OSSL_CMP_CTX *ctx, RATS_REQ *rats_config, X509_EXTENSIONS **exts)
+{
+    int ret = 0;
+    X509_EXTENSIONS *rats_exts;
+
+    if (exts == NULL)
+        return 0;
+    if ((rats_exts = getattestationExt(ctx, rats_config)) != NULL) {
+        ret = X509v3_add_extensions(exts, rats_exts) != NULL;
+        sk_X509_EXTENSION_pop_free(rats_exts, X509_EXTENSION_free);
+    }
+    return ret;
+}
+
+static int CMPclient_app_cb(OSSL_CMP_CTX *ctx, const void *app_cb_arg)
+{
+
+    if (OSSL_CMP_CTX_get_option(ctx, OSSL_CMP_OPT_INIT_RATS)) {
+        X509_EXTENSIONS *req_exts = OSSL_CMP_CTX_get0_reqExtensions(ctx);
+
+        if (!add_rats_extensions(ctx, (RATS_REQ *)app_cb_arg, &req_exts))
+            return 0;
+    }
+    return 1;
+}
 
 static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
 {
@@ -1075,6 +1205,27 @@ static int setup_ctx(CMP_CTX *ctx)
         LOG_err("Failed to set option flags of CMP context");
         goto err;
     }
+    if (opt_rats) {
+        struct rats_req *rats_config;
+
+        if (opt_rats_tokenname == NULL
+            || opt_rats_tokencfgpath == NULL
+            || opt_rats_plugincfgpath == NULL) {
+            LOG_err("Missing -rats_tokenname or -rats_tokencfgpath or -rats_plugincfgpath option");
+            goto err;
+        }
+        rats_config = OPENSSL_malloc(sizeof(struct rats_req));
+        if (rats_config == NULL) {
+            LOG_err("Failed to allocate memory for RATS configuration");
+            goto err;
+        }
+        rats_config->tokenname = opt_rats_tokenname;
+        rats_config->tokencfgpath = opt_rats_tokencfgpath;
+        rats_config->plugincfgpath = opt_rats_plugincfgpath;
+        (void) OSSL_CMP_CTX_set_app_cb(ctx, CMPclient_app_cb);
+        (void) OSSL_CMP_CTX_set_app_cb_arg(ctx, (void *)rats_config);
+    }
+
 
     if (opt_profile != NULL) {
 #if OPENSSL_3_3_FEATURES

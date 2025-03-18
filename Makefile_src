@@ -191,7 +191,12 @@ else
     override CFLAGS += -D_FORTIFY_SOURCE=2
 endif
 
-OBJS = src/genericCMPClient$(OBJ) src/cmpClient$(OBJ)
+# src/credential_loading.c: src/credential_loading.h
+# src/cmpClient.c: src/credential_loading.h
+
+CMPCLIENT_OBJS = src/cmpClient$(OBJ) src/credential_loading$(OBJ)
+
+OBJS = src/genericCMPClient$(OBJ) $(CMPCLIENT_OBJS)
 
 SRCS = $(OBJS:$(OBJ)=.c)
 
@@ -249,8 +254,8 @@ $(OUT_DIR)/$(OUTLIBV): src/genericCMPClient$(OBJ)
 $(OUT_DIR)/$(OUTLIB): $(OUT_DIR)/$(OUTLIBV)
 	ln -sf $(OUTLIBV) $(OUT_DIR)/$(OUTLIB)
 
-$(OUT_DIR)/$(CMPCLIENT): src/cmpClient$(OBJ) $(OUT_DIR)/$(OUTLIB)
-	$(CC) $(LDFLAGS) $< -lgencmp $(LIBS) -o $@
+$(OUT_DIR)/$(CMPCLIENT): $(CMPCLIENT_OBJS) $(OUT_DIR)/$(OUTLIB)
+	$(CC) $(LDFLAGS) $(CMPCLIENT_OBJS) -lgencmp $(LIBS) -o $@
 
 .PHONY: all archive
 all: build archive

@@ -163,6 +163,8 @@ add_library(${LIBGENCMP_NAME} SHARED
 
 add_executable(cmpClient
   ${SRC_DIR}/cmpClient.c
+  ${SRC_DIR}/credential_loading.h
+  ${SRC_DIR}/credential_loading.c
 )
 
 target_link_libraries(cmpClient

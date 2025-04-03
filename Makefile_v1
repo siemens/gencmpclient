@@ -529,7 +529,7 @@ run_demo: $(OUT_DIR_BIN)
 	$(OPENSSL) x509 -noout -text -in creds/operational.crt
 	@echo :
 	$(OPENSSL) x509 -noout -text -in creds/operational.crt | sed '/^         [0-9a-f].*/d'
-    ifneq ($(CA_SECTION),Insta)
+    ifneq ($(CA_SECTION),Insta) # on p10cr, Insta responds with an empty message PKIBody
 	@echo
 	@$(SLEEP)
 	$(CMPCLIENT) pkcs10 -section $(CA_SECTION) $(EXTRA_OPTS)

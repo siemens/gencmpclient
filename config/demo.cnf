@@ -155,15 +155,15 @@ tls_trusted = creds/trusted/DigicertGlobalRootG2.crt
 
 # Tenant on server
 recipient = /CN=CloudPKI-Integration-Test
-cacert = creds/trusted/CloudCA_Root_v2.crt
+cacert = creds/trusted/CloudCA_Root_v2.crt,creds/trusted/Manufacturer_Root_CA.crt
 trusted = $cacert
 out_trusted = $cacert
 own_trusted = $cacert
 
 # User in tenant
-ref = /CN=CloudCA-Integration-Test-User
+ref = CloudCA-Integration-Test-User
 secret = pass:SiemensIT
-subject = $ref
+subject = /CN=$ref
 
 # Local store for imprinting results
 cert = creds/manufacturer.crt

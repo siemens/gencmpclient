@@ -124,7 +124,7 @@ out_trusted = creds/trusted/ENROLL_Root.pem
 server = pki.certificate.fi:8700/pkix/
 path = pkix/ # gets partly overridden by Makefile_v1
 secret = pass:insta
-ref = 3078
+ref = 3078 # With MAC-based protection, Insta requires this in the senderKID
 #would need to be updated every 3 months:
 #cert = creds/insta_client.p12
 #key = $cert
@@ -193,7 +193,7 @@ secret =
 newkeytype = EC:prime256v1 # an alias of EC:secp256r1
 newkey = creds/operational.pem # fallback for cmpossl
 newkeypass = pass:12345
-reqexts = reqexts
+reqexts = reqexts # with non-empty list of extensions, Insta starts polling mode with status: 3 = waiting, statusString: "", failInfo: ''
 policies = certificatePolicies
 san_nodefault = 1
 certout = creds/operational.crt

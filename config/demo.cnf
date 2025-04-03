@@ -64,6 +64,7 @@ EJBCA_CMP_SUBJECT_IMPRINT =
 server = ${ENV::EJBCA_HOST}:${ENV::EJBCA_HTTPS_PORT}
 path = ${ENV::EJBCA_PATH}/${ENV::EJBCA_PATH_RA}
 no_proxy = 127.0.0.1,localhost,${ENV::EJBCA_HOST}
+# ref = test-genCMPClientDemo
 secret = pass:SecretCmp
 cert = ${ENV::EJBCA_CMP_CLIENT_CERT}
 key = ${ENV::EJBCA_CMP_CLIENT_KEY}
@@ -72,6 +73,7 @@ recipient = ${ENV::EJBCA_CMP_RECIPIENT}
 subject = ${ENV::EJBCA_CMP_SUBJECT}
 #srvcert = ${ENV::EJBCA_CMP_TRUSTED}
 trusted = ${ENV::EJBCA_CMP_TRUSTED}, ${ENV::EJBCA_TRUSTED}
+untrusted = ${ENV::EJBCA_UNTRUSTED}
 out_trusted = ${ENV::EJBCA_CMP_TRUSTED}, ${ENV::EJBCA_TRUSTED}
 tls_trusted = ${ENV::EJBCA_TLS_TRUSTED}
 tls_host = ${ENV::EJBCA_TLS_HOST}
@@ -100,7 +102,7 @@ ocsp =
 [CmpRa] # LightweightCmpRa
 server = http://localhost:6000/lra
 secret = pass:myPresharedSecret
-ref = keyIdentification
+# ref = keyIdentification
 cert = creds/CMP_EE_Keystore.p12
 key = $cert
 cert = creds/CMP_EE_Chain.pem # workaround for cmpossl
@@ -179,7 +181,7 @@ key =
 newkeytype = EC:secp521r1
 newkey = creds/manufacturer.pem # fallback for cmpossl
 newkeypass = pass:12345
-reqexts = empty # is ignored by EJBCA
+reqexts = empty
 policies = empty
 certout = creds/manufacturer.crt
 cacerts_dir = creds/trusted
@@ -258,10 +260,10 @@ basicConstraints = CA:FALSE # used as a workaround for OpenSSL 3.4 ERROR: error 
 #subjectAltName =
 
 [reqexts]
-#basicConstraints = CA:FALSE
-keyUsage = "critical, digitalSignature" # is ignored by EJBCA
-extendedKeyUsage = "critical, serverAuth, 1.3.6.1.5.5.7.3.2" # is ignored by EJBCA
-subjectAltName = @alt_names
+#basicConstraints = CA:FALSE # is ignored by PPKI Playground EJBCA
+keyUsage = "critical, digitalSignature" # is ignored by PPKI Playground EJBCA
+extendedKeyUsage = "critical, clientAuth, 1.3.6.1.5.5.7.3.3" # is ignored by PPKI Playground EJBCA
+subjectAltName = @alt_names # is respected by PPKI Playground EJBCA
 
 [alt_names]
 DNS.0 = localhost

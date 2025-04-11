@@ -20,7 +20,7 @@
 #include <openssl/ssl.h>
 
 #include <secutils/config/config.h>
-#include <secutils/credentials/cert.h>
+#include <secutils/connections/conn.h> /* for CONN_IS_HTTPS */
 #include <secutils/credentials/verify.h>
 #include <secutils/certstatus/crl_mgmt.h> /* for CRLMGMT_load_crl_cb */
 
@@ -170,6 +170,7 @@ static char *opt_reqout = NULL;
 static char *opt_reqout_only = NULL;
 static int reqout_only_done = 0;
 static char *opt_rspin = NULL;
+static int rspin_in_use = 0;
 static char *opt_rspout = NULL;
 
 /* TODO further extend verification options and align with OpenSSL:apps/cmp.c */
@@ -416,7 +417,7 @@ opt_t cmp_opts[] = {
 
     OPT_HEADER("TLS connection"),
     { "tls_used", OPT_BOOL, {.bit = false}, { (const char **) &opt_tls_used },
-      "Enable using TLS (also when other TLS options are not set)"},
+      "Require using TLS for HTTP (also when other TLS options are not set)"},
     { "tls_cert", OPT_TXT, {.txt = NULL}, { &opt_tls_cert },
       "Client certificate (plus any extra certs) for TLS connection"},
     { "tls_key", OPT_TXT, {.txt = NULL}, { &opt_tls_key },
@@ -428,7 +429,7 @@ opt_t cmp_opts[] = {
     { "tls_trusted", OPT_TXT, {.txt = NULL}, { &opt_tls_trusted },
       "File(s) with certs to trust for TLS server verification (TLS trust anchor)"},
     { "tls_host", OPT_TXT, {.txt = NULL}, { &opt_tls_host },
-      "Address (rather than -server) to be checked during TLS hostname validation"},
+      "Address to be used for SNI and to be checked during TLS hostname validation"},
 
     OPT_HEADER("Debugging"),
     {"reqin", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqin},
@@ -546,6 +547,8 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     LOG_err("TLS is not enabled in this build");
     return NULL;
 #else
+    const char *host = opt_tls_host;
+    char *server_host = NULL;
     CREDENTIALS *tls_creds = NULL;
     SSL_CTX *tls = NULL;
 
@@ -567,7 +570,7 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
         if (!STORE_set_crl_callback(tls_trust, CRLMGMT_load_crl_cb, cmdata))
             goto err;
     } else {
-        LOG_warn("-tls_used given without -tls_trusted; will not authenticate the TLS server");
+        LOG_warn("-tls_used active without -tls_trusted; will not authenticate the TLS server");
     }
 
     if (opt_tls_cert != NULL || opt_tls_key != NULL
@@ -586,7 +589,7 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
         if (tls_creds == NULL)
             goto err;
     } else {
-        LOG_warn("-tls_used given without -tls_key; cannot authenticate to the TLS server");
+        LOG_warn("-tls_used active without -tls_key; cannot authenticate to the TLS server");
     }
     tls = TLS_new(tls_trust, untrusted_certs, tls_creds, tls_ciphers,
                   security_level);
@@ -598,12 +601,18 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
      * If we did this before checking our own TLS cert in TLS_new(),
      * the expected hostname would mislead the check.
      */
-    if (tls_trust != NULL) {
-        const char *host = opt_tls_host != NULL ? opt_tls_host : opt_server;
-
-        if (!STORE_set1_host_ip(tls_trust, host, host))
+    if (host == NULL && opt_server != NULL) {
+        if (!OSSL_HTTP_parse_url(opt_server, NULL, NULL, &server_host, NULL, NULL,
+                                 NULL, NULL, NULL)) {
+            LOG(FL_ERR, "cannot parse -server URL: %s", opt_server);
             goto err;
+        }
+        host = server_host;
     }
+
+    if (tls_trust != NULL && !STORE_set1_host_ip(tls_trust, host, host))
+        goto err;
+    OPENSSL_free(server_host);
 
     /* If present we append to the list also the certs from opt_tls_extra */
     if (opt_tls_extra != NULL) {
@@ -736,8 +745,8 @@ static int write_PKIMESSAGE(const OSSL_CMP_MSG *msg, char **filenames)
         return 0;
     }
     if (*filenames == NULL) {
-        LOG_err("Not enough file names provided for writing PKIMessage");
-        return 0;
+        LOG_warn("Not enough file names provided for writing PKIMessage");
+        return 1;
     }
 
     file = *filenames;
@@ -761,7 +770,7 @@ static OSSL_CMP_MSG *read_PKIMESSAGE(OSSL_CMP_CTX *ctx,
         return NULL;
     }
     if (*filenames == NULL) {
-        LOG_err("Not enough file names provided for reading PKIMessage");
+        LOG_err("Too few file names provided for reading PKIMessage");
         return NULL;
     }
 
@@ -826,11 +835,14 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
     } else {
         const OSSL_CMP_MSG *actual_req = req_new != NULL ? req_new : req;
 
+        if (rspin_in_use)
+            LOG_warn("not enough -rspin filename arguments; resorting to contacting server");
         res =
 #if 0 /* TODO add in case mock server functionality is included */
             opt_use_mock_srv ? OSSL_CMP_CTX_server_perform(ctx, actual_req) :
 #endif
             OSSL_CMP_MSG_http_perform(ctx, actual_req);
+        rspin_in_use = 0;
     }
     if (res == NULL)
         goto err;
@@ -1203,8 +1215,11 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
             || (untrusted_certs == NULL && opt_untrusted != NULL))
         goto err;
 
-    if (opt_reqin != NULL && opt_rspin != NULL)
-        LOG_warn("-reqin is ignored since -rspin is present");
+    if (opt_rspin != NULL) {
+        rspin_in_use = 1;
+        if (opt_reqin != NULL)
+            LOG_warn("-reqin is ignored since -rspin is present");
+    }
     if (opt_reqin_new_tid && opt_reqin == NULL)
         LOG_warn("-reqin_new_tid is ignored since -reqin is not present");
     if (opt_reqin != NULL || opt_reqout != NULL || opt_reqout_only != NULL
@@ -1281,9 +1296,21 @@ static int setup_transfer(CMP_CTX *ctx)
             LOG(FL_WARN, "-server %s", msg);
             opt_server = NULL;
         }
+        if (opt_proxy != NULL) {
+            LOG(FL_WARN, "-proxy %s", msg);
+            opt_proxy = NULL;
+        }
+        if (opt_no_proxy != NULL) {
+            LOG(FL_WARN, "-no_proxy %s", msg);
+            opt_no_proxy = NULL;
+        }
         if (opt_path != NULL) {
             LOG(FL_WARN, "-path %s", msg);
             opt_path = NULL;
+        }
+        if (opt_tls_used) {
+            LOG(FL_WARN, "-tls_used %s", msg);
+            opt_tls_used = 0;
         }
 #if 0 /* TODO add in case mock server functionality is included */
         if (opt_use_mock_srv)
@@ -1316,19 +1343,24 @@ static int setup_transfer(CMP_CTX *ctx)
             opt_tls_used = 0;
         }
     } else {
-        if (opt_rspin != NULL) {
-            LOG_warn("ignoring -server option since -rspin is given");
-            opt_server = NULL;
+        if (opt_rspin != NULL)
+            LOG_warn("-server option etc. are not used if enough filenames given for -rspin");
+        if (!opt_tls_used && CONN_IS_HTTPS(opt_server)) {
+            LOG_warn("assuming -tls_used since -server URL indicates HTTPS");
+            opt_tls_used = 1;
         }
     }
     if (opt_tls_cert == NULL && opt_tls_key == NULL && opt_tls_keypass == NULL
             && opt_tls_extra == NULL && opt_tls_trusted == NULL
             && opt_tls_host == NULL) {
         if (opt_tls_used)
-            LOG_warn("-tls_used given without any other TLS options");
-    } else {
-        if (!opt_tls_used)
-            LOG_warn("TLS options(s) are ignored since -tls_used is not given");
+            LOG_warn("-tls_used is active without any other TLS options");
+    } else if (!opt_tls_used) {
+            LOG_warn("ignoring TLS options(s) since -tls_used is not active");
+    }
+    if (opt_server == NULL) {
+        LOG_info("will not contact any server");
+        return CMP_OK;
     }
 
     SSL_CTX *tls = NULL;
@@ -1349,6 +1381,8 @@ static int setup_transfer(CMP_CTX *ctx)
     if (err != CMP_OK) {
         LOG_err("Unable to set up HTTP for CMP client");
         goto err;
+    } else if (opt_rspin != NULL) {
+        LOG_info("will contact server only if -rspin argument does not give enough filenames");
     }
  err:
     return err;

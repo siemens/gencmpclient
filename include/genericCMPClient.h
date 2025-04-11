@@ -149,7 +149,7 @@ CMP_err CMPclient_setup_HTTP(CMP_CTX *ctx, const char *server, const char *path,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy);
 /* call alternatively if transfer_fn is NULL and existing connection is used */
-CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, const char *path,
+CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, OPTIONAL const char *path,
                             int keep_alive, int timeout);
 
 # if OPENSSL_3_3_FEATURES

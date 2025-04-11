@@ -254,12 +254,13 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
     return CMPOSSL_error();
 }
 
-CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, const char *path,
+/* also used internally by CMPclient_setup_HTTP() with rw == NULL */
+CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, OPTIONAL const char *path,
                             int keep_alive, int timeout)
 {
     if (ctx == NULL)
         return CMP_R_INVALID_CONTEXT;
-    if (!OSSL_CMP_CTX_set1_serverPath(ctx, path) ||
+    if (!OSSL_CMP_CTX_set1_serverPath(ctx, path /* may be NULL */) ||
         (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT,
                                                   timeout)) ||
         (keep_alive >= 0 && !OSSL_CMP_CTX_set_option(ctx,

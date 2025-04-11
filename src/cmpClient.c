@@ -170,6 +170,7 @@ static char *opt_reqout = NULL;
 static char *opt_reqout_only = NULL;
 static int reqout_only_done = 0;
 static char *opt_rspin = NULL;
+static int rspin_in_use = 0;
 static char *opt_rspout = NULL;
 
 /* TODO further extend verification options and align with OpenSSL:apps/cmp.c */
@@ -416,7 +417,7 @@ opt_t cmp_opts[] = {
 
     OPT_HEADER("TLS connection"),
     { "tls_used", OPT_BOOL, {.bit = false}, { (const char **) &opt_tls_used },
-      "Enable using TLS (also when other TLS options are not set)"},
+      "Require using TLS for HTTP (also when other TLS options are not set)"},
     { "tls_cert", OPT_TXT, {.txt = NULL}, { &opt_tls_cert },
       "Client certificate (plus any extra certs) for TLS connection"},
     { "tls_key", OPT_TXT, {.txt = NULL}, { &opt_tls_key },
@@ -736,8 +737,8 @@ static int write_PKIMESSAGE(const OSSL_CMP_MSG *msg, char **filenames)
         return 0;
     }
     if (*filenames == NULL) {
-        LOG_err("Not enough file names provided for writing PKIMessage");
-        return 0;
+        LOG_warn("Not enough file names provided for writing PKIMessage");
+        return 1;
     }
 
     file = *filenames;
@@ -761,7 +762,7 @@ static OSSL_CMP_MSG *read_PKIMESSAGE(OSSL_CMP_CTX *ctx,
         return NULL;
     }
     if (*filenames == NULL) {
-        LOG_err("Not enough file names provided for reading PKIMessage");
+        LOG_err("Too few file names provided for reading PKIMessage");
         return NULL;
     }
 
@@ -826,11 +827,14 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
     } else {
         const OSSL_CMP_MSG *actual_req = req_new != NULL ? req_new : req;
 
+        if (rspin_in_use)
+            LOG_warn("not enough -rspin filename arguments; resorting to contacting server");
         res =
 #if 0 /* TODO add in case mock server functionality is included */
             opt_use_mock_srv ? OSSL_CMP_CTX_server_perform(ctx, actual_req) :
 #endif
             OSSL_CMP_MSG_http_perform(ctx, actual_req);
+        rspin_in_use = 0;
     }
     if (res == NULL)
         goto err;
@@ -1203,8 +1207,11 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
             || (untrusted_certs == NULL && opt_untrusted != NULL))
         goto err;
 
-    if (opt_reqin != NULL && opt_rspin != NULL)
-        LOG_warn("-reqin is ignored since -rspin is present");
+    if (opt_rspin != NULL) {
+        rspin_in_use = 1;
+        if (opt_reqin != NULL)
+            LOG_warn("-reqin is ignored since -rspin is present");
+    }
     if (opt_reqin_new_tid && opt_reqin == NULL)
         LOG_warn("-reqin_new_tid is ignored since -reqin is not present");
     if (opt_reqin != NULL || opt_reqout != NULL || opt_reqout_only != NULL
@@ -1281,9 +1288,21 @@ static int setup_transfer(CMP_CTX *ctx)
             LOG(FL_WARN, "-server %s", msg);
             opt_server = NULL;
         }
+        if (opt_proxy != NULL) {
+            LOG(FL_WARN, "-proxy %s", msg);
+            opt_proxy = NULL;
+        }
+        if (opt_no_proxy != NULL) {
+            LOG(FL_WARN, "-no_proxy %s", msg);
+            opt_no_proxy = NULL;
+        }
         if (opt_path != NULL) {
             LOG(FL_WARN, "-path %s", msg);
             opt_path = NULL;
+        }
+        if (opt_tls_used) {
+            LOG(FL_WARN, "-tls_used %s", msg);
+            opt_tls_used = 0;
         }
 #if 0 /* TODO add in case mock server functionality is included */
         if (opt_use_mock_srv)
@@ -1316,10 +1335,8 @@ static int setup_transfer(CMP_CTX *ctx)
             opt_tls_used = 0;
         }
     } else {
-        if (opt_rspin != NULL) {
-            LOG_warn("ignoring -server option since -rspin is given");
-            opt_server = NULL;
-        }
+        if (opt_rspin != NULL)
+            LOG_warn("-server option etc. are not used if enough filenames given for -rspin");
     }
     if (opt_tls_cert == NULL && opt_tls_key == NULL && opt_tls_keypass == NULL
             && opt_tls_extra == NULL && opt_tls_trusted == NULL
@@ -1349,6 +1366,8 @@ static int setup_transfer(CMP_CTX *ctx)
     if (err != CMP_OK) {
         LOG_err("Unable to set up HTTP for CMP client");
         goto err;
+    } else if (opt_rspin != NULL) {
+        LOG_info("will contact server only if -rspin argument does not give enough filenames");
     }
  err:
     return err;

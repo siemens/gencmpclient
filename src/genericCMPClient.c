@@ -32,7 +32,7 @@ STACK_OF(X509_EXTENSION)
 # include <secutils/credentials/cert.h>
 # include <secutils/credentials/store.h>
 # include <secutils/credentials/verify.h>
-# include <secutils/connections/conn.h>
+# include <secutils/connections/conn.h> /* for CONN_IS_IP_ADDR() */
 # ifndef SECUTILS_NO_TLS
 #  include <secutils/connections/tls.h>
 # endif
@@ -286,6 +286,7 @@ static char *opt_getprog(void)
 }
 
 typedef struct app_http_tls_info_st {
+    const char *sni_hostname;
     const char *server;
     const char *port;
     int use_proxy;
@@ -326,12 +327,12 @@ static BIO *app_http_tls_cb(BIO *bio, void *arg, int connect, int detail)
     APP_HTTP_TLS_INFO *info = (APP_HTTP_TLS_INFO *)arg;
     SSL_CTX *ssl_ctx = info->ssl_ctx;
     X509_STORE *ts;
+    BIO *sbio = NULL;
 
     if (ssl_ctx == NULL)
         return bio; /* not using TLS */
     if (connect) {
         SSL *ssl;
-        BIO *sbio = NULL;
 
         if ((info->use_proxy
              && !OSSL_HTTP_proxy_connect(bio, info->server, info->port,
@@ -339,14 +340,13 @@ static BIO *app_http_tls_cb(BIO *bio, void *arg, int connect, int detail)
                                          info->timeout, bio_err, opt_getprog()))
                 || (sbio = BIO_new(BIO_f_ssl())) == NULL)
             return NULL;
-        if ((ssl = SSL_new(ssl_ctx)) == NULL) {
-            BIO_free(sbio);
-            return NULL;
-        }
+        if ((ssl = SSL_new(ssl_ctx)) == NULL)
+            goto err;
 
-        SSL_set_tlsext_host_name(ssl, info->server); /* not critical to do */
         SSL_set_connect_state(ssl);
         BIO_set_ssl(sbio, ssl, BIO_CLOSE);
+        if (!SSL_set_tlsext_host_name(ssl, info->sni_hostname /* may be NULL */))
+            goto err;
 
         bio = BIO_push(sbio, bio);
     } else { /* disconnect */
@@ -371,14 +371,19 @@ static BIO *app_http_tls_cb(BIO *bio, void *arg, int connect, int detail)
         (void)STORE_set0_tls_bio(ts, bio);
     }
     return bio;
+
+ err:
+    BIO_free(sbio);
+    return NULL;
 }
 
 static void APP_HTTP_TLS_INFO_free(APP_HTTP_TLS_INFO *info)
 {
     if (info != NULL) {
-        SSL_CTX_free(info->ssl_ctx);
+        OPENSSL_free((char *)info->sni_hostname);
         OPENSSL_free((char *)info->server);
         OPENSSL_free((char *)info->port);
+        SSL_CTX_free(info->ssl_ctx);
         OPENSSL_free(info);
     }
 }
@@ -443,16 +448,21 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
         OSSL_HTTP_adapt_proxy(proxy, no_proxy, host, tls != NULL);
 #ifndef SECUTILS_NO_TLS
     if (tls != NULL) {
-        const char *host_or_proxy = proxy_host == NULL ? host : proxy_host;
         X509_STORE *ts = SSL_CTX_get_cert_store(tls);
+        X509_VERIFY_PARAM *vpm = ts != NULL ? X509_STORE_get0_param(ts) : NULL;
+        char *ip;
+        const char *hostaddr = ts != NULL ? STORE_get0_host(ts) : NULL;
 
-        if (is_localhost(host_or_proxy)) {
+        if (is_localhost(host)) {
+            hostaddr = NULL;
             LOG(FL_WARN, "skipping host name verification on localhost");
             /* enables self-bootstrapping of local RA using its device cert */
-        } else {
-            /* set expected host if not already done by caller */
-            if (STORE_get0_host(ts) == NULL &&
-                !STORE_set1_host_ip(ts, host_or_proxy, host_or_proxy)) {
+        } else if (hostaddr == NULL) {
+            hostaddr = host;
+            /* set expected host in ts, if no name validation has been set there so far */
+            if (vpm != NULL && X509_VERIFY_PARAM_get0_email(vpm) == NULL
+                && (ip = X509_VERIFY_PARAM_get1_ip_asc(vpm), OPENSSL_free(ip), ip) == NULL
+                    && !STORE_set1_host_ip(ts, host, 0)) {
                 err = CMPOSSL_error();
                 goto err;
             }
@@ -472,11 +482,19 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
         /* info will be freed along with ctx */
         OSSL_CMP_CTX_set_transfer_cb_arg(ctx, NULL); /* indicate SSL not used */
 
+        if (!CONN_IS_IP_ADDR(hostaddr)) {
+            if (hostaddr == NULL) {
+                info->sni_hostname = NULL;
+            } else if ((info->sni_hostname = OPENSSL_strdup(hostaddr)) == NULL) {
+                err = CMPOSSL_error();
+                goto err;
+            }
+        }
         info->server = OPENSSL_strdup(host);
         info->port = OPENSSL_strdup(server_port);
         info->use_proxy = proxy_host != NULL;
         info->timeout = OSSL_CMP_CTX_get_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT);
-        if (!SSL_CTX_up_ref(tls)) {
+        if (info->server == NULL || info->port == NULL || !SSL_CTX_up_ref(tls)) {
             err = CMPOSSL_error();
             goto err;
         }

@@ -1338,6 +1338,10 @@ static int setup_transfer(CMP_CTX *ctx)
         if (!opt_tls_used)
             LOG_warn("TLS options(s) are ignored since -tls_used is not given");
     }
+    if (opt_server == NULL) {
+        LOG_info("will not contact any server");
+        return CMP_OK;
+    }
 
     SSL_CTX *tls = NULL;
     if (opt_tls_used

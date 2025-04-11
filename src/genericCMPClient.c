@@ -394,8 +394,7 @@ static int is_localhost(const char *host)
 #endif
 
 /* Will return error when used with OpenSSL compiled with OPENSSL_NO_SOCK. */
-CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
-                             const char *server, const char *path,
+CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *path,
                              int keep_alive, int timeout, OPTIONAL SSL_CTX *tls,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy)
@@ -406,6 +405,10 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         LOG(FL_ERR, "No ctx parameter given");
         return CMP_R_INVALID_CONTEXT;
     }
+    if (server == NULL) {
+        LOG(FL_ERR, "No server parameter given");
+        return CMP_R_INVALID_CONTEXT;
+    }
 #ifdef SECUTILS_NO_TLS
     if (tls != NULL) {
         LOG(FL_ERR, "TLS is not supported by this build");
@@ -414,8 +417,6 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 #endif
     char *host = NULL, *server_port = NULL, *parsed_path = NULL;
     const char *proxy_host = NULL;
-    if (server == NULL)
-        goto set_path;
 
     int use_ssl, port;
     if (!OSSL_HTTP_parse_url(server, &use_ssl, NULL /* puser */, &host,
@@ -483,22 +484,17 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     }
 #endif
 
- set_path:
     err = CMPclient_setup_BIO(ctx, NULL, path, keep_alive, timeout);
     if (err != CMP_OK)
         goto err;
 
     if (path == NULL)
         path = "";
-    if (server == NULL)
-        LOG_info("will not contact any server");
-    /* since -reqout_only or -rspin is given */
-    else
-        LOG(FL_INFO, "will contact http%s://%s:%d%s%s%s%s",
-            tls != NULL ? "s" : "",
-            host, port, path[0] == '/' ? "" : "/", path,
-            proxy_host != NULL ? " via proxy " : "",
-            proxy_host != NULL ? proxy_host : "");
+    LOG(FL_INFO, "will contact http%s://%s:%d%s%s%s%s",
+        tls != NULL ? "s" : "",
+        host, port, path[0] == '/' ? "" : "/", path,
+        proxy_host != NULL ? " via proxy " : "",
+        proxy_host != NULL ? proxy_host : "");
     err = CMP_OK;
 
  err:

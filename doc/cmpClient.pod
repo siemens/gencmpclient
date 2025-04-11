@@ -584,6 +584,7 @@ For TLS connections the host part is taken as fallback for the B<-tls_host> opti
 
 This option is ignored if I<-rspin> is given with enough filename arguments.
 
+If the scheme C<https> is given, the B<-tls_used> option is implied.
 When TLS is used, the default port is 443, otherwise 80.
 The optional userinfo component is ignored.
 Any given query and fragment components are handled as part of the path component.
@@ -1001,6 +1002,7 @@ Require using TLS (even when other TLS_related options are not set)
 for HTTP message exchange with CMP server.
 The following TLS-related options are ignored if B<-tls_used> is not given.
 
+This option is implied if the B<-server> option is given with the scheme C<https>.
 It is ignored if the B<-server> option is not given
 or B<-rspin> is given with enough filename arguments.
 

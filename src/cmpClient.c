@@ -429,7 +429,7 @@ opt_t cmp_opts[] = {
     { "tls_trusted", OPT_TXT, {.txt = NULL}, { &opt_tls_trusted },
       "File(s) with certs to trust for TLS server verification (TLS trust anchor)"},
     { "tls_host", OPT_TXT, {.txt = NULL}, { &opt_tls_host },
-      "Address (rather than -server) to be checked during TLS hostname validation"},
+      "Address to be used for SNI and to be checked during TLS hostname validation"},
 
     OPT_HEADER("Debugging"),
     {"reqin", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqin},
@@ -547,6 +547,8 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     LOG_err("TLS is not enabled in this build");
     return NULL;
 #else
+    const char *host = opt_tls_host;
+    char *server_host = NULL;
     CREDENTIALS *tls_creds = NULL;
     SSL_CTX *tls = NULL;
 
@@ -599,12 +601,18 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
      * If we did this before checking our own TLS cert in TLS_new(),
      * the expected hostname would mislead the check.
      */
-    if (tls_trust != NULL) {
-        const char *host = opt_tls_host != NULL ? opt_tls_host : opt_server;
-
-        if (!STORE_set1_host_ip(tls_trust, host, host))
+    if (host == NULL && opt_server != NULL) {
+        if (!OSSL_HTTP_parse_url(opt_server, NULL, NULL, &server_host, NULL, NULL,
+                                 NULL, NULL, NULL)) {
+            LOG(FL_ERR, "cannot parse -server URL: %s", opt_server);
             goto err;
+        }
+        host = server_host;
     }
+
+    if (tls_trust != NULL && !STORE_set1_host_ip(tls_trust, host, host))
+        goto err;
+    OPENSSL_free(server_host);
 
     /* If present we append to the list also the certs from opt_tls_extra */
     if (opt_tls_extra != NULL) {

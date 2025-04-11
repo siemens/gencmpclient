@@ -20,7 +20,7 @@
 #include <openssl/ssl.h>
 
 #include <secutils/config/config.h>
-#include <secutils/credentials/cert.h>
+#include <secutils/connections/conn.h> /* for CONN_IS_HTTPS */
 #include <secutils/credentials/verify.h>
 #include <secutils/certstatus/crl_mgmt.h> /* for CRLMGMT_load_crl_cb */
 
@@ -568,7 +568,7 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
         if (!STORE_set_crl_callback(tls_trust, CRLMGMT_load_crl_cb, cmdata))
             goto err;
     } else {
-        LOG_warn("-tls_used given without -tls_trusted; will not authenticate the TLS server");
+        LOG_warn("-tls_used active without -tls_trusted; will not authenticate the TLS server");
     }
 
     if (opt_tls_cert != NULL || opt_tls_key != NULL
@@ -587,7 +587,7 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
         if (tls_creds == NULL)
             goto err;
     } else {
-        LOG_warn("-tls_used given without -tls_key; cannot authenticate to the TLS server");
+        LOG_warn("-tls_used active without -tls_key; cannot authenticate to the TLS server");
     }
     tls = TLS_new(tls_trust, untrusted_certs, tls_creds, tls_ciphers,
                   security_level);
@@ -1337,15 +1337,18 @@ static int setup_transfer(CMP_CTX *ctx)
     } else {
         if (opt_rspin != NULL)
             LOG_warn("-server option etc. are not used if enough filenames given for -rspin");
+        if (!opt_tls_used && CONN_IS_HTTPS(opt_server)) {
+            LOG_warn("assuming -tls_used since -server URL indicates HTTPS");
+            opt_tls_used = 1;
+        }
     }
     if (opt_tls_cert == NULL && opt_tls_key == NULL && opt_tls_keypass == NULL
             && opt_tls_extra == NULL && opt_tls_trusted == NULL
             && opt_tls_host == NULL) {
         if (opt_tls_used)
-            LOG_warn("-tls_used given without any other TLS options");
-    } else {
-        if (!opt_tls_used)
-            LOG_warn("TLS options(s) are ignored since -tls_used is not given");
+            LOG_warn("-tls_used is active without any other TLS options");
+    } else if (!opt_tls_used) {
+            LOG_warn("ignoring TLS options(s) since -tls_used is not active");
     }
 
     SSL_CTX *tls = NULL;

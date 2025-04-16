@@ -82,17 +82,17 @@ CMP_err CMPclient_init(OPTIONAL const char *name, OPTIONAL LOG_cb_t log_fn)
     }
 
     if (!STORE_EX_check_index()) {
-        LOG(FL_ERR, "failed to initialize STORE_EX index\n");
+        LOG(FL_ERR, "Failed to initialize STORE_EX index\n");
         return ERR_R_INIT_FAIL;
     }
 
     if (!OSSL_CMP_log_open()) {
-        LOG(FL_ERR, "failed to initialize logging of genCMPClient\n");
+        LOG(FL_ERR, "Failed to initialize logging of genCMPClient\n");
         return ERR_R_INIT_FAIL;
     }
 #ifndef SECUTILS_NO_TLS
     if (!TLS_init()) {
-        LOG(FL_ERR, "failed to initialize TLS library of genCMPClient\n");
+        LOG(FL_ERR, "Failed to initialize TLS library of genCMPClient\n");
         return ERR_R_INIT_FAIL;
     }
 #endif
@@ -272,7 +272,7 @@ CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, OPTIONAL const char *path,
     if (rw != NULL) {
         if (path == NULL)
             path = "";
-        LOG(FL_INFO, "will contact CMP server via existing connection at HTTP path \"%s%s\"",
+        LOG(FL_INFO, "Will contact CMP server via existing connection at HTTP path \"%s%s\"",
             path[0] == '/' ? "" : "/", path);
     }
     return CMP_OK;
@@ -428,7 +428,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
                              &server_port, &port, &parsed_path, NULL, NULL))
         return err;
     if (use_ssl && tls == NULL) {
-        LOG(FL_ERR, "missing TLS context since server URL indicates HTTPS");
+        LOG(FL_ERR, "Missing TLS context since server URL indicates HTTPS");
         goto err;
     }
     if (!OSSL_CMP_CTX_set1_server(ctx, host) ||
@@ -455,7 +455,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
 
         if (is_localhost(host)) {
             hostaddr = NULL;
-            LOG(FL_WARN, "skipping host name verification on localhost");
+            LOG(FL_WARN, "Skipping host name verification on localhost");
             /* enables self-bootstrapping of local RA using its device cert */
         } else if (hostaddr == NULL) {
             hostaddr = host;
@@ -508,7 +508,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
 
     if (path == NULL)
         path = "";
-    LOG(FL_INFO, "will contact http%s://%s:%d%s%s%s%s",
+    LOG(FL_INFO, "Will contact http%s://%s:%d%s%s%s%s",
         tls != NULL ? "s" : "",
         host, port, path[0] == '/' ? "" : "/", path,
         proxy_host != NULL ? " via proxy " : "",
@@ -997,17 +997,17 @@ static OSSL_CMP_ITAV *get_genm_itav(CMP_CTX *ctx,
 
         r = OBJ_obj2txt(name, sizeof(name), obj, 0);
         if (r < 0)
-            LOG(FL_WARN, "cannot get InfoType details while expecting %s from genp",
+            LOG(FL_WARN, "Cannot get InfoType details while expecting %s from genp",
                 desc);
         else if (r == 0)
-            LOG(FL_WARN, "genp contains empty InfoType name while expecting %s from genp",
+            LOG(FL_WARN, "The genp contains empty InfoType name while expecting %s from genp",
                 desc);
         else
-            LOG(FL_WARN, "genp contains unexpected InfoType %s while expecting %s from genp",
+            LOG(FL_WARN, "The genp contains unexpected InfoType %s while expecting %s from genp",
                 name, desc);
         OSSL_CMP_ITAV_free(itav);
     }
-    LOG(FL_ERR, "could not find any ITAV for %s in genp", desc);
+    LOG(FL_ERR, "Could not find any ITAV for %s in genp", desc);
 
  err:
     sk_OSSL_CMP_ITAV_free(itavs);
@@ -1231,7 +1231,7 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
     }
     if (*oldWithNew != NULL) {
         if (oldWithOld == NULL) {
-            LOG(FL_WARN, "oldWithNew certificate received in genp for verifying oldWithOld, but oldWithOld was not provided");
+            LOG(FL_WARN, "Received oldWithNew certificate in genp for verifying oldWithOld, but oldWithOld was not provided");
         } else if (!verify_cert1(ctx, (X509 *)*newWithNew, *oldWithNew,
                                  (X509 *)oldWithOld, "oldWithOld")) {
             err = CMP_R_INVALID_ROOTCAUPD;

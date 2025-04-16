@@ -527,7 +527,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
         (void)ERR_pop_to_mark();
 
         if (n == NULL) {
-            LOG(FL_ERR, "bad syntax of %s '%s'", desc, names);
+            LOG(FL_ERR, "Bad syntax of %s '%s'", desc, names);
             return 0;
         }
         if (!OSSL_CMP_CTX_push1_subjectAltName(ctx, n)) {
@@ -576,10 +576,10 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     if (opt_tls_cert != NULL || opt_tls_key != NULL
             || opt_tls_keypass != NULL) {
         if (opt_tls_key == NULL) {
-            LOG_err("missing -tls_key option");
+            LOG_err("Missing -tls_key option");
             goto err;
         } else if (opt_tls_cert == NULL) {
-            LOG_err("missing -tls_cert option");
+            LOG_err("Missing -tls_cert option");
             goto err;
         }
     }
@@ -604,7 +604,7 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     if (host == NULL && opt_server != NULL) {
         if (!OSSL_HTTP_parse_url(opt_server, NULL, NULL, &server_host, NULL, NULL,
                                  NULL, NULL, NULL)) {
-            LOG(FL_ERR, "cannot parse -server URL: %s", opt_server);
+            LOG(FL_ERR, "Cannot parse -server URL: %s", opt_server);
             goto err;
         }
         host = server_host;
@@ -674,14 +674,14 @@ static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
 
     if (opt_reqexts != NULL) {
         if (!X509V3_EXT_add_nconf_sk(config, &ext_ctx, opt_reqexts, &exts)) {
-            LOG(FL_ERR, "cannot load extension section '%s'", opt_reqexts);
+            LOG(FL_ERR, "Cannot load extension section '%s'", opt_reqexts);
             goto err;
         }
     }
 
     if (opt_policies != NULL) {
         if (!X509V3_EXT_add_nconf_sk(config, &ext_ctx, opt_policies, &exts)) {
-            LOG(FL_ERR, "cannot load policy section '%s'", opt_policies);
+            LOG(FL_ERR, "Cannot load policy section '%s'", opt_policies);
             goto err;
         }
     }
@@ -706,7 +706,7 @@ static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
         char *next = UTIL_next_item(opt_policy_oids);
 
         if ((policy = OBJ_txt2obj(opt_policy_oids, 0)) == NULL) {
-            LOG(FL_ERR, "unknown policy OID '%s'", opt_policy_oids);
+            LOG(FL_ERR, "Unknown policy OID '%s'", opt_policy_oids);
             goto err;
         }
 
@@ -718,7 +718,7 @@ static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
         pinfo->policyid = policy;
 
         if (!OSSL_CMP_CTX_push0_policy(ctx, pinfo)) {
-            LOG(FL_ERR, "cannot add policy with OID '%s'", opt_policy_oids);
+            LOG(FL_ERR, "Cannot add policy with OID '%s'", opt_policy_oids);
             POLICYINFO_free(pinfo);
             goto err;
         }
@@ -836,7 +836,7 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
         const OSSL_CMP_MSG *actual_req = req_new != NULL ? req_new : req;
 
         if (rspin_in_use)
-            LOG_warn("not enough -rspin filename arguments; resorting to contacting server");
+            LOG_warn("Not enough -rspin filename arguments; resorting to contacting server");
         res =
 #if 0 /* TODO add in case mock server functionality is included */
             opt_use_mock_srv ? OSSL_CMP_CTX_server_perform(ctx, actual_req) :
@@ -881,7 +881,7 @@ static int set_name(OPTIONAL const char *str,
         X509_NAME *n = UTIL_parse_name(str, MBSTRING_ASC, false);
 
         if (n == NULL) {
-            LOG(FL_ERR, "cannot parse %s DN '%s'", desc, str);
+            LOG(FL_ERR, "Cannot parse %s DN '%s'", desc, str);
             return -03;
         }
         if (!(*set_fn) (ctx, n)) {
@@ -1330,23 +1330,23 @@ static int setup_transfer(CMP_CTX *ctx)
          */
         if (opt_reqout_only == NULL && opt_rspin == NULL) {
             /* TODO add in that case also: "or -use_mock_srv" */
-            LOG_err("missing -server or -reqout_only or -rspin option");
+            LOG_err("Missing -server or -reqout_only or -rspin option");
             err = -15;
             goto err;
         }
         if (opt_proxy != NULL)
-            LOG_warn("ignoring -proxy option since -server is not given");
+            LOG_warn("Ignoring -proxy option since -server is not given");
         if (opt_no_proxy != NULL)
-            LOG_warn("ignoring -no_proxy option since -server is not given");
+            LOG_warn("Ignoring -no_proxy option since -server is not given");
         if (opt_tls_used) {
-            LOG_warn("ignoring -tls_used option since -server is not given");
+            LOG_warn("Ignoring -tls_used option since -server is not given");
             opt_tls_used = 0;
         }
     } else {
         if (opt_rspin != NULL)
             LOG_warn("-server option etc. are not used if enough filenames given for -rspin");
         if (!opt_tls_used && CONN_IS_HTTPS(opt_server)) {
-            LOG_warn("assuming -tls_used since -server URL indicates HTTPS");
+            LOG_warn("Assuming -tls_used since -server URL indicates HTTPS");
             opt_tls_used = 1;
         }
     }
@@ -1356,10 +1356,10 @@ static int setup_transfer(CMP_CTX *ctx)
         if (opt_tls_used)
             LOG_warn("-tls_used is active without any other TLS options");
     } else if (!opt_tls_used) {
-            LOG_warn("ignoring TLS options(s) since -tls_used is not active");
+            LOG_warn("Ignoring TLS options(s) since -tls_used is not active");
     }
     if (opt_server == NULL) {
-        LOG_info("will not contact any server");
+        LOG_info("Will not contact any server");
         return CMP_OK;
     }
 
@@ -1382,7 +1382,7 @@ static int setup_transfer(CMP_CTX *ctx)
         LOG_err("Unable to set up HTTP for CMP client");
         goto err;
     } else if (opt_rspin != NULL) {
-        LOG_info("will contact server only if -rspin argument does not give enough filenames");
+        LOG_info("Will contact server only if -rspin argument does not give enough filenames");
     }
  err:
     return err;
@@ -1599,7 +1599,7 @@ static CMP_err check_options(enum use_case use_case)
 
     if (opt_infotype == NULL) {
         if (use_case == genm)
-            LOG_warn("no -infotype option given for genm");
+            LOG_warn("No -infotype option given for genm");
         opt_infotype = "";
     } else if (use_case != genm) {
         LOG_warn("-infotype option is ignored for commands other than 'genm'");
@@ -1612,13 +1612,13 @@ static CMP_err check_options(enum use_case use_case)
 #if !OPENSSL_3_2_FEATURES
             if (strcmp(opt_infotype, "caCerts") == 0
                 || strcmp(opt_infotype, "rootCaCert") == 0)
-                LOG(FL_INFO, "infoType %s is not supported for OpenSSL < 3.2",
+                LOG(FL_INFO, "The infoType %s is not supported for OpenSSL < 3.2",
                     opt_infotype);
 #endif
 #if !OPENSSL_3_4_FEATURES
             if (strcmp(opt_infotype, "certReqTemplate") == 0
                 || strcmp(opt_infotype, "crlStatusList") == 0)
-                LOG(FL_INFO, "infoType %s is not supported for OpenSSL < 3.4",
+                LOG(FL_INFO, "Note: infoType %s is not supported for OpenSSL < 3.4",
                     opt_infotype);
 #endif
             return -30;
@@ -1665,7 +1665,7 @@ static CMP_err check_options(enum use_case use_case)
                 opt_subject, opt_oldcert != NULL ? opt_oldcert : opt_csr);
     } else {
         if (opt_secret != NULL && (opt_cert != NULL || opt_key != NULL)) {
-            LOG_warn("ignoring -cert and -key since -secret option selects password-based message protection");
+            LOG_warn("Ignoring -cert and -key since -secret option selects password-based message protection");
             opt_cert = opt_key = NULL;
         }
 
@@ -1951,12 +1951,12 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
             ASN1_INTEGER *sno;
 
             if ((sno = s2i_ASN1_INTEGER(NULL, opt_serial)) == NULL) {
-                LOG(FL_ERR, "cannot read serial number: '%s'", opt_serial);
+                LOG(FL_ERR, "Cannot read serial number: '%s'", opt_serial);
                 return -71;
             }
             if (!OSSL_CMP_CTX_set1_serialNumber(ctx, sno)) {
                 ASN1_INTEGER_free(sno);
-                LOG_err("out of memory");
+                LOG_err("Out of memory");
                 return -72;
             }
             ASN1_INTEGER_free(sno);
@@ -1971,7 +1971,7 @@ static int delete_file(const char *file, const char *desc)
 {
     if (file == NULL)
         return 1;
-    LOG(FL_INFO, "deleting file '%s' because there is no %s", file, desc);
+    LOG(FL_INFO, "Deleting file '%s' because there is no %s", file, desc);
     if (unlink(file) == 0 || errno == ENOENT)
         return 1;
     LOG(FL_ERR, "Failed to delete %s, which should be done to indicate there is no %s",
@@ -2096,7 +2096,7 @@ static int print_itavs(const STACK_OF(OSSL_CMP_ITAV) *itavs)
     int n = sk_OSSL_CMP_ITAV_num(itavs);
 
     if (n <= 0) { /* also in case itavs == NULL */
-        LOG(FL_INFO, "genp does not contain any ITAV");
+        LOG(FL_INFO, "Note: genp does not contain any ITAV");
         return ret;
     }
 
@@ -2106,12 +2106,12 @@ static int print_itavs(const STACK_OF(OSSL_CMP_ITAV) *itavs)
         char name[80];
 
         if (itav == NULL) {
-            LOG(FL_ERR, "could not get ITAV #%d from genp", i);
+            LOG(FL_ERR, "Could not get ITAV #%d from genp", i);
             ret = 0;
             continue;
         }
         if (i2t_ASN1_OBJECT(name, sizeof(name), type) <= 0) {
-            LOG(FL_ERR, "error parsing type of ITAV #%d from genp", i);
+            LOG(FL_ERR, "Error parsing type of ITAV #%d from genp", i);
             ret = 0;
         } else {
             LOG(FL_INFO, "ITAV #%d from genp type=%s", i, name);
@@ -2127,17 +2127,17 @@ static int save_template(const char *file, const OSSL_CRMF_CERTTEMPLATE *tmpl)
     CMP_err res = CMP_OK;
 
     if (bio == NULL) {
-        LOG(FL_ERR, "error saving certTemplate from genp: cannot open file %s",
+        LOG(FL_ERR, "Error saving certTemplate from genp: cannot open file %s",
             file);
         return -55;
     }
     if (!ASN1_i2d_bio_of(OSSL_CRMF_CERTTEMPLATE, i2d_OSSL_CRMF_CERTTEMPLATE,
                          bio, tmpl)) {
-        LOG(FL_ERR, "error saving certTemplate from genp: cannot write file %s",
+        LOG(FL_ERR, "Error saving certTemplate from genp: cannot write file %s",
             file);
         res = -56;
     } else {
-        LOG(FL_INFO, "stored certTemplate from genp to file '%s'", file);
+        LOG(FL_INFO, "Stored certTemplate from genp to file '%s'", file);
     }
     BIO_free(bio);
     return res;
@@ -2173,7 +2173,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         if (err == CMP_OK) {
             /* TODO possibly check authorization of sender/origin */
             if (cacerts == NULL)
-                LOG_warn("no CA certificate provided by server");
+                LOG_warn("No CA certificate provided by server");
             if (CERTS_save(cacerts, opt_cacertsout, "caCerts from genp") < 0) {
                 LOG(FL_ERR, "Failed to store CA certificates from genp in %s",
                     opt_cacertsout);
@@ -2211,7 +2211,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
 
             /* TODO possibly check authorization of sender/origin */
             if (newwithnew == NULL)
-                LOG_info("no root CA certificate update available");
+                LOG_info("No root CA certificate update available");
             if (!save_cert_or_delete(newwithnew, opt_newwithnew,
                                      "NewWithNew cert from genp")
                 || !save_cert_or_delete(newwithold, opt_newwithold,
@@ -2268,7 +2268,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
 
             const char *desc = "CRL from genp of type 'crls'";
             if (crl == NULL) {
-                LOG_info("no CRL update available");
+                LOG_info("No CRL update available");
                 if (!delete_file(opt_crlout, desc))
                     err = -65;
             } else {
@@ -2295,7 +2295,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         if (err != CMP_OK)
             return err;
         if (certTemplate == NULL) {
-            LOG_warn("no certificate request template available");
+            LOG_warn("No certificate request template available");
             if (!delete_file(opt_template, "certTemplate from genp"))
                 return -68;
             return CMP_OK;
@@ -2480,7 +2480,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
             status == OSSL_CMP_PKISTATUS_rejection
             || status == OSSL_CMP_PKISTATUS_waiting
             ? LOG_ERR : LOG_WARNING,
-            "received%s%s %s", from, server,
+            "Received%s%s %s", from, server,
             string != NULL ? string : "<unknown PKIStatus>");
     }
 

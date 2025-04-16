@@ -372,7 +372,8 @@ of the reference certificate (see B<-oldcert>) if provided.
 This fallback is used for IR and CR only if no SANs are set.
 
 If provided and neither of B<-cert>, B<-oldcert>, or B<-csr> is given,
-the subject DN is used as fallback sender of outgoing CMP messages.
+the subject DN is used as fallback sender. With password-based message
+protection, the subject commonName, if any, is taken as the default senderKID.
 
 Special characters may be escaped by C<\> (backslash); whitespace is retained.
 Empty values are permitted, but the corresponding type will not be included.
@@ -460,8 +461,10 @@ it is transformed into the respective regular CMP request,
 while its public key is ignored if I<-newkey> is given.
 It may also be used with B<-cmd> I<rr> to specify the certificate to be revoked
 via the included subject and public key.
-Its subject is used as fallback sender in CMP message headers
+Its subject is used as the fallback sender field in CMP message headers
 if B<-cert> and B<-oldcert> are not given.
+With password-based message protection,
+its subject commonName, if any, is taken as the default senderKID.
 
 =item B<-out_trusted> I<filenames>
 
@@ -538,7 +541,9 @@ For RR the certificate to be revoked can also be specified using B<-csr>.
 The reference certificate, if any, is also used for
 deriving default subject DN and Subject Alternative Names and the
 default issuer entry in the requested certificate template of an IR/CR/KUR.
-Its subject is used as sender in CMP message headers if B<-cert> is not given.
+Its subject is used as the sender field in CMP message headers.
+With password-based message protection,
+its subject commonName, if any, is taken as the default senderKID.
 Its issuer is used as default recipient in CMP message headers
 if neither B<-recipient>, B<-srvcert>, nor B<-issuer> is given.
 
@@ -898,9 +903,11 @@ If not given here, the password will be prompted for if needed.
 
 =item B<-ref> I<value>
 
-Reference number/string/value to use as fallback senderKID; this is required
-if no sender name can be determined from the B<-cert> or <-subject> options and
-is typically used when authenticating with pre-shared key (password-based MAC).
+Reference name/number/value to use as the senderKID in CMP message headers
+except with signature-based protection.
+When using password-based message protection (keyed MAC), this field must be
+filled in, where the default value is the commonName, if any, of
+subject name from the B<-cert>, B<-oldcert>, B<-csr>, or <-subject> options.
 
 =item B<-secret> I<arg>
 

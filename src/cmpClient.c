@@ -389,7 +389,7 @@ opt_t cmp_opts[] = {
 
     OPT_HEADER("Client authentication and protection"),
     { "ref", OPT_TXT, {.txt = NULL}, { &opt_ref },
-      "Reference value to use as senderKID in case no -cert is given"},
+      "Reference value to use as senderKID except with signature-based protection"},
     { "secret", OPT_TXT, {.txt = NULL}, { &opt_secret },
       "Source of secret value for authentication with a pre-shared key (PBM)"},
     { "cert", OPT_TXT, {.txt = NULL}, { &opt_cert },
@@ -1668,14 +1668,23 @@ static CMP_err check_options(enum use_case use_case)
             LOG_warn("-cert and -key not used since -secret option selects PBM-based message protection");
     }
     if (!opt_unprotected_requests && opt_secret == NULL && opt_key == NULL) {
-        LOG_err("Must give client credentials unless -unprotected_requests is set");
+        LOG_err("Must give client credentials unless -unprotected_requests is used");
         return -33;
     }
 
-    if (opt_ref == NULL && opt_cert == NULL && opt_subject == NULL) {
-        /* ossl_cmp_hdr_init() takes sender name from cert or else subject */
-        /* TODO maybe else take as sender default the subjectName of oldCert or p10cr */
-        LOG_err("Must give -ref if no -cert and no -subject given");
+    if (opt_ref == NULL && opt_cert == NULL && opt_oldcert == NULL
+        && opt_csr == NULL && opt_subject == NULL && !opt_unprotected_requests) {
+        /*
+         * The sender name will be taken from the subject of any -cert, -oldcert,
+         * or else -csr, otherwise from any -subject, or from -ref.
+         * With password-based protection, -ref is the preferred source.
+         *
+         * The senderKID is taken from the subjectKeyIdentifier of the
+         * protection certificate if present. With password-based protection,
+         * the commonName of the sender field, if present, is taken by default
+         * as per RFC 9483 section 3.1 but may be overridden by -ref.
+         */
+        LOG_err("Must give -ref if no -cert, -oldcert, -csr, -subject, nor -unprotected_requests given");
         return -34;
     }
 
@@ -1899,11 +1908,13 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 LOG(FL_WARN, "-chainout %s, and 'p10cr'", msg);
         }
     }
-    if (use_case != revocation && opt_revreason != CRL_REASON_NONE)
-        LOG_warn("-revreason option is ignored for commands other than 'rr'");
-    if (use_case != update && use_case != revocation && opt_oldcert != NULL
-        && !(use_case == genm && strcmp(opt_infotype, "crlStatusList") == 0))
-        LOG_warn("-oldcert option used only as reference cert");
+    if (use_case != revocation) {
+        if (opt_revreason != CRL_REASON_NONE)
+            LOG_warn("-revreason option is ignored for commands other than 'rr'");
+        if (use_case != update && use_case != genm && opt_oldcert != NULL
+            && !(use_case == genm && strcmp(opt_infotype, "crlStatusList") == 0))
+            LOG_warn("-oldcert option used only as reference cert");
+    }
 
     if (opt_oldcert != NULL) {
         if (use_case == genm && strcmp(opt_infotype, "crlStatusList") != 0) {

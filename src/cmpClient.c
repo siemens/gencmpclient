@@ -1672,10 +1672,17 @@ static CMP_err check_options(enum use_case use_case)
         return -33;
     }
 
-    if (opt_ref == NULL && opt_cert == NULL && opt_subject == NULL) {
-        /* ossl_cmp_hdr_init() takes sender name from cert or else subject */
-        /* TODO maybe else take as sender default the subjectName of oldCert or p10cr */
-        LOG_err("Must give -ref if no -cert and no -subject given");
+    if (opt_ref == NULL && opt_cert == NULL && opt_oldcert == NULL
+        && opt_csr == NULL && opt_subject == NULL) {
+        /*
+         * The sender name will be taken from the subject of any -cert, -oldcert,
+         * or else -csr, otherwise from any -subject, or from -ref,
+         * while -ref is the preferred source for password-based protection.
+         * The senderKID is taken from the subjectKeyIdentifier of the protection certificate,
+         * or if not present or password-based protection used,
+         * the commonName of the sender field as per RFC 9483 is taken.
+         */
+        LOG_err("Must give -ref if no -cert, -oldcert, -csr, nor -subject given");
         return -34;
     }
 
@@ -1899,11 +1906,13 @@ static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 LOG(FL_WARN, "-chainout %s, and 'p10cr'", msg);
         }
     }
-    if (use_case != revocation && opt_revreason != CRL_REASON_NONE)
-        LOG_warn("-revreason option is ignored for commands other than 'rr'");
-    if (use_case != update && use_case != revocation && opt_oldcert != NULL
-        && !(use_case == genm && strcmp(opt_infotype, "crlStatusList") == 0))
-        LOG_warn("-oldcert option used only as reference cert");
+    if (use_case != revocation) {
+        if (opt_revreason != CRL_REASON_NONE)
+            LOG_warn("-revreason option is ignored for commands other than 'rr'");
+        if (use_case != update && use_case != genm && opt_oldcert != NULL
+            && !(use_case == genm && strcmp(opt_infotype, "crlStatusList") == 0))
+            LOG_warn("-oldcert option used only as reference cert");
+    }
 
     if (opt_oldcert != NULL) {
         if (use_case == genm && strcmp(opt_infotype, "crlStatusList") != 0) {

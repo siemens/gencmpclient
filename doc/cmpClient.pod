@@ -372,7 +372,8 @@ of the reference certificate (see B<-oldcert>) if provided.
 This fallback is used for IR and CR only if no SANs are set.
 
 If provided and neither of B<-cert>, B<-oldcert>, or B<-csr> is given,
-the subject DN is used as fallback sender of outgoing CMP messages.
+the subject DN is used as fallback sender, and the subject commonName, if any,
+as fallback senderKID of outgoing CMP messages.
 
 Special characters may be escaped by C<\> (backslash); whitespace is retained.
 Empty values are permitted, but the corresponding type will not be included.
@@ -538,7 +539,8 @@ For RR the certificate to be revoked can also be specified using B<-csr>.
 The reference certificate, if any, is also used for
 deriving default subject DN and Subject Alternative Names and the
 default issuer entry in the requested certificate template of an IR/CR/KUR.
-Its subject is used as sender in CMP message headers if B<-cert> is not given.
+Its subject is used as sender of outgoing messages, and the subject commonName
+if any, is used as fallback senderKID of outgoing CMP messages.
 Its issuer is used as default recipient in CMP message headers
 if neither B<-recipient>, B<-srvcert>, nor B<-issuer> is given.
 
@@ -898,9 +900,10 @@ If not given here, the password will be prompted for if needed.
 
 =item B<-ref> I<value>
 
-Reference number/string/value to use as fallback senderKID; this is required
-if no sender name can be determined from the B<-cert> or <-subject> options and
-is typically used when authenticating with pre-shared key (password-based MAC).
+Reference name/number/value to possibly use as senderKID. This is required if
+no subject name or no subjectKeyIdentifier can be determined from the B<-cert>,
+B<-oldcert>, B<-csr>, or <-subject> options, while the given value is
+the preferred choice when using password-based message protection (keyed MAC).
 
 =item B<-secret> I<arg>
 

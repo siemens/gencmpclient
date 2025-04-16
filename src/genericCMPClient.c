@@ -32,7 +32,7 @@ STACK_OF(X509_EXTENSION)
 # include <secutils/credentials/cert.h>
 # include <secutils/credentials/store.h>
 # include <secutils/credentials/verify.h>
-# include <secutils/connections/conn.h>
+# include <secutils/connections/conn.h> /* for CONN_IS_IP_ADDR() */
 # ifndef SECUTILS_NO_TLS
 #  include <secutils/connections/tls.h>
 # endif
@@ -82,17 +82,17 @@ CMP_err CMPclient_init(OPTIONAL const char *name, OPTIONAL LOG_cb_t log_fn)
     }
 
     if (!STORE_EX_check_index()) {
-        LOG(FL_ERR, "failed to initialize STORE_EX index\n");
+        LOG(FL_ERR, "Failed to initialize STORE_EX index\n");
         return ERR_R_INIT_FAIL;
     }
 
     if (!OSSL_CMP_log_open()) {
-        LOG(FL_ERR, "failed to initialize logging of genCMPClient\n");
+        LOG(FL_ERR, "Failed to initialize logging of genCMPClient\n");
         return ERR_R_INIT_FAIL;
     }
 #ifndef SECUTILS_NO_TLS
     if (!TLS_init()) {
-        LOG(FL_ERR, "failed to initialize TLS library of genCMPClient\n");
+        LOG(FL_ERR, "Failed to initialize TLS library of genCMPClient\n");
         return ERR_R_INIT_FAIL;
     }
 #endif
@@ -167,7 +167,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
             goto err;
     }
 
-    /* need recipient for unprotected and PBM-protected messages */
+    /* need recipient for unprotected and MAC-protected messages */
     X509_NAME *rcp = NULL;
     if (recipient != NULL) {
         rcp = parse_DN(recipient, "recipient");
@@ -254,12 +254,13 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
     return CMPOSSL_error();
 }
 
-CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, const char *path,
+/* also used internally by CMPclient_setup_HTTP() with rw == NULL */
+CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, OPTIONAL const char *path,
                             int keep_alive, int timeout)
 {
     if (ctx == NULL)
         return CMP_R_INVALID_CONTEXT;
-    if (!OSSL_CMP_CTX_set1_serverPath(ctx, path) ||
+    if (!OSSL_CMP_CTX_set1_serverPath(ctx, path /* may be NULL */) ||
         (timeout >= 0 && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT,
                                                   timeout)) ||
         (keep_alive >= 0 && !OSSL_CMP_CTX_set_option(ctx,
@@ -271,7 +272,7 @@ CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, const char *path,
     if (rw != NULL) {
         if (path == NULL)
             path = "";
-        LOG(FL_INFO, "will contact CMP server via existing connection at HTTP path \"%s%s\"",
+        LOG(FL_INFO, "Will contact CMP server via existing connection at HTTP path \"%s%s\"",
             path[0] == '/' ? "" : "/", path);
     }
     return CMP_OK;
@@ -285,6 +286,7 @@ static char *opt_getprog(void)
 }
 
 typedef struct app_http_tls_info_st {
+    const char *sni_hostname;
     const char *server;
     const char *port;
     int use_proxy;
@@ -325,12 +327,12 @@ static BIO *app_http_tls_cb(BIO *bio, void *arg, int connect, int detail)
     APP_HTTP_TLS_INFO *info = (APP_HTTP_TLS_INFO *)arg;
     SSL_CTX *ssl_ctx = info->ssl_ctx;
     X509_STORE *ts;
+    BIO *sbio = NULL;
 
     if (ssl_ctx == NULL)
         return bio; /* not using TLS */
     if (connect) {
         SSL *ssl;
-        BIO *sbio = NULL;
 
         if ((info->use_proxy
              && !OSSL_HTTP_proxy_connect(bio, info->server, info->port,
@@ -338,14 +340,13 @@ static BIO *app_http_tls_cb(BIO *bio, void *arg, int connect, int detail)
                                          info->timeout, bio_err, opt_getprog()))
                 || (sbio = BIO_new(BIO_f_ssl())) == NULL)
             return NULL;
-        if ((ssl = SSL_new(ssl_ctx)) == NULL) {
-            BIO_free(sbio);
-            return NULL;
-        }
+        if ((ssl = SSL_new(ssl_ctx)) == NULL)
+            goto err;
 
-        SSL_set_tlsext_host_name(ssl, info->server); /* not critical to do */
         SSL_set_connect_state(ssl);
         BIO_set_ssl(sbio, ssl, BIO_CLOSE);
+        if (!SSL_set_tlsext_host_name(ssl, info->sni_hostname /* may be NULL */))
+            goto err;
 
         bio = BIO_push(sbio, bio);
     } else { /* disconnect */
@@ -370,14 +371,19 @@ static BIO *app_http_tls_cb(BIO *bio, void *arg, int connect, int detail)
         (void)STORE_set0_tls_bio(ts, bio);
     }
     return bio;
+
+ err:
+    BIO_free(sbio);
+    return NULL;
 }
 
 static void APP_HTTP_TLS_INFO_free(APP_HTTP_TLS_INFO *info)
 {
     if (info != NULL) {
-        SSL_CTX_free(info->ssl_ctx);
+        OPENSSL_free((char *)info->sni_hostname);
         OPENSSL_free((char *)info->server);
         OPENSSL_free((char *)info->port);
+        SSL_CTX_free(info->ssl_ctx);
         OPENSSL_free(info);
     }
 }
@@ -393,8 +399,7 @@ static int is_localhost(const char *host)
 #endif
 
 /* Will return error when used with OpenSSL compiled with OPENSSL_NO_SOCK. */
-CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
-                             const char *server, const char *path,
+CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *path,
                              int keep_alive, int timeout, OPTIONAL SSL_CTX *tls,
                              OPTIONAL const char *proxy,
                              OPTIONAL const char *no_proxy)
@@ -405,6 +410,10 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         LOG(FL_ERR, "No ctx parameter given");
         return CMP_R_INVALID_CONTEXT;
     }
+    if (server == NULL) {
+        LOG(FL_ERR, "No server parameter given");
+        return CMP_R_INVALID_CONTEXT;
+    }
 #ifdef SECUTILS_NO_TLS
     if (tls != NULL) {
         LOG(FL_ERR, "TLS is not supported by this build");
@@ -413,15 +422,13 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
 #endif
     char *host = NULL, *server_port = NULL, *parsed_path = NULL;
     const char *proxy_host = NULL;
-    if (server == NULL)
-        goto set_path;
 
     int use_ssl, port;
     if (!OSSL_HTTP_parse_url(server, &use_ssl, NULL /* puser */, &host,
                              &server_port, &port, &parsed_path, NULL, NULL))
         return err;
     if (use_ssl && tls == NULL) {
-        LOG(FL_ERR, "missing TLS context since server URL indicates HTTPS");
+        LOG(FL_ERR, "Missing TLS context since server URL indicates HTTPS");
         goto err;
     }
     if (!OSSL_CMP_CTX_set1_server(ctx, host) ||
@@ -441,16 +448,21 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         OSSL_HTTP_adapt_proxy(proxy, no_proxy, host, tls != NULL);
 #ifndef SECUTILS_NO_TLS
     if (tls != NULL) {
-        const char *host_or_proxy = proxy_host == NULL ? host : proxy_host;
         X509_STORE *ts = SSL_CTX_get_cert_store(tls);
+        X509_VERIFY_PARAM *vpm = ts != NULL ? X509_STORE_get0_param(ts) : NULL;
+        char *ip;
+        const char *hostaddr = ts != NULL ? STORE_get0_host(ts) : NULL;
 
-        if (is_localhost(host_or_proxy)) {
-            LOG(FL_WARN, "skipping host name verification on localhost");
+        if (is_localhost(host)) {
+            hostaddr = NULL;
+            LOG(FL_WARN, "Skipping host name verification on localhost");
             /* enables self-bootstrapping of local RA using its device cert */
-        } else {
-            /* set expected host if not already done by caller */
-            if (STORE_get0_host(ts) == NULL &&
-                !STORE_set1_host_ip(ts, host_or_proxy, host_or_proxy)) {
+        } else if (hostaddr == NULL) {
+            hostaddr = host;
+            /* set expected host in ts, if no name validation has been set there so far */
+            if (vpm != NULL && X509_VERIFY_PARAM_get0_email(vpm) == NULL
+                && (ip = X509_VERIFY_PARAM_get1_ip_asc(vpm), OPENSSL_free(ip), ip) == NULL
+                    && !STORE_set1_host_ip(ts, host, 0)) {
                 err = CMPOSSL_error();
                 goto err;
             }
@@ -470,11 +482,16 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
         /* info will be freed along with ctx */
         OSSL_CMP_CTX_set_transfer_cb_arg(ctx, NULL); /* indicate SSL not used */
 
+        if (!CONN_IS_IP_ADDR(hostaddr)
+                && (info->sni_hostname = OPENSSL_strdup(hostaddr)) == NULL) {
+            err = CMPOSSL_error();
+            goto err;
+        }
         info->server = OPENSSL_strdup(host);
         info->port = OPENSSL_strdup(server_port);
         info->use_proxy = proxy_host != NULL;
         info->timeout = OSSL_CMP_CTX_get_option(ctx, OSSL_CMP_OPT_MSG_TIMEOUT);
-        if (!SSL_CTX_up_ref(tls)) {
+        if (info->server == NULL || info->port == NULL || !SSL_CTX_up_ref(tls)) {
             err = CMPOSSL_error();
             goto err;
         }
@@ -482,22 +499,17 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx,
     }
 #endif
 
- set_path:
     err = CMPclient_setup_BIO(ctx, NULL, path, keep_alive, timeout);
     if (err != CMP_OK)
         goto err;
 
     if (path == NULL)
         path = "";
-    if (server == NULL)
-        LOG_info("will not contact any server");
-    /* since -reqout_only or -rspin is given */
-    else
-        LOG(FL_INFO, "will contact http%s://%s:%d%s%s%s%s",
-            tls != NULL ? "s" : "",
-            host, port, path[0] == '/' ? "" : "/", path,
-            proxy_host != NULL ? " via proxy " : "",
-            proxy_host != NULL ? proxy_host : "");
+    LOG(FL_INFO, "Will contact http%s://%s:%d%s%s%s%s",
+        tls != NULL ? "s" : "",
+        host, port, path[0] == '/' ? "" : "/", path,
+        proxy_host != NULL ? " via proxy " : "",
+        proxy_host != NULL ? proxy_host : "");
     err = CMP_OK;
 
  err:
@@ -982,17 +994,17 @@ static OSSL_CMP_ITAV *get_genm_itav(CMP_CTX *ctx,
 
         r = OBJ_obj2txt(name, sizeof(name), obj, 0);
         if (r < 0)
-            LOG(FL_WARN, "cannot get InfoType details while expecting %s from genp",
+            LOG(FL_WARN, "Cannot get InfoType details while expecting %s from genp",
                 desc);
         else if (r == 0)
-            LOG(FL_WARN, "genp contains empty InfoType name while expecting %s from genp",
+            LOG(FL_WARN, "The genp contains empty InfoType name while expecting %s from genp",
                 desc);
         else
-            LOG(FL_WARN, "genp contains unexpected InfoType %s while expecting %s from genp",
+            LOG(FL_WARN, "The genp contains unexpected InfoType %s while expecting %s from genp",
                 name, desc);
         OSSL_CMP_ITAV_free(itav);
     }
-    LOG(FL_ERR, "could not find any ITAV for %s in genp", desc);
+    LOG(FL_ERR, "Could not find any ITAV for %s in genp", desc);
 
  err:
     sk_OSSL_CMP_ITAV_free(itavs);
@@ -1216,7 +1228,7 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
     }
     if (*oldWithNew != NULL) {
         if (oldWithOld == NULL) {
-            LOG(FL_WARN, "oldWithNew certificate received in genp for verifying oldWithOld, but oldWithOld was not provided");
+            LOG(FL_WARN, "Received oldWithNew certificate in genp for verifying oldWithOld, but oldWithOld was not provided");
         } else if (!verify_cert1(ctx, (X509 *)*newWithNew, *oldWithNew,
                                  (X509 *)oldWithOld, "oldWithOld")) {
             err = CMP_R_INVALID_ROOTCAUPD;

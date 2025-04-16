@@ -511,13 +511,17 @@ GENERATE_OPERATIONAL=$(OPENSSL) x509 -in creds/operational.crt -x509toreq -signk
 .phony: run_demo
 run_demo: $(OUT_DIR_BIN)
 	@which $(OPENSSL) >/dev/null || (echo "cannot find $(OPENSSL)"; false)
-	@/bin/echo -e "\n##### running cmpClient demo using $(CA_SECTION) #####\n"
+	@/bin/echo # on macOS, echo -e "\n..." is not available
+	@/bin/echo  "##### running cmpClient demo using $(CA_SECTION) #####"
+	@/bin/echo
 	$(CMPCLIENT) imprint -section $(CA_SECTION) $(EXTRA_OPTS) $(EXTRA_OPTS_IMPRINT)
-	@/bin/echo -e "\nValidating own CMP client cert"
+	@/bin/echo
+	@/bin/echo "Validating own CMP client cert"
     ifeq ($(CA_SECTION),EJBCA)
 	$(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -cert $(EJBCA_CMP_CLIENT_CERT) -tls_cert "" -own_trusted $(EJBCA_CMP_TRUSTED),$(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
         ifneq ($(EJBCA_TLS_HOST),)
-	    @/bin/echo -e "\nValidating own TLS client cert"
+	    @/bin/echo
+	    @/bin/echo "Validating own TLS client cert"
 	    $(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -tls_cert $(EJBCA_TLS_CLIENT) -tls_trusted $(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED) -no_check_time
         endif
     else
@@ -552,7 +556,8 @@ run_demo: $(OUT_DIR_BIN)
 	$(CMPCLIENT) genm -section $(CA_SECTION) $(EXTRA_OPTS)
 	@echo :
     endif
-	@echo -e "\n#### finished demo using $(CA_SECTION) ####"
+	@/bin/echo
+	@echo "#### finished demo using $(CA_SECTION) ####"
 	@echo :
 
 # tests ########################################################################
@@ -648,21 +653,29 @@ ifeq ($(TEST_SIMPLE),)
 	$(warning "### skipping test_profile because TEST_SIMPLE is not set ###")
 else
 profile: $(OUT_DIR_BIN)
-	@/bin/echo -e "\n##### Requesting a certificate from a PKI with MAC-based protection (RECOMMENDED) #####"
+	@/bin/echo
+	@/bin/echo "##### Requesting a certificate from a PKI with MAC-based protection (RECOMMENDED) #####"
 	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE04
-	@/bin/echo -e "\n##### Requesting a certificate from a new PKI with signature-based protection (MANDATORY) #####"
+	@/bin/echo
+	@/bin/echo "##### Requesting a certificate from a new PKI with signature-based protection (MANDATORY) #####"
 	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE01
-	@/bin/echo -e "\n##### Updating an existing certificate with signature-ased protection (MANDATORY) #####"
+	@/bin/echo
+	@/bin/echo "##### Updating an existing certificate with signature-ased protection (MANDATORY) #####"
 	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE03 -subject ""
-	@/bin/echo -e "\n##### Requesting an additional certificate with signature-based protection (OPTIONAL) #####"
+	@/bin/echo
+	@/bin/echo "##### Requesting an additional certificate with signature-based protection (OPTIONAL) #####"
 	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE02
-#	@/bin/echo -e "\n##### Request a certificate from a legacy PKI using PKCS#10 request (OPTIONAL) #####"
+#	@/bin/echo
+#	@/bin/echo "##### Request a certificate from a legacy PKI using PKCS#10 request (OPTIONAL) #####"
 #	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE05 -subject ""
-	@/bin/echo -e "\n##### Revoking a certificate (RECOMMENDED) #####"
+	@/bin/echo
+	@/bin/echo "##### Revoking a certificate (RECOMMENDED) #####"
 	$(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE08 -subject ""
-	@/bin/echo -e "\n##### Error reporting by client (MANDATORY) #####"
+	@/bin/echo
+	@/bin/echo "##### Error reporting by client (MANDATORY) #####"
 	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),EE09
-	@/bin/echo -e "\n##### Error reporting by server (MANDATORY) #####"
+	@/bin/echo
+	@/bin/echo "##### Error reporting by server (MANDATORY) #####"
 	! $(CMPCLIENT) -config config/profile.cnf -section $(PROFILE),RA36
 	@echo "\n##### All profile tests succeeded #####"
 endif

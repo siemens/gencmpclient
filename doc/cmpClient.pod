@@ -78,8 +78,8 @@ Certificate enrollment and revocation options:
 
 Message transfer options:
 
-[B<-server> I<[http://]address[:port]>][/path]
-[B<-proxy> I<[http://]address[:port][/path]>]
+[B<-server> I<[http[s]://][userinfo@]host[:port][/path][?query][#fragment]>]
+[B<-proxy> I<[http[s]://][userinfo@]host[:port][/path][?query][#fragment]>]
 [B<-no_proxy> I<addresses>]
 [B<-recipient> I<name>]
 [B<-path> I<remote_path>]
@@ -134,7 +134,7 @@ TLS connection options:
 [B<-tls_keypass> I<arg>]
 [B<-tls_extra> I<filenames>]
 [B<-tls_trusted> I<filenames>]
-[B<-tls_host> I<name>]
+[B<-tls_host> I<address>]
 
 Debugging options:
 
@@ -372,7 +372,8 @@ of the reference certificate (see B<-oldcert>) if provided.
 This fallback is used for IR and CR only if no SANs are set.
 
 If provided and neither of B<-cert>, B<-oldcert>, or B<-csr> is given,
-the subject DN is used as fallback sender of outgoing CMP messages.
+the subject DN is used as fallback sender, and the subject commonName, if any,
+as fallback senderKID of outgoing CMP messages.
 
 Special characters may be escaped by C<\> (backslash); whitespace is retained.
 Empty values are permitted, but the corresponding type will not be included.
@@ -538,7 +539,8 @@ For RR the certificate to be revoked can also be specified using B<-csr>.
 The reference certificate, if any, is also used for
 deriving default subject DN and Subject Alternative Names and the
 default issuer entry in the requested certificate template of an IR/CR/KUR.
-Its subject is used as sender in CMP message headers if B<-cert> is not given.
+Its subject is used as sender of outgoing messages, and the subject commonName
+if any, is used as fallback senderKID of outgoing CMP messages.
 Its issuer is used as default recipient in CMP message headers
 if neither B<-recipient>, B<-srvcert>, nor B<-issuer> is given.
 
@@ -574,28 +576,43 @@ Reason numbers defined in RFC 5280 are:
 
 =over 4
 
-=item B<-server> I<[http[s]://]address[:port][/path]>
+=item B<-server> I<[http[s]://][userinfo@]host[:port][/path][?query][#fragment]>
 
-The IP address or DNS hostname and optionally port
-of the CMP server to connect to using HTTP(S) transport.
-This option excludes I<-rspin>.
-The port defaults to 80 or 443 if the scheme is C<https>.
+The I<host> domain name or IP address and optionally I<port>
+of the CMP server to connect to using HTTP(S).
+IP address may be for v4 or v6, such as C<127.0.0.1> or C<[::1]> for localhost.
+If the host string is an IPv6 address, it must be enclosed in C<[> and C<]>.
+For TLS connections the host part is taken as fallback for the B<-tls_host> option.
+
+This option is ignored if I<-rspin> is given with enough filename arguments.
+
+If the scheme C<https> is given, the B<-tls_used> option is implied.
+When TLS is used, the default port is 443, otherwise 80.
+The optional userinfo component is ignored.
+Any given query and fragment components are handled as part of the path component.
 If a path is included it provides the default value for the B<-path> option.
 
-=item B<-proxy> I<[http[s]://]address[:port][/path]>
+=item B<-proxy> I<[http[s]://][userinfo@]host[:port][/path][?query][#fragment]>
 
 The HTTP(S) proxy server to use for reaching the CMP server unless B<-no_proxy>
 applies, see below.
+If the host string is an IPv6 address, it must be enclosed in C<[> and C<]>.
 The proxy port defaults to 80 or 443 if the scheme is C<https>; apart from that
-the optional C<http://> or C<https://>prefix and any trailing path are ignored.
+the optional C<http://> or C<https://> prefix is ignored (note that using TLS
+may be required by B<-tls_used> or B<-server> with the prefix C<https>),
+as well as any path, userinfo, and query, and fragment components.
+
 Defaults to the environment variable C<http_proxy> if set, else C<HTTP_PROXY>
 in case no TLS is used, otherwise C<https_proxy> if set, else C<HTTPS_PROXY>.
+This option is ignored if I<-server> is not given.
 
 =item B<-no_proxy> I<addresses>
+
 List of IP addresses and/or DNS names of servers
 not to use an HTTP(S) proxy for, separated by commas and/or whitespace
 (where in the latter case the whole argument must be enclosed in "...").
 Default is from the environment variable C<no_proxy> if set, else C<NO_PROXY>.
+This option is ignored if I<-server> is not given.
 
 =item B<-recipient> I<name>
 
@@ -883,17 +900,19 @@ If not given here, the password will be prompted for if needed.
 
 =item B<-ref> I<value>
 
-Reference number/string/value to use as fallback senderKID; this is required
-if no sender name can be determined from the B<-cert> or <-subject> options and
-is typically used when authenticating with pre-shared key (password-based MAC).
+Reference name/number/value to possibly use as senderKID. This is required if
+no subject name or no subjectKeyIdentifier can be determined from the B<-cert>,
+B<-oldcert>, B<-csr>, or <-subject> options, while the given value is
+the preferred choice when using password-based message protection (keyed MAC).
 
 =item B<-secret> I<arg>
 
-Prefer PBM-based message protection with given source of a secret value.
-The secret is used for creating PBM-based protection of outgoing messages
-and (as far as needed) for verifying PBM-based protection of incoming messages.
-PBM stands for Password-Based Message Authentication Code.
+Provides a secret value required to use with password-based message protection.
 This takes precedence over the B<-cert> and B<-key> options.
+The secret is used for creating MAC-based protection of outgoing messages
+and for validating incoming messages that have MAC-based protection.
+The algorithm used by default is Password-Based Message Authentication Code (PBM)
+as defined in RFC 4210 section 5.1.3.1.
 
 Supports plain passwords preceded by C<pass:> and others, see B<-newkeypass>.
 
@@ -931,8 +950,8 @@ have no effect on the certificate verification enabled via this option.
 
 The corresponding private key file for the client's certificate given in
 the B<-cert> option.
-This will be used for signature-based message protection unless
-the B<-secret> option indicating PBM or B<-unprotected_requests> is given.
+This will be used for signature-based message protection unless the B<-secret>
+option indicating password-based protection or B<-unprotected_requests> is given.
 
 =item B<-keypass> I<arg>
 
@@ -953,10 +972,10 @@ Defaults to C<sha256>.
 
 =item B<-mac> I<name>
 
-Specifies name of supported digest to use as the MAC algorithm in MSG_MAC_ALG.
-To get the names of supported MAC algorithms use B<openssl list -mac-algorithms>
+Specifies the keyed MAC algorithm to use with MAC-based message protection.
+To get the names of supported MAC algorithms use C<openssl list -mac-algorithms>
 and possibly combine such a name with the name of a supported digest algorithm,
-e.g., hmacWithSHA256.
+e.g., C<hmacWithSHA256>.
 L<https://raw.githubusercontent.com/openssl/openssl/master/include/openssl/obj_mac.h>
 contains the complete set of supported combinations of MAC and digest algorithm names.
 Defaults to C<hmac-sha1> as per RFC 4210.
@@ -983,9 +1002,14 @@ Send request messages without CMP-level protection.
 
 =item B<-tls_used>
 
-Enable using TLS (even when other TLS_related options are not set)
-for message exchange with CMP server.
+Require using TLS (even when other TLS_related options are not set)
+for HTTP message exchange with CMP server.
 The following TLS-related options are ignored if B<-tls_used> is not given.
+
+This option is implied if the B<-server> option is given with the scheme C<https>.
+It is ignored if the B<-server> option is not given
+or B<-rspin> is given with enough filename arguments.
+
 
 =item B<-tls_cert> I<filename>
 
@@ -1022,11 +1046,12 @@ The certificate verification options
 B<-verify_hostname>, B<-verify_ip>, and B<-verify_email>
 have no effect on the certificate verification enabled via this option.
 
-=item B<-tls_host> I<name>
+=item B<-tls_host> I<address>
 
-Address to be checked (rather than B<-server> address)
-during TLS hostname validation.
-This may be a Common Name, a DNS name, or an IP address.
+Address to be used for Server Name Indication (SNI) according to RFC 3546 section 3.1
+and to be checked during TLS hostname validation.
+This may be a DNS name (for SNI, only this is used) or an IPv4 or IPv6 address.
+If not given it defaults to the host part of the B<-server> option URL argument.
 
 =back
 

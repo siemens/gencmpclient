@@ -167,7 +167,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
             goto err;
     }
 
-    /* need recipient for unprotected and PBM-protected messages */
+    /* need recipient for unprotected and MAC-protected messages */
     X509_NAME *rcp = NULL;
     if (recipient != NULL) {
         rcp = parse_DN(recipient, "recipient");

@@ -911,11 +911,12 @@ subject name from the B<-cert>, B<-oldcert>, B<-csr>, or <-subject> options.
 
 =item B<-secret> I<arg>
 
-Prefer PBM-based message protection with given source of a secret value.
-The secret is used for creating PBM-based protection of outgoing messages
-and (as far as needed) for verifying PBM-based protection of incoming messages.
-PBM stands for Password-Based Message Authentication Code.
+Provides a secret value required to use with password-based message protection.
 This takes precedence over the B<-cert> and B<-key> options.
+The secret is used for creating MAC-based protection of outgoing messages
+and for validating incoming messages that have MAC-based protection.
+The algorithm used by default is Password-Based Message Authentication Code (PBM)
+as defined in RFC 4210 section 5.1.3.1.
 
 Supports plain passwords preceded by C<pass:> and others, see B<-newkeypass>.
 
@@ -953,8 +954,8 @@ have no effect on the certificate verification enabled via this option.
 
 The corresponding private key file for the client's certificate given in
 the B<-cert> option.
-This will be used for signature-based message protection unless
-the B<-secret> option indicating PBM or B<-unprotected_requests> is given.
+This will be used for signature-based message protection unless the B<-secret>
+option indicating password-based protection or B<-unprotected_requests> is given.
 
 =item B<-keypass> I<arg>
 
@@ -975,10 +976,10 @@ Defaults to C<sha256>.
 
 =item B<-mac> I<name>
 
-Specifies name of supported digest to use as the MAC algorithm in MSG_MAC_ALG.
-To get the names of supported MAC algorithms use B<openssl list -mac-algorithms>
+Specifies the keyed MAC algorithm to use with MAC-based message protection.
+To get the names of supported MAC algorithms use C<openssl list -mac-algorithms>
 and possibly combine such a name with the name of a supported digest algorithm,
-e.g., hmacWithSHA256.
+e.g., C<hmacWithSHA256>.
 L<https://raw.githubusercontent.com/openssl/openssl/master/include/openssl/obj_mac.h>
 contains the complete set of supported combinations of MAC and digest algorithm names.
 Defaults to C<hmac-sha1> as per RFC 4210.

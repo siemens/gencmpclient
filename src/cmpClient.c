@@ -406,7 +406,7 @@ opt_t cmp_opts[] = {
       "Digest alg to use in msg protection and POPO signatures. Default \"sha256\""},
     OPT_MORE("See the man page or online doc for hints on available algorithms"),
     { "mac", OPT_TXT, {.txt = NULL}, { &opt_mac},
-      "MAC algorithm to use in PBM-based message protection. Default \"hmac-sha1\""},
+      "MAC algorithm to use in MAC-based message protection. Default \"hmac-sha1\""},
     OPT_MORE("See the man page or online doc for hints on available algorithms"),
     { "extracerts", OPT_TXT, {.txt = NULL}, { &opt_extracerts },
       "File(s) with certificates to append in extraCerts field of outgoing messages."},
@@ -1165,7 +1165,7 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
         if (opt_secret != NULL) {
             /* use PBM except for kur and rr if secret is present */
             char *secret = FILES_get_pass(opt_secret,
-                                          "PBM-based message protection");
+                                          "password-based message protection");
 
             if (secret == NULL) {
                 LOG(FL_ERR, "Unable to set up secret part of %s", creds_desc);
@@ -1664,8 +1664,11 @@ static CMP_err check_options(enum use_case use_case)
             LOG(FL_INFO, "Given -subject '%s' overrides the subject of '%s' for 'kur'",
                 opt_subject, opt_oldcert != NULL ? opt_oldcert : opt_csr);
     } else {
-        if (opt_secret != NULL && (opt_cert != NULL || opt_key != NULL))
-            LOG_warn("-cert and -key not used since -secret option selects PBM-based message protection");
+        if (opt_secret != NULL && (opt_cert != NULL || opt_key != NULL)) {
+            LOG_warn("ignoring -cert and -key since -secret option selects password-based message protection");
+            opt_cert = opt_key = NULL;
+        }
+
     }
     if (!opt_unprotected_requests && opt_secret == NULL && opt_key == NULL) {
         LOG_err("Must give client credentials unless -unprotected_requests is used");

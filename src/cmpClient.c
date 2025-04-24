@@ -556,7 +556,16 @@ static X509_EXTENSIONS *getattestationExt(OSSL_CMP_CTX *ctx, RATS_REQ *rats_conf
         oct.length = (int)resp.token.buf_size;
         oct.flags = 0;
     } else {
-        printf("An error has occured. Exiting.");
+        printf("An error has occurred in generating attestation token, return code - %d\n", atg_ret);
+        printf("Token request details:\n");
+        printf("Token Name: %s\n", req.token_name);
+        printf("Config Path: %s\n", req.config_path);
+        printf("Plugin Config Path: %s\n", req.plugconf_path);
+        printf("\nNonce Size: %zu\n", req.nonce_size);
+        printf("Nonce: ");
+        for (size_t i = 0; i < req.nonce_size; i++)
+            printf("0x%x ", req.nonce[i] & 0xff);
+        printf("User Data Size: %zu\n\n", req.user_data_size);
         goto err;
     }
 
@@ -591,7 +600,8 @@ static X509_EXTENSIONS *getattestationExt(OSSL_CMP_CTX *ctx, RATS_REQ *rats_conf
  err:
     OPENSSL_free(evidence);
     OPENSSL_free(der_data);
-    free_attestation_token(resp);
+    if (atg_ret == 0)
+        free_attestation_token(resp);
     if (ret == 0) {
         X509_EXTENSION_free(ext);
         sk_X509_EXTENSION_free(exts);

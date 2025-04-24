@@ -1222,8 +1222,8 @@ static int setup_ctx(CMP_CTX *ctx)
         rats_config->tokenname = opt_rats_tokenname;
         rats_config->tokencfgpath = opt_rats_tokencfgpath;
         rats_config->plugincfgpath = opt_rats_plugincfgpath;
-        (void) OSSL_CMP_CTX_set_app_cb(ctx, CMPclient_app_cb);
-        (void) OSSL_CMP_CTX_set_app_cb_arg(ctx, (void *)rats_config);
+        (void) OSSL_CMP_CTX_set_certreq_cb(ctx, CMPclient_app_cb);
+        (void) OSSL_CMP_CTX_set_certreq_cb_arg(ctx, (void *)rats_config);
     }
 
 

@@ -30,13 +30,9 @@ jobs:
         # high-entropy ASLR in much newer kernels that GitHub runners are
         # using leading to random crashes: https://reviews.llvm.org/D148280
         run: sudo sysctl vm.mmap_rnd_bits=28
-      - name: cmake
-        run: |
-          USE_LIBCMP=1 cmake .
-          make -j4
       - name: test-coverage
         run: |
-          make -f Makefile_v1 test_Mock || true
+          DEBUG_FLAGS="-coverage" make -f Makefile_v1 test_Mock || true
           find . -name *.gcno -exec gcov {} \;
       - name: Run sonar-scanner
         env:

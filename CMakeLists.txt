@@ -11,7 +11,7 @@ endif()
 message(STATUS "generic CMP client version " ${GENCMPCLIENT_VERSION})
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner
+# set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner when using CMake
 
 # improved from https://cmake.org/cmake/help/v3.6/module/FindOpenSSL.html
 if(NOT DEFINED OPENSSL_ROOT_DIR AND NOT "$ENV{OPENSSL_DIR}" STREQUAL "")

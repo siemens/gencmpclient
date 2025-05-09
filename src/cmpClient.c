@@ -2381,6 +2381,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         }
 
         STACK_OF(OSSL_CMP_ITAV) *itavs = OSSL_CMP_exec_GENM_ses(ctx);
+        if (reqout_only_done && OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
+            return CMP_OK; /* not checking response as we did not send request */
         if (itavs != NULL) {
             int res = print_itavs(itavs);
 

@@ -101,7 +101,7 @@ CMP_err CMPclient_init(OPTIONAL const char *name, OPTIONAL LOG_cb_t log_fn)
 
 static X509_NAME *parse_DN(const char *str, const char *desc)
 {
-    X509_NAME *name = UTIL_parse_name(str, MBSTRING_ASC, false);
+    X509_NAME *name = UTIL_parse_name(str, MBSTRING_UTF8, false);
 
     if (name == NULL)
         LOG(FL_ERR, "Unable to parse %s DN '%s'", desc, str);

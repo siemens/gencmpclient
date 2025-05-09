@@ -878,7 +878,7 @@ static int set_name(OPTIONAL const char *str,
                     OSSL_CMP_CTX *ctx, const char *desc)
 {
     if (str != NULL) {
-        X509_NAME *n = UTIL_parse_name(str, MBSTRING_ASC, false);
+        X509_NAME *n = UTIL_parse_name(str, MBSTRING_UTF8, false);
 
         if (n == NULL) {
             LOG(FL_ERR, "Cannot parse %s DN '%s'", desc, str);

@@ -1,5 +1,25 @@
 # For full documentation of the options, see ../doc/cmpClient-cli.{pod,md}
 
+# This must be in the outermost (default) section:
+# enable parser diagnostic
+config_diagnostics = 1
+openssl_conf = openssl_init
+
+[openssl_init]
+providers = provider_sect
+
+[provider_sect]
+default = default_provider
+passthru = passthru_provider
+
+[default_provider]
+activate = 1
+
+[passthru_provider]
+# activate = 1 # not needed if -provider passthru given
+# identity = passthru # library file base name
+
+
 [default]
 
 #verbosity = 6 # means INFO (default)

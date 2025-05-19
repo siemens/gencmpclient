@@ -108,6 +108,32 @@ static X509_NAME *parse_DN(const char *str, const char *desc)
     return name;
 }
 
+static int certConf_caPubs_cb(OSSL_CMP_CTX *ctx, X509 *cert, int fail_info, const char **text)
+{
+    X509_STORE *new_ts = NULL, *new_cert_truststore = OSSL_CMP_CTX_get_certConf_cb_arg(ctx);
+    STACK_OF(X509) *caPubs = NULL;
+    int i, ret = 0;
+
+    if (OSSL_CMP_CTX_get0_trustedStore(ctx) == NULL) { /* with MAC-based response protection only */
+        caPubs = OSSL_CMP_CTX_get1_caPubs(ctx);
+        if (new_cert_truststore == NULL) {
+            if ((new_ts = X509_STORE_new()) == NULL)
+                goto err;
+            new_cert_truststore = new_ts;
+            if (!OSSL_CMP_CTX_set_certConf_cb_arg(ctx, new_ts))
+                goto err;
+        }
+        for (i = 0; i < sk_X509_num(caPubs); i++)
+            if (!X509_STORE_add_cert(new_cert_truststore, sk_X509_value(caPubs, i)))
+                goto err;
+    }
+    ret = OSSL_CMP_certConf_cb(ctx, cert, fail_info, text);
+ err:
+    X509_STORE_free(new_ts);
+    CERTS_free(caPubs);
+    return ret;
+}
+
 CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
                           OSSL_LIB_CTX *libctx, const char *propq,
                           OPTIONAL LOG_cb_t log_fn,
@@ -240,7 +266,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
 
         X509_VERIFY_PARAM_clear_flags(out_vpm, X509_V_FLAG_USE_CHECK_TIME);
 
-        if (!OSSL_CMP_CTX_set_certConf_cb(ctx, OSSL_CMP_certConf_cb) ||
+        if (!OSSL_CMP_CTX_set_certConf_cb(ctx, certConf_caPubs_cb) ||
             !OSSL_CMP_CTX_set_certConf_cb_arg(ctx, new_cert_truststore) ||
             !X509_STORE_up_ref(new_cert_truststore))
             goto err;

@@ -38,9 +38,9 @@ TODO,TODO,TODO,TODO,expected sender upper case, -section,, -recipient,_CA_DN, -e
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,
 1,1,1,1,explicit srvcert, -section,,,,BLANK,, -srvcert,_SERVER_CERT, -trusted,"""",BLANK,,, -unprotected_errors, -extracertsout,test.extracerts.pem,, -srvcertout,test.srvcertout.pem, -secret,"""", -cert,signer.crt, -key,signer.p12, -keypass,pass:12345
 1,1,1,1,reuse last srvcert, -section,,,,BLANK,, -srvcert,test.srvcertout.pem, -trusted,"""",BLANK,,, -unprotected_errors,BLANK,,,,,,,,
-1,1,1,1,reuse last extracerts, -section,,,,BLANK,, -srvcert,test.extracerts.pem, -trusted,"""",BLANK,,, -unprotected_errors,BLANK,,,,,,,,
+1,1,1,1,reuse last extracerts for srvcert, -section,,,,BLANK,, -srvcert,test.extracerts.pem, -trusted,"""",BLANK,,, -unprotected_errors,BLANK,,,,,,,,
 1,-,-,-,output no srvcert empty extracerts, -section,,,,BLANK,,,,,,,,,BLANK, -extracertsout,test.extracerts_empty.pem,,,, -secret,_PBM_SECRET, -ref,_PBM_REF, -srvcertout,test.srvcertout.pem, -cmd,genm, -infotype,signKeyPairTypes
--,1,-,-,output empty extracerts were output in enrollment, -section,,,,BLANK,,,, -trusted,trusted.crt,,,BLANK, -unprotected_errors,BLANK,,, -srvcertout,test.srvcertout.pem, -cacertsout,test.extracerts_empty.pem,-server,_SERVER_HOST:_PBM_PORT
+-,1,-,-,output srvcert - empty extracerts were output in enrollment, -section,,,,BLANK,,,, -trusted,trusted.crt,,,BLANK, -unprotected_errors,BLANK,,, -srvcertout,test.srvcertout.pem, -cacertsout,test.extracerts_empty.pem,-server,_SERVER_HOST:_PBM_PORT
 -,0,-,-,output delete srvcert file, -section,,,,BLANK,,,,,,,,, -unprotected_errors,BLANK,,, -srvcertout,test.srvcertout.pem, -secret,_PBM_SECRET, -ref,_PBM_REF,-server,_SERVER_HOST:_PBM_PORT
 -,-,0,-,output no srvcert - empty extracerts were output in enrollment, -section,,,,BLANK,,,,,,,,, -unprotected_errors,BLANK,,, -srvcertout,test.srvcertout.pem, -secret,_PBM_SECRET, -ref,_PBM_REF, -cacertsout,test.extracerts_empty.pem, -server,_SERVER_HOST:_PBM_PORT
 -,-,-,1,output no srvcert empty cacerts used for extracerts, -section,,,,BLANK,,,,,,,,,,,,,, -srvcertout,test.srvcertout.pem, -secret,_PBM_SECRET, -ref,_PBM_REF, -cacertsout,test.extracerts_empty.pem
@@ -77,7 +77,7 @@ TBD,TBD,TBD,TBD,root expired, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trust
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,
 0,*,*,*,untrusted missing arg, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 1,1,1,-,untrusted not matching cert, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,root.crt,BLANK, -unprotected_errors,BLANK,,,,,,,,
-1,1,1,1,untrusted empty file, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,empty.txt,BLANK, -unprotected_errors,BLANK,,,,,,,,
+0,0,0,0,untrusted empty file, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,empty.txt,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,*,*,*,untrusted random file, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,random.bin,BLANK, -unprotected_errors,BLANK,,,,,,,,
 TBD,TBD,TBD since cert file does not exist, -,untrusted expired, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,EJBCAInfrastructureIssuingCAv10_expired.crt ECCIssuingCAv10_expired.crt ExpiredIssuingCAv10.crt,BLANK, -unprotected_errors,BLANK,,,,,,,,
 0,*,*,*,untrusted file does not exist, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt, -untrusted,idontexist,BLANK, -unprotected_errors,BLANK,,,,,,,,

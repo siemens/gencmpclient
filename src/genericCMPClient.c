@@ -460,11 +460,15 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
         } else if (hostaddr == NULL) {
             hostaddr = host;
             /* set expected host in ts, if no name validation has been set there so far */
-            if (vpm != NULL && X509_VERIFY_PARAM_get0_email(vpm) == NULL
-                && (ip = X509_VERIFY_PARAM_get1_ip_asc(vpm), OPENSSL_free(ip), ip) == NULL
-                    && !STORE_set1_host_ip(ts, host, 0)) {
-                err = CMPOSSL_error();
-                goto err;
+            if (vpm != NULL && X509_VERIFY_PARAM_get0_email(vpm) == NULL) {
+                ERR_set_mark();
+                ip = X509_VERIFY_PARAM_get1_ip_asc(vpm);
+                ERR_pop_to_mark();
+                OPENSSL_free(ip);
+                if (ip == NULL && !STORE_set1_host_ip(ts, host, 0)) {
+                    err = CMPOSSL_error();
+                    goto err;
+                }
             }
         }
 

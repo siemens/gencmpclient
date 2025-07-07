@@ -59,7 +59,7 @@ VERSION=2.0
 # PACKAGENAME=libgencmp
 # DIRNAME=$(PACKAGENAME)-$(VERSION)
 ATG_DIR=atg
-ATG_PREFIX ?= $(PWD)/$(ATG_DIR)/install-lib
+ATG_PREFIX ?= $(PWD)/$(ATG_DIR)/install-atglib
 ifeq ($(LPATH),)
     ifeq ($(OUT_DIR),)
         override OUT_DIR = .

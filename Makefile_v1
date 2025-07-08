@@ -322,9 +322,13 @@ build_secutils: # not: update_secutils
 
 .phony: build_atg update_atg
 update_atg:
+ifdef USE_ATGLIB
 	git submodule update $(GIT_PROGRESS) --init $(GIT_DEPTH) $(ATG_DIR)
+endif
 build_atg: update_atg
+ifdef USE_ATGLIB
 	PREFIX=$(ATG_PREFIX) $(MAKE) -C $(ATG_DIR) build-cli build-lib install-cli install-lib install-libdev build-plugins install-plugins
+endif
 
 ifdef USE_LIBCMP
 $(LIBCMP_DIR)/include:

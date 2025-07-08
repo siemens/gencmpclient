@@ -540,7 +540,7 @@ static X509_EXTENSIONS *getattestationExt(OSSL_CMP_CTX *ctx, RATS_REQ *rats_conf
     req.nonce = oct_nonce->data;
     req.nonce_size = oct_nonce->length;
     req.user_data_size = 0;
-    atg_ret = get_attestation_token(req, &resp);
+    atg_ret = atg_generate_evidence(req, &resp);
     if (atg_ret == 0) {
         printf("Token size: %lu\n", resp.token.buf_size);
         printf("Token: [ ");
@@ -601,7 +601,7 @@ static X509_EXTENSIONS *getattestationExt(OSSL_CMP_CTX *ctx, RATS_REQ *rats_conf
     OPENSSL_free(evidence);
     OPENSSL_free(der_data);
     if (atg_ret == 0)
-        free_attestation_token(resp);
+        atg_free_attestation_token(resp);
     if (ret == 0) {
         X509_EXTENSION_free(ext);
         sk_X509_EXTENSION_free(exts);

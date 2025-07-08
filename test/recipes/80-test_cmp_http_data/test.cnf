@@ -49,12 +49,12 @@ server_port = 6000
 server_tls = 0
 server_cert = server.crt
 server = $server_host:$server_port
-server_path = lra/
+server_path = pkix/
 path = $server_path
 ca_dn = /C=DE/O=Siemens/OU=TestDepartment/CN=CMP_CA_ENDENTITY
 recipient = $ca_dn
 server_dn = /C=DE/O=Siemens/OU=TestDepartment/CN=CMP_LRA_DOWNSTREAM_ENDENTITY
-expect_sender = $ca_dn
+# expect_sender = $server_dn
 # profile = RSA
 subject = "/CN=EE-CMP-ENDENTITY"
 newkey = signer.key

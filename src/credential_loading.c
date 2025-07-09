@@ -596,6 +596,26 @@ X509 *FILES_load_cert_ex(OSSL_LIB_CTX *libctx, const char *propq,
     return cert;
 }
 
+static bool check_cert_chain(const char *src, const char *desc,
+                             int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm,
+                             OPTIONAL X509 **cert, OPTIONAL STACK_OF(X509) **certs) {
+    bool res = true;
+
+    if (cert != NULL && !CERT_check(src, *cert, certs == NULL ?
+                                    type_CA : 0 /* tentatively warn on CA cert */, vpm)
+        && certs == NULL /* non-strict if also cert list loaded */
+        && vpm != NULL /* non-strict if vpm == NULL; TODO better adapt CERT_check() */)
+        res = false;
+    if (certs != NULL && !CERT_check_all(src, *certs,
+                                         cert == NULL ? type_CA : 1 /* warn on non-CA certs */, vpm)
+        && cert == NULL /* non-strict if also cert loaded */
+        && vpm != NULL /* non-strict if vpm == NULL; TODO better adapt CERT_check() */)
+        res = false;
+    if (!res)
+        LOG(FL_ERR, "Error checking %s from %s", desc, src);
+    return res;
+}
+
 bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
                          const char *srcs, int format, int timeout, bool maybe_stdin,
                          const char *source, const char *desc, int min_num,
@@ -663,21 +683,8 @@ bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
         all_crts = NULL;
     }
 
-    if (cert != NULL && !CERT_check(src, *cert, certs == NULL ?
-                                    type_CA : 0 /* tentatively warn on CA cert */, vpm)
-        && certs == NULL /* non-strict if also cert list loaded */
-        && vpm != NULL /* non-strict if vpm == NULL; TODO better adapt CERT_check() */)
-        res = false;
-    if (certs != NULL && !CERT_check_all(src, *certs,
-                                         cert == NULL ? type_CA : 1 /* warn on non-CA certs */, vpm)
-        && cert == NULL /* non-strict if also cert loaded */
-        && vpm != NULL /* non-strict if vpm == NULL; TODO better adapt CERT_check() */)
-        res = false;
-    if (!res) {
-        LOG(FL_ERR, "Error checking %s from %s", desc, srcs);
+    if (!check_cert_chain(src, desc, type_CA, vpm, cert, certs))
         goto err;
-    }
-
     goto end;
 
  oom:
@@ -939,18 +946,15 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
                                OPTIONAL STACK_OF(X509) **chain)
 {
     bool joint_credentials = certs != NULL && key != NULL && strcmp(certs, key) == 0;
+    char *pass = FILES_get_pass(source, desc);
     bool res = false;
 
     if (joint_credentials) {
-        char *pass;
-
         if (desc == NULL)
             desc = "both private key and related certificate(s)";
-        pass = FILES_get_pass(source, desc);
         res = load_key_certs_crls(libctx, propq, certs /* == key */,
-                                  format, maybe_stdin, pass, desc, false,
+                                  format, maybe_stdin, pass, desc, true /* quiet on this first try */,
                                   pkey, NULL, NULL, cert, chain, 1, NULL, NULL, 0);
-        UTIL_cleanse_free(pass);
     }
     if (!res) {
         const char *orig_desc = desc;
@@ -968,18 +972,17 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
                 LOG(FL_ERR, "Loading %s over HTTP is not allowed; uri=%s\n", desc, certs);
                 goto err;
             }
-            if (!FILES_load_certs_ex(libctx, propq, certs, format, 0 /* timeout */,
-                                     maybe_stdin, source, desc, 1, type_CA, vpm, cert, chain))
-                goto err;
+                if (!load_key_certs_crls(libctx, propq, certs,
+                                         format, maybe_stdin, pass, desc, false,
+                                         NULL, NULL, NULL, cert, chain, 1, NULL, NULL, 0))
+                    goto err;
         }
     }
-    if (cert != NULL)
-        (void)CERT_check(certs, *cert, 0 /* tentatively warn on CA cert */, vpm);
-    if (chain != NULL)
-        (void)CERT_check_all(certs, *chain, 1 /* warn on non-CA certs */, vpm);
-    return true;
+    UTIL_cleanse_free(pass);
+    return check_cert_chain(certs, desc, type_CA, vpm, cert, chain);
 
 err:
+    UTIL_cleanse_free(pass);
     LOG(FL_ERR, "Could not load %s from %s%s%s", desc,
         key, pkey == NULL || certs == NULL || joint_credentials ? "" : " and ",
         joint_credentials ? "" : certs);

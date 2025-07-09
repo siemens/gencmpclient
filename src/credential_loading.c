@@ -531,9 +531,29 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
         ERR_clear_last_mark();
 
     if (failed != NULL) {
+        if (ppkey != NULL) {
+            EVP_PKEY_free(*ppkey);
+            *ppkey = NULL;
+        }
+        if (ppubkey != NULL) {
+            EVP_PKEY_free(*ppubkey);
+            *ppubkey = NULL;
+        }
+        if (pparams != NULL) {
+            EVP_PKEY_free(*pparams);
+            *pparams = NULL;
+        }
+        if (pcert != NULL) {
+            X509_free(*pcert);
+            *pcert = NULL;
+        }
         if (pcerts != NULL) {
             sk_X509_pop_free(*pcerts, X509_free);
             *pcerts = NULL;
+        }
+        if (pcrl != NULL) {
+            X509_CRL_free(*pcrl);
+            *pcrl = NULL;
         }
         if (pcrls != NULL) {
             sk_X509_CRL_pop_free(*pcrls, X509_CRL_free);
@@ -961,6 +981,8 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
 
         if (orig_desc == NULL)
             desc = "private key";
+        if (pkey != NULL)
+            EVP_PKEY_free(*pkey);
         if (key != NULL && pkey != NULL
             && (*pkey = FILES_load_key_ex(libctx, propq, key, format,
                                           maybe_stdin, source, desc)) == NULL)
@@ -982,6 +1004,8 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
     return check_cert_chain(certs, desc, type_CA, vpm, cert, chain);
 
 err:
+    if (pkey != NULL)
+        EVP_PKEY_free(*pkey);
     UTIL_cleanse_free(pass);
     LOG(FL_ERR, "Could not load %s from %s%s%s", desc,
         key, pkey == NULL || certs == NULL || joint_credentials ? "" : " and ",

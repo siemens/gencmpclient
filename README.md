@@ -29,10 +29,18 @@ Yet for productive use, interfacing at API level is more direct and secure.
 
 The underlying OpenSSL library implements CMP, CRMF, HTTP, etc.
 with a detailed low-level API, which is rather difficult to use.
-Its version 3.0 covers CMPv2 (as originally defined in
-[RFC 4210](https://www.rfc-editor.org/rfc/rfc4210)),
+Its version 3.0 covers CMPv2 and HTTP(s) transfer as originally defined in
+[RFC 4210](https://www.rfc-editor.org/rfc/rfc4210) and
+[RFC 6712](https://www.rfc-editor.org/rfc/rfc6712),
 which is sufficient for most scenarios.
-Later OpenSSL versions cover also more recent and special CMP features.
+Later OpenSSL versions cover also more recent and special CMP features
+added by [RFC 9480](https://www.rfc-editor.org/rfc/rfc9480),
+which meanwhile has been obsoleted by
+[RFC 9810](https://www.rfc-editor.org/rfc/rfc9810) and
+[RFC 9811](https://www.rfc-editor.org/rfc/rfc9811).
+For details see [below](#cmp-features-and-openssl-versions)
+or the HISTORY section of [`cmpClient.pod`](doc/cmpClient.pod#HISTORY).
+
 
 A further use case of this software is to provide early access to all new CMP
 features defined in [CMP Updates](https://www.rfc-editor.org/rfc/rfc9480) and
@@ -74,12 +82,13 @@ to OpenSSL is nearly finished. OpenSSL version 3.4 contains all of them except
 for [central key generation](https://github.com/openssl/openssl/pull/25132).
 -->
 
-Note: The successor of both RFC 4210 and CMP Updates, called
-[RFC 4210bis](https://datatracker.ietf.org/doc/draft-ietf-lamps-rfc4210bis/),
-has been submitted to IESG for publication, as well as
-[RFC 6712bis](https://datatracker.ietf.org/doc/draft-ietf-lamps-rfc6712bis/).
-As of end-2024, the main novelty of RFC 4210bis, which provides KEM support,
-is not yet implemented here.
+Note that in 2025,
+[RFC 9810](https://www.rfc-editor.org/rfc/rfc9810) and
+[RFC 9811](https://www.rfc-editor.org/rfc/rfc9811)
+obsoleted RFCs 4210, 6712, and 9480 (CMP Updates).
+As of July 2025,
+support for enrolling and using KEM certificates,
+which is main novelty of RFC 9810, is not avialable here.
 
 <!--
 The [CHANGELOG.md](CHANGELOG.md) contains a coarse release history.
@@ -124,19 +133,23 @@ The following OSS components are used.
 
 For an overview of CMP features relevant in industrial use cases see
 [LCMPP section 7.1](https://datatracker.ietf.org/doc/html/rfc9483#section-7.1).
+
+## CMP features and OpenSSL versions
+
 CMP client (EE) features are supported by the genCMPClient as follows.
 
-The features newly defined with CMPv3
+The features defined with CMPv3
 in [RFC 9480 (CMP Updates)](https://www.rfc-editor.org/rfc/rfc9480)
 are fully covered when using the [intermediate CMP library `libcmp`](
-https://github.com/mpeylo/cmpossl) or when using at least OpenSSL 3.5.\
+https://github.com/mpeylo/cmpossl) or when using at least OpenSSL 3.5.
+
 Since the intermediate CMP library `libcmp` constitutes an extra dependency
-and its maintenance may end soon after the release of OpenSSL 3.5,
+and its maintenance is going to end soon rather after the release of OpenSSL 3.5,
 better avoid using it. This is possible if all the CMP features needed
 by the application scenario are covered by the OpenSSL version being used.
 
-* CMPv2 features defined in [RFC 4210](https://www.rfc-editor.org/rfc/rfc4210)
-  are already sufficiently covered by using at least OpenSSL 3.0.\
+* OpenSSL 3.0 sufficiently covers the CMPv2 features defined in
+[RFC 4210](https://www.rfc-editor.org/rfc/rfc4210).\
   This includes most of the
   "Generic Aspects of PKI Messages and PKI Management Operations",
   IR, CR, KUR, P10CR, MAC, RR, and polling for certification responses.

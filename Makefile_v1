@@ -520,7 +520,7 @@ run_demo: $(OUT_DIR_BIN)
 	@/bin/echo
 	@/bin/echo "Validating own CMP client cert"
     ifeq ($(CA_SECTION),EJBCA)
-	$(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -cert $(EJBCA_CMP_CLIENT_CERT) -tls_cert "" -own_trusted $(EJBCA_CMP_TRUSTED),$(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED)
+	$(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -cert $(EJBCA_CMP_CLIENT_CERT) -tls_cert "" -own_trusted "$(EJBCA_CMP_TRUSTED), $(EJBCA_TRUSTED)" -untrusted "$(EJBCA_UNTRUSTED)"
         ifneq ($(EJBCA_TLS_HOST),)
 	    @/bin/echo
 	    @/bin/echo "Validating own TLS client cert"

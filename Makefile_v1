@@ -450,6 +450,7 @@ creds/crls:
 	@mkdir $@
 
 get_EJBCA_crls: | creds/crls
+ifeq (1, 0) # disabled for now
 	@ # ping >/dev/null $(PINGCOUNTOPT) 1 $(EJBCA_HOST) || echo "cannot reach EJBCA at $(EJBCA_HOST)"; exit 1
 	@for CA in $(EJBCA_CDPS); \
 	do \
@@ -458,6 +459,7 @@ get_EJBCA_crls: | creds/crls
 		[[ $$CA =~ "v1.1" ]] && export postfix="$(EJBCA_CDP_URL_POSTFIX_v11)"; \
 		wget --tries=1 -nv "$(EJBCA_CDP_URL_PREFIX)$$CA$$postfix" -O "creds/crls/EJBCA-$$CA.crl"; \
 	done
+endif
 
 .phony: get_Insta_crls
 get_Insta_crls: | creds/crls
@@ -484,7 +486,7 @@ else
     CA_SECTION=EJBCA
     EXTRA_OPTS_IMPRINT= -path $(EJBCA_PATH)/$(EJBCA_PATH_IMPRINT) -subject "$(EJBCA_CMP_SUBJECT_IMPRINT)"
     CRL_SECTION=crls
-    OCSP_CHECK=$(OPENSSL) ocsp -url $(EJBCA_OCSP_URL) \
+    OCSP_CHECK= # disabled for now: $(OPENSSL) ocsp -url $(EJBCA_OCSP_URL) \
         -CAfile $(EJBCA_CMP_TRUSTED) -issuer $(EJBCA_CMP_ISSUER) \
         -cert creds/operational.crt
     EJBCA_TLS_HOST_FILE=creds/docker/TLS_ROOTCA-docker-cn.txt

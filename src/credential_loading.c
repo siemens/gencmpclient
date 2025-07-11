@@ -244,6 +244,15 @@ static const char *format2string(int format)
     return NULL;
 }
 
+/* TODO commit UTIL_first_item() in libsecutils: */
+static char *UTIL_first_item_(char *str)
+{
+    /* skip any initial separators (comma or whitespace) */
+    while(str != NULL && (*str == ',' || isspace(*str)))
+        str++;
+    return *str == '\0' ? NULL : str;
+}
+
 static void unbuffer(FILE *fp)
 {
 /*
@@ -531,9 +540,29 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
         ERR_clear_last_mark();
 
     if (failed != NULL) {
+        if (ppkey != NULL) {
+            EVP_PKEY_free(*ppkey);
+            *ppkey = NULL;
+        }
+        if (ppubkey != NULL) {
+            EVP_PKEY_free(*ppubkey);
+            *ppubkey = NULL;
+        }
+        if (pparams != NULL) {
+            EVP_PKEY_free(*pparams);
+            *pparams = NULL;
+        }
+        if (pcert != NULL) {
+            X509_free(*pcert);
+            *pcert = NULL;
+        }
         if (pcerts != NULL) {
             sk_X509_pop_free(*pcerts, X509_free);
             *pcerts = NULL;
+        }
+        if (pcrl != NULL) {
+            X509_CRL_free(*pcrl);
+            *pcrl = NULL;
         }
         if (pcrls != NULL) {
             sk_X509_CRL_pop_free(*pcrls, X509_CRL_free);
@@ -596,6 +625,26 @@ X509 *FILES_load_cert_ex(OSSL_LIB_CTX *libctx, const char *propq,
     return cert;
 }
 
+static bool check_cert_chain(const char *src, const char *desc,
+                             int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm,
+                             OPTIONAL X509 **cert, OPTIONAL STACK_OF(X509) **certs) {
+    bool res = true;
+
+    if (cert != NULL && !CERT_check(src, *cert, certs == NULL ?
+                                    type_CA : 0 /* tentatively warn on CA cert */, vpm)
+        && certs == NULL /* non-strict if also cert list loaded */
+        && vpm != NULL /* non-strict if vpm == NULL; TODO better adapt CERT_check() */)
+        res = false;
+    if (certs != NULL && !CERT_check_all(src, *certs,
+                                         cert == NULL ? type_CA : 1 /* warn on non-CA certs */, vpm)
+        && cert == NULL /* non-strict if also cert loaded */
+        && vpm != NULL /* non-strict if vpm == NULL; TODO better adapt CERT_check() */)
+        res = false;
+    if (!res)
+        LOG(FL_ERR, "Error checking %s from %s", desc, src);
+    return res;
+}
+
 bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
                          const char *srcs, int format, int timeout, bool maybe_stdin,
                          const char *source, const char *desc, int min_num,
@@ -614,7 +663,7 @@ bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
 
     if (names == NULL || (all_crts = sk_X509_new_null()) == NULL)
         goto oom;
-    for (src = names; src != NULL; src = next) {
+    for (src = UTIL_first_item_(names); src != NULL; src = next) {
         next = UTIL_next_item(src); /* must do this here to split string */
 
         if (CONN_IS_HTTPS(src)) {
@@ -663,21 +712,8 @@ bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
         all_crts = NULL;
     }
 
-    if (cert != NULL && !CERT_check(src, *cert, certs == NULL ?
-                                    type_CA : 0 /* tentatively warn on CA cert */, vpm)
-        && certs == NULL /* non-strict if also cert list loaded */
-        && vpm != NULL /* non-strict if vpm == NULL; TODO better adapt CERT_check() */)
-        res = false;
-    if (certs != NULL && !CERT_check_all(src, *certs,
-                                         cert == NULL ? type_CA : 1 /* warn on non-CA certs */, vpm)
-        && cert == NULL /* non-strict if also cert loaded */
-        && vpm != NULL /* non-strict if vpm == NULL; TODO better adapt CERT_check() */)
-        res = false;
-    if (!res) {
-        LOG(FL_ERR, "Error checking %s from %s", desc, srcs);
+    if (!check_cert_chain(src, desc, type_CA, vpm, cert, certs))
         goto err;
-    }
-
     goto end;
 
  oom:
@@ -794,7 +830,7 @@ STACK_OF(X509_CRL) *FILES_load_crls_ex(OSSL_LIB_CTX *libctx, const char *propq,
 
     if (names == NULL || (all_crls = sk_X509_CRL_new_null()) == NULL)
         goto oom;
-    for (src = names; src != NULL; src = next) {
+    for (src = UTIL_first_item_(names); src != NULL; src = next) {
         next = UTIL_next_item(src); /* must do this here to split string */
 
         if (CONN_IS_HTTPS(src)) {
@@ -916,7 +952,7 @@ X509_STORE *STORE_load_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
 
     char *file;
     char *next;
-    for (file = names; file != NULL; file = next) {
+    for (file = UTIL_first_item_(names); file != NULL; file = next) {
         next = UTIL_next_item(file); /* must do this here to split string */
         if (not STORE_load_more_check_ex(libctx, propq, &store, file, format,
                                          source, desc, min_certs_per_file, vpm, ctx)) {
@@ -939,24 +975,23 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
                                OPTIONAL STACK_OF(X509) **chain)
 {
     bool joint_credentials = certs != NULL && key != NULL && strcmp(certs, key) == 0;
+    char *pass = FILES_get_pass(source, desc);
     bool res = false;
 
     if (joint_credentials) {
-        char *pass;
-
         if (desc == NULL)
             desc = "both private key and related certificate(s)";
-        pass = FILES_get_pass(source, desc);
         res = load_key_certs_crls(libctx, propq, certs /* == key */,
-                                  format, maybe_stdin, pass, desc, false,
+                                  format, maybe_stdin, pass, desc, true /* quiet on this first try */,
                                   pkey, NULL, NULL, cert, chain, 1, NULL, NULL, 0);
-        UTIL_cleanse_free(pass);
     }
     if (!res) {
         const char *orig_desc = desc;
 
         if (orig_desc == NULL)
             desc = "private key";
+        if (pkey != NULL)
+            EVP_PKEY_free(*pkey);
         if (key != NULL && pkey != NULL
             && (*pkey = FILES_load_key_ex(libctx, propq, key, format,
                                           maybe_stdin, source, desc)) == NULL)
@@ -968,18 +1003,19 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
                 LOG(FL_ERR, "Loading %s over HTTP is not allowed; uri=%s\n", desc, certs);
                 goto err;
             }
-            if (!FILES_load_certs_ex(libctx, propq, certs, format, 0 /* timeout */,
-                                     maybe_stdin, source, desc, 1, type_CA, vpm, cert, chain))
-                goto err;
+                if (!load_key_certs_crls(libctx, propq, certs,
+                                         format, maybe_stdin, pass, desc, false,
+                                         NULL, NULL, NULL, cert, chain, 1, NULL, NULL, 0))
+                    goto err;
         }
     }
-    if (cert != NULL)
-        (void)CERT_check(certs, *cert, 0 /* tentatively warn on CA cert */, vpm);
-    if (chain != NULL)
-        (void)CERT_check_all(certs, *chain, 1 /* warn on non-CA certs */, vpm);
-    return true;
+    UTIL_cleanse_free(pass);
+    return check_cert_chain(certs, desc, type_CA, vpm, cert, chain);
 
 err:
+    if (pkey != NULL)
+        EVP_PKEY_free(*pkey);
+    UTIL_cleanse_free(pass);
     LOG(FL_ERR, "Could not load %s from %s%s%s", desc,
         key, pkey == NULL || certs == NULL || joint_credentials ? "" : " and ",
         joint_credentials ? "" : certs);

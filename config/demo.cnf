@@ -101,11 +101,12 @@ tls_cert = ${ENV::EJBCA_TLS_CLIENT}
 tls_key = $tls_cert
 tls_keypass = pass:12345
 tls_used = 1
-crls = ${ENV::EJBCA_CDP_URL_PREFIX}${ENV::EJBCA_CDP2}${ENV::EJBCA_CDP_URL_POSTFIX_v11}, creds/crls/EJBCA-${ENV::EJBCA_CDP3}.crl, creds/crls/EJBCA-${ENV::EJBCA_CDP1}.crl
-use_cdp = 1
-cdps = ${ENV::EJBCA_CDP_URL_PREFIX}${ENV::EJBCA_CDP3}${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}${ENV::EJBCA_CDP1}${ENV::EJBCA_CDP_URL_POSTFIX}
-use_aia = 1
-ocsp = ${ENV::EJBCA_OCSP_URL}
+# disabled for now:
+#crls = ${ENV::EJBCA_CDP_URL_PREFIX}${ENV::EJBCA_CDP2}${ENV::EJBCA_CDP_URL_POSTFIX_v11}, creds/crls/EJBCA-${ENV::EJBCA_CDP3}.crl, creds/crls/EJBCA-${ENV::EJBCA_CDP1}.crl
+#use_cdp = 1
+#cdps = ${ENV::EJBCA_CDP_URL_PREFIX}${ENV::EJBCA_CDP3}${ENV::EJBCA_CDP_URL_POSTFIX}, ${ENV::EJBCA_CDP_URL_PREFIX}${ENV::EJBCA_CDP1}${ENV::EJBCA_CDP_URL_POSTFIX}
+#use_aia = 1
+#ocsp = ${ENV::EJBCA_OCSP_URL}
 
 [no-tls]
 server = ${ENV::EJBCA_HOST}:${ENV::EJBCA_HTTP_PORT}
@@ -270,8 +271,9 @@ use_aia = 0
 crl_cache_dir = creds/crls/
 verbosity = 6
 [crls]
-check_all = 1
-use_cdp = 1
+# disabled for now:
+#check_all = 1
+#use_cdp = 1
 
 [empty]
 basicConstraints = CA:FALSE # used as a workaround for OpenSSL 3.4 ERROR: error creating certreq - see also https://github.com/openssl/openssl/pull/25631

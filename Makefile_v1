@@ -586,19 +586,19 @@ ifeq ($(EJBCA_CONFIG),)
     EJBCA_HTTP_PORT=6080
     EJBCA_HTTPS_PORT=6443
     EJBCA_CRL_INTERVAL=5
-endif
-start_EJBCA: $(EJBCA_DOCKER_DIR)
-ifeq ($(EJBCA_CONFIG),)
-    ifeq ($(shell which netstat),)
-        ifeq ($(shell netstat -a | grep LISTEN | grep ${EJBCA_HTTP_PORT}),)
-	    EJBCA_RUNNING=1
+    ifneq ($(shell which netstat),)
+        ifneq ($(shell netstat -a | grep LISTEN | grep ${EJBCA_HTTP_PORT}),)
+            EJBCA_RUNNING=1
         endif
     else
         ifeq ($(shell docker ps | grep  "ejbca-ce"),)
-	    EJBCA_RUNNING=1
+            EJBCA_RUNNING=1
         endif
     endif
-    ifneq ($(EJBCA_RUNNING),0)
+endif
+start_EJBCA: $(EJBCA_DOCKER_DIR)
+ifeq ($(EJBCA_CONFIG),)
+    ifneq ($(EJBCA_RUNNING),1)
 	@echo "starting EJBCA"
 	@ # docker run -it --rm -p 6080:8080 -p 6443:8443 primekey/ejbca-ce:8.0.0 # -e TLS_SETUP_ENABLED="simple"
 	@cd $(EJBCA_DOCKER_DIR) && docker compose up -d # -f docker-compose.yml

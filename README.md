@@ -5,7 +5,7 @@
     [OpenSSL with RATS features](https://code.siemens.com/ct-rda-cst-ses-de/remote-attestation/base-functionality/openssl.git)  
 
    * Build command:  
-       ```make -f Makefile_v1```  
+       ```USE_ATGLIB=1 make -f Makefile_v1```  
        Note: Above command will also fetch [Attestation Token Generator (ATG)](https://code.siemens.com/ct-rda-cst-ses-de/remote-attestation/base-functionality/attestation-token-generator.git) and build it.
  * Perform below steps to test.  
       Open two terminal one for server and End entity and change directory to **test/recipes/80-test_cmp_http_data/Mock**.  

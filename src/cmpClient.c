@@ -543,11 +543,12 @@ static X509_EXTENSIONS *getattestationExt(OSSL_CMP_CTX *ctx, RATS_REQ *rats_conf
     atg_ret = atg_generate_evidence(req, &resp);
     if (atg_ret == 0) {
         printf("Token size: %lu\n", resp.token.buf_size);
+#if 0
         printf("Token: [ ");
         for (size_t i = 0; i < resp.token.buf_size; i++)
             printf("0x%x ", resp.token.buf[i] & 0xff);
         printf("]\n");
-
+#endif
         if (resp.num_submods > 0) {
             printf("Error: submodules are not supported.");
             goto err;
@@ -565,7 +566,7 @@ static X509_EXTENSIONS *getattestationExt(OSSL_CMP_CTX *ctx, RATS_REQ *rats_conf
         printf("Nonce: ");
         for (size_t i = 0; i < req.nonce_size; i++)
             printf("0x%x ", req.nonce[i] & 0xff);
-        printf("User Data Size: %zu\n\n", req.user_data_size);
+        printf("\nUser Data Size: %zu\n\n", req.user_data_size);
         goto err;
     }
 

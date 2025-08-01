@@ -36,6 +36,8 @@ B<cmpClient> I<options>
 [B<-config> I<filename>]
 [B<-section> I<names>]
 [B<-verbosity> I<level>]
+[B<-provider-path> I<path>]
+[B<-provider> I<name>]
 
 Generic message options:
 
@@ -244,6 +246,26 @@ Level of verbosity for logging, error output, etc.
 6 = INFO, 7 = DEBUG, 8 = TRACE.
 Defaults to 6 = INFO.
 The levels DEBUG and TRACE are most useful for certificate status check issues.
+
+=item B<-provider-path> I<path>
+
+Specifies the search path that is to be used for looking for providers
+referenced via subsequent B<-provider> options.
+Alternatively, the B<OPENSSL_MODULES> environment variable may be set.
+
+=item B<-provider> I<name>
+
+Load and initialize the provider identified by I<name>.
+The I<name> can be also a path to the provider module. In that case the provider name
+will be the specified path and not just the provider module name.
+Interpretation of relative paths is platform-specific.
+
+The path specified with the most recently given B<-provider-path> option is prepended to relative paths.
+If no B<-provider-path> option is given before, the value of
+the B<OPENSSL_MODULES> environment variable is used if set.
+In any case, some preconfigured default paths are tried as well.
+
+See the OpenSSL L<provider(7)> man page for a more detailed description.
 
 =back
 

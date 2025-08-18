@@ -135,7 +135,6 @@ else()
     set(COVERAGE_FLAGS --coverage -fprofile-arcs)
     add_compile_options(${COVERAGE_FLAGS})
     link_libraries(${COVERAGE_FLAGS})
-    target_link_libraries(${LIBGENCMP_NAME} ${COVERAGE_FLAGS})
   endif()
 endif()
 message(STATUS "build mode: ${CMAKE_BUILD_TYPE}")
@@ -160,6 +159,10 @@ add_library(${LIBGENCMP_NAME} SHARED
   "${PROJECT_SOURCE_DIR}/.github/workflows/build.yml"
   ${SRC_DIR}/genericCMPClient.c
 )
+
+if(UNIX AND NOT APPLE AND CMAKE_BUILD_TYPE MATCHES Debug)
+  target_link_libraries(${LIBGENCMP_NAME} ${COVERAGE_FLAGS})
+endif()
 
 add_executable(cmpClient
   ${SRC_DIR}/cmpClient.c

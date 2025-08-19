@@ -178,8 +178,8 @@ tls_trusted = creds/trusted/DigicertGlobalRootG5.crt
 
 # Tenant on server
 recipient = /CN=CloudPKI-Integration-Test
-cacert = creds/trusted/CloudCA_Root_v2.crt,creds/trusted/Manufacturer_Root_CA.crt
-trusted = $cacert
+cacert = creds/trusted/PPKIPlaygroundECCRootCAv20.crt,creds/trusted/PPKIPlaygroundRSARootCAv20.crt,creds/trusted/PPKIPlaygroundMLDSARootCAv10.crt
+trusted = creds/trusted/PPKIPlaygroundInfrastructureRootCAv20.crt,$cacert
 out_trusted = $cacert
 own_trusted = $cacert
 
@@ -188,7 +188,7 @@ ref = CloudPKI-Integration-Test-User
 secret = pass:SiemensIT
 subject = /CN=$ref
 
-# Local store for imprinting results
+# Local store for imprinting
 cert = creds/manufacturer.crt
 key = creds/manufacturer.pem
 keypass = pass:12345

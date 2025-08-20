@@ -186,7 +186,7 @@ own_trusted = $cacert
 # User in tenant
 ref = CloudPKI-Integration-Test-User
 secret = pass:SiemensIT
-subject = /CN=$ref
+subject = /CN=$ref/OU=PPKI Playground/OU=Corporate Technology/OU=For internal test purposes only/O=Siemens/C=DE
 
 # Local store for imprinting
 cert = creds/manufacturer.crt

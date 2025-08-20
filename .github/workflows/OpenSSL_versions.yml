@@ -11,11 +11,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        branch: [openssl-3.0, openssl-3.1, openssl-3.2, openssl-3.3, openssl-3.4]
+        branch: [openssl-3.0, openssl-3.1, openssl-3.2, openssl-3.3, openssl-3.4, openssl-3.5]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      - name: Fix kernel mmap rnd bits
+      # Asan in llvm 14 provided in ubuntu 22.04 is incompatible with
+      # high-entropy ASLR in much newer kernels that GitHub runners are
+      # using leading to random crashes: https://reviews.llvm.org/D148280
+        run: sudo sysctl vm.mmap_rnd_bits=28
       - name: set cache env
         run: |
          echo "cache-name=`git ls-remote https://github.com/openssl/openssl.git ${{matrix.branch}} | awk '{print $1}'`" >> "$GITHUB_ENV"
@@ -55,7 +59,9 @@ jobs:
           make clean build
           DESTDIR=tmp make install uninstall
           make deb
-      - name: make
+
+      - if: ${{ matrix.branch != 'openssl-3.5' }}
+        name: make
         run: |
           make -f Makefile_v1
           ./cmpClient -help
@@ -65,5 +71,13 @@ jobs:
           USE_LIBCMP=1 STATIC_LIBCMP=1 make -f Makefile_v1
           ./cmpClient -help
           make -f Makefile_v1 clean
+
+      - if: ${{ matrix.branch == 'openssl-3.5' }}
+        name: test_Mock with PQ algorithms
+        run: |
+          cd test/recipes/80-test_cmp_http_data/Mock/
+          ./setup-mock.sh all
+          cd ../../../../
+          make -f Makefile_v1 test_Mock
 
 

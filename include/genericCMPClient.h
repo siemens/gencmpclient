@@ -42,7 +42,7 @@ typedef OSSL_CMP_CTX CMP_CTX;
 #  define OSSL_CMP_PKISTATUS_unspecified            -1
 # endif
 
-# if OPENSSL_VERSION_NUMBER < 0x30200000L && !defined(USE_LIBCMP)
+# if OPENSSL_VERSION_NUMBER < 0x30200000L && !defined(USE_LIBCMP) /* == !(OPENSSL_3_2_FEATURES) */
 static ossl_inline
 OSSL_LIB_CTX *OSSL_CMP_CTX_get0_libctx(ossl_unused const OSSL_CMP_CTX *ctx)
 {
@@ -62,6 +62,7 @@ const char *OSSL_CMP_CTX_get0_propq(ossl_unused const OSSL_CMP_CTX *ctx)
 #  define SN_id_mod_cmp2021_02            "id-mod-cmp2021-02"
 #  define NID_id_mod_cmp2021_02           1253
 #  define OBJ_id_mod_cmp2021_02           OBJ_id_pkix_mod, 100L
+#  define SN_id_it_rootCaCert             "id-it-rootCaCert"
 #  define NID_id_it_rootCaCert            1254
 #  define OBJ_id_it_rootCaCert            OBJ_id_it, 20L
 #  define SN_id_it_certProfile            "id-it-certProfile"

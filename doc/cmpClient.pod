@@ -377,7 +377,7 @@ Pass phrase source for the key file given with the B<-newkey> option.
 If not given here, the password will be prompted for if needed.
 
 This may be a plain password, which should be preceded by 'pass:',
-a key identifier preceded by 'engine:' to use with a crypto engine,
+a key identifier preceded by 'engine:' to use with a legacy crypto engine,
 the name of a environment variable preceded by 'env:' to read from,
 the name of a file preceded by 'file:' to read from,
 the numeric descriptor of a file preceded by 'fd:' to read from,

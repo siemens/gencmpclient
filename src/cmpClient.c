@@ -153,9 +153,6 @@ const char *opt_issuer;
 char *opt_serial;
 #endif
 
-/* TODO? add credentials format options */
-/* TODO add opt_engine */
-
 /* TLS connection */
 bool opt_tls_used;
 /* TODO re-add tls_creds */
@@ -306,9 +303,6 @@ opt_t cmp_opts[] = {
       "Serial number of certificate to be revoked in revocation request (rr)"},
 #endif
     /* Note: Lightweight CMP Profile SimpleLra does not allow CRL_REASON_NONE */
-
-    /* TODO? OPT_HEADER("Credentials format"), */
-    /* TODO add opt_engine */
 
     OPT_HEADER("Message transfer"),
     { "server", OPT_TXT, {.txt = NULL}, { &opt_server },

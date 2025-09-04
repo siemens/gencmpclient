@@ -2151,6 +2151,65 @@ static const char *nid_name(int nid)
 }
 #endif
 
+#if OPENSSL_3_4_FEATURES
+static void print_keySpec(OSSL_CMP_ATAVS *keySpec)
+{
+    const char *desc = "specifications contained in keySpec from genp";
+    BIO *mem = BIO_new(BIO_s_mem());
+
+    if (mem == NULL) {
+        LOG(FL_ERR, "Out of memory - cannot dump key %s", desc);
+        return;
+    }
+    BIO_printf(mem, "Key %s:\n", desc);
+
+    int i, n = sk_OSSL_CMP_ATAV_num(keySpec);
+    for (i = 0; i < n; i++) {
+        OSSL_CMP_ATAV *atav = sk_OSSL_CMP_ATAV_value(keySpec, i);
+        ASN1_OBJECT *type = OSSL_CMP_ATAV_get0_type(atav /* may be NULL */);
+        int nid = OBJ_obj2nid(type);
+
+        switch (nid) {
+        case NID_id_regCtrl_algId:
+            {
+                X509_ALGOR *alg = OSSL_CMP_ATAV_get0_algId(atav);
+                const ASN1_OBJECT *oid;
+                int paramtype;
+                const void *param;
+
+                X509_ALGOR_get0(&oid, &paramtype, &param, alg);
+                BIO_printf(mem, "Key algorithm: ");
+                i2a_ASN1_OBJECT(mem, oid);
+                if (paramtype == V_ASN1_UNDEF || alg->parameter == NULL) {
+                    BIO_printf(mem, "\n");
+                } else {
+                    BIO_printf(mem, " - ");
+                    ASN1_item_print(mem, (ASN1_VALUE *)alg,
+                                    0, ASN1_ITEM_rptr(X509_ALGOR), NULL);
+                }
+            }
+            break;
+        case NID_id_regCtrl_rsaKeyLen:
+            BIO_printf(mem, "Key algorithm: RSA %d bit\n",
+                       OSSL_CMP_ATAV_get_rsaKeyLen(atav));
+            break;
+        default:
+            BIO_printf(mem, "Invalid key spec: %s\n", nid_name(nid));
+            break;
+        }
+    }
+    BIO_printf(mem, "End of key %s", desc);
+
+    const char *p;
+    long len = BIO_get_mem_data(mem, &p);
+    if (len > INT_MAX)
+        LOG(FL_ERR, "Info too large - cannot dump key %s", desc);
+    else
+        LOG(FL_INFO, "%.*s", (int)len, p);
+    BIO_free(mem);
+}
+#endif
+
 static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
 {
     CMP_err err;
@@ -2300,59 +2359,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         OSSL_CRMF_CERTTEMPLATE_free(certTemplate);
         if (err != CMP_OK || keySpec == NULL)
             goto tmpl_end;
+        print_keySpec(keySpec);
 
-        const char *desc = "specifications contained in keySpec from genp";
-        BIO *mem = BIO_new(BIO_s_mem());
-        if (mem == NULL) {
-            LOG(FL_ERR, "Out of memory - cannot dump key %s", desc);
-            goto tmpl_end;
-        }
-        BIO_printf(mem, "Key %s:\n", desc);
-
-        int i, n = sk_OSSL_CMP_ATAV_num(keySpec);
-        for (i = 0; i < n; i++) {
-            OSSL_CMP_ATAV *atav = sk_OSSL_CMP_ATAV_value(keySpec, i);
-            ASN1_OBJECT *type = OSSL_CMP_ATAV_get0_type(atav /* may be NULL */);
-            int nid = OBJ_obj2nid(type);
-
-            switch (nid) {
-            case NID_id_regCtrl_algId:
-                {
-                    X509_ALGOR *alg = OSSL_CMP_ATAV_get0_algId(atav);
-                    const ASN1_OBJECT *oid;
-                    int paramtype;
-                    const void *param;
-
-                    X509_ALGOR_get0(&oid, &paramtype, &param, alg);
-                    BIO_printf(mem, "Key algorithm: ");
-                    i2a_ASN1_OBJECT(mem, oid);
-                    if (paramtype == V_ASN1_UNDEF || alg->parameter == NULL) {
-                        BIO_printf(mem, "\n");
-                    } else {
-                        BIO_printf(mem, " - ");
-                        ASN1_item_print(mem, (ASN1_VALUE *)alg,
-                                        0, ASN1_ITEM_rptr(X509_ALGOR), NULL);
-                    }
-                }
-                break;
-            case NID_id_regCtrl_rsaKeyLen:
-                BIO_printf(mem, "Key algorithm: RSA %d bit\n",
-                           OSSL_CMP_ATAV_get_rsaKeyLen(atav));
-                break;
-            default:
-                BIO_printf(mem, "Invalid key spec: %s\n", nid_name(nid));
-                break;
-            }
-        }
-        BIO_printf(mem, "End of key %s", desc);
-
-        const char *p;
-        long len = BIO_get_mem_data(mem, &p);
-        if (len > INT_MAX)
-            LOG(FL_ERR, "Info too large - cannot dump key %s", desc);
-        else
-            LOG(FL_INFO, "%.*s", (int)len, p);
-        BIO_free(mem);
     tmpl_end:
         sk_OSSL_CMP_ATAV_pop_free(keySpec, OSSL_CMP_ATAV_free);
         return err;

@@ -1515,8 +1515,7 @@ err:
     return ret;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# if OPENSSL_VERSION_NUMBER < 0x30200000L
+#if OPENSSL_VERSION_NUMBER < 0x30200000L
 static int add_object(unsigned char *data, int len, int nid, const char *name)
 {
     ASN1_OBJECT *obj;
@@ -1536,51 +1535,46 @@ static int add_object(unsigned char *data, int len, int nid, const char *name)
         LOG(FL_ERR, "Error adding info for ASN.1 object %s", name);
     return res;
 }
-# endif
 #endif
 
 /* Add any missing OIDs needed for genm */
 static int complete_genm_asn1_objects(void)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# define ASN1_OID_IT 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04
-# define ASN1_OID_REGCTRL 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x05, 0x01
-# if OPENSSL_VERSION_NUMBER < 0x30200000L
+#if OPENSSL_VERSION_NUMBER < 0x30200000L
     /* were added by OpenSSL commit 34959f7a2256eadd23d56f0efe855be7fde282b2 */
-    static unsigned char so_rootCaCert[]      = { ASN1_OID_IT, 20 };
-    static unsigned char so_certProfile[]     = { ASN1_OID_IT, 21 };
-    static unsigned char so_crlStatusList[]   = { ASN1_OID_IT, 22 };
-    static unsigned char so_crls[]            = { ASN1_OID_IT, 23 };
-    static unsigned char so_algId[]           = { ASN1_OID_REGCTRL, 11 };
-    static unsigned char so_rsaKeyLen[]       = { ASN1_OID_REGCTRL, 12 };
-#  if OPENSSL_VERSION_NUMBER < 0x30000000L
+    static unsigned char so_rootCaCert[]      = { OBJ_id_it_rootCaCert };
+    static unsigned char so_certProfile[]     = { OBJ_id_it_certProfile };
+    static unsigned char so_crlStatusList[]   = { OBJ_id_it_crlStatusList };
+    static unsigned char so_crls[]            = { OBJ_id_it_crls };
+    static unsigned char so_algId[]           = { OBJ_id_regCtrl_algId };
+    static unsigned char so_rsaKeyLen[]       = { OBJ_id_regCtrl_rsaKeyLen };
+# if OPENSSL_VERSION_NUMBER < 0x30000000L
     /* were added by OpenSSL commit 15633d74dcfe446d309d612c69fd075616d45c5b */
-    static unsigned char so_caCerts[]         = { ASN1_OID_IT, 17 };
-    static unsigned char so_rootCaKeyUpdate[] = { ASN1_OID_IT, 18 };
-    static unsigned char so_certReqTemplate[] = { ASN1_OID_IT, 19 };
+    static unsigned char so_caCerts[]         = { OBJ_id_it_caCerts };
+    static unsigned char so_rootCaKeyUpdate[] = { OBJ_id_it_rootCaKeyUpdate };
+    static unsigned char so_certReqTemplate[] = { OBJ_id_it_certReqTemplate };
 
     if (!add_object(so_caCerts, sizeof(so_caCerts),
-                    NID_id_it_caCerts, "id-it-caCerts")
+                    NID_id_it_caCerts, SN_id_it_caCerts)
         || !add_object(so_rootCaKeyUpdate, sizeof(so_rootCaKeyUpdate),
-                       NID_id_it_rootCaKeyUpdate, "id-it-rootCaKeyUpdate")
+                       NID_id_it_rootCaKeyUpdate, SN_id_it_rootCaKeyUpdate)
         || !add_object(so_certReqTemplate, sizeof(so_certReqTemplate),
-                       NID_id_it_certReqTemplate, "id-it-certReqTemplate"))
+                       NID_id_it_certReqTemplate, SN_id_it_certReqTemplate))
         return -20;
-#  endif
-    if (!add_object(so_rootCaCert, sizeof(so_rootCaCert),
-                    NID_id_it_rootCaCert, "id-it-rootCaCert")
-        || !add_object(so_certProfile, sizeof(so_certProfile),
-                       NID_id_it_certProfile, "id-it-certProfile")
-        || !add_object(so_crlStatusList, sizeof(so_crlStatusList),
-                       NID_id_it_crlStatusList, "id-it-crlStatusList")
-        || !add_object(so_crls, sizeof(so_crls),
-                       NID_id_it_crls, "id-it-crls")
-        || !add_object(so_algId, sizeof(so_algId),
-                       NID_id_regCtrl_algId, "id-regCtrl-algId")
-        || !add_object(so_rsaKeyLen, sizeof(so_rsaKeyLen),
-                       NID_id_regCtrl_rsaKeyLen, "id-regCtrl-rsaKeyLen"))
-        return -21;
 # endif
+    if (!add_object(so_rootCaCert, sizeof(so_rootCaCert),
+                    NID_id_it_rootCaCert, SN_id_it_rootCaCert)
+        || !add_object(so_certProfile, sizeof(so_certProfile),
+                       NID_id_it_certProfile, SN_id_it_certProfile)
+        || !add_object(so_crlStatusList, sizeof(so_crlStatusList),
+                       NID_id_it_crlStatusList, SN_id_it_crlStatusList)
+        || !add_object(so_crls, sizeof(so_crls),
+                       NID_id_it_crls, SN_id_it_crls)
+        || !add_object(so_algId, sizeof(so_algId),
+                       NID_id_regCtrl_algId, SN_id_regCtrl_algId)
+        || !add_object(so_rsaKeyLen, sizeof(so_rsaKeyLen),
+                       NID_id_regCtrl_rsaKeyLen, SN_id_regCtrl_rsaKeyLen))
+        return -21;
 #endif
     return CMP_OK;
 }

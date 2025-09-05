@@ -78,7 +78,7 @@ const char *opt_recipient;
 const char *opt_expect_sender;
 bool opt_ignore_keyusage;
 bool opt_unprotected_errors;
-#if OPENSSL_3_6_FEATURES
+#if OPENSSL_4_0_FEATURES
 bool opt_nonmatched_error_nonces;
 #endif
 #if OPENSSL_3_3_FEATURES
@@ -152,9 +152,6 @@ const char *opt_issuer;
 #if OPENSSL_3_2_FEATURES
 char *opt_serial;
 #endif
-
-/* TODO? add credentials format options */
-/* TODO add opt_engine */
 
 /* TLS connection */
 bool opt_tls_used;
@@ -307,9 +304,6 @@ opt_t cmp_opts[] = {
 #endif
     /* Note: Lightweight CMP Profile SimpleLra does not allow CRL_REASON_NONE */
 
-    /* TODO? OPT_HEADER("Credentials format"), */
-    /* TODO add opt_engine */
-
     OPT_HEADER("Message transfer"),
     { "server", OPT_TXT, {.txt = NULL}, { &opt_server },
       "[http[s]://]host[:port][/path] of CMP server. Default port 80 or 443."},
@@ -348,7 +342,7 @@ opt_t cmp_opts[] = {
     { "unprotected_errors", OPT_BOOL, {.bit = false},
       { (const char **) &opt_unprotected_errors },
       "Accept missing or invalid protection of regular error messages and negative"},
-#if OPENSSL_3_6_FEATURES
+#if OPENSSL_4_0_FEATURES
     { "nonmatched_error_nonces", OPT_BOOL, {.bit = false},
       { (const char **) &opt_nonmatched_error_nonces },
       "Accept missing or non-matching transactionID or recipNonce in error messages"},
@@ -1078,7 +1072,7 @@ static int setup_ctx(CMP_CTX *ctx)
     /* set option flags directly via CMP API */
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
                                  opt_unprotected_errors ? 1 : 0)
-#if OPENSSL_3_6_FEATURES
+#if OPENSSL_4_0_FEATURES
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NONMATCHED_ERROR_NONCES,
                                     opt_nonmatched_error_nonces ? 1 : 0)
 #endif
@@ -1521,8 +1515,7 @@ err:
     return ret;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# if OPENSSL_VERSION_NUMBER < 0x30200000L
+#if OPENSSL_VERSION_NUMBER < 0x30200000L
 static int add_object(unsigned char *data, int len, int nid, const char *name)
 {
     ASN1_OBJECT *obj;
@@ -1542,51 +1535,46 @@ static int add_object(unsigned char *data, int len, int nid, const char *name)
         LOG(FL_ERR, "Error adding info for ASN.1 object %s", name);
     return res;
 }
-# endif
 #endif
 
 /* Add any missing OIDs needed for genm */
 static int complete_genm_asn1_objects(void)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-# define ASN1_OID_IT 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x04
-# define ASN1_OID_REGCTRL 0x2B, 0x06, 0x01, 0x05, 0x05, 0x07, 0x05, 0x01
-# if OPENSSL_VERSION_NUMBER < 0x30200000L
+#if OPENSSL_VERSION_NUMBER < 0x30200000L
     /* were added by OpenSSL commit 34959f7a2256eadd23d56f0efe855be7fde282b2 */
-    static unsigned char so_rootCaCert[]      = { ASN1_OID_IT, 20 };
-    static unsigned char so_certProfile[]     = { ASN1_OID_IT, 21 };
-    static unsigned char so_crlStatusList[]   = { ASN1_OID_IT, 22 };
-    static unsigned char so_crls[]            = { ASN1_OID_IT, 23 };
-    static unsigned char so_algId[]           = { ASN1_OID_REGCTRL, 11 };
-    static unsigned char so_rsaKeyLen[]       = { ASN1_OID_REGCTRL, 12 };
-#  if OPENSSL_VERSION_NUMBER < 0x30000000L
+    static unsigned char so_rootCaCert[]      = { OBJ_id_it_rootCaCert };
+    static unsigned char so_certProfile[]     = { OBJ_id_it_certProfile };
+    static unsigned char so_crlStatusList[]   = { OBJ_id_it_crlStatusList };
+    static unsigned char so_crls[]            = { OBJ_id_it_crls };
+    static unsigned char so_algId[]           = { OBJ_id_regCtrl_algId };
+    static unsigned char so_rsaKeyLen[]       = { OBJ_id_regCtrl_rsaKeyLen };
+# if OPENSSL_VERSION_NUMBER < 0x30000000L
     /* were added by OpenSSL commit 15633d74dcfe446d309d612c69fd075616d45c5b */
-    static unsigned char so_caCerts[]         = { ASN1_OID_IT, 17 };
-    static unsigned char so_rootCaKeyUpdate[] = { ASN1_OID_IT, 18 };
-    static unsigned char so_certReqTemplate[] = { ASN1_OID_IT, 19 };
+    static unsigned char so_caCerts[]         = { OBJ_id_it_caCerts };
+    static unsigned char so_rootCaKeyUpdate[] = { OBJ_id_it_rootCaKeyUpdate };
+    static unsigned char so_certReqTemplate[] = { OBJ_id_it_certReqTemplate };
 
     if (!add_object(so_caCerts, sizeof(so_caCerts),
-                    NID_id_it_caCerts, "id-it-caCerts")
+                    NID_id_it_caCerts, SN_id_it_caCerts)
         || !add_object(so_rootCaKeyUpdate, sizeof(so_rootCaKeyUpdate),
-                       NID_id_it_rootCaKeyUpdate, "id-it-rootCaKeyUpdate")
+                       NID_id_it_rootCaKeyUpdate, SN_id_it_rootCaKeyUpdate)
         || !add_object(so_certReqTemplate, sizeof(so_certReqTemplate),
-                       NID_id_it_certReqTemplate, "id-it-certReqTemplate"))
+                       NID_id_it_certReqTemplate, SN_id_it_certReqTemplate))
         return -20;
-#  endif
-    if (!add_object(so_rootCaCert, sizeof(so_rootCaCert),
-                    NID_id_it_rootCaCert, "id-it-rootCaCert")
-        || !add_object(so_certProfile, sizeof(so_certProfile),
-                       NID_id_it_certProfile, "id-it-certProfile")
-        || !add_object(so_crlStatusList, sizeof(so_crlStatusList),
-                       NID_id_it_crlStatusList, "id-it-crlStatusList")
-        || !add_object(so_crls, sizeof(so_crls),
-                       NID_id_it_crls, "id-it-crls")
-        || !add_object(so_algId, sizeof(so_algId),
-                       NID_id_regCtrl_algId, "id-regCtrl-algId")
-        || !add_object(so_rsaKeyLen, sizeof(so_rsaKeyLen),
-                       NID_id_regCtrl_rsaKeyLen, "id-regCtrl-rsaKeyLen"))
-        return -21;
 # endif
+    if (!add_object(so_rootCaCert, sizeof(so_rootCaCert),
+                    NID_id_it_rootCaCert, SN_id_it_rootCaCert)
+        || !add_object(so_certProfile, sizeof(so_certProfile),
+                       NID_id_it_certProfile, SN_id_it_certProfile)
+        || !add_object(so_crlStatusList, sizeof(so_crlStatusList),
+                       NID_id_it_crlStatusList, SN_id_it_crlStatusList)
+        || !add_object(so_crls, sizeof(so_crls),
+                       NID_id_it_crls, SN_id_it_crls)
+        || !add_object(so_algId, sizeof(so_algId),
+                       NID_id_regCtrl_algId, SN_id_regCtrl_algId)
+        || !add_object(so_rsaKeyLen, sizeof(so_rsaKeyLen),
+                       NID_id_regCtrl_rsaKeyLen, SN_id_regCtrl_rsaKeyLen))
+        return -21;
 #endif
     return CMP_OK;
 }
@@ -2163,6 +2151,65 @@ static const char *nid_name(int nid)
 }
 #endif
 
+#if OPENSSL_3_4_FEATURES
+static void print_keySpec(OSSL_CMP_ATAVS *keySpec)
+{
+    const char *desc = "specifications contained in keySpec from genp";
+    BIO *mem = BIO_new(BIO_s_mem());
+
+    if (mem == NULL) {
+        LOG(FL_ERR, "Out of memory - cannot dump key %s", desc);
+        return;
+    }
+    BIO_printf(mem, "Key %s:\n", desc);
+
+    int i, n = sk_OSSL_CMP_ATAV_num(keySpec);
+    for (i = 0; i < n; i++) {
+        OSSL_CMP_ATAV *atav = sk_OSSL_CMP_ATAV_value(keySpec, i);
+        ASN1_OBJECT *type = OSSL_CMP_ATAV_get0_type(atav /* may be NULL */);
+        int nid = OBJ_obj2nid(type);
+
+        switch (nid) {
+        case NID_id_regCtrl_algId:
+            {
+                X509_ALGOR *alg = OSSL_CMP_ATAV_get0_algId(atav);
+                const ASN1_OBJECT *oid;
+                int paramtype;
+                const void *param;
+
+                X509_ALGOR_get0(&oid, &paramtype, &param, alg);
+                BIO_printf(mem, "Key algorithm: ");
+                i2a_ASN1_OBJECT(mem, oid);
+                if (paramtype == V_ASN1_UNDEF || alg->parameter == NULL) {
+                    BIO_printf(mem, "\n");
+                } else {
+                    BIO_printf(mem, " - ");
+                    ASN1_item_print(mem, (ASN1_VALUE *)alg,
+                                    0, ASN1_ITEM_rptr(X509_ALGOR), NULL);
+                }
+            }
+            break;
+        case NID_id_regCtrl_rsaKeyLen:
+            BIO_printf(mem, "Key algorithm: RSA %d bit\n",
+                       OSSL_CMP_ATAV_get_rsaKeyLen(atav));
+            break;
+        default:
+            BIO_printf(mem, "Invalid key spec: %s\n", nid_name(nid));
+            break;
+        }
+    }
+    BIO_printf(mem, "End of key %s", desc);
+
+    const char *p;
+    long len = BIO_get_mem_data(mem, &p);
+    if (len > INT_MAX)
+        LOG(FL_ERR, "Info too large - cannot dump key %s", desc);
+    else
+        LOG(FL_INFO, "%.*s", (int)len, p);
+    BIO_free(mem);
+}
+#endif
+
 static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
 {
     CMP_err err;
@@ -2312,59 +2359,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         OSSL_CRMF_CERTTEMPLATE_free(certTemplate);
         if (err != CMP_OK || keySpec == NULL)
             goto tmpl_end;
+        print_keySpec(keySpec);
 
-        const char *desc = "specifications contained in keySpec from genp";
-        BIO *mem = BIO_new(BIO_s_mem());
-        if (mem == NULL) {
-            LOG(FL_ERR, "Out of memory - cannot dump key %s", desc);
-            goto tmpl_end;
-        }
-        BIO_printf(mem, "Key %s:\n", desc);
-
-        int i, n = sk_OSSL_CMP_ATAV_num(keySpec);
-        for (i = 0; i < n; i++) {
-            OSSL_CMP_ATAV *atav = sk_OSSL_CMP_ATAV_value(keySpec, i);
-            ASN1_OBJECT *type = OSSL_CMP_ATAV_get0_type(atav /* may be NULL */);
-            int nid = OBJ_obj2nid(type);
-
-            switch (nid) {
-            case NID_id_regCtrl_algId:
-                {
-                    X509_ALGOR *alg = OSSL_CMP_ATAV_get0_algId(atav);
-                    const ASN1_OBJECT *oid;
-                    int paramtype;
-                    const void *param;
-
-                    X509_ALGOR_get0(&oid, &paramtype, &param, alg);
-                    BIO_printf(mem, "Key algorithm: ");
-                    i2a_ASN1_OBJECT(mem, oid);
-                    if (paramtype == V_ASN1_UNDEF || alg->parameter == NULL) {
-                        BIO_printf(mem, "\n");
-                    } else {
-                        BIO_printf(mem, " - ");
-                        ASN1_item_print(mem, (ASN1_VALUE *)alg,
-                                        0, ASN1_ITEM_rptr(X509_ALGOR), NULL);
-                    }
-                }
-                break;
-            case NID_id_regCtrl_rsaKeyLen:
-                BIO_printf(mem, "Key algorithm: RSA %d bit\n",
-                           OSSL_CMP_ATAV_get_rsaKeyLen(atav));
-                break;
-            default:
-                BIO_printf(mem, "Invalid key spec: %s\n", nid_name(nid));
-                break;
-            }
-        }
-        BIO_printf(mem, "End of key %s", desc);
-
-        const char *p;
-        long len = BIO_get_mem_data(mem, &p);
-        if (len > INT_MAX)
-            LOG(FL_ERR, "Info too large - cannot dump key %s", desc);
-        else
-            LOG(FL_INFO, "%.*s", (int)len, p);
-        BIO_free(mem);
     tmpl_end:
         sk_OSSL_CMP_ATAV_pop_free(keySpec, OSSL_CMP_ATAV_free);
         return err;

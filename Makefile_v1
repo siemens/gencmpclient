@@ -481,7 +481,7 @@ else ifeq ($(CA_SECTION),CloudCA)
     ifdef CMP_PROFILE
         PROFILE_PATH="/p/$(CMP_PROFILE)"
     endif
-    override EXTRA_OPTS += -path "/.well-known/cmp$(PROFILE_PATH)" -reqexts empty -newkeytype RSA-4096 -msg_timeout 30 -total_timeout 60
+    override EXTRA_OPTS += -path "/.well-known/cmp$(PROFILE_PATH)" -reqexts empty -msg_timeout 30 -total_timeout 60
 else
     CA_SECTION=EJBCA
     EXTRA_OPTS_IMPRINT= -path $(EJBCA_PATH)/$(EJBCA_PATH_IMPRINT) -subject "$(EJBCA_CMP_SUBJECT_IMPRINT)"

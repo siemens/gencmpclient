@@ -21,7 +21,6 @@ activate = 1
 
 
 [default]
-
 #verbosity = 6 # means INFO (default)
 #tls_used = 0 # (default)
 #keep_alive = 1 # means preferring to keep the connection open (default)
@@ -199,7 +198,7 @@ keypass = pass:12345
 cmd = ir
 cert =
 key =
-newkeytype = EC:secp521r1
+newkeytype = EC:secp521r1 # for RSA based keys use RSA-2048 as keytype
 newkey = creds/manufacturer.pem # fallback for cmpossl
 newkeypass = pass:12345
 reqexts = empty

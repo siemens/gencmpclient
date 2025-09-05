@@ -1,11 +1,11 @@
 # generic CMP client
 
 This is a generic Certificate Management Protocol (CMP) client library with
+
 * a high-level API for use with C(++)
 * an associated CLI-based demo client
 * CLI-based demo invocations and tests
 * documentation for the API and CLI
-
 
 ## Purpose
 
@@ -41,7 +41,6 @@ which meanwhile has been obsoleted by
 For details see [below](#cmp-features-and-openssl-versions)
 or the HISTORY section of [`cmpClient.pod`](doc/cmpClient.pod#HISTORY).
 
-
 A further use case of this software is to provide early access to all new CMP
 features defined in [CMP Updates](https://www.rfc-editor.org/rfc/rfc9480) and
 the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483).
@@ -56,10 +55,10 @@ is available in the form of a
 The [LightweightCmpRa](https://github.com/siemens/LightweightCmpRa)
 is a CLI-based demo CMP client and RA application making use of this component.
 
-
 ## Support model
 
 The [maintainers](MAINTAINERS) offer two levels of support.
+
 * Community support is provided on a best-effort basis
   and can be requested via [issues](../../issues).
 * Paid professional support and consulting can be ordered
@@ -67,7 +66,6 @@ The [maintainers](MAINTAINERS) offer two levels of support.
 
 [Contributions](CONTRIBUTING.md) are appreciated
   in the form of [pull requests](../../pulls).
-
 
 ## Status
 
@@ -102,7 +100,6 @@ are available in the [`doc`](doc/) folder.
 The Doxygen documentation of the underlying Security Utilities library is available
 via a link in its [README file](https://github.com/siemens/libsecutils/blob/master/README.md).
 
-
 ## Prerequisites
 
 This software should work with any flavor of Linux
@@ -111,6 +108,7 @@ on a native system, a Docker image, or on a virtual machine including the
 Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
 
 The following development and network tools are needed or recommended.
+
 * Git (for getting the software, tested versions include 2.7.2, 2.11.0, 2.20, 2.30.2, 2.39.2, 2.47.0)
 * CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested versions include 3.18.4, 3.26.3, 3.27.7, 3.30.5)
 * GNU make (tested versions include 3.81, 4.1, 4.2.1, 4.3)
@@ -120,6 +118,7 @@ The following development and network tools are needed or recommended.
 * Perl (for running the tests, tested versions include 5.30.3, 5.32.1, 5.36.0, 5.38.2)
 
 The following OSS components are used.
+
 * OpenSSL development edition;
   currently supported versions include 3.0, 3.1, 3.2, 3.3, 3.4
   <!-- (formerly also versions 1.0.2, 1.1.0, and 1.1.1) -->
@@ -170,13 +169,14 @@ So unless knowing exactly what to do and being careful, one may receive version
 mismatch errors like the one mentioned [below](#sanity-checks-on-openssl).
 <!-- https://github.com/orgs/community/discussions/60861-->
 
-
 ### Linux installation
 
 On a Debian or Ubuntu system the prerequisites may be installed simply as follows:
-```
+
+```bash
 sudo apt install cmake libssl-dev libc-dev linux-libc-dev
 ```
+
 while `sudo apt install git make gcc wget`
 usually is not needed as far as these tools are pre-installed.
 
@@ -184,19 +184,22 @@ usually is not needed as far as these tools are pre-installed.
 
 On macOS the prerequisites may be installed
 by executing the following in a terminal:
-```
+
+```bash
 brew install git make openssl cmake wget perl
 ```
 
 For making sure that OpenSSL version 3 is installed:
-```
+
+```bash
 brew uninstall --ignore-dependencies openssl@3
 brew install openssl@3
 brew --prefix openssl@3
 ```
 
 For using `gcc` (instead of `clang`) and `ccache`:
-```
+
+```bash
 brew install gcc ccache
 ```
 
@@ -204,7 +207,8 @@ brew install gcc ccache
 
 As a sanity check whether OpenSSL is usable for building the CMP client and libraries,
 you can execute in a shell on a Unix-like system:
-```
+
+```bash
 git clone https://github.com/siemens/gencmpclient.git
 cd genCMPClient
 make -f OpenSSL_version.mk
@@ -212,7 +216,8 @@ make -f OpenSSL_version.mk
 
 This should give various diagnostic output,
 on success ending with a line giving the detected OpenSSL version like
-```
+
+```bash
 ...
 cc [...] OpenSSL_version.c -lcrypto -o OpenSSL_version
 ...
@@ -220,7 +225,8 @@ OpenSSL 3.0.13 30 Jan 2024 (0x300000d0)
 ```
 
 You may need to set the variable `OPENSSL_DIR` first as described [below](#configuring), e.g.,
-```
+
+```bash
 export OPENSSL_DIR=/usr/local
 ```
 
@@ -228,25 +234,28 @@ When having trouble building, which may be due to unsuitably set environment var
 this can provide useful information.
 
 When getting version mismatch errors like
-```
+
+```bash
 OpenSSL runtime version 0x30400000 does not match version 0x300000d0 used by compiler
 ```
+
 make sure that the system-level configuration for finding header and library files
 as well as the optional environment variables `OPENSSL_DIR` and `OPENSSL_LIB`
 described [below](#configuring) are set up in a consistent way.
-
 
 ## Getting the software
 
 For accessing the code repositories on GitHub
 you may need an SSH client with suitable credentials
 or an HTTP proxy set up, for instance:
-```
+
+```bash
 export https_proxy=http://proxy.example.com:8080
 ```
 
 You can clone the git repository and its submodules with
-```
+
+```bash
 git clone https://github.com/siemens/gencmpclient.git
 cd genCMPClient
 make -f Makefile_v1 get_submodules
@@ -258,28 +267,33 @@ the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils) l
 
 For using the project as a git submodule,
 do for instance the following in the directory where you want to integrate it:
-```
+
+```bash
 git submodule add git@github.com:siemens/gencmpclient.git
 ```
 
 When you later want to update your local copy of all relevant repositories
 it is sufficient to invoke
-```
+
+```bash
 make update
 ```
 
 When switching to a certain commit or version, e.g.
-```
+
+```bash
 git checkout v2.0
 ```
+
 then also execute
-```
+
+```bash
 git submodule update
 make -f Makefile_v1 clean
 ```
+
 to bring the submodules in a state consistent with that
 and remove any previous possibly outdated artifacts.
-
 
 ## Configuring
 
@@ -315,14 +329,18 @@ Relative paths are interpreted relative to the genCMPClient source directory.
 #### Linux
 
 Here are examples of typical OpenSSL directory locations for Linux:
-```
+
+```bash
 export OPENSSL_DIR=/usr
 export OPENSSL_LIB=/lib/x86_64-linux-gnu
 ```
+
 The value for `OPENSSL_LIB` may be obtained by
-```
+
+```bash
 ldd `which openssl` | grep libcrypto.so | awk '{print $3}' | sed 's#/[^/]*$##'
 ```
+
 Yet for the most common cases it is not needed to set these
 environment variables manually.
 
@@ -331,12 +349,14 @@ environment variables manually.
 When OpenSSL has been installed on macOS using `brew`,
 it is typically not needed to set specific environment variables.\
 Nevertheless, they may be defined for instance in ``~/.zshrc`` like this:
-```
+
+```bash
 export LDFLAGS="-L$(brew --prefix openssl@3)/lib"
 export CPPFLAGS="-I$(brew --prefix openssl@3)/include"
 export OPENSSL_DIR=$(brew --prefix openssl@3)
 export OPENSSL_LIB=$(brew --prefix openssl@3)/lib
 ```
+
 After doing so, restart the terminal or copy&paste these line there, too.
 
 ### Using of `libcmp` and `libsecutils`
@@ -355,6 +375,7 @@ which usually is not a problem.
 From use with the underlying Security Utilities library
 the following environment variables may be set
 when calling `cmake` (at generation time) or when using `Makefile_v1`.
+
 * If `SECUTILS_USE_ICV` is set, configuration files are expected
 to be integrity protected with an Integrity Check Value (ICV),
 which may be produced using `util/icvutil`.
@@ -367,9 +388,11 @@ which may be produced using `util/icvutil`.
 
 Since genCMPClient version 2, it is recommended to use CMake
 to produce the `Makefile`, for instance as follows:
-```
+
+```bash
 cmake .
 ```
+
 After modifying (i.e., setting or unsetting) relevant environment variables,
 it is recommended to remove `CMakeCache.txt` and re-run CMake.
 
@@ -380,18 +403,22 @@ The chosen mode is remembered in `CMakeCache.txt`.
 
 For backward compatibility it is also possible to use instead of CMake
 pre-defined [`Makefile_v1`](Makefile_v1); to this end symlink it to `Makefile`:
-```
+
+```bash
 ln -s Makefile_v1 Makefile
 ```
+
 or use for instance `make -f Makefile_v1`.
 
 By default, builds using `Makefile_v1` are in Debug mode.
 Release mode can be selected by defining the environment variable `NDEBUG`.
 
 By default `Makefile_v1` behaves as if
-```
+
+```bash
 OPENSSL_DIR=/usr
 ```
+
 was given, such that the OpenSSL headers will be searched for in `/usr/include`
 and its shared objects in `/usr/lib` (or `/usr/bin` for Cygwin).
 
@@ -407,13 +434,14 @@ It is also possible to statically link with `libcmp.a`, by setting `STATIC_LIBCM
 For further details on optional environment variables,
 see the [`Makefile_v1`](Makefile_v1) and [`Makefile_src`](Makefile_src).
 
-
 ## Building
 
 Build the software with
-```
+
+```bash
 make
 ```
+
 (or `make -f Makefile_v1`).
 
 The result is in, for instance, `libgencmp.so.2.0`.
@@ -428,21 +456,24 @@ and contains `#define USE_LIBCMP` although the environment variable `USE_LIBCMP`
 is not set.
 In such situations, `make clean`  (or `make -f Makefile_v1 clean`) helps to reset it to a consistent state.
 
-
 ### Installing and uninstalling
 
 The software can be installed with, e.g.,
-```
+
+```bash
 sudo make install
 ```
+
 and uninstalled with
-```
+
+```bash
 sudo make uninstall
 ```
 
 The destination base directory is `/usr/local/`,\
 unless specified otherwise using `DESTDIR` or `ROOTFS`.
 With that directory, artifacts are placed in the usual subdirectories:
+
 * libraries below `lib/` with CMake file in the subdirectory `cmake/`
 * other binaries in `bin/`
 * documentation below `share/doc`
@@ -454,7 +485,6 @@ With that directory, artifacts are placed in the usual subdirectories:
 `make clean` removes part of the artifacts, while\
 `make clean_all` removes everything produced by `make` and `CMake`.
 
-
 ## Building Debian packages (for use also with Ubuntu etc.)
 
 This repository can build the following binary and source packages.
@@ -465,17 +495,22 @@ This repository can build the following binary and source packages.
 * `libgencmp*Source.tar.gz` -- source tarball
 
 The recommended way is to use CPack with the files produced by CMake as follows:
-```
+
+```bash
 make deb
 ```
+
 which requires the `file` utility.
 
 Alternatively, [`Makefile_v1`](Makefile_v1) may be used like this:
-```
+
+```bash
 make -f Makefile_v1 deb
 ```
+
 In this case, the resulting packages are placed in the parent directory (`../`)\
 and the following Debian packages are required:
+
 * `debhelper` (needed for `dh`)
 * `devscripts` (needed for `debuild`)
 * `libssl-dev`
@@ -485,10 +520,10 @@ and the following Debian packages are required:
 --->
 
 The Debian packages may be installed for instance as follows:
-```
+
+```bash
 sudo dpkg -i libgencmp*deb cmpclient_*.deb
 ```
-
 
 ## Using the CLI-based demo client
 
@@ -501,7 +536,8 @@ can be found in [`demo.cnf`](config/demo.cnf).
 
 For simple test invocations the Insta Certifier Demo CA server may be used,
 for instance as follows:
-```
+
+```bash
 openssl ecparam -genkey -name prime256v1 -out test.key.pem
 ./cmpClient -config "" -server pki.certificate.fi:8700/pkix/ \
   -recipient "/C=FI/O=Insta Demo/CN=Insta Demo CA" \
@@ -509,42 +545,58 @@ openssl ecparam -genkey -name prime256v1 -out test.key.pem
   -cmd cr -newkey test.key.pem -subject "/CN=test" -certout test.cert.pem
 openssl x509 -noout -text -in test.cert.pem
 ```
+
 As the CMP client interacts via HTTP with an external CMP server, depending
 on your network you may need to set the environment variable `http_proxy`.
 
 A demo making use of all supported CMP commands can be executed with
-```
+
+```bash
 make -f Makefile_v1 demo
 ```
+
 The demo can be run using the online Insta Demo CA, which is the default,
 or using an included Docker instance of the EJBCA that can be launched locally:
-```
+
+```bash
 make -f Makefile_v1 demo_EJBCA
 ```
 
 or using the reference playground CA operated by Siemens over a test cloud CA:
 
-```
+```bash
 make -f Makefile_v1 demo_CloudCA
 ```
 
 Among others, successful execution should produce a new certificate at `creds/operational.crt`.
 You can view this certificate for instance by executing
-```
+
+```bash
 openssl x509 -noout -text -in creds/operational.crt
 ```
 
 To select a specific CMP profile on the CloudCA server, set the environment
 variable `CMP_PROFILE` to the profile name.
-For instance:
-```
-CMP_PROFILE=Nested make -f Makefile_v1 demo_CloudCA
+For instance use either
+
+```bash
+CMP_PROFILE=PPKI%20Playground%20ECC make -f Makefile_v1 demo_CloudCA
 ```
 
-CLI-based tests using the Insta Demo CA may be invoked using
+or
+
+```bash
+CMP_PROFILE=PPKI%20Playground%20RSA make -f Makefile_v1 demo_CloudCA
 ```
+
+to switch between an ECC-based CA hierarchy (which is the default) or an RSA-based CA hierarchy.
+
+CLI-based tests using the Insta Demo CA may be invoked using
+
+```bash
 make -f Makefile_v1 test_Insta
 ```
+
 where the PROXY environment variable may be used to override the default
 in order to reach the Insta Demo CA.
 
@@ -552,10 +604,10 @@ In order to obtain a trace of the HTTP messages being sent and received,
 one can build the genCMPClient with `USE_LIBCMP=1` and
 set the environment variable `OPENSSL_TRACE` to contain the string `"HTTP"`.
 For instance:
-```
+
+```bash
 OPENSSL_TRACE=HTTP ./cmpClient imprint -section Insta
 ```
-
 
 ## Using the library in own applications
 
@@ -593,12 +645,10 @@ match the header files found by the compiler.
 
 All this is already done for the CMP client application `cmpClient`.
 
-
 ## Disclaimer
 
 This software including associated documentation is provided ‘as is’.
 Effort has been spent on quality assurance, but there are no guarantees.
-
 
 ## License
 

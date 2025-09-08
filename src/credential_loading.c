@@ -244,18 +244,6 @@ static const char *format2string(int format)
     return NULL;
 }
 
-/* TODO commit UTIL_first_item() in libsecutils: */
-static char *UTIL_first_item_(char *str)
-{
-    if (str == NULL)
-        return NULL;
-
-    /* skip any initial separators (comma or whitespace) */
-    while (*str == ',' || isspace(*str))
-        str++;
-    return *str == '\0' ? NULL : str;
-}
-
 static void unbuffer(FILE *fp)
 {
 /*
@@ -666,7 +654,7 @@ bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
 
     if (names == NULL || (all_crts = sk_X509_new_null()) == NULL)
         goto oom;
-    for (src = UTIL_first_item_(names); src != NULL; src = next) {
+    for (src = UTIL_first_item(names); src != NULL; src = next) {
         next = UTIL_next_item(src); /* must do this here to split string */
 
         if (CONN_IS_HTTPS(src)) {
@@ -833,7 +821,7 @@ STACK_OF(X509_CRL) *FILES_load_crls_ex(OSSL_LIB_CTX *libctx, const char *propq,
 
     if (names == NULL || (all_crls = sk_X509_CRL_new_null()) == NULL)
         goto oom;
-    for (src = UTIL_first_item_(names); src != NULL; src = next) {
+    for (src = UTIL_first_item(names); src != NULL; src = next) {
         next = UTIL_next_item(src); /* must do this here to split string */
 
         if (CONN_IS_HTTPS(src)) {
@@ -955,7 +943,7 @@ X509_STORE *STORE_load_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
 
     char *file;
     char *next;
-    for (file = UTIL_first_item_(names); file != NULL; file = next) {
+    for (file = UTIL_first_item(names); file != NULL; file = next) {
         next = UTIL_next_item(file); /* must do this here to split string */
         if (not STORE_load_more_check_ex(libctx, propq, &store, file, format,
                                          source, desc, min_certs_per_file, vpm, ctx)) {

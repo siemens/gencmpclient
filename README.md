@@ -534,15 +534,17 @@ The CLI use with the available options are documented in [`cmpClient.pod`](doc/c
 An example configuration used by the below mentioned demo invocations
 can be found in [`demo.cnf`](config/demo.cnf).
 
+### Demo use, by default with the Insta CA
+
 For simple test invocations the Insta Certifier Demo CA server may be used,
 for instance as follows:
 
 ```bash
-openssl ecparam -genkey -name prime256v1 -out test.key.pem
 ./cmpClient -config "" -server pki.certificate.fi:8700/pkix/ \
   -recipient "/C=FI/O=Insta Demo/CN=Insta Demo CA" \
   -secret pass:insta -ref 3078 \
-  -cmd cr -newkey test.key.pem -subject "/CN=test" -certout test.cert.pem
+  -newkeytype EC:prime256v1 -newkey test.key.pem \
+  -cmd cr -subject "/CN=test" -certout test.cert.pem
 openssl x509 -noout -text -in test.cert.pem
 ```
 
@@ -555,18 +557,7 @@ A demo making use of all supported CMP commands can be executed with
 make -f Makefile_v1 demo
 ```
 
-The demo can be run using the online Insta Demo CA, which is the default,
-or using an included Docker instance of the EJBCA that can be launched locally:
-
-```bash
-make -f Makefile_v1 demo_EJBCA
-```
-
-or using the reference playground CA operated by Siemens over a test cloud CA:
-
-```bash
-make -f Makefile_v1 demo_CloudCA
-```
+The demo can be run using the online Insta Demo CA, which is the default.
 
 Among others, successful execution should produce a new certificate at `creds/operational.crt`.
 You can view this certificate for instance by executing
@@ -574,31 +565,6 @@ You can view this certificate for instance by executing
 ```bash
 openssl x509 -noout -text -in creds/operational.crt
 ```
-
-To select a specific CMP profile on the CloudCA server, set the environment
-variable `CMP_PROFILE` to the profile name.
-For instance use either
-
-```bash
-CMP_PROFILE=PPKI%20Playground%20ECC make -f Makefile_v1 demo_CloudCA
-```
-
-or
-
-```bash
-CMP_PROFILE=PPKI%20Playground%20RSA make -f Makefile_v1 demo_CloudCA
-```
-
-to switch between an ECC-based CA hierarchy (which is the default) or an RSA-based CA hierarchy.
-
-CLI-based tests using the Insta Demo CA may be invoked using
-
-```bash
-make -f Makefile_v1 test_Insta
-```
-
-where the PROXY environment variable may be used to override the default
-in order to reach the Insta Demo CA.
 
 In order to obtain a trace of the HTTP messages being sent and received,
 one can build the genCMPClient with `USE_LIBCMP=1` and
@@ -608,6 +574,51 @@ For instance:
 ```bash
 OPENSSL_TRACE=HTTP ./cmpClient imprint -section Insta
 ```
+
+A large set of CLI-based tests using the Insta Demo CA may be invoked using
+
+```bash
+make -f Makefile_v1 test_Insta
+```
+
+where the `http_proxy` environment variable may be used to override the default
+in order to reach the Insta Demo CA.
+
+### Demo use with a local EJBCA
+
+The demo can also use an included Docker instance of the EJBCA,
+which can be launched locally:
+
+```bash
+make -f Makefile_v1 demo_EJBCA
+```
+
+### Demo use with the Cloud CA
+
+A further option is to use the reference playground CA
+operated by Siemens over a cloud-based test RA:
+
+```bash
+make -f Makefile_v1 demo_CloudCA
+```
+
+To select a specific CMP profile on the CloudCA server,
+set the environment variable `CMP_PROFILE` to the profile name.
+For instance, use
+
+```bash
+CMP_PROFILE=PPKI%20Playground%20RSA make -f Makefile_v1 demo_CloudCA
+```
+
+to switch to an RSA-based CA hierarchy.
+
+By default, or with
+
+```bash
+CMP_PROFILE=PPKI%20Playground%20ECC
+```
+
+an ECC-based CA hierarchy is used.
 
 ## Using the library in own applications
 

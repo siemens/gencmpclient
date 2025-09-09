@@ -91,6 +91,7 @@ creds/Dev_CMP_*
 creds/PPKI_Playground_*
 creds/cacerts.pem
 creds/extracerts.pem
+creds/trusted/caPubs.pem
 creds/manufacturer.*
 creds/new_req.csr
 creds/operational.*

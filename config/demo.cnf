@@ -183,7 +183,8 @@ caPubs = creds/trusted/caPubs.pem
 # trusted = $infraCert,$cacert,$caPubs
 trusted = $infraCert,$caPubs
 out_trusted = $caPubs
-# own_trusted = $caPubs # todo: check and re-enable in bootstrap
+own_trusted = $caPubs
+partial_chain = 1 # all using trust anchors from caPubs also for non-root certs
 
 # User in tenant
 ref = CloudPKI-Integration-Test-User

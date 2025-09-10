@@ -1140,16 +1140,13 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
         /* use separate flag for checking any cert, for new certificate store */
         /* any -verify_hostname, -verify_ip, and -verify_email apply here */
         /* no cert status/revocation checks done for newly enrolled cert */
-        if (!STORE_set_parameters(new_cert_truststore, vpm,
-                                  false, false, NULL,
-                                  false, NULL, -1,
-                                  false, NULL, -1))
+        if (!X509_STORE_set1_param(new_cert_truststore, vpm))
             goto err;
         if (!STORE_set_crl_callback(new_cert_truststore, CRLMGMT_load_crl_cb,
                                     cmdata))
             goto err;
     }
-    /* cannot set these vpm options before above STORE_set_parameters(...) */
+    /* cannot set these vpm options before above X509_STORE_set1_param(...) */
     if (opt_check_any)
         X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_STATUS_CHECK_ANY);
     if (opt_ocsp_last)
@@ -1192,11 +1189,8 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
                 if (own_truststore == NULL)
                     goto err;
                 err = -07;
-                /* no cert status/revocation checks done for here */
-                if (!STORE_set_parameters(own_truststore, NULL /* vpm */,
-                                          false, false, NULL,
-                                          false, NULL, -1,
-                                          false, NULL, -1))
+                /* no cert status/revocation checks done for checking own cert */
+                if (!X509_STORE_set1_param(own_truststore, vpm))
                     goto err;
             }
         }
@@ -1486,6 +1480,9 @@ static bool validate_cert(void)
     store = load_certstore(opt_trusted, opt_otherpass,
                            "trusted cert(s) for validating certificate", vpm);
     if (store == NULL)
+        goto err;
+    /* no cert status/revocation checks done for this validation use case */
+    if (!X509_STORE_set1_param(store, vpm))
         goto err;
     if (opt_untrusted != NULL &&
         (untrusted = load_certs_multifile(opt_untrusted, opt_otherpass, "untrusted cert(s)",
@@ -2669,12 +2666,12 @@ int main(int argc, char *argv[])
         LOG_err("Out of memory");
         goto end;
     }
-    if (config != NULL && !CONF_update_vpm(config, opt_section, vpm))
+    if (config != NULL && !CONF_update_vpm(config, opt_section, vpm)) /* sets vpm from config */
         goto end;
     argv++;
     if (use_case != no_use_case)
         argv++; /* skip first option since use_case is given */
-    rv = OPT_read(cmp_opts, argv, vpm);
+    rv = OPT_read(cmp_opts, argv, vpm); /* updates vpm from CLI options */
     if (rv == -1) {
         /* can only happen for ---help as [-]-help has already been handled */
         rc = print_help(prog);

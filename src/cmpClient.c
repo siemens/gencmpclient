@@ -2672,12 +2672,12 @@ int main(int argc, char *argv[])
         LOG_err("Out of memory");
         goto end;
     }
-    if (config != NULL && !CONF_update_vpm(config, opt_section, vpm))
+    if (config != NULL && !CONF_update_vpm(config, opt_section, vpm)) /* sets vpm from config */
         goto end;
     argv++;
     if (use_case != no_use_case)
         argv++; /* skip first option since use_case is given */
-    rv = OPT_read(cmp_opts, argv, vpm);
+    rv = OPT_read(cmp_opts, argv, vpm); /* updates vpm from CLI options */
     if (rv == -1) {
         /* can only happen for ---help as [-]-help has already been handled */
         rc = print_help(prog);

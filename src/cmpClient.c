@@ -1487,6 +1487,9 @@ static bool validate_cert(void)
                            "trusted cert(s) for validating certificate", vpm);
     if (store == NULL)
         goto err;
+    /* no cert status/revocation checks done for this validation use case */
+    if (!X509_STORE_set1_param(store, vpm))
+        goto err;
     if (opt_untrusted != NULL &&
         (untrusted = load_certs_multifile(opt_untrusted, opt_otherpass, "untrusted cert(s)",
                                           -1 /* allow also non-CA certs */, vpm)) == NULL)

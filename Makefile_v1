@@ -486,9 +486,8 @@ else ifeq ($(CA_SECTION),CloudCA)
     ifdef CMP_PROFILE
         PROFILE_PATH="/p/$(CMP_PROFILE)"
     endif
-    override EXTRA_OPTS += -path "/.well-known/cmp$(PROFILE_PATH)" -reqexts empty -msg_timeout 30 -total_timeout 60 -partial_chain
+    override EXTRA_OPTS += -path "/.well-known/cmp$(PROFILE_PATH)" -reqexts empty -msg_timeout 30 -total_timeout 60
     EXTRA_OPTS_IMPRINT = -trusted "" -out_trusted "" -cacertsout creds/trusted/caPubs.pem
-    EXTRA_OPTS_VALIDATE = -partial_chain -own_trusted "creds/trusted/caPubs.pem"
 else
     CA_SECTION=EJBCA
     EXTRA_OPTS_IMPRINT= -path $(EJBCA_PATH)/$(EJBCA_PATH_IMPRINT) -subject "$(EJBCA_CMP_SUBJECT_IMPRINT)"
@@ -547,7 +546,7 @@ else
 	    $(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -tls_cert $(EJBCA_TLS_CLIENT) -tls_trusted $(EJBCA_TRUSTED) -untrusted $(EJBCA_UNTRUSTED) -no_check_time
         endif
     else
-	$(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -tls_cert "" -cert creds/manufacturer.crt -untrusted creds/extracerts.pem $(EXTRA_OPTS_VALIDATE) # -no_check_time
+	$(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -tls_cert "" -cert creds/manufacturer.crt -untrusted creds/extracerts.pem # -no_check_time
     endif
 	@echo
 	$(CMPCLIENT) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS) $(BOOTSTRAP_CREDS)

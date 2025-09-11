@@ -728,7 +728,7 @@ test_Mock: build
 tests_LwCmp: build
 	$(MAKE) -f Makefile_tests tests_LwCmp CMPCLIENT="$(OUT_DIR_BIN)" OPENSSL=$(OPENSSL) OPENSSL_VERSION=$(OPENSSL_VERSION)
 
-test_all: demo_all test test_Mock tests_LwCmp
+test_all: demo_all test_Mock tests_LwCmp
 ifneq ($(TEST_SIMPLE),)
 test_all: test_Simple test_profile
 endif

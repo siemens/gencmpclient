@@ -36,14 +36,14 @@ TODO,TODO,TODO,TODO,expected sender upper case, -section,, -recipient,_CA_DN, -e
 0,*,*,*,expected sender empty attributes, -section,, -recipient,_CA_DN, -expect_sender,/CN=/OU=/O=/C=,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,
-1,1,1,1,explicit srvcert, -section,,,,BLANK,, -srvcert,_SERVER_CERT, -trusted,"""",BLANK,,, -unprotected_errors, -extracertsout,test.extracerts.pem,, -srvcertout,test.srvcertout.pem, -secret,"""", -cert,signer.crt, -key,signer.p12, -keypass,pass:12345
-1,1,1,1,reuse last srvcert, -section,,,,BLANK,, -srvcert,test.srvcertout.pem, -trusted,"""",BLANK,,, -unprotected_errors,BLANK,,,,,,,,
-1,1,1,1,reuse last extracerts for srvcert, -section,,,,BLANK,, -srvcert,test.extracerts.pem, -trusted,"""",BLANK,,, -unprotected_errors,BLANK,,,,,,,,
-1,-,-,-,output no srvcert empty extracerts, -section,,,,BLANK,,,,,,,,,BLANK, -extracertsout,test.extracerts_empty.pem,,,, -secret,_PBM_SECRET, -ref,_PBM_REF, -srvcertout,test.srvcertout.pem, -cmd,genm, -infotype,signKeyPairTypes
--,1,-,-,output srvcert - empty extracerts were output in enrollment, -section,,,,BLANK,,,, -trusted,trusted.crt,,,BLANK, -unprotected_errors,BLANK,,, -srvcertout,test.srvcertout.pem, -cacertsout,test.extracerts_empty.pem,-server,_SERVER_HOST:_PBM_PORT
--,0,-,-,output delete srvcert file, -section,,,,BLANK,,,,,,,,, -unprotected_errors,BLANK,,, -srvcertout,test.srvcertout.pem, -secret,_PBM_SECRET, -ref,_PBM_REF,-server,_SERVER_HOST:_PBM_PORT
--,-,0,-,output no srvcert - empty extracerts were output in enrollment, -section,,,,BLANK,,,,,,,,, -unprotected_errors,BLANK,,, -srvcertout,test.srvcertout.pem, -secret,_PBM_SECRET, -ref,_PBM_REF, -cacertsout,test.extracerts_empty.pem, -server,_SERVER_HOST:_PBM_PORT
--,-,-,1,output no srvcert empty cacerts used for extracerts, -section,,,,BLANK,,,,,,,,,,,,,, -srvcertout,test.srvcertout.pem, -secret,_PBM_SECRET, -ref,_PBM_REF, -cacertsout,test.extracerts_empty.pem
+3.2,3.2,3.2,3.2,explicit srvcert, -section,,,,BLANK,, -srvcert,_SERVER_CERT, -trusted,"""",BLANK,,, -unprotected_errors, -extracertsout,test.extracerts.pem,, -srvcertout,test.srvcertout.pem, -secret,"""", -cert,signer.crt, -key,signer.p12, -keypass,pass:12345
+3.2,3.2,3.2,3.2,reuse last srvcert, -section,,,,BLANK,, -srvcert,test.srvcertout.pem, -trusted,"""",BLANK,,, -unprotected_errors,BLANK,,,,,,,,
+3.2,3.2,3.2,3.2,reuse last extracerts for srvcert, -section,,,,BLANK,, -srvcert,test.extracerts.pem, -trusted,"""",BLANK,,, -unprotected_errors,BLANK,,,,,,,,
+3.2,-,-,-,output no srvcert empty extracerts, -section,,,,BLANK,,,,,,,,,BLANK, -extracertsout,test.extracerts_empty.pem,,,, -secret,_PBM_SECRET, -ref,_PBM_REF, -srvcertout,test.srvcertout.pem, -cmd,genm, -infotype,signKeyPairTypes
+-,3.2,-,-,output srvcert - empty extracerts were output in enrollment, -section,,,,BLANK,,,, -trusted,trusted.crt,,,BLANK, -unprotected_errors,BLANK,,, -srvcertout,test.srvcertout.pem, -cacertsout,test.extracerts_empty.pem,-server,_SERVER_HOST:_PBM_PORT
+-,3.2 0,-,-,output delete srvcert file, -section,,,,BLANK,,,,,,,,, -unprotected_errors,BLANK,,, -srvcertout,test.srvcertout.pem, -secret,_PBM_SECRET, -ref,_PBM_REF,-server,_SERVER_HOST:_PBM_PORT
+-,-,3.2 0,-,output no srvcert - empty extracerts were output in enrollment, -section,,,,BLANK,,,,,,,,, -unprotected_errors,BLANK,,, -srvcertout,test.srvcertout.pem, -secret,_PBM_SECRET, -ref,_PBM_REF, -cacertsout,test.extracerts_empty.pem, -server,_SERVER_HOST:_PBM_PORT
+-,-,-,3.2,output no srvcert empty cacerts used for extracerts, -section,,,,BLANK,,,,,,,,,,,,,, -srvcertout,test.srvcertout.pem, -secret,_PBM_SECRET, -ref,_PBM_REF, -cacertsout,test.extracerts_empty.pem
 0,0,0,0,cannot reuse last srvcert, -section,,,,BLANK,,,,,,,,, -unprotected_errors,BLANK,,,,, -srvcert,test.srvcertout.pem, -trusted,""""
 0,0,0,0,cannot reuse last extracerts, -section,,,,BLANK,, -srvcert,test.extracerts_empty.pem, -trusted,"""",BLANK,,, -unprotected_errors,BLANK,,,,,,,,
 disabled 1,disabled 1,disabled 1,disabled 1,srvcert big file, -section,,,,BLANK,, -srvcert,big__SERVER_CERT, -trusted,"""",BLANK,,BLANK, -unprotected_errors,BLANK,,,,,,,,
@@ -100,7 +100,7 @@ TBD,TBD,TBD 0 for Mock but 1 for SimpleLra,-,ignore key usage certificate withou
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,
-1,1,1,1,extracertsout, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors, -extracertsout,test.extracerts.pem,, -srvcertout,test.srvcertout.pem,,,,
+3.2,3.2,3.2,3.2,extracertsout, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors, -extracertsout,test.extracerts.pem,, -srvcertout,test.srvcertout.pem,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,
 0,*,*,*,extracertsout no parameter, -section,, -recipient,_CA_DN,BLANK,,BLANK,, -trusted,trusted.crt,BLANK,,BLANK, -unprotected_errors, -extracertsout,,,,,,,,

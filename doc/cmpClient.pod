@@ -355,6 +355,10 @@ generate or request a new key of the given type for the requested certificate.
 The I<spec> may be of the form C<EC:>I<curve> or C<RSA->I<length>.
 The key will be saved in the file specified with the B<-newkey> option.
 
+This option cannot be used to create a key pair via a provider.
+For use with a provider, the key pair must be generated beforehand
+and then can be referenced via B<-newkey>.
+
 =item B<-centralkeygen>
 
 Request central (server-side) key generation.

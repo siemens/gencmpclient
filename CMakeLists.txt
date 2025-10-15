@@ -108,7 +108,7 @@ endif()
 
 if(DEFINED ENV{USE_LIBCMP} OR "${OPENSSL_VERSION}" LESS "3")
   set(USE_LIBCMP 1)
-  message(STATUS "using libcmp")
+  message(STATUS "using libcmp, which is deprecated")
 endif()
 
 set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)
@@ -387,7 +387,7 @@ set(CPACK_PACKAGE_VERSION_MINOR ${GENCMPCLIENT_VERSION_MINOR})
 set(CPACK_STRIP_FILES ON)
 
 set(CPACK_COMPONENT_LIB_DESCRIPTION "generic CMP client library
-Generic CMP client library based on OpenSSL and optionally libcmp
+Generic CMP client library with high-level API based on OpenSSL
 With extended support for certficate status checking using CRLs and/or OCSP")
 set(CPACK_COMPONENT_DEV_DESCRIPTION "libgencmp C headers and documentation
 Development support for libgencmp and cmpclient")
@@ -586,7 +586,7 @@ if(NOT YOCTO_BUILD)
   if(DEFINED USE_LIBCMP AND NOT libcmp_FOUND)
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cmpossl/CMakeLists.txt")
       if(GIT_FOUND)
-        message(STATUS "fetching git submodule cmpossl")
+        message(STATUS "fetching git submodule cmpossl, which is deprecated")
         execute_process(COMMAND
           git submodule update ${GIT_PROGRESS} --init ${GIT_DEPTH} cmpossl
           WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

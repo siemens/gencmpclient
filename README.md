@@ -1,6 +1,7 @@
 # generic CMP client
 
-This is a generic Certificate Management Protocol (CMP) client library with
+This is a generic [Certificate Management Protocol
+(CMP)](https://www.rfc-editor.org/rfc/rfc9810.html) client library with
 
 * a high-level API for use with C(++)
 * an associated CLI-based demo client
@@ -9,13 +10,19 @@ This is a generic Certificate Management Protocol (CMP) client library with
 
 ## Purpose
 
-The purpose of this software is to provide the latest CMP features
-and an easy-to-use high-level C-based CMP API
+The main purpose of this software is to provide
+an easy-to-use high-level C-based API for CMP
 on top of the [OpenSSL library](https://www.openssl-library.org/).
 
 The library supports developing CMP clients that adhere to
 the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483),
-which is geared towards simple and interoperable industrial use.
+which is geared towards simple and interoperable industrial certificate management.
+
+<!--
+Moreover, this software is in internal use for implementing further CMP features
+and experimental additions, for instance as part of ongoing ITEF standardization
+regarding support for post-quantum cryptography (PQC) and remote attestation.
+--->
 
 The [high-level API](doc/Generic_CMP_client_API.pdf)
 is convenient to use for application programmers
@@ -32,7 +39,7 @@ with a detailed low-level API, which is rather difficult to use.
 Its version 3.0 covers CMPv2 and HTTP(s) transfer as originally defined in
 [RFC 4210](https://www.rfc-editor.org/rfc/rfc4210) and
 [RFC 6712](https://www.rfc-editor.org/rfc/rfc6712),
-which is sufficient for most scenarios.
+which is sufficient for most scenarios.<br>
 Later OpenSSL versions cover also more recent and special CMP features
 added by [RFC 9480](https://www.rfc-editor.org/rfc/rfc9480),
 which meanwhile has been obsoleted by
@@ -61,7 +68,7 @@ The [maintainers](MAINTAINERS) offer two levels of support.
 
 * Community support is provided on a best-effort basis
   and can be requested via [issues](../../issues).
-* Paid professional support and consulting can be ordered
+* Paid professional support, maintenance, and consulting can be ordered
   from Siemens by reaching out to the maintainers.
 
 [Contributions](CONTRIBUTING.md) are appreciated
@@ -80,13 +87,13 @@ to OpenSSL is nearly finished. OpenSSL version 3.4 contains all of them except
 for [central key generation](https://github.com/openssl/openssl/pull/25132).
 -->
 
-Note that in 2025,
+Note that in July 2025,
 [RFC 9810](https://www.rfc-editor.org/rfc/rfc9810) and
 [RFC 9811](https://www.rfc-editor.org/rfc/rfc9811)
 obsoleted RFCs 4210, 6712, and 9480 (CMP Updates).
-As of July 2025,
-support for enrolling and using KEM certificates,
-which is main novelty of RFC 9810, is not avialable here.
+So far, the main novelty of RFC 9810,
+namely support for enrolling and using KEM certificates,
+is not available here, but could be added on demand.
 
 <!--
 The [CHANGELOG.md](CHANGELOG.md) contains a coarse release history.
@@ -117,24 +124,28 @@ The following development and network tools are needed or recommended.
 * wget (for running the demo, tested versions include 1.17, 1.18, 1.20, 1.21.3, 1.24.5)
 * Perl (for running the tests, tested versions include 5.30.3, 5.32.1, 5.34.3, 5.36.0, 5.38.2)
 
-The following OSS components are used.
+## Dependencies
 
-* Needed in any case: [OpenSSL library](https://www.openssl-library.org/) development edition;<br>
+The following OSS components are possibly used by the genCMPClient.
+
+* Mandatory: [OpenSSL library](https://www.openssl-library.org/) development edition;<br>
   currently supported versions: 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
   <!-- (formerly also versions 1.0.2, 1.1.0, and 1.1.1) -->
-* [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
-  for support of (not core) functionality needed mostly for the CLI
+* Used by default: [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
+  for support of (not core) functionality needed mostly for the CLI and demo
   unless the environment variable `GENCMP_NO_SECUTILS` is defined.
-* [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
+* Optional: [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
   an intermediate CMP+CRMF+HTTP extension to OpenSSL,
   needed only if the OpenSSL version being used does not yet include
   all CMP features required for the given CMP application scenario,
   which can be indicated by setting the environment variable `USE_LIBCMP`.
 
-For an overview of CMP features relevant in industrial use cases see
-[LCMPP section 7.1](https://datatracker.ietf.org/doc/html/rfc9483#section-7.1).
-
 ## CMP features and OpenSSL versions
+
+The full set of CMP features that could be implemented is given in
+[RFC 9810](https://www.rfc-editor.org/rfc/rfc9810.html).
+For an overview of CMP features relevant in industrial use cases see
+[LCMPP section 7.1](https://www.rfc-editor.org/rfc/rfc9483.html#section-7.1).
 
 CMP client (EE) features are supported by the genCMPClient as follows.
 

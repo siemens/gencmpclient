@@ -109,18 +109,18 @@ Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)
 
 The following development and network tools are needed or recommended.
 
-* Git (for getting the software, tested versions include 2.7.2, 2.11.0, 2.20, 2.30.2, 2.39.2, 2.47.0)
-* CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested versions include 3.18.4, 3.26.3, 3.27.7, 3.30.5)
+* Git (for getting the software, tested versions include 2.7.2, 2.11.0, 2.20, 2.34.1, 2.48.0)
+* CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested versions include 3.18.4, 3.22.1, 3.27.7, 3.31.5)
 * GNU make (tested versions include 3.81, 4.1, 4.2.1, 4.3)
-* GNU C compiler (gcc, tested versions include 5.4.0, 7.3.0, 8.3.0, 10.0.1, 10.2.1, 12.2.0)
+* GNU C compiler (gcc, tested versions include 5.4.0, 7.3.0, 8.3.0, 10.2.1, 11.4.0, 12.2.0)
   or clang (tested versions include 14.0.3, 17.0.3, 19.1.1)
 * wget (for running the demo, tested versions include 1.17, 1.18, 1.20, 1.21.3, 1.24.5)
-* Perl (for running the tests, tested versions include 5.30.3, 5.32.1, 5.36.0, 5.38.2)
+* Perl (for running the tests, tested versions include 5.30.3, 5.32.1, 5.34.3, 5.36.0, 5.38.2)
 
 The following OSS components are used.
 
-* OpenSSL development edition;
-  currently supported versions include 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
+* Needed in any case: [OpenSSL library](https://www.openssl-library.org/) development edition;<br>
+  currently supported versions: 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
   <!-- (formerly also versions 1.0.2, 1.1.0, and 1.1.1) -->
 * [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
   for support of (not core) functionality needed mostly for the CLI
@@ -158,7 +158,7 @@ by the application scenario are covered by the OpenSSL version being used.
 * In OpenSSL 3.3, "Get Certificate Request Template" and support for certificate
   profiles and generalized polling ("Handling Delayed Delivery") were added.
 * In OpenSSL 3.4, "CRL Update Retrieval" was added.
-* In OpenSSL 3.5, support for central key generation is going to be added.
+* In OpenSSL 3.5, support for central key generation was added.
 
 Hint: As long as your system provides a sufficiently recent version of OpenSSL
 and related development header files,

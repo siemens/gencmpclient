@@ -74,8 +74,11 @@ ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 1.1),1) # same as comparing == 1.0
     OSSL_VERSION_QUIRKS+=-Wno-discarded-qualifiers -Wno-unused-parameter
 endif
 ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 3),1)
-    $(info enforce build with intermediate CMP library libcmp)
+    $(info enforcing build with intermediate CMP library libcmp)
      USE_LIBCMP=1
+endif
+ifdef USE_LIBCMP
+    $(info will build with intermediate CMP library libcmp, which is deprecated)
 endif
 
 ifeq ($(LPATH),)

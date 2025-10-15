@@ -48,13 +48,14 @@ which meanwhile has been obsoleted by
 For details see [below](#cmp-features-and-openssl-versions)
 or the HISTORY section of [`cmpClient.pod`](doc/cmpClient.pod#HISTORY).
 
-A further use case of this software is to provide early access to all new CMP
+A further use case of this software was to provide early access to all new CMP
 features defined in [CMP Updates](https://www.rfc-editor.org/rfc/rfc9480) and
 the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483).
 To this end, the software can use in addition the intermediate CMP library
 [CMPforOpenSSL](https://github.com/mpeylo/cmpossl), called `libcmp` below.
-This is needed only as long as special new CMP(v3) features are required
-that are not covered by the OpenSSL version being used.
+This was needed only as long as special new CMP(v3) features are required
+that are not covered by the OpenSSL version being used.<br>
+`libcmp` was deprecated in October 2025 and is no more actively maintained.
 
 Note: An OSS CMP client and registration authority (RA) implementation in Java
 is available in the form of a
@@ -134,9 +135,9 @@ The following OSS components are possibly used by the genCMPClient.
 * Used by default: [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
   for support of (not core) functionality needed mostly for the CLI and demo
   unless the environment variable `GENCMP_NO_SECUTILS` is defined.
-* Optional: [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
-  an intermediate CMP+CRMF+HTTP extension to OpenSSL,
-  needed only if the OpenSSL version being used does not yet include
+* Optional and deprecated: [CMPforOpenSSL](https://github.com/mpeylo/cmpossl),
+  which is an intermediate CMP+CRMF+HTTP extension to OpenSSL.
+  It is needed only if the OpenSSL version being used does not yet include
   all CMP features required for the given CMP application scenario,
   which can be indicated by setting the environment variable `USE_LIBCMP`.
 
@@ -155,7 +156,7 @@ are fully covered when using the [intermediate CMP library `libcmp`](
 https://github.com/mpeylo/cmpossl) or when using at least OpenSSL 3.5.
 
 Since the intermediate CMP library `libcmp` constitutes an extra dependency
-and its maintenance is going to end soon rather after the release of OpenSSL 3.5,
+and has been deprecated half a year after the release of OpenSSL 3.5,
 better avoid using it. This is possible if all the CMP features needed
 by the application scenario are covered by the OpenSSL version being used.
 

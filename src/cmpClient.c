@@ -17,6 +17,10 @@
 
 #include <genericCMPClient.h>
 
+#if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
+# error "cannot build cmpClient CLI app with OpenSSL version < 3.0"
+#endif
+
 #include <openssl/provider.h>
 #include <openssl/ssl.h>
 

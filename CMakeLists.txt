@@ -33,9 +33,8 @@ if(${GENCMP_NO_TLS})
 endif()
 
 # improved from https://cmake.org/cmake/help/v3.6/module/FindOpenSSL.html
-if(NOT DEFINED OPENSSL_ROOT_DIR AND NOT "$ENV{OPENSSL_DIR}" STREQUAL "")
+if(NOT "$ENV{OPENSSL_DIR}" STREQUAL "")
   get_filename_component(OPENSSL_ROOT_DIR "$ENV{OPENSSL_DIR}" ABSOLUTE)
-  set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
 endif()
 if(NOT DEFINED OPENSSL_FOUND) # not already done by superordinate module
   set(OPENSSL_VERSION "(unknown)")
@@ -46,7 +45,16 @@ if(NOT DEFINED OPENSSL_FOUND) # not already done by superordinate module
   endif()
   # set(CMAKE_FIND_DEBUG_MODE TRUE)
   if(DEFINED OPENSSL_ROOT_DIR)
-    find_package(OpenSSL HINTS "${OPENSSL_ROOT_DIR}" NO_DEFAULT_PATH ${OPENSSL_COMPONENTS})
+    if(APPLE) # on macOS, work around find_package() not respecting HINTS and NO_DEFAULT_PATH
+      set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
+      file(READ "${OPENSSL_INCLUDE_DIR}/openssl/opensslv.h" OPENSSLV_CONTENT)
+      string(REGEX MATCH "OpenSSL ([0-9]+\\.[0-9]+\\.[0-9]+[^ ]*)" VERSION_MATCH "${OPENSSLV_CONTENT}")
+      if(VERSION_MATCH)
+        string(REGEX REPLACE "OpenSSL " "" OPENSSL_VERSION "${VERSION_MATCH}")
+      endif()
+    else()
+      find_package(OpenSSL HINTS "${OPENSSL_ROOT_DIR}" NO_DEFAULT_PATH ${OPENSSL_COMPONENTS})
+    endif()
   else()
     find_package(OpenSSL ${OPENSSL_COMPONENTS})
   endif()

@@ -101,7 +101,8 @@ ifeq ($(BIN_DIR),)
   ifeq ($(shell expr "$(OPENSSL_VERSION)" \>= 3),1)
     BIN_DIR = $(OUT_DIR)
   else
-    $(warning WARNING: cannot build cmpClient CLI app with OpenSSL < 3.0)
+    export GENCMP_NO_CLI=1
+    $(warning WARNING: cannot build and use cmpClient CLI app with OpenSSL < 3.0)
   endif
 endif
 

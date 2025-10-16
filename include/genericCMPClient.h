@@ -29,7 +29,7 @@ extern "C" {
 # define OPENSSL_4_0_FEATURES (OPENSSL_VERSION_NUMBER >= 0x40000000L || defined(USE_LIBCMP))
 
 # if OPENSSL_VERSION_NUMBER < 0x30000000L || defined(USE_LIBCMP)
-#  include <openssl/openssl_backport.h> /* if not found, maybe genericCMPClient_config.h is not up to date w.r.t. USE_LIBCMP */
+#  include <openssl/openssl_backport.h> /* if not found, maybe genericCMPClient_config.h is not up to date w.r.t. USE_LIBCMP, or OpenSSL version < 3.0 not correctly detected in CMakeLists.txt or Makefile_v1 */
 # endif
 /* for low-level CMP API, in particular, type OSSL_CMP_CTX */
 # include <openssl/cmp.h>

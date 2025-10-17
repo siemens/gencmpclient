@@ -163,6 +163,11 @@ endif()
 # must do add_compile_options() before add_library() and add_executable() see
 # https://stackoverflow.com/questions/40516794/cmake-not-applying-compile-option-using-add-compile-options
 if(DEFINED ENV{NDEBUG} OR NOT CMAKE_BUILD_TYPE MATCHES Debug)
+  if(DEFINED ENV{NDEBUG})
+    message(STATUS "Setting build type to 'Release' because NDEBUG was set.")
+  elseif(NOT CMAKE_BUILD_TYPE)
+    message(STATUS "Setting build type to 'Release' by default.")
+  endif()
   set(CMAKE_BUILD_TYPE Release  # automatically leads to CFLAGS += -DNDEBUG -O3
       CACHE STRING "Choose the type of build." FORCE)
 else()

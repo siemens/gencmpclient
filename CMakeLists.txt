@@ -32,6 +32,31 @@ if(${GENCMP_NO_TLS})
   add_compile_definitions(SECUTILS_NO_TLS)
 endif()
 
+# must do add_compile_options() before add_library() and add_executable() see
+# https://stackoverflow.com/questions/40516794/cmake-not-applying-compile-option-using-add-compile-options
+if(DEFINED ENV{NDEBUG} OR NOT CMAKE_BUILD_TYPE MATCHES Debug)
+  if(DEFINED ENV{NDEBUG})
+    message(STATUS "Setting build type to 'Release' because NDEBUG was set.")
+  elseif(NOT CMAKE_BUILD_TYPE)
+    message(STATUS "Setting build type to 'Release' by default.")
+  endif()
+  set(CMAKE_BUILD_TYPE Release  # automatically leads to CFLAGS += -DNDEBUG -O3
+      CACHE STRING "Choose the type of build." FORCE)
+else()
+  set(CMAKE_BUILD_TYPE Debug  # automatically leads to CFLAGS += -g  # -O0 not added by default
+      CACHE STRING "Choose the type of build." FORCE)
+  set(SANITIZER_FLAGS -fsanitize=address,undefined -fno-sanitize-recover=all)
+  add_compile_options(${SANITIZER_FLAGS})
+  link_libraries(${SANITIZER_FLAGS})
+
+  if(UNIX AND NOT APPLE)
+    set(COVERAGE_FLAGS --coverage -fprofile-arcs)
+    add_compile_options(${COVERAGE_FLAGS})
+    link_libraries(${COVERAGE_FLAGS})
+  endif()
+endif()
+message(STATUS "build mode: ${CMAKE_BUILD_TYPE}")
+
 # improved from https://cmake.org/cmake/help/v3.6/module/FindOpenSSL.html
 if(NOT "$ENV{OPENSSL_DIR}" STREQUAL "")
   get_filename_component(OPENSSL_ROOT_DIR "$ENV{OPENSSL_DIR}" ABSOLUTE)
@@ -173,31 +198,6 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
         "../${CMAKE_INSTALL_LIBDIR}")
   endif()
 endif()
-
-# must do add_compile_options() before add_library() and add_executable() see
-# https://stackoverflow.com/questions/40516794/cmake-not-applying-compile-option-using-add-compile-options
-if(DEFINED ENV{NDEBUG} OR NOT CMAKE_BUILD_TYPE MATCHES Debug)
-  if(DEFINED ENV{NDEBUG})
-    message(STATUS "Setting build type to 'Release' because NDEBUG was set.")
-  elseif(NOT CMAKE_BUILD_TYPE)
-    message(STATUS "Setting build type to 'Release' by default.")
-  endif()
-  set(CMAKE_BUILD_TYPE Release  # automatically leads to CFLAGS += -DNDEBUG -O3
-      CACHE STRING "Choose the type of build." FORCE)
-else()
-  set(CMAKE_BUILD_TYPE Debug  # automatically leads to CFLAGS += -g  # -O0 not added by default
-      CACHE STRING "Choose the type of build." FORCE)
-  set(SANITIZER_FLAGS -fsanitize=address,undefined -fno-sanitize-recover=all)
-  add_compile_options(${SANITIZER_FLAGS})
-  link_libraries(${SANITIZER_FLAGS})
-
-  if(UNIX AND NOT APPLE)
-    set(COVERAGE_FLAGS --coverage -fprofile-arcs)
-    add_compile_options(${COVERAGE_FLAGS})
-    link_libraries(${COVERAGE_FLAGS})
-  endif()
-endif()
-message(STATUS "build mode: ${CMAKE_BUILD_TYPE}")
 
 # must do add_compile_options() before add_library() and add_executable() see
 # https://stackoverflow.com/questions/40516794/cmake-not-applying-compile-option-using-add-compile-options

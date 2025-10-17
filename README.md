@@ -501,7 +501,7 @@ With that directory, artifacts are placed in the usual subdirectories:
 
 ## Building Debian packages (for use also with Ubuntu etc.)
 
-This repository can build the following binary and source packages.
+On Linux, this repository can build the following binary and source packages.
 
 * `libgencmp` - the shared library
 * `libgencmp-dev` - development headers and documentation

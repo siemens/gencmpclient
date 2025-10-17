@@ -1,3 +1,12 @@
+libgencmp (2.1) stable; urgency=medium
+
+  * Improve use of OpenSSL crypto providers and OSSL_STORE for credential loading
+  * Further improve CMake etc. build support, CI, demo, and documentation
+  * Fix various small bugs and OpenSSL version incompatibilities
+  * Deprecate use of intermediate libcmp, which is no more needed since OpenSSL 3.5
+
+ -- David von Oheimb <David.von.Oheimb@siemens.com>  Fri, 17 Oct 2025 10:53:28 +0200
+
 libgencmp (2.0) stable; urgency=medium
 
   * Include all features of the Lightweight CMP Profile

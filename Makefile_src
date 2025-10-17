@@ -83,7 +83,7 @@ OPENSSL_DLLS = *{crypto,ssl}*.dll
 
 CC ?= gcc
 ifdef NDEBUG
-    override DEBUG_FLAGS ?= -O2
+    override DEBUG_FLAGS ?= -O3
     override DEBUG_FLAGS += -DNDEBUG=1 -Werror
 else
     override DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og

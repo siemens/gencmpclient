@@ -171,7 +171,7 @@ if(DEFINED ENV{NDEBUG} OR NOT CMAKE_BUILD_TYPE MATCHES Debug)
   set(CMAKE_BUILD_TYPE Release  # automatically leads to CFLAGS += -DNDEBUG -O3
       CACHE STRING "Choose the type of build." FORCE)
 else()
-  set(CMAKE_BUILD_TYPE Debug  # automatically leads to CFLAGS += -g -O0
+  set(CMAKE_BUILD_TYPE Debug  # automatically leads to CFLAGS += -g  # -O0 not added by default
       CACHE STRING "Choose the type of build." FORCE)
   set(SANITIZER_FLAGS -fsanitize=address,undefined -fno-sanitize-recover=all)
   add_compile_options(${SANITIZER_FLAGS})
@@ -187,6 +187,11 @@ message(STATUS "build mode: ${CMAKE_BUILD_TYPE}")
 
 # must do add_compile_options() before add_library() and add_executable() see
 # https://stackoverflow.com/questions/40516794/cmake-not-applying-compile-option-using-add-compile-options
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  add_compile_options(-O0)  # workaround for -O0 not being added by default when libSecUtils is not used
+endif()
+
+
 add_compile_definitions(DEBUG_UNUSED)
 add_compile_definitions(PEDANTIC)
 add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG

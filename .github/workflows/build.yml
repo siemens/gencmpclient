@@ -21,9 +21,9 @@ jobs:
 
           mkdir build
           cd build
-          cmake -S .. -B .
+          cmake -S .. -B . # Release by default
           cmake --build .
-          cmake -DCMAKE_BUILD_TYPE=Release ..
+          cmake -DCMAKE_BUILD_TYPE=Debug ..
           make clean build
           DESTDIR=tmp make install uninstall
           cd ..
@@ -45,7 +45,7 @@ jobs:
           # would need access to azure.archive.ubuntu.com:
           # sudo apt-get update
           # sudo apt-get install -y >/dev/null libssl-dev build-essential # not needed
-                                               make -f Makefile_v1
+                                               make -f Makefile_v1 # Debug build mode by default
           GENCMP_NO_TLS=1                      make -f Makefile_v1 clean build
           GENCMP_NO_TLS=1 GENCMP_NO_SECUTILS=1 make -f Makefile_v1 clean build
                           GENCMP_NO_SECUTILS=1 make -f Makefile_v1 clean build
@@ -56,6 +56,7 @@ jobs:
           make -C libsecutils -f Makefile_v1 clean_config
           SKIP_pod2markdown=1 DESTDIR=tmp make -f Makefile_v1 install uninstall
           make -f Makefile_v1 clean_all
+          NDEBUG=1 make -f Makefile_v1 # Release build
 
   doc_deb:
     runs-on: ubuntu-latest

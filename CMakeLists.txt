@@ -214,10 +214,6 @@ add_library(${LIBGENCMP_NAME} SHARED
   ${SRC_DIR}/genericCMPClient.c
 )
 
-if(UNIX AND NOT APPLE AND CMAKE_BUILD_TYPE MATCHES Debug)
-  target_link_libraries(${LIBGENCMP_NAME} ${COVERAGE_FLAGS})
-endif()
-
 if(NOT DEFINED GENCMP_NO_CLI)
 add_executable(cmpClient
   ${SRC_DIR}/cmpClient.c

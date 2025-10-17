@@ -143,8 +143,11 @@ bool LOG_generic(OPTIONAL const char *func, OPTIONAL const char *file, int linen
     memset(loc, 0x00, loc_len);
 #ifndef NDEBUG
     int len = snprintf(loc, sizeof(loc), "%s", app_name);
+    if (len < 0)
+        len = 0; /* on error, cannot assume any string written to loc buffer */
     /* print fct name, source file name, and lineno only if debugging is enabled at build time */
-    (void)snprintf(loc + len, sizeof(loc) - len, ":%s():%s:%d:", func, file, lineno);
+    if (snprintf(loc + len, sizeof(loc) - (size_t)len, ":%s():%s:%d:", func, file, lineno) < 0)
+        loc[0] = '\0'; /* on error, resort to empty string */
 #endif
 
     /* print string corresponding to level */

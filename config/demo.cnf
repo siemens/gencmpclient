@@ -177,11 +177,8 @@ tls_trusted = creds/trusted/DigicertGlobalRootG5.crt
 
 # Tenant on server
 recipient = /CN=CloudPKI-Integration-Test
-cacert = creds/trusted/PPKIPlaygroundECCRootCAv20.crt,creds/trusted/PPKIPlaygroundRSARootCAv20.crt,creds/trusted/PPKIPlaygroundMLDSARootCAv10.crt
-infraCert = creds/trusted/PPKIPlaygroundInfrastructureRootCAv20.crt
-caPubs = creds/trusted/caPubs.pem
-# trusted = $infraCert,$cacert,$caPubs
-trusted = $infraCert,$caPubs
+caPubs = creds/trusted/caPubs.pem # filled in from caPubs field extracted from IP message
+trusted = $caPubs
 out_trusted = $caPubs
 own_trusted = $caPubs
 partial_chain = 1 # all using trust anchors from caPubs also for non-root certs

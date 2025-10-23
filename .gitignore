@@ -89,6 +89,7 @@ config/demo_oc.di.cnf
 creds/CloudflareIncECCCA-3.crt
 creds/Dev_CMP_*
 creds/PPKI_Playground_*
+creds/trusted/PPKI_Playground_*
 creds/cacerts.pem
 creds/extracerts.pem
 creds/trusted/caPubs.pem

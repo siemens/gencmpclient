@@ -12,10 +12,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: cmake
         run: |
-          mkdir build
-          cd build
-          cmake -S .. -B .
-          cmake --build .
-          cmake -DCMAKE_BUILD_TYPE=Release ..
-          cmake --build . --config Release
-          cd ..
+          cmake .
+          GENCMP_NO_TLS=1 GENCMP_NO_SECUTILS=1 make; make clean
+
+  Makefile_v1:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Makefile_v1
+        run: |
+          GENCMP_NO_TLS=1 GENCMP_NO_SECUTILS=1 make -f Makefile_v1 clean build

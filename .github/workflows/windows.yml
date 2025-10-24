@@ -1,0 +1,21 @@
+# GitHub Actions for genCMPClient
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) Siemens AG, 2021-2025
+
+name: Windows
+
+on: push
+jobs:
+  cmake:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: cmake
+        run: |
+          mkdir build
+          cd  build
+          $env:GENCMP_NO_SECUTILS=1; cmake ..
+          cmake --build . --config Release
+          
+
+

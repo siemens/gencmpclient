@@ -13,7 +13,9 @@ jobs:
       - name: cmake
         run: |
           cmake .
-          GENCMP_NO_TLS=1 GENCMP_NO_SECUTILS=1 make; make clean
+          echo "GENCMP_NO_TLS=1" >> $env:GITHUB_ENV
+          echo "GENCMP_NO_SECUTILS=1" >> $env:GITHUB_ENV
+          make; make clean
 
   Makefile_v1:
     runs-on: windows-latest

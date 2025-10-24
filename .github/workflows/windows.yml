@@ -23,4 +23,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Makefile_v1
         run: |
+          echo "GENCMP_NO_TLS=1" >> $env:GITHUB_ENV
+          echo "GENCMP_NO_SECUTILS=1" >> $env:GITHUB_ENV
           GENCMP_NO_TLS=1 GENCMP_NO_SECUTILS=1 make -f Makefile_v1 clean build

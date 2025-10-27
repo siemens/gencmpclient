@@ -12,7 +12,7 @@ cmpClient - genCMPClient CLI for the Certificate Management Protocol (RFC 9810)
 
 =head1 SYNOPSIS
 
-B<cmpClient> (B<imprint|bootstrap|pkcs10|update|revoke>) [B<-section> I<server>]
+B<cmpClient> (B<imprint|bootstrap|pkcs10|update|revoke|genm>) [B<-section> I<server>]
 
 In this simple style of invocation, the first argument of the application,
 e.g., C<bootstrap>, is mapped to using a section in F<config/demo.cnf>.

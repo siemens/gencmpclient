@@ -64,21 +64,25 @@ TBD,TBD,TBD,TBD,config default all options set, -section,, -cmd,ir,, -cacertsout
 ,,,,,,,,,,,,,,,,,,,
 1,1,1,1,ir + infotype, -section,, -cmd,ir,,BLANK,,, -infotype,signKeyPairTypes,,BLANK,,BLANK,
 1,0,-,1,genm without infotype, -section,, -cmd,genm,,BLANK,,,BLANK,,,BLANK,,BLANK,
+1,1,1,1,genm reqout_only     , -section,, -cmd,genm,,BLANK,,,BLANK,,,BLANK,,BLANK,,,,,-reqout_only,genm0.der
 1,0,-,1,genm with infotype signKeyPairTypes, -section,, -cmd,genm,,BLANK,,, -infotype,signKeyPairTypes,,BLANK,,BLANK,
 0,*,*,*,genm with missing infotype value, -section,, -cmd,genm,,BLANK,,, -infotype,,,BLANK,,BLANK,
 0,*,*,*,genm with invalid infotype value, -section,, -cmd,genm,,BLANK,,, -infotype,asdf,,BLANK,,BLANK,
-3.4,1,-,-,genm certReqTemplate, -section,, -cmd,genm,, -template,test.template.pem,, -infotype,certReqTemplate,,BLANK,,BLANK,,BLANK,,, -expect_sender, """"
+3.4,1,-,-,genm certReqTemplate                      , -section,, -cmd,genm,, -template,test.template.pem,, -infotype,certReqTemplate,,BLANK,,BLANK,,BLANK,,, -expect_sender, """"
+3.4,3.4,3.4,3.4,genm certReqTemplate reqout_only    , -section,, -cmd,genm,, -template,test.template.pem,, -infotype,certReqTemplate,,BLANK,,BLANK,,BLANK,,, -reqout_only,genm1.der
 0,*,*,*,genm certReqTemplate missing template option, -section,, -cmd,genm,, -template,"""",, -infotype,certReqTemplate,,BLANK,,BLANK,
 0,*,*,*,genm certReqTemplate missing template arg   , -section,, -cmd,genm,, -template,BLANK,, -infotype,certReqTemplate,,BLANK,,BLANK,
 0,*,*,*,genm certReqTemplate template extra arg     , -section,, -cmd,genm,, -template,test.template.pem,test.template.pem, -infotype,certReqTemplate,,BLANK,,BLANK,
 3.4 0,*,*,*,genm certReqTemplate template arg non-ex dir, -section,, -cmd,genm,, -template,idontexist/idontexist,, -infotype,certReqTemplate,,BLANK,,BLANK,
 3.2,1,-,-,genm caCerts                        , -section,, -cmd,genm,, -cacertsout,test.cacertsout.pem,, -infotype,caCerts,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN
+3.2,3.2,3.2,3.2,genm caCerts reqout_only      , -section,, -cmd,genm,, -cacertsout,test.cacertsout.pem,, -infotype,caCerts,,BLANK,,BLANK,,BLANK,,, -reqout_only,genm2.der
 3.2 0,*,*,*,genm caCerts missing cacertsout option, -section,, -cmd,genm,, -cacertsout,"""",, -infotype,caCerts,,BLANK,,BLANK,
 0,*,*,*,genm caCerts missing cacertsout arg   , -section,, -cmd,genm,, -cacertsout,BLANK,, -infotype,caCerts,,BLANK,,BLANK,
 0,*,*,*,genm caCerts cacertsout extra arg     , -section,, -cmd,genm,, -cacertsout,test.cacertsout.pem,test.cacertsout.pem, -infotype,caCerts,,BLANK,,BLANK,
 3.2 0,*,*,*,genm caCerts cacertsout arg non-ex dir, -section,, -cmd,genm,, -cacertsout,idontexist/idontexist,, -infotype,caCerts,,BLANK,,BLANK,
-3.2,1,-,-,genm rootCaCert                     , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem
-3.2,*,*,*,genm rootCaCert no oldwithold given   , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, BLANK      ,               , -newwithnew, test.newwithnew.pem
+3.2,1,-,-,genm rootCaCert                         , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem
+3.2,3.2,3.2,3.2,genm rootCaCert reqout_only       , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem,-reqout_only,genm3.der
+3.2,*,*,*,genm rootCaCert no oldwithold given     , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, BLANK      ,               , -newwithnew, test.newwithnew.pem
 3.2 0,*,*,*,genm rootCaCert oldwithold missing arg, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold,               , -newwithnew, test.newwithnew.pem
 3.2 0,*,*,*,genm rootCaCert oldwithold empty file , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, empty.txt     , -newwithnew, test.newwithnew.pem
 3.2 0,*,*,*,genm rootCaCert oldwithold random file, -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, random.bin    , -newwithnew, test.newwithnew.pem
@@ -95,6 +99,7 @@ TBD,TBD,TBD,TBD,config default all options set, -section,, -cmd,ir,, -cacertsout
 3.2 0,*,*,*,genm rootCaCert newwithold directory  , -section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -oldwithnew, test.oldwithnew.pem, -newwithold,/directory,
 3.2,1,-,-,genm rootCaCert oldwithnew newwithold,-section,, -cmd,genm,, BLANK,,, -infotype,rootCaCert,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldwithold, oldwithold.pem, -newwithnew, test.newwithnew.pem, -newwithold, test.newwithold.pem
 3.4,1,-,-,genm crlStatusList                 , -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcrl, crl.der   , -crlout, test.crl.der
+3.4,3.4,3.4,3.4,genm crlStatusList reqout_only, -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcrl, crl.der   , -crlout, test.crl.der,-reqout_only,genm4.der
 3.4,1,-,-,genm crlStatusList with crlcert    , -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -crlcert, root.crt , -crlout, test.crl.der
 3.4,1,-,-,genm crlStatusList with oldcert    , -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN, -oldcert, root.crt , -crlout, test.crl.der
 3.4 0,*,*,*,genm crlStatusList missing oldcrl crlcert oldcert , -section,,-cmd,genm,, BLANK,,,-infotype,crlStatusList,,BLANK,,BLANK,,BLANK,,, -expect_sender,_SERVER_DN,  BLANK,            , -crlout, test.crl.der
@@ -136,4 +141,4 @@ TBD,TBD,TBD,TBD,find invalid geninfo values, -section,, -cmd,cr,, -cert,signer.c
 0,0,0,0,reqin wrong req, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqin,cr.der certConf.der,,BLANK
 1,1,1,1,rspin        , -section,, -cmd,ir,,,,,,,,,,,,,,,-rspin,ip.der pkiConf.der
 1,1,1,1,reqout_only ir, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqout_only,ir2.der,-server,""""
-0,0,0,0,reqout_only non-existing directory and file, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqout_only,idontexist/idontexist,-server,""""
+0,0,0,0,reqout_only ir non-existing directory and file, -section,, -cmd,ir,,,,,,,,,,,,,,,-reqout_only,idontexist/idontexist,-server,""""

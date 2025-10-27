@@ -2237,6 +2237,11 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
                     opt_cacertsout);
                 err = -58;
             }
+        } else {
+            if (reqout_only_done && err == CMP_R_GET_ITAV)
+                err = CMP_OK; /* not checking response as we did not send request */
+            else if (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
+                LOG(FL_ERR, "Could not obtain valid response message on genm requesting caCerts");
         }
         CERTS_free(cacerts);
         return err;
@@ -2264,8 +2269,13 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             }
             err = CMPclient_rootCaCert(ctx, oldwithold, &newwithnew,
                                        &newwithold, &oldwithnew);
-            if (err != CMP_OK)
+            if (err != CMP_OK) {
+                if (reqout_only_done && err == CMP_R_GET_ITAV)
+                    err = CMP_OK; /* not checking response as we did not send request */
+                else if (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
+                    LOG(FL_ERR, "Could not obtain valid response message on genm requesting rootCaCert");
                 goto end_upd;
+            }
 
             /* TODO possibly check authorization of sender/origin */
             if (newwithnew == NULL)
@@ -2321,8 +2331,13 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             }
             err = CMPclient_crlUpdate(ctx, crlcert != NULL ? crlcert : oldcert,
                                       oldcrl, &crl);
-            if (err != CMP_OK)
+            if (err != CMP_OK) {
+                if (reqout_only_done && err == CMP_R_GET_ITAV)
+                    err = CMP_OK; /* not checking response as we did not send request */
+                else if (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
+                    LOG(FL_ERR, "Could not obtain valid response message on genm requesting crlUpdate");
                 goto end_crlupd;
+            }
 
             const char *desc = "CRL from genp of type 'crls'";
             if (crl == NULL) {
@@ -2350,8 +2365,13 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         OSSL_CMP_ATAVS *keySpec;
         err = CMPclient_certReqTemplate(ctx, &certTemplate, &keySpec);
 
-        if (err != CMP_OK)
+        if (err != CMP_OK) {
+            if (reqout_only_done && err == CMP_R_GET_ITAV)
+                err = CMP_OK; /* not checking response as we did not send request */
+            else if (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
+                LOG(FL_ERR, "Could not obtain valid response message on genm requesting certReqTemplate");
             return err;
+        }
         if (certTemplate == NULL) {
             LOG_warn("No certificate request template available");
             if (!delete_file(opt_template, "certTemplate from genp"))

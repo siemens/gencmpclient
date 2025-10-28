@@ -397,9 +397,16 @@ For KUR, a further fallback is the subject DN
 of the reference certificate (see B<-oldcert>) if provided.
 This fallback is used for IR and CR only if no SANs are set.
 
-If provided and neither of B<-cert>, B<-oldcert>, or B<-csr> is given,
-the subject DN is used as fallback sender. With password-based message
-protection, the subject commonName, if any, is taken as the default senderKID.
+If provided and none of B<-cert>, B<-oldcert>, B<-csr>, and B<-ref> is given,
+the subject DN is used as fallback sender of outgoing CMP messages.
+
+Before OpenSSL version 4.0, with MAC-based message protection,
+the subject is not used as a fallback senderKID.
+
+<!--
+Since OpenSSL version 4.0, with MAC-based message protection,
+the subject commonName (if any) is taken as the default senderKID.
+-->
 
 Special characters may be escaped by C<\> (backslash); whitespace is retained.
 Empty values are permitted, but the corresponding type will not be included.
@@ -931,9 +938,27 @@ If not given here, the password will be prompted for if needed.
 
 Reference name/number/value to use as the senderKID in CMP message headers
 except with signature-based protection.
-When using password-based message protection (keyed MAC), this field must be
-filled in, where the default value is the commonName, if any, of
-subject name from the B<-cert>, B<-oldcert>, B<-csr>, or <-subject> options.
+When using MAC-based message protection, this senderKID field must be filled in.
+
+Before OpenSSL 4.0, the fallback behavior is as follows.
+
+For MAC-based protection, there is no fallback for the senderKID field.
+
+When the option is provided, in case of MAC-based protection,
+the sender field is reset to the NULL-DN,
+while for signature-based protection
+this option does not influence the sender field value.
+
+<!--
+Since OpenSSL 4.0, the behavior is as follows.
+
+For MAC-based protection, the commonName (if any) of the sender field is taken as the fallback senderKID value.
+
+When the option is provided, in case of MAC-based protection
+the value is used as the sender Distinguished Name (DN) having only a commonName component with the given value,
+while for signature-based protection
+this DN is used only as the ultimate fallback sender value.
+-->
 
 =item B<-secret> I<arg>
 

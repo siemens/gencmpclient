@@ -141,7 +141,7 @@ endif()
 # its dynamic libs have been installed in ./${LIB} when using the libs
 # see for binaries dynamically linked to OpenSSL the output of ${LDD} <binary>
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-  set(USERS "^(\w:)?\\Users\\")
+  set(USERS "^([a-zA-Z]:)?\\\\Users\\\\")
   set(LIB "bin")
 else()
   set(USERS "^/(home|Users)/")
@@ -208,13 +208,22 @@ endif()
 
 add_compile_definitions(DEBUG_UNUSED)
 add_compile_definitions(PEDANTIC)
-add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
-add_compile_options(
-  -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
-  -Wsign-compare -Wformat -Wtype-limits -Wundef -Wconversion -Wunused-parameter)
-add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined)
-if(NOT DEFINED GENCMP_NO_SECUTILS)
-  add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
+
+if(MSVC)
+  # MSVC compiler flags
+  add_compile_options(/W4)  # High warning level
+  add_compile_options(/wd4996)  # Disable deprecated function warnings
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+else()
+  # GCC/Clang compiler flags
+  add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
+  add_compile_options(
+    -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
+    -Wsign-compare -Wformat -Wtype-limits -Wundef -Wconversion -Wunused-parameter)
+  add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined)
+  if(NOT DEFINED GENCMP_NO_SECUTILS)
+    add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
+  endif()
 endif()
 # TODO maybe clean up code and re-enable property
 # set_property(TARGET ${LIBGENCMP_NAME} PROPERTY C_STANDARD 90)

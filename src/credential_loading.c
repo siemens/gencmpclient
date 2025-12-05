@@ -23,9 +23,6 @@
 #include <secutils/connections/conn.h> /* for CONN_IS_HTTP[S] */
 #include <secutils/certstatus/crls.h> /* for CONN_load_crl_http */
 #include <secutils/util/log.h>
-#ifdef SECUTILS_USE_ICV
-# include <secutils/storage/files_icv.h>
-#endif
 #include <genericCMPClient.h> /* for CRLs_free() */
 
 #include "credential_loading.h"

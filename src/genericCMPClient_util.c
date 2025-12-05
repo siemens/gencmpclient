@@ -38,15 +38,32 @@ void UTIL_cleanse_free(OPTIONAL char *str)
 
 /* log.c: */
 
-#include <syslog.h>
+#ifdef _WIN32
+  /* Windows doesn't have syslog, so we'll use Windows Event Log or just disable syslog */
+  #define LOG_EMERG   0
+  #define LOG_ALERT   1
+  #define LOG_CRIT    2
+  #define LOG_ERR     3
+  #define LOG_WARNING 4
+  #define LOG_NOTICE  5
+  #define LOG_INFO    6
+  #define LOG_DEBUG   7
+  static void syslog(int priority, const char *format, ...) {
+    /* Stub implementation for Windows - could be enhanced to use Windows Event Log */
+    (void)priority;
+    (void)format;
+  }
+#else
+  #include <syslog.h>
+#endif
 
 static const char *const GENCMP_NAME = "genCMPClient";
-static const size_t loc_len = 256;
+#define loc_len 256
 
 /*!< these variables are shared between threads */
 static LOG_cb_t LOG_fn = 0;
-static const char *app_name = GENCMP_NAME;
-static severity verbosity = LOG_WARNING;
+static const char *app_name = "genCMPClient";
+static severity verbosity = 4; /* LOG_WARNING equivalent */
 BIO *bio_err = 0;
 BIO *bio_trace = 0;
 

@@ -173,7 +173,7 @@ tls_used = 0
 server = broker.sdo.siemens.cloud:443
 path = /.well-known/cmp # gets overridden by Makefile_v1
 tls_used = 1
-tls_trusted = creds/trusted/DigicertGlobalRootG5.crt
+tls_trusted = creds/trusted/isrgrootx1.pem
 
 # Tenant on server
 recipient = /CN=CloudPKI-Integration-Test

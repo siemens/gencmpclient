@@ -1655,8 +1655,9 @@ static CMP_err check_options(enum use_case use_case)
         return -31;
     }
     if (use_case == update) {
-        if (opt_oldcert == NULL && opt_csr == NULL) {
-            LOG_warn("No -oldcert for certificate to be updated and no -csr given, resorting to -cert");
+        if (opt_oldcert == NULL && opt_cert == NULL && opt_csr == NULL) {
+            LOG_err("No -oldcert nor fallback -cert for certificate to be updated and no -csr given");
+            return -32;
         }
         if (opt_subject != NULL)
             LOG(FL_INFO, "Given -subject '%s' is ignored in favor of the subject from '%s'",
@@ -2469,8 +2470,8 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         err = CMPclient_pkcs10(ctx, &new_creds, csr);
         break;
     case update:
-        if (opt_oldcert == NULL)
-            err = CMPclient_update(ctx, &new_creds, new_pkey);
+        if (opt_reqexts != NULL)
+            err = CMPclient_update_with_exts(ctx, &new_creds, oldcert, new_pkey, exts);
         else
             err = CMPclient_update_anycert(ctx, &new_creds, oldcert, new_pkey);
         break;

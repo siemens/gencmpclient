@@ -923,23 +923,56 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
     return err;
 }
 
+static STACK_OF(X509_EXTENSION) *shallow_copy_non_KID_exts(const STACK_OF(X509_EXTENSION) *exts)
+{
+    int i, n = sk_X509_EXTENSION_num(exts); /* may be -1 if exts == NULL */
+    STACK_OF(X509_EXTENSION) *new = sk_X509_EXTENSION_new_reserve(NULL, n);
+
+    if (new == NULL)
+        return NULL; /* malloc failure */
+    for (i = 0; i < n; i++) {
+        X509_EXTENSION *ext = sk_X509_EXTENSION_value(exts, i);
+        int nid = OBJ_obj2nid(X509_EXTENSION_get_object(ext));
+
+        if (nid == NID_subject_key_identifier || nid == NID_authority_key_identifier)
+            continue; /* skip SKID and AKID */
+        (void)sk_X509_EXTENSION_push(new, ext); /* cannot fail */
+    }
+    return new;
+}
+
 CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                                  OPTIONAL const X509 *old_cert,
                                  OPTIONAL const EVP_PKEY *new_key)
 {
-    CMP_err err = CMPclient_setup_certreq(ctx, new_key, old_cert,
-                                          NULL /* subject */, NULL /* exts */,
-                                          NULL /* csr */);
+    STACK_OF(X509_EXTENSION) *exts =
+        shallow_copy_non_KID_exts(old_cert == NULL ? NULL : X509_get0_extensions(old_cert));
 
-    if (err == CMP_OK)
-        err = CMPclient_enroll(ctx, new_creds, CMP_KUR);
-    return err;
+    if (exts == NULL)
+        return ERR_R_MALLOC_FAILURE;
+    int ret = CMPclient_update_with_exts(ctx, new_creds, old_cert, new_key,
+                                         sk_X509_EXTENSION_num(exts) == 0 ? NULL : exts);
+    sk_X509_EXTENSION_free(exts);
+    return ret;
 }
 
 CMP_err CMPclient_update(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                          OPTIONAL const EVP_PKEY *new_key)
 {
-    return CMPclient_update_anycert(ctx, new_creds, NULL, new_key);
+    return CMPclient_update_with_exts(ctx, new_creds, NULL, new_key, NULL);
+}
+
+CMP_err CMPclient_update_with_exts(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
+                                   OPTIONAL const X509 *old_cert,
+                                   OPTIONAL const EVP_PKEY *new_key,
+                                   OPTIONAL const X509_EXTENSIONS *exts)
+{
+    CMP_err err = CMPclient_setup_certreq(ctx, new_key, old_cert,
+                                          NULL /* subject */, exts, NULL /* csr */);
+
+    if (err == CMP_OK)
+        err = CMPclient_enroll(ctx, new_creds, CMP_KUR);
+    return err;
 }
 
 CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr, */ int reason)

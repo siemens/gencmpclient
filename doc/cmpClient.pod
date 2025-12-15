@@ -440,7 +440,9 @@ validity period starts from the current time (as seen by the host).
 
 =item B<-reqexts> I<name>
 
-Name of section in OpenSSL config file defining certificate request extensions.
+Name of section in OpenSSL config file defining X.509v3 extensions to be placed
+in certificate requests. In case of KUR these will be used instead of extensions
+taken from the reference certificate, from which by default only SANs will be used.
 If the B<-csr> option is present, these extensions augment the extensions
 contained the given PKCS#10 CSR, overriding any extensions with same OIDs.
 
@@ -462,8 +464,12 @@ This can be disabled by giving the B<-san_nodefault> option.
 
 =item B<-policies> I<name>
 
-Name of section in OpenSSL config file defining policies to be set
-as certificate request extension.
+Name of section in OpenSSL config file defining policies
+to be placed as X.509v3 extensions in certificate requests.
+In case of KUR this disables taking over of extensions from the reference certificate.
+These extensions augment any extensions with same OIDs contained in a
+PKCS#10 CSR given with the B<-csr> option or given with the B<-reqexts> option.
+
 This option cannot be used together with B<-policy_oids>.
 
 =item B<-policy_oids> I<names>
@@ -572,8 +578,11 @@ and the resulting certificate is called I<reference certificate>.
 For RR the certificate to be revoked can also be specified using B<-csr>.
 
 The reference certificate, if any, is also used for
-deriving default subject DN and Subject Alternative Names and the
-default issuer entry in the requested certificate template of an IR/CR/KUR.
+deriving default subject DN and Subject Alternative Names (SANs) and the
+default issuer entry in the requested certificate template of an IR/CR/KUR,
+while in the KUR case also any further X.509v3 extensions (except for
+subject key identifier and authority key identifier) are taken over
+as fallback if neither B<-reqexts> nor B<-policies> is given.
 Its subject is used as the sender field in CMP message headers.
 With password-based message protection,
 its subject commonName, if any, is taken as the default senderKID.

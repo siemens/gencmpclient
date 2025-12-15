@@ -4,7 +4,7 @@
  *
  * @author David von Oheimb, Siemens AG, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2017-2023 Siemens AG
+ *  Copyright (c) 2017-2025 Siemens AG
  *  Licensed under the Apache License 2.0 (the "License").
  *  You may not use this file except in compliance with the License.
  *  You can obtain a copy in the file LICENSE in the source distribution
@@ -106,7 +106,7 @@ typedef int CMP_err;
 # define CMP_R_INVALID_CRL_LIST   245
 # define CMP_R_INVALID_PARAMETERS CMP_R_INVALID_ARGS
 
-/* further error codes are defined in ../cmpossl/include/openssl/cmperr.h */
+/* further error codes are defined in cmperr.h */
 
 # define CMP_IR    0 /* OSSL_CMP_PKIBODY_IR */
 # define CMP_CR    2 /* OSSL_CMP_PKIBODY_CR */
@@ -214,10 +214,10 @@ CMP_err CMPclient_bootstrap(CMP_CTX *ctx, CREDENTIALS **new_creds,
 CMP_err CMPclient_pkcs10(CMP_CTX *ctx, CREDENTIALS **new_creds,
                          const X509_REQ *csr);
 CMP_err CMPclient_update(CMP_CTX *ctx, CREDENTIALS **new_creds,
-                         const EVP_PKEY *new_key);
+                         OPTIONAL const EVP_PKEY *new_key);
 CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                                  OPTIONAL const X509 *old_cert,
-                                 const EVP_PKEY *new_key);
+                                 OPTIONAL const EVP_PKEY *new_key);
 
 /* reason codes are defined in openssl/x509v3.h */
 CMP_err CMPclient_revoke(CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ *csr, */ int reason);

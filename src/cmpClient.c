@@ -6,7 +6,7 @@
  *
  *  Copyright 2007-2021 The OpenSSL Project Authors. All Rights Reserved.
  *  Copyright Nokia 2007-2019
- *  Copyright (c) 2015-2023 Siemens AG
+ *  Copyright (c) 2015-2025 Siemens AG
  *
  *  Licensed under the Apache License 2.0 (the "License").
  *  You may not use this file except in compliance with the License.
@@ -1171,7 +1171,7 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
         if (opt_secret != NULL) {
             /* use PBM except for kur and rr if secret is present */
             char *secret = FILES_get_pass(opt_secret,
-                                          "password-based message protection");
+                                          "MAC-based message protection");
 
             if (secret == NULL) {
                 LOG(FL_ERR, "Unable to set up secret part of %s", creds_desc);
@@ -1656,15 +1656,14 @@ static CMP_err check_options(enum use_case use_case)
     }
     if (use_case == update) {
         if (opt_oldcert == NULL && opt_csr == NULL) {
-            LOG_err("Missing -oldcert for certificate to be updated and no -csr given");
-            return -32;
+            LOG_warn("No -oldcert for certificate to be updated and no -csr given, resorting to -cert");
         }
         if (opt_subject != NULL)
-            LOG(FL_INFO, "Given -subject '%s' overrides the subject of '%s' for 'kur'",
-                opt_subject, opt_oldcert != NULL ? opt_oldcert : opt_csr);
+            LOG(FL_INFO, "Given -subject '%s' is ignored in favor of the subject from '%s'",
+                opt_subject, opt_oldcert != NULL ? opt_oldcert : opt_csr != NULL ? opt_csr : opt_cert);
     } else {
         if (opt_secret != NULL && (opt_cert != NULL || opt_key != NULL)) {
-            LOG_warn("Ignoring -cert and -key since -secret option selects password-based message protection");
+            LOG_warn("Ignoring -cert and -key since -secret option selects MAC-based message protection");
             opt_cert = opt_key = NULL;
         }
 
@@ -1679,10 +1678,10 @@ static CMP_err check_options(enum use_case use_case)
         /*
          * The sender name will be taken from the subject of any -cert, -oldcert,
          * or else -csr, otherwise from any -subject, or from -ref.
-         * With password-based protection, -ref is the preferred source.
+         * With MAC-based protection, -ref is the preferred source.
          *
          * The senderKID is taken from the subjectKeyIdentifier of the
-         * protection certificate if present. With password-based protection,
+         * protection certificate if present. With MAC-based protection,
          * the commonName of the sender field, if present, is taken by default
          * as per RFC 9483 section 3.1 but may be overridden by -ref.
          */
@@ -1786,10 +1785,10 @@ static CMP_err check_options(enum use_case use_case)
     return CMP_OK;
 }
 
-static CMP_err check_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
-                                      X509 **oldcert, X509_REQ **csr,
-                                      X509_EXTENSIONS **exts,
-                                      enum use_case use_case)
+static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
+                                          X509 **oldcert, X509_REQ **csr,
+                                          X509_EXTENSIONS **exts,
+                                          enum use_case use_case)
 {
     CMP_err err;
 
@@ -2444,8 +2443,8 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         LOG_err("Failed to prepare CMP client");
         goto err;
     }
-    if ((err = check_template_options(ctx, &new_pkey, &oldcert, &csr,
-                                      &exts, use_case)) != CMP_OK)
+    if ((err = check_set_template_options(ctx, &new_pkey, &oldcert, &csr,
+                                          &exts, use_case)) != CMP_OK)
         goto err;
 
     if (opt_revreason < CRL_REASON_NONE

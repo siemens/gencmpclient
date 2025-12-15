@@ -4,7 +4,7 @@
  *
  * @author David von Oheimb, Siemens AG, David.von.Oheimb@siemens.com
  *
- *  Copyright (c) 2017-2023 Siemens AG
+ *  Copyright (c) 2017-2025 Siemens AG
  *
  *  Licensed under the Apache License 2.0 (the "License").
  *  You may not use this file except in compliance with the License.
@@ -925,7 +925,7 @@ CMP_err CMPclient_pkcs10(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 
 CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
                                  OPTIONAL const X509 *old_cert,
-                                 const EVP_PKEY *new_key)
+                                 OPTIONAL const EVP_PKEY *new_key)
 {
     CMP_err err = CMPclient_setup_certreq(ctx, new_key, old_cert,
                                           NULL /* subject */, NULL /* exts */,
@@ -937,7 +937,7 @@ CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
 }
 
 CMP_err CMPclient_update(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
-                         const EVP_PKEY *new_key)
+                         OPTIONAL const EVP_PKEY *new_key)
 {
     return CMPclient_update_anycert(ctx, new_creds, NULL, new_key);
 }

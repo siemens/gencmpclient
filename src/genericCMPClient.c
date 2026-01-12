@@ -865,6 +865,7 @@ CMP_err CMPclient_revoke(OSSL_CMP_CTX *ctx, const X509 *cert, /* TODO: X509_REQ 
 }
 
 #if OPENSSL_3_2_FEATURES
+# if OPENSSL_VERSION_NUMBER < 0x30400000L
 static OSSL_CMP_ITAV *get_genm_itav(CMP_CTX *ctx,
                                     OSSL_CMP_ITAV *req, /* gets consumed */
                                     int expected, const char *desc)
@@ -935,16 +936,20 @@ static OSSL_CMP_ITAV *get_genm_itav(CMP_CTX *ctx,
     OSSL_CMP_ITAV_free(req);
     return NULL;
 }
+# endif
 
+# if OPENSSL_VERSION_NUMBER < 0x30200000L
 static const X509_VERIFY_PARAM *get0_trustedStore_vpm(const CMP_CTX *ctx)
 {
     /* const */ X509_STORE *ts = OSSL_CMP_CTX_get0_trustedStore(ctx);
 
     return ts == NULL ? NULL : X509_STORE_get0_param(ts);
 }
+# endif
 
 CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out)
 {
+# if OPENSSL_VERSION_NUMBER < 0x30200000L
     OSSL_CMP_ITAV *req, *itav;
     STACK_OF(X509) *certs = NULL;
     CMP_err err = CMP_OK;
@@ -986,6 +991,9 @@ CMP_err CMPclient_caCerts(CMP_CTX *ctx, STACK_OF(X509) **out)
  end:
     OSSL_CMP_ITAV_free(itav);
     return err;
+# else
+    return OSSL_CMP_get1_caCerts(ctx, out) ? CMP_OK : CMPOSSL_error();
+# endif
 }
 #endif /* OPENSSL_3_2_FEATURES */
 
@@ -994,6 +1002,7 @@ CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
                                   OSSL_CRMF_CERTTEMPLATE **certTemplate,
                                   OPTIONAL OSSL_CMP_ATAVS **keySpec)
 {
+# if OPENSSL_VERSION_NUMBER < 0x30400000L
     OSSL_CMP_ITAV *req, *itav;
     CMP_err err = CMP_OK;
 
@@ -1018,10 +1027,14 @@ CMP_err CMPclient_certReqTemplate(CMP_CTX *ctx,
 
     OSSL_CMP_ITAV_free(itav);
     return err;
+# else
+    return OSSL_CMP_get1_certReqTemplate(ctx, certTemplate, keySpec) ? CMP_OK : CMPOSSL_error();
+# endif
 }
-#endif /* OPENSSL_3_2_FEATURES */
+#endif /* OPENSSL_3_4_FEATURES */
 
 #if OPENSSL_3_2_FEATURES
+# if OPENSSL_VERSION_NUMBER < 0x30200000L
 static int selfsigned_verify_cb(int ok, X509_STORE_CTX *store_ctx)
 {
     if (ok == 0 && store_ctx != NULL
@@ -1088,6 +1101,15 @@ static int validate_ss_cert(OSSL_LIB_CTX *libctx, const char *propq,
     return ok;
 }
 
+static int ossl_x509_add_cert_new_(STACK_OF(X509) **p_sk, X509 *cert, int flags)
+{
+    if (*p_sk == NULL && (*p_sk = sk_X509_new_null()) == NULL) {
+        ERR_raise(ERR_LIB_X509, ERR_R_MALLOC_FAILURE);
+        return 0;
+    }
+    return X509_add_cert(*p_sk, cert, flags);
+}
+
 static int verify_cert1(CMP_CTX *ctx, X509 *trusted, X509 *trans,
                         X509 *target, const char *desc)
 {
@@ -1114,12 +1136,14 @@ static int verify_cert1(CMP_CTX *ctx, X509 *trusted, X509 *trans,
         STORE_free(ts);
     return res;
 }
+# endif
 
 CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
                              const X509 *oldWithOld, X509 **newWithNew,
                              OPTIONAL X509 **newWithOld,
                              OPTIONAL X509 **oldWithNew)
 {
+# if OPENSSL_VERSION_NUMBER < 0x30200000L
     OSSL_CMP_ITAV *req, *itav;
     CMP_err err = CMP_OK;
 
@@ -1169,6 +1193,10 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
  end:
     OSSL_CMP_ITAV_free(itav);
     return err;
+# else
+    return OSSL_CMP_get1_rootCaKeyUpdate(ctx, oldWithOld, newWithNew, newWithOld,
+                                         oldWithNew) ? CMP_OK : CMPOSSL_error();
+# endif
 }
 #endif /* OPENSSL_3_2_FEATURES */
 
@@ -1176,6 +1204,7 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
 CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, OPTIONAL const X509 *cert,
                             OPTIONAL const X509_CRL *last_crl, X509_CRL **crl)
 {
+# if OPENSSL_VERSION_NUMBER < 0x30400000L
     OSSL_CMP_CRLSTATUS *status = NULL;
     STACK_OF(OSSL_CMP_CRLSTATUS) *list = NULL;
     OSSL_CMP_ITAV *req = NULL, *itav = NULL;
@@ -1237,6 +1266,9 @@ CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, OPTIONAL const X509 *cert,
     sk_OSSL_CMP_CRLSTATUS_free(list);
     OSSL_CMP_ITAV_free(itav);
     return err;
+# else
+    return OSSL_CMP_get1_crlUpdate(ctx, cert, last_crl, crl) ? CMP_OK : CMPOSSL_error();
+# endif
 }
 #endif /* OPENSSL_3_4_FEATURES */
 

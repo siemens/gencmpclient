@@ -48,6 +48,11 @@ which meanwhile has been obsoleted by
 For details see [below](#cmp-features-and-openssl-versions)
 or the HISTORY section of [`cmpClient.pod`](doc/cmpClient.pod#HISTORY).
 
+Both the library and the CLI support using OpenSSL crypto providers, such as, for TPM2.
+Note: For being able to use such providers for part of the key material while using
+the OpenSSL default provider for other keys or cryptographic operations,
+it may be needed to use their latest versions and at least OpenSSL version 3.5.
+
 A further use case of this software was to provide early access to all new CMP
 features defined in [CMP Updates](https://www.rfc-editor.org/rfc/rfc9480) and
 the [Lightweight CMP Profile (LCMPP)](https://www.rfc-editor.org/rfc/rfc9483).

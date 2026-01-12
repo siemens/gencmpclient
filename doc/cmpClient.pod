@@ -1340,9 +1340,10 @@ L<RFC 9483|https://www.rfc-editor.org/rfc/rfc9483>, the situation is as follows.
 
 =over 4
 
-=item * In OpenSSL 3.2, "Get CA Certificates" and "Get Root CA Certificate Update"
-  were added, as well as
-  the B<-srvcertout> option for saving the validated server certificate and
+=item * In OpenSSL 3.2, "Get CA Certificates" and "Get Root CA Certificate Update" were added
+(with the related options B<-oldwithold>, B<-newwithnew>, B<-newwithold>, and B<-oldwithnew>),
+  as well as an extension of the B<-cacertsout> option to use when getting CA certificates,
+  the B<-srvcertout> option for saving the validated server certificate, and
   the B<-serial> option for the serial number of certificates to be revoked.
   Since then, the B<-issuer> may be used also for certificates to be revoked.
 
@@ -1350,9 +1351,8 @@ L<RFC 9483|https://www.rfc-editor.org/rfc/rfc9483>, the situation is as follows.
   and generalized polling ("Handling Delayed Delivery") were added, as well as
   the B<-no_cache_extracerts> option for not reusing extraCerts received.
 
-=item * In OpenSSL 3.4, "Get Certificate Request Template" and
-  "CRL Update Retrieval" were added, as well as the related B<-template>,
-  B<-crlcert>, B<-oldcrl>, and B<-crlout> options.
+=item * In OpenSSL 3.4, "Get Certificate Request Template" and "CRL Update Retrieval" were added,
+  with the related B<-template>, B<-crlcert>, B<-oldcrl>, and B<-crlout> options.
 
 =item * In OpenSSL 3.5, support for central key generation was added.
 

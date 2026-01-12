@@ -2238,7 +2238,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
                 err = -58;
             }
         } else {
-            if (reqout_only_done && err == CMP_R_GET_ITAV)
+            if (reqout_only_done && (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans
+                                     || err == CMP_R_GET_ITAV))
                 err = CMP_OK; /* not checking response as we did not send request */
             else if (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
                 LOG(FL_ERR, "Could not obtain valid response message on genm requesting caCerts");
@@ -2270,7 +2271,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             err = CMPclient_rootCaCert(ctx, oldwithold, &newwithnew,
                                        &newwithold, &oldwithnew);
             if (err != CMP_OK) {
-                if (reqout_only_done && err == CMP_R_GET_ITAV)
+            if (reqout_only_done && (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans
+                                     || err == CMP_R_GET_ITAV))
                     err = CMP_OK; /* not checking response as we did not send request */
                 else if (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
                     LOG(FL_ERR, "Could not obtain valid response message on genm requesting rootCaCert");
@@ -2332,7 +2334,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             err = CMPclient_crlUpdate(ctx, crlcert != NULL ? crlcert : oldcert,
                                       oldcrl, &crl);
             if (err != CMP_OK) {
-                if (reqout_only_done && err == CMP_R_GET_ITAV)
+                if (reqout_only_done && (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans
+                                         || err == CMP_R_GET_ITAV))
                     err = CMP_OK; /* not checking response as we did not send request */
                 else if (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
                     LOG(FL_ERR, "Could not obtain valid response message on genm requesting crlUpdate");
@@ -2366,7 +2369,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         err = CMPclient_certReqTemplate(ctx, &certTemplate, &keySpec);
 
         if (err != CMP_OK) {
-            if (reqout_only_done && err == CMP_R_GET_ITAV)
+            if (reqout_only_done && (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans
+                                     || err == CMP_R_GET_ITAV))
                 err = CMP_OK; /* not checking response as we did not send request */
             else if (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
                 LOG(FL_ERR, "Could not obtain valid response message on genm requesting certReqTemplate");

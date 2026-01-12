@@ -545,7 +545,7 @@ demo_Insta:
 else
 demo_Insta: get_Insta_crls
 endif
-	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" CA_SECTION="Insta" SLEEP="sleep 1"
+	echo WARNING: As of January 2026, disabled demo_Insta because Insta Demo CA is defunct # $(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" CA_SECTION="Insta" SLEEP="sleep 1"
         # for Insta, sleep 1 helps avoid ERROR: server response error : Code=503,Reason=Service Unavailable
 demo_CloudCA:
 	$(MAKE) -f Makefile_v1 run_demo BIN_DIR="$(BIN_DIR)" CA_SECTION="CloudCA"

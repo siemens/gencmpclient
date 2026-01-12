@@ -167,9 +167,10 @@ by the application scenario are covered by the OpenSSL version being used.
   IR, CR, KUR, P10CR, MAC, RR, and polling for certification responses.
 * In OpenSSL 3.2, "Get CA Certificates" and "Get Root CA Certificate Update"
   were added.
-* In OpenSSL 3.3, "Get Certificate Request Template" and support for certificate
-  profiles and generalized polling ("Handling Delayed Delivery") were added.
-* In OpenSSL 3.4, "CRL Update Retrieval" was added.
+* In OpenSSL 3.3, support for certificate profiles and
+  generalized polling ("Handling Delayed Delivery") were added.
+* In OpenSSL 3.4, "Get Certificate Request Template" and support for certificate
+  profiles and "CRL Update Retrieval" were added.
 * In OpenSSL 3.5, support for central key generation was added.
 
 Hint: As long as your system provides a sufficiently recent version of OpenSSL

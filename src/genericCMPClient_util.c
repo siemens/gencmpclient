@@ -487,8 +487,10 @@ X509_STORE *STORE_create(OPTIONAL X509_STORE *store, OPTIONAL const X509 *cert,
         if (store == NULL)
             goto oom;
     }
+#if OPENSSL_VERSION_NUMBER >= OPENSSL_V_3_0_0
     X509_STORE_set_verify_cb(store, X509_STORE_CTX_print_verify_cb
                              /* could be more informative: CREDENTIALS_print_cert_verify_cb */);
+#endif
 
 #ifdef SECUTILS_TRUST_DEFAULT_STORE /* better not trust unclear default store */
     if (X509_STORE_set_default_paths(store) != 1) {

@@ -346,16 +346,16 @@ error:
 }
 
 static void cert_msg(OPTIONAL const char *func, OPTIONAL const char *file, int lineno,
-                     severity level, const char *uri, X509 *cert, const char *msg)
+                     severity level, const char *src, X509 *cert, const char *msg)
 {
     char *subj = X509_NAME_oneline(X509_get_subject_name(cert), NULL, 0);
 
-    LOG(func, file, lineno, level, "Certificate from '%s' with subject '%s' %s", uri, subj, msg);
+    LOG(func, file, lineno, level, "Certificate from '%s' with subject '%s' %s", src, subj, msg);
     OPENSSL_free(subj);
 }
 
 static
-bool CERT_check(const char *uri, OPTIONAL X509 *cert, int type_CA,
+bool CERT_check(const char *src, OPTIONAL X509 *cert, int type_CA,
                 OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
     if (cert == NULL)
@@ -386,13 +386,13 @@ bool CERT_check(const char *uri, OPTIONAL X509 *cert, int type_CA,
     severity level = vpm == NULL ? LOG_WARNING : LOG_ERR;
     if (!ret)
         cert_msg(LOG_FUNC_FILE_LINE, level,
-                 uri, cert, res > 0 ? "has expired" : "not yet valid");
+                 src, cert, res > 0 ? "has expired" : "not yet valid");
     uint32_t ex_flags = X509_get_extension_flags(cert);
     if (type_CA >= 0 && (ex_flags & EXFLAG_V1) == 0) {
         bool is_CA = (ex_flags & EXFLAG_CA) != 0;
 
         if ((type_CA == 1) != is_CA) {
-            cert_msg(LOG_FUNC_FILE_LINE, level, uri, cert,
+            cert_msg(LOG_FUNC_FILE_LINE, level, src, cert,
                      is_CA ? "is not an EE cert" : "is not a CA cert");
             ret = false;
         }
@@ -400,14 +400,14 @@ bool CERT_check(const char *uri, OPTIONAL X509 *cert, int type_CA,
     return ret;
 }
 
-bool CERT_check_all(const char *uri, OPTIONAL STACK_OF(X509) *certs, int type_CA,
+bool CERT_check_all(const char *src, OPTIONAL STACK_OF(X509) *certs, int type_CA,
                     OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
     int i;
     bool ret = true;
 
     for (i = 0; i < sk_X509_num(certs /* may be NULL */); i++)
-        ret = CERT_check(uri, sk_X509_value(certs, i), type_CA, vpm)
+        ret = CERT_check(src, sk_X509_value(certs, i), type_CA, vpm)
             && ret; /* Having 'ret' after the '&&', all certs are checked. */
     return ret;
 }

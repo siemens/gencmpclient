@@ -370,6 +370,7 @@ set_property(
   APPEND
   PROPERTY ADDITIONAL_CLEAN_FILES
       # only works for predefined names as globbing would be done on cmake run
+      ${CMAKE_CURRENT_BINARY_DIR}/cmpClient
       include/genericCMPClient_config.h
       compile_commands.json CMakeDoxyfile.in
       install_manifest.txt install_manifest_dev.txt install_manifest_lib.txt

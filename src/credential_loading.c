@@ -316,10 +316,19 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
     /* 'failed' describes type of credential to load for potential error msg */
     if (failed == NULL) {
         if (!quiet)
-            BIO_printf(bio_err, "Internal error: nothing was requested to load from %s\n",
-                       uri != NULL ? uri : "<stdin>");
-        return 0;
+            LOG(FL_ERR, "Internal error: nothing was requested to load from %s",
+                uri != NULL ? uri : "<stdin>");
+        return false;
     }
+
+    BUF_MEM *bptr = 0;
+    BIO *bio_mem = BIO_new(BIO_s_mem());
+    if (bio_mem == NULL) {
+        if (!quiet)
+            LOG(FL_ERR, "Out of memory in load_key_certs_crls()");
+        return false;
+    }
+
     /* suppress any extraneous errors left over from failed parse attempts */
     ERR_set_mark();
 
@@ -337,7 +346,7 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
     if (pcerts != NULL) {
         if (*pcerts == NULL && (*pcerts = sk_X509_new_null()) == NULL) {
             if (!quiet)
-                BIO_printf(bio_err, "Out of memory loading");
+                BIO_printf(bio_mem, "Out of memory loading");
             goto end;
         }
         /*
@@ -351,7 +360,7 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
     if (pcrls != NULL) {
         if (*pcrls == NULL && (*pcrls = sk_X509_CRL_new_null()) == NULL) {
             if (!quiet)
-                BIO_printf(bio_err, "Out of memory loading");
+                BIO_printf(bio_mem, "Out of memory loading");
             goto end;
         }
         /*
@@ -375,7 +384,7 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
 
         if (!maybe_stdin) {
             if (!quiet)
-                BIO_printf(bio_err, "No filename or uri specified for loading\n");
+                BIO_printf(bio_mem, "No filename or uri specified for loading\n");
             goto end;
         }
         uri = "<stdin>";
@@ -393,13 +402,13 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
     }
     if (ctx == NULL) {
         if (!quiet)
-            BIO_printf(bio_err, "Could not open file or uri for loading");
+            BIO_printf(bio_mem, "Could not open file or uri for loading");
         goto end;
     }
     /* expect == 0 means here multiple types of credentials are to be loaded */
     if (expect > 0 && !OSSL_STORE_expect(ctx, expect)) {
         if (!quiet)
-            BIO_printf(bio_err, "Internal error trying to load");
+            BIO_printf(bio_mem, "Internal error trying to load");
         goto end;
     }
 
@@ -481,7 +490,7 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
         if (!ok) {
             failed = OSSL_STORE_INFO_type_string(type);
             if (!quiet)
-                BIO_printf(bio_err, "Error reading");
+                BIO_printf(bio_mem, "Error reading");
             break;
         }
     }
@@ -497,11 +506,11 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
             pcrls = NULL;
         failed = FAIL_NAME; /* non-NULL if pcerts != NULL || pcrls != NULL */
         if (failed != NULL && !quiet) {
-            BIO_printf(bio_err, "Could not find or decode");
+            BIO_printf(bio_mem, "Could not find or decode");
             if (pcerts != NULL)
-                BIO_printf(bio_err, " at least %d", min_certs);
+                BIO_printf(bio_mem, " at least %d", min_certs);
             else if (pcrls != NULL)
-                BIO_printf(bio_err, " at least %d", min_crls);
+                BIO_printf(bio_mem, " at least %d", min_crls);
         }
     }
 
@@ -510,21 +519,24 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
 
         /* continue the error message with the type of credential affected */
         if (desc != NULL && strstr(desc, failed) != NULL) {
-            BIO_printf(bio_err, " %s", desc);
+            BIO_printf(bio_mem, " %s", desc);
         } else {
-            BIO_printf(bio_err, " %s", failed);
+            BIO_printf(bio_mem, " %s", failed);
             if (desc != NULL)
-                BIO_printf(bio_err, " of %s", desc);
+                BIO_printf(bio_mem, " of %s", desc);
         }
         if (uri != NULL)
-            BIO_printf(bio_err, " from %s", uri);
+            BIO_printf(bio_mem, " from %s", uri);
         if (ERR_SYSTEM_ERROR(err)) {
             /* provide more readable diagnostic output */
-            BIO_printf(bio_err, ": %s", strerror(ERR_GET_REASON(err)));
+            BIO_printf(bio_mem, ": %s", strerror(ERR_GET_REASON(err)));
             ERR_pop_to_mark();
             ERR_set_mark();
         }
-        BIO_printf(bio_err, "\n");
+        BIO_printf(bio_mem, "\n");
+        (void)BIO_flush(bio_mem);
+        BIO_get_mem_ptr(bio_mem, &bptr);
+        LOG(FL_ERR, "%.*s", bptr->length, bptr->data);
         ERR_print_errors(bio_err);
     }
     if (quiet || failed == NULL)
@@ -533,6 +545,7 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
     else
         ERR_clear_last_mark();
 
+    BIO_free(bio_mem);
     if (failed != NULL) {
         if (ppkey != NULL) {
             EVP_PKEY_free(*ppkey);

@@ -98,7 +98,7 @@ static const char *const sec_PASS_STR = "pass:";
 /* cert.h: */
 X509_NAME *UTIL_parse_name(const char *dn, int chtype, bool multirdn);
 # define CERTS_free(certs) sk_X509_pop_free(certs, X509_free)
-bool CERT_check_all(const char *uri, OPTIONAL STACK_OF(X509) *certs, int type_CA,
+bool CERT_check_all(const char *src, OPTIONAL STACK_OF(X509) *certs, int type_CA,
                     OPTIONAL const X509_VERIFY_PARAM *vpm); /* used by CMPclient_caCerts() */
 
 /* store.h: */

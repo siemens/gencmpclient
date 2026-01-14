@@ -632,9 +632,9 @@ X509 *FILES_load_cert_ex(OSSL_LIB_CTX *libctx, const char *propq,
     return cert;
 }
 
-static bool check_cert_chain(const char *src, const char *desc,
-                             int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm,
-                             OPTIONAL X509 **cert, OPTIONAL STACK_OF(X509) **certs) {
+static bool check_cert_chain(const char *src, int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm,
+                             OPTIONAL X509 **cert, OPTIONAL STACK_OF(X509) **certs)
+{ /* unfortunately, 'src' (used in diagnostics) is not specific per cert being checked */
     bool res = true;
 
     if (cert != NULL && !CERT_check(src, *cert, certs == NULL ?
@@ -647,8 +647,6 @@ static bool check_cert_chain(const char *src, const char *desc,
         && cert == NULL /* non-strict if also cert loaded */
         && vpm != NULL /* non-strict if vpm == NULL; TODO better adapt CERT_check() */)
         res = false;
-    if (!res)
-        LOG(FL_ERR, "Error checking %s from %s", desc, src);
     return res;
 }
 
@@ -719,8 +717,9 @@ bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
         all_crts = NULL;
     }
 
-    if (!check_cert_chain(src, desc, type_CA, vpm, cert, certs))
-        goto err;
+    if (!check_cert_chain(srcs, type_CA, vpm, cert, certs))
+        LOG(FL_WARN, "Ignoring error(s) checking %s from '%s' because for trust anchor certs enforcing the validity period is generally not required",
+            desc, srcs);
     goto end;
 
  oom:
@@ -902,9 +901,7 @@ bool STORE_load_more_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
         goto err;
     }
 
-#ifdef DEBUG
     LOG(FL_DEBUG, "Loading %s from file '%s'", desc not_eq 0 ? desc : "?", file);
-#endif
     const char *store_desc = desc;
     if (store_desc != NULL) {
         CHECK_AND_SKIP_PREFIX(store_desc, "trusted cert(s) for ");
@@ -1017,7 +1014,10 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
         }
     }
     UTIL_cleanse_free(pass);
-    return check_cert_chain(certs, desc, type_CA, vpm, cert, chain);
+    res = check_cert_chain(certs, type_CA, vpm, cert, chain);
+    if (!res)
+        LOG(FL_ERR, "Error(s) checking %s from '%s'", desc, certs);
+    return res;
 
 err:
     if (pkey != NULL)

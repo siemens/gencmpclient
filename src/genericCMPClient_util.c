@@ -345,6 +345,49 @@ error:
     return n;
 }
 
+/*
+ * Return 0 if time should not be checked or reference time is in range,
+ * or else 1 if it is past the end, or -1 if it is before the start.
+ * With OpenSSL before 4.0, invalid start and end times lead to not checking them.
+ */
+int UTIL_cmp_timeframe(OPTIONAL const X509_VERIFY_PARAM *vpm,
+                       OPTIONAL const ASN1_TIME *start, OPTIONAL const ASN1_TIME *end)
+{
+#if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
+    unsigned long flags = vpm == NULL ? 0 : X509_VERIFY_PARAM_get_flags((X509_VERIFY_PARAM *)vpm);
+    time_t ref_time;
+    time_t *time = NULL;
+
+    if ((flags & X509_V_FLAG_NO_CHECK_TIME) == 0) { /* otherwise ok */
+        if ((flags & X509_V_FLAG_USE_CHECK_TIME) != 0) {
+            ref_time = X509_VERIFY_PARAM_get_time(vpm);
+            time = &ref_time;
+        } /* else reference time is the current time */
+
+        if (end != NULL && X509_cmp_time(end, time) < 0)
+            return 1;
+        if (start != NULL && X509_cmp_time(start, time) > 0)
+            return -1;
+    }
+    return 0;
+#elif OPENSSL_VERSION_NUMBER < 0x40000000L
+    return X509_cmp_timeframe(vpm, start, end);
+#else
+    X509 *dummy_cert = X509_new(); /* needed as a workaround for OpenSSL API restriction */
+    int res = 1, error;
+
+    if (dummy_cert != NULL) {
+        (void)X509_set1_notBefore(dummy_cert, start);
+        (void)X509_set1_notAfter(dummy_cert, end);
+        res = X509_check_certificate_times(vpm, dummy_cert, &error);
+        X509_free(dummy_cert);
+    }
+
+    return res == 1 ? 0 : error == X509_V_ERR_CERT_NOT_YET_VALID ? -1:
+        error == X509_V_ERR_CERT_HAS_EXPIRED ? 1 : 0;
+#endif
+}
+
 static void cert_msg(OPTIONAL const char *func, OPTIONAL const char *file, int lineno,
                      severity level, const char *src, X509 *cert, const char *msg)
 {
@@ -360,28 +403,7 @@ bool CERT_check(const char *src, OPTIONAL X509 *cert, int type_CA,
 {
     if (cert == NULL)
         return true;
-    int res = 0;
-
-#if OPENSSL_VERSION_NUMBER >= OPENSSL_V_3_0_0
-    res = X509_cmp_timeframe(vpm, X509_get0_notBefore(cert),
-                             X509_get0_notAfter(cert));
-#else
-    unsigned long flags = vpm == NULL ? 0 :
-        X509_VERIFY_PARAM_get_flags((X509_VERIFY_PARAM *)vpm);
-    if ((flags & X509_V_FLAG_NO_CHECK_TIME) == 0) {
-        time_t ref_time;
-        time_t *time = NULL;
-
-        if ((flags & X509_V_FLAG_USE_CHECK_TIME) != 0) {
-            ref_time = X509_VERIFY_PARAM_get_time(vpm);
-            time = &ref_time;
-        }
-        if (X509_cmp_time(X509_get0_notAfter(cert), time) < 0)
-            res = 1;
-        else if (X509_cmp_time(X509_get0_notBefore(cert), time) > 0)
-            res = -1;
-    }
-#endif
+    int res = UTIL_cmp_timeframe(vpm, X509_get0_notBefore(cert), X509_get0_notAfter(cert));
     bool ret = res == 0;
     severity level = vpm == NULL ? LOG_WARNING : LOG_ERR;
     if (!ret)
@@ -410,6 +432,24 @@ bool CERT_check_all(const char *src, OPTIONAL STACK_OF(X509) *certs, int type_CA
         ret = CERT_check(src, sk_X509_value(certs, i), type_CA, vpm)
             && ret; /* Having 'ret' after the '&&', all certs are checked. */
     return ret;
+}
+
+bool CRL_check(const char *src, OPTIONAL X509_CRL *crl, OPTIONAL const X509_VERIFY_PARAM *vpm)
+{
+    int res;
+
+    if (crl == NULL)
+        return true;
+    res = UTIL_cmp_timeframe(vpm, X509_CRL_get0_lastUpdate(crl), X509_CRL_get0_nextUpdate(crl));
+    if (res != 0) {
+        severity level = vpm == NULL ? LOG_WARNING : LOG_ERR;
+        char *issuer = X509_NAME_oneline(X509_CRL_get_issuer(crl), 0, 0);
+
+        LOG(LOG_FUNC_FILE_LINE, level, "CRL from '%s' issued by '%s' %s",
+            src, issuer, res > 0 ? "has expired" : "is not yet valid");
+        OPENSSL_free(issuer);
+    }
+    return res == 0;
 }
 
 /* credentials.c: */

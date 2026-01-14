@@ -566,7 +566,7 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
 
     if (opt_tls_trusted != NULL) {
         tls_trust = load_certstore(opt_tls_trusted, opt_otherpass, "trusted cert(s) for TLS level",
-                                   NULL /* no vpm: prevent strict checking */);
+                                   vpm /* will respect vpm without strict checking */);
         if (tls_trust == NULL)
             goto err;
         if (!STORE_set_parameters(tls_trust, vpm,
@@ -649,7 +649,7 @@ static X509_STORE *setup_CMP_truststore(const char *trusted_cert_files)
         return NULL;
     X509_STORE *cmp_truststore =
         load_certstore(trusted_cert_files, opt_otherpass, "trusted cert(s) for CMP level",
-                       NULL /* no vpm: prevent strict checking */);
+                       vpm /* will respect vpm without strict checking */);
 
     if (cmp_truststore == NULL)
         goto err;

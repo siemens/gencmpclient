@@ -291,8 +291,10 @@ endif
 
 .PHONY: clean
 clean:
-	rm -fr $(OUT_DIR)/$(OUTLIB_)*$(DLL)*
-	rm -f $(BINARIES) $(DEPS) $(OBJS)
+    ifneq ($(BIN_DIR),)
+	rm -fr $(CMPCLIENT) $(OUT_DIR)/$(OUTLIB_)*$(DLL)*
+    endif
+	rm -f $(DEPS) $(OBJS)
 #	$(OUT_DIR)/$(OUTLIB).$(VERSION)
 ifeq ($(OS),Windows_NT)
 ifeq ($(LPATH),)

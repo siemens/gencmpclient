@@ -754,42 +754,6 @@ STACK_OF(X509) *load_certs_multifile(const char *files, const char *source,
     return certs;
 }
 
-static /* TODO replace in libSecUtils store.c: static bool crl_expired() */
-bool CRL_check(const char *src, OPTIONAL X509_CRL *crl, OPTIONAL const X509_VERIFY_PARAM *vpm)
-{
-    unsigned long flags = vpm == NULL ? 0 : X509_VERIFY_PARAM_get_flags((X509_VERIFY_PARAM *)vpm);
-    int res;
-
-    if (crl == NULL)
-        return true;
-    res = X509_cmp_timeframe(vpm, X509_CRL_get0_lastUpdate(crl), X509_CRL_get0_nextUpdate(crl));
-    if ((flags & X509_V_FLAG_NO_CHECK_TIME) == 0) {
-        time_t ref_time;
-        time_t *time = NULL;
-
-        if ((flags & X509_V_FLAG_USE_CHECK_TIME) != 0) {
-            ref_time = X509_VERIFY_PARAM_get_time(vpm);
-            time = &ref_time;
-        }
-        /* well, should ignore expiration of base CRL if delta CRL is valid */
-        if (X509_cmp_time(X509_CRL_get0_nextUpdate(crl), time) < 0)
-            res = 1;
-        else if (X509_cmp_time(X509_CRL_get0_lastUpdate(crl), time) > 0)
-            res = -1;
-    }
-
-    bool ret = res == 0;
-    severity level = vpm == NULL ? LOG_WARNING : LOG_ERR;
-    if (!ret) {
-        char *issuer = X509_NAME_oneline(X509_CRL_get_issuer(crl), 0, 0);
-
-        LOG(LOG_FUNC_FILE_LINE, level, "CRL from '%s' issued by '%s' %s",
-            src, issuer, res > 0 ? "has expired" : "is not yet valid");
-        OPENSSL_free(issuer);
-    }
-    return ret || vpm == NULL;
-}
-
 X509_CRL *FILES_load_crl_ex(OSSL_LIB_CTX *libctx, const char *propq, const char *src,
                             int format, int maybe_stdin, int timeout, OPTIONAL const char *desc,
                             OPTIONAL const X509_VERIFY_PARAM *vpm)
@@ -815,7 +779,7 @@ X509_CRL *FILES_load_crl_ex(OSSL_LIB_CTX *libctx, const char *propq, const char 
                                   src, format, maybe_stdin, NULL, desc, false,
                                   NULL, NULL,  NULL, NULL, NULL, 0, &crl, NULL, 1);
     }
-    if (!CRL_check(src, crl, vpm)) {
+    if (!CRL_check(src, crl, vpm) && vpm != NULL) {
         X509_CRL_free(crl);
         return NULL;
     }
@@ -856,7 +820,7 @@ STACK_OF(X509_CRL) *FILES_load_crls_ex(OSSL_LIB_CTX *libctx, const char *propq,
         while (sk_X509_CRL_num(crls) > 0) { /* effectively skipped on error */
             crl = sk_X509_CRL_shift(crls);
         handle_crl:
-            if (!CRL_check(src, crl, vpm))
+            if (!CRL_check(src, crl, vpm) && vpm != NULL)
                 goto err;
             if (!sk_X509_CRL_push(all_crls, crl))
                 goto oom;

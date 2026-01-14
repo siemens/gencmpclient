@@ -97,9 +97,14 @@ static const char *const sec_PASS_STR = "pass:";
 
 /* cert.h: */
 X509_NAME *UTIL_parse_name(const char *dn, int chtype, bool multirdn);
+int UTIL_cmp_timeframe(OPTIONAL const X509_VERIFY_PARAM *vpm,
+                       OPTIONAL const ASN1_TIME *start, OPTIONAL const ASN1_TIME *end);
 # define CERTS_free(certs) sk_X509_pop_free(certs, X509_free)
 bool CERT_check_all(const char *src, OPTIONAL STACK_OF(X509) *certs, int type_CA,
                     OPTIONAL const X509_VERIFY_PARAM *vpm); /* used by CMPclient_caCerts() */
+
+/* crls.h: */
+bool CRL_check(const char *src, OPTIONAL X509_CRL *crl, OPTIONAL const X509_VERIFY_PARAM *vpm);
 
 /* store.h: */
 # ifndef GENCMP_NO_TLS

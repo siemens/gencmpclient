@@ -584,7 +584,7 @@ else
 	$(CMPCLIENT) validate -section $(CA_SECTION),$(CRL_SECTION) -tls_cert "" -cert creds/manufacturer.crt -untrusted creds/extracerts.pem # -no_check_time
     endif
 	@echo
-	$(CMPCLIENT) bootstrap -section $(CA_SECTION) $(EXTRA_OPTS) $(BOOTSTRAP_CREDS)
+	$(CMPCLIENT) bootstrap -section $(CA_SECTION) -provider default $(EXTRA_OPTS) $(BOOTSTRAP_CREDS)
 	$(GENERATE_OPERATIONAL)
 	$(OPENSSL) x509 -noout -text -in creds/operational.crt
 	@echo :

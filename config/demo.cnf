@@ -276,7 +276,7 @@ verbosity = 6
 #use_cdp = 1
 
 [empty]
-basicConstraints = CA:FALSE # used as a workaround for OpenSSL 3.4 ERROR: error creating certreq - see also https://github.com/openssl/openssl/pull/25631
+#basicConstraints = CA:FALSE # used as a workaround for OpenSSL 3.4 ERROR: error creating certreq - see also https://github.com/openssl/openssl/pull/25631
 #keyUsage =
 #extendedKeyUsage =
 #subjectAltName =

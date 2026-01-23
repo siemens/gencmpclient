@@ -281,6 +281,10 @@ verbosity = 6
 #extendedKeyUsage =
 #subjectAltName =
 
+[sans-MACAddress]
+subjectAltName=DNS:example.com,email:info\@example.com,otherName:1.3.6.1.5.5.7.0.51.999999;OCTETSTRING:0024987B1902H
+# example MAC address isfrom https://datatracker.ietf.org/doc/draft-ietf-lamps-macaddress-on/ with placeholder OID 
+
 [reqexts]
 #basicConstraints = CA:FALSE # is ignored by PPKI Playground EJBCA
 keyUsage = "critical, digitalSignature" # is ignored by PPKI Playground EJBCA

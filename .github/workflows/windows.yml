@@ -12,17 +12,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: cmake
         run: |
-          cmake .
           echo "GENCMP_NO_TLS=1" >> $env:GITHUB_ENV
           echo "GENCMP_NO_SECUTILS=1" >> $env:GITHUB_ENV
-          make; make clean
+          mkdir build
+          cd  build
+          cmake ..
+          cmake --build . --config Release
+          
+          
 
-  Makefile_v1:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Makefile_v1
-        run: |
-          echo "GENCMP_NO_TLS=1" >> $env:GITHUB_ENV
-          echo "GENCMP_NO_SECUTILS=1" >> $env:GITHUB_ENV
-          make -f Makefile_v1 clean build
+

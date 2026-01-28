@@ -133,8 +133,29 @@ if(NOT TARGET OpenSSL::Crypto) # not already done by superordinate module
   endif()
 endif()
 message(STATUS "using OpenSSL library ${OPENSSL_CRYPTO_LIBRARY}, ${OPENSSL_SSL_LIBRARY}")
-if(NOT EXISTS "${OPENSSL_CRYPTO_LIBRARY}")
-  message(FATAL_ERROR "OpenSSL crypto library file does not exist: ${OPENSSL_CRYPTO_LIBRARY}")
+# Handle cases where OPENSSL_CRYPTO_LIBRARY contains both debug and optimized versions
+if(OPENSSL_CRYPTO_LIBRARY MATCHES "optimized|debug")
+  # Extract the actual library paths from the optimized/debug list
+  string(REGEX REPLACE ".*optimized;([^;]+).*" "\\1" OPENSSL_CRYPTO_LIB_RELEASE "${OPENSSL_CRYPTO_LIBRARY}")
+  string(REGEX REPLACE ".*debug;([^;]+).*" "\\1" OPENSSL_CRYPTO_LIB_DEBUG "${OPENSSL_CRYPTO_LIBRARY}")
+  
+  # Check if at least one version exists
+  set(CRYPTO_LIB_EXISTS FALSE)
+  if(DEFINED OPENSSL_CRYPTO_LIB_RELEASE AND EXISTS "${OPENSSL_CRYPTO_LIB_RELEASE}")
+    set(CRYPTO_LIB_EXISTS TRUE)
+  endif()
+  if(DEFINED OPENSSL_CRYPTO_LIB_DEBUG AND EXISTS "${OPENSSL_CRYPTO_LIB_DEBUG}")
+    set(CRYPTO_LIB_EXISTS TRUE)
+  endif()
+  
+  if(NOT CRYPTO_LIB_EXISTS)
+    message(FATAL_ERROR "Neither OpenSSL crypto library exists: ${OPENSSL_CRYPTO_LIBRARY}")
+  endif()
+else()
+  # Single library path case
+  if(NOT EXISTS "${OPENSSL_CRYPTO_LIBRARY}")
+    message(FATAL_ERROR "OpenSSL crypto library file does not exist: ${OPENSSL_CRYPTO_LIBRARY}")
+  endif()
 endif()
 
 # workaround for using local OpenSSL builds by default expecting that

@@ -13,15 +13,14 @@ jobs:
       - name: cmake
         run: |
           echo "OPENSSL_DIR=C:\Program Files\OpenSSL" >> $GITHUB_ENV
-          echo "OPENSSL_LIB_DIR=C:\Program Files\OpenSSL\lib\VC\x64\MT" >> $GITHUB_ENV
           echo "GENCMP_NO_TLS=1" >> $env:GITHUB_ENV
           echo "GENCMP_NO_SECUTILS=1" >> $env:GITHUB_ENV
-          dir "C:\Program Files\OpenSSL" /s
+          copy "C:\Program Files\OpenSSL\lib\VC\x64\MD\libcrypto.lib" "C:\Program Files\OpenSSL\lib\"
+          copy "C:\Program Files\OpenSSL\lib\VC\x64\MD\libssl.lib" "C:\Program Files\OpenSSL\lib\"
           mkdir build
           cd  build
           cmake ..
           cmake --build . --config Release
-          
           
 
 

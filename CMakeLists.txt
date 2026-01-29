@@ -9,6 +9,7 @@ if(NOT DEFINED GENCMPCLIENT_VERSION)
   set(GENCMPCLIENT_VERSION ${GENCMPCLIENT_VERSION_MAJOR}.${GENCMPCLIENT_VERSION_MINOR})
 endif()
 message(STATUS "generic CMP client version " ${GENCMPCLIENT_VERSION})
+message(STATUS "Building STATIC library")
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 # set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner when using CMake
@@ -233,7 +234,6 @@ add_compile_definitions(PEDANTIC)
 if(MSVC)
   # MSVC compiler flags
   add_compile_options(/W4)  # High warning level
-  add_compile_options(/wd4996)  # Disable deprecated function warnings
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 else()
   # GCC/Clang compiler flags
@@ -243,7 +243,7 @@ else()
     -Wsign-compare -Wformat -Wtype-limits -Wundef -Wconversion -Wunused-parameter)
   add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined)
   if(NOT DEFINED GENCMP_NO_SECUTILS)
-    add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
+    message(FATAL_ERROR "Windows build is not (yet) supported for libSecUtils")
   endif()
 endif()
 # TODO maybe clean up code and re-enable property
@@ -253,7 +253,7 @@ endif()
 # target_compile_features(${LIBGENCMP_NAME} PRIVATE c_std_90)
 # target_compile_features(cmpClient         PRIVATE c_std_90)
 
-add_library(${LIBGENCMP_NAME} SHARED
+add_library(${LIBGENCMP_NAME} STATIC
   "${PROJECT_SOURCE_DIR}/.github/workflows/build.yml"
   ${SRC_DIR}/genericCMPClient.c
 )

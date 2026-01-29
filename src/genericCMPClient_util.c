@@ -57,13 +57,13 @@ void UTIL_cleanse_free(OPTIONAL char *str)
   #include <syslog.h>
 #endif
 
-static const char *const GENCMP_NAME = "genCMPClient";
+#define GENCMP_NAME "genCMPClient"
 #define loc_len 256
 
 /*!< these variables are shared between threads */
 static LOG_cb_t LOG_fn = 0;
-static const char *app_name = "genCMPClient";
-static severity verbosity = 4; /* LOG_WARNING equivalent */
+static const char *app_name = GENCMP_NAME;
+static severity verbosity = LOG_WARNING; /* LOG_WARNING equivalent */
 BIO *bio_err = 0;
 BIO *bio_trace = 0;
 

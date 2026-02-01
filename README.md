@@ -453,6 +453,35 @@ It is also possible to statically link with `libcmp.a`, by setting `STATIC_LIBCM
 For further details on optional environment variables,
 see the [`Makefile_v1`](Makefile_v1) and [`Makefile_src`](Makefile_src).
 
+### Choosing between shared and static library
+
+When using CMake, by default a **shared library** (`.so` on Linux, `.dylib` on macOS, `.dll` on Windows) is built.
+
+To build a **static library** instead (`.a` on Linux/macOS, `.lib` on Windows), use the CMake option `-DBUILD_STATIC_LIBS=ON`:
+
+```bash
+cmake -DBUILD_STATIC_LIBS=ON .
+make
+```
+
+This will produce a static library (`libgencmp.a` or `gencmp.lib`) instead of a shared library.
+
+#### Examples:
+
+**Building shared library (default):**
+```bash
+cmake .
+make
+# Produces: libgencmp.so.2.0 (Linux), libgencmp.dylib (macOS), or gencmp.dll (Windows)
+```
+
+**Building static library:**
+```bash
+cmake -DBUILD_STATIC_LIBS=ON .
+make
+# Produces: libgencmp.a (Linux/macOS) or gencmp.lib (Windows)
+```
+
 ## Building
 
 Build the software with

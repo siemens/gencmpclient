@@ -9,7 +9,16 @@ if(NOT DEFINED GENCMPCLIENT_VERSION)
   set(GENCMPCLIENT_VERSION ${GENCMPCLIENT_VERSION_MAJOR}.${GENCMPCLIENT_VERSION_MINOR})
 endif()
 message(STATUS "generic CMP client version " ${GENCMPCLIENT_VERSION})
-message(STATUS "Building STATIC library")
+
+# Option to build shared or static library (default: SHARED)
+option(BUILD_STATIC_LIBS "Build static libraries instead of shared" OFF)
+if(BUILD_STATIC_LIBS)
+  set(GENCMP_LIB_TYPE STATIC)
+  message(STATUS "Building STATIC library")
+else()
+  set(GENCMP_LIB_TYPE SHARED)
+  message(STATUS "Building SHARED library")
+endif()
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 # set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner when using CMake
@@ -235,6 +244,9 @@ if(MSVC)
   # MSVC compiler flags
   add_compile_options(/W4)  # High warning level
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+  if(NOT DEFINED GENCMP_NO_SECUTILS)
+    message(FATAL_ERROR "Windows build is not (yet) supported for libSecUtils")
+  endif()
 else()
   # GCC/Clang compiler flags
   add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
@@ -242,9 +254,7 @@ else()
     -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
     -Wsign-compare -Wformat -Wtype-limits -Wundef -Wconversion -Wunused-parameter)
   add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined)
-  if(NOT DEFINED GENCMP_NO_SECUTILS)
-    message(FATAL_ERROR "Windows build is not (yet) supported for libSecUtils")
-  endif()
+
 endif()
 # TODO maybe clean up code and re-enable property
 # set_property(TARGET ${LIBGENCMP_NAME} PROPERTY C_STANDARD 90)
@@ -253,7 +263,7 @@ endif()
 # target_compile_features(${LIBGENCMP_NAME} PRIVATE c_std_90)
 # target_compile_features(cmpClient         PRIVATE c_std_90)
 
-add_library(${LIBGENCMP_NAME} STATIC
+add_library(${LIBGENCMP_NAME} ${GENCMP_LIB_TYPE}
   "${PROJECT_SOURCE_DIR}/.github/workflows/build.yml"
   ${SRC_DIR}/genericCMPClient.c
 )

@@ -63,7 +63,7 @@ void UTIL_cleanse_free(OPTIONAL char *str)
 /*!< these variables are shared between threads */
 static LOG_cb_t LOG_fn = 0;
 static const char *app_name = GENCMP_NAME;
-static severity verbosity = LOG_WARNING; /* LOG_WARNING equivalent */
+static severity verbosity = LOG_WARNING;
 BIO *bio_err = 0;
 BIO *bio_trace = 0;
 

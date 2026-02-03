@@ -104,10 +104,13 @@ rename_signerfiles() {
         cat root.crt >> big_root.crt
     fi
     cp root.crt signer_root.crt
+    openssl crl -in signer_subinterCA-crl.pem -out crl.der -outform DER
     rm -f signer_root-key.pem signer_interCA-key.pem signer_interCA-cert.pem \
-        signer_subinterCA-key.pem
+        signer_subinterCA-key.pem signer_subinterCA-crl.pem
     mv signer_subinterCA-cert.pem issuing.crt
-    mv signer_subinterCA-crl.pem newcrl.pem
+    if [[ -f big_issuing.crt ]]; then
+        cat issuing.crt >> big_issuing.crt
+    fi
     mv signer_leaf-key.pem new.key
     openssl pkey -in new.key -out new_pass_12345.key -aes256 -passout file:12345.txt
 

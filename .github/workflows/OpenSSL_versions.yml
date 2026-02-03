@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        branch: [openssl-3.0, openssl-3.1, openssl-3.2, openssl-3.3, openssl-3.4, openssl-3.5, openssl-3.6]
+        branch: [openssl-3.0, openssl-3.1, openssl-3.2, openssl-3.3, openssl-3.4, openssl-3.5, openssl-3.6, master]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -65,5 +65,12 @@ jobs:
           USE_LIBCMP=1 STATIC_LIBCMP=1 make -f Makefile_v1
           ./cmpClient -help
           make -f Makefile_v1 clean
+      - if: ${{ matrix.branch == 'master' }}
+        name: test_Mock with PQ algorithms
+        run: |
+          cd test/recipes/80-test_cmp_http_data/Mock/
+          ./setup-mock.sh all
+          cd ../../../../
+          make -f Makefile_v1 test_Mock
 
 

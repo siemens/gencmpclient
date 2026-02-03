@@ -56,6 +56,7 @@ key() {
         dsa)  args=(-paramfile "$bits");;
         ed25519)  ;;
         ed448)  ;;
+        # added MLKEM*, MLDSA* & SLH-DSA-* key algorithms
         MLKEM*)  ;;
         MLDSA*)  ;;
         SLH-DSA-*)  ;;

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) Siemens AG, 2021-2024
 
-name: OpenSSL compatibility
+name: OpenSSL master PQC
 
 on: push
 

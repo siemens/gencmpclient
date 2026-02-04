@@ -54,6 +54,9 @@ jobs:
       - name: test Mock
         run: |
           which openssl
-          make -f Makefile_v1 test_Mock V=1 OPENSSL=/home/runner/work/gencmpclient/gencmpclient/master/bin/openssl
+          ldd /home/runner/work/gencmpclient/gencmpclient/master/bin/openssl
+          
+          
+          # make -f Makefile_v1 test_Mock V=1 OPENSSL=/home/runner/work/gencmpclient/gencmpclient/master/bin/openssl
 
 

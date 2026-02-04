@@ -41,9 +41,9 @@ jobs:
 
       - name: set OpenSSL env
         run: |
-          echo "OPENSSL_LIB=${{ env.OPENSSL_DIR }}/lib64" >> $GITHUB_ENV
-          echo "${{ env.OPENSSL_DIR }}/bin" >> "$GITHUB_PATH"
-          echo "LD_LIBRARY_PATH=${{ env.OPENSSL_DIR }}/lib64:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+          echo "OPENSSL_LIB=${{ env.OPENSSL_DIR_INSTALL }}/lib64" >> $GITHUB_ENV
+          echo "${{ env.OPENSSL_DIR_INSTALL }}/bin" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=${{ env.OPENSSL_DIR_INSTALL }}/lib64:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
       - name: Generate test certificate
         run: |
           cd test/recipes/80-test_cmp_http_data/Mock/

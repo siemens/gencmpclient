@@ -27,7 +27,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.OPENSSL_DIR }}
-          key: openssl-${{ env.cache-name }}-${{ runner.os }}-${{ runner.arch }}-test
+          key: openssl-${{ env.cache-name }}-${{ runner.os }}-${{ runner.arch }}
 
       - if: ${{ steps.cache-openssl.outputs.cache-hit != 'true' }}
         name: build openssl

@@ -10,7 +10,7 @@ certout = test.cert.pem
 policies = certificatePolicies
 #policy_oids = 1.2.3.4
 #policy_oids_critical = 1
-#verbosity = 7
+verbosity = 8
 
 ############################# server-dependent configurations
 

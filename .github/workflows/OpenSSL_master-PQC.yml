@@ -52,6 +52,6 @@ jobs:
       - name: test Mock
         run: |
           which openssl
-          make -f Makefile_v1 test_all
+          make -f Makefile_v1 test_all V=1
 
 

@@ -65,8 +65,8 @@ expect_sender = $server_dn
 subject = "/C=AU/ST=Some-State/O=Internet Widgits Pty Ltd/CN=leaf"
 newkey = signer.key
 out_trusted = signer_root.crt
-kur_port = 1700
-pbm_port = 1700
+#kur_port = 1700
+#pbm_port = 1700
 pbm_ref =
 pbm_secret = pass:test
 cert = signer.crt

@@ -19,4 +19,4 @@ rsp_newwithnew = newWithNew.pem
 rsp_newwithold = newWithOld.pem
 rsp_oldwithnew = oldWithNew.pem
 
-verbosity = 8 # do not show any errors
+verbosity = 1 # do not show any errors

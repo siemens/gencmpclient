@@ -20,7 +20,7 @@ jobs:
       - name: set cache env
         run: |
          echo "cache-name=`git ls-remote https://github.com/openssl/openssl.git master | awk '{print $1}'`" >> "$GITHUB_ENV"
-         echo "OPENSSL_DIR_INSTALL=`pwd/../../`openssl-4.0" >> $GITHUB_ENV
+         echo "OPENSSL_DIR_INSTALL=/home/runner/work/openssl-4.0" >> $GITHUB_ENV
 
       - id: cache-openssl
         name: cache openssl

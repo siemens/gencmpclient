@@ -20,13 +20,13 @@ jobs:
       - name: set cache env
         run: |
          echo "cache-name=`git ls-remote https://github.com/openssl/openssl.git master | awk '{print $1}'`" >> "$GITHUB_ENV"
-         echo "OPENSSL_DIR=`pwd`/master" >> $GITHUB_ENV
+         echo "OPENSSL_DIR_INSTALL=`pwd`/master" >> $GITHUB_ENV
 
       - id: cache-openssl
         name: cache openssl
         uses: actions/cache@v3
         with:
-          path: ${{ env.OPENSSL_DIR }}
+          path: ${{ env.OPENSSL_DIR_INSTALL }}
           key: openssl-${{ env.cache-name }}-${{ runner.os }}-${{ runner.arch }}
 
       - if: ${{ steps.cache-openssl.outputs.cache-hit != 'true' }}
@@ -34,7 +34,7 @@ jobs:
         run: |
           git clone https://github.com/openssl/openssl.git --branch master --depth 1
           cd openssl
-          ./config --banner=Configured --strict-warnings --prefix=${{ env.OPENSSL_DIR }}  shared zlib
+          ./config --banner=Configured --strict-warnings --prefix=${{ env.OPENSSL_DIR_INSTALL }}  shared zlib
           make -s -j4
           sudo make install_sw install_ssldirs
           cd ..

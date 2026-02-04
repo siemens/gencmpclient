@@ -33,7 +33,7 @@ jobs:
         name: build openssl
         run: |
           cd ../../
-          git clone https://github.com/openssl/openssl.git --branch master --depth 1
+          git clone https://github.com/openssl/openssl.git --branch openssl-3.6 --depth 1
           cd openssl
           ./config --banner=Configured --strict-warnings --prefix=${{ env.OPENSSL_DIR_INSTALL }}  shared zlib
           make -s -j4

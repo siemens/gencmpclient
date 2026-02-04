@@ -2,24 +2,20 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) Siemens AG, 2021-2024
 
-name: OpenSSL master PQC
+name: OpenSSL master
 
 on: push
 
 jobs:
-  version:
-    strategy:
-      fail-fast: false
-      matrix:
-        branch: [master]
+  OpenSSL_master:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: set cache env
         run: |
-         echo "cache-name=`git ls-remote https://github.com/openssl/openssl.git ${{matrix.branch}} | awk '{print $1}'`" >> "$GITHUB_ENV"
-         echo "OPENSSL_DIR=`pwd`/${{ matrix.branch }}" >> $GITHUB_ENV
+         echo "cache-name=`git ls-remote https://github.com/openssl/openssl.git master | awk '{print $1}'`" >> "$GITHUB_ENV"
+         echo "OPENSSL_DIR=`pwd`/master" >> $GITHUB_ENV
 
       - id: cache-openssl
         name: cache openssl
@@ -31,7 +27,7 @@ jobs:
       - if: ${{ steps.cache-openssl.outputs.cache-hit != 'true' }}
         name: build openssl
         run: |
-          git clone https://github.com/openssl/openssl.git --branch ${{ matrix.branch }} --depth 1
+          git clone https://github.com/openssl/openssl.git --branch master --depth 1
           cd openssl
           ./config --banner=Configured --debug --strict-warnings --prefix=${{ env.OPENSSL_DIR }}  shared zlib
           make -s -j4

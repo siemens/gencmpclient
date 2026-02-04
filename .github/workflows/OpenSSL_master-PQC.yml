@@ -40,13 +40,13 @@ jobs:
           sudo make install_sw install_ssldirs
           cd ..
 
-      - name: set OpenSSL env
-        run: |
-          echo "OPENSSL_LIB=${{ env.OPENSSL_DIR_INSTALL }}/lib64" >> $GITHUB_ENV
-          echo "${{ env.OPENSSL_DIR_INSTALL }}/bin" >> "$GITHUB_PATH"
-          echo "LD_LIBRARY_PATH=${{ env.OPENSSL_DIR_INSTALL }}/lib64" >> "$GITHUB_ENV"
-          echo "OPENSSL_DIR=${{ env.OPENSSL_DIR_INSTALL }}" >> "$GITHUB_ENV"
-          echo "OPENSSL_ROOT_DIR=${{ env.OPENSSL_DIR_INSTALL }}" >> "$GITHUB_ENV"
+      # - name: set OpenSSL env
+      #   run: |
+      #     echo "OPENSSL_LIB=${{ env.OPENSSL_DIR_INSTALL }}/lib64" >> $GITHUB_ENV
+      #     echo "${{ env.OPENSSL_DIR_INSTALL }}/bin" >> "$GITHUB_PATH"
+      #     echo "LD_LIBRARY_PATH=${{ env.OPENSSL_DIR_INSTALL }}/lib64" >> "$GITHUB_ENV"
+      #     echo "OPENSSL_DIR=${{ env.OPENSSL_DIR_INSTALL }}" >> "$GITHUB_ENV"
+      #     echo "OPENSSL_ROOT_DIR=${{ env.OPENSSL_DIR_INSTALL }}" >> "$GITHUB_ENV"
       - name: Generate test certificate
         run: |
           cd test/recipes/80-test_cmp_http_data/Mock/
@@ -54,6 +54,7 @@ jobs:
           cd ../../../../
       - name: test Mock
         run: |
-          which openssl         
+          which openssl
+          ldd /usr/bin/openssl
           make -f Makefile_v1 test_Mock V=1
 

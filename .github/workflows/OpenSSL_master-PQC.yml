@@ -20,7 +20,7 @@ jobs:
       - name: set cache env
         run: |
          echo "cache-name=`git ls-remote https://github.com/openssl/openssl.git master | awk '{print $1}'`" >> "$GITHUB_ENV"
-         echo "OPENSSL_DIR_INSTALL=`pwd`/../../openssl-4.0" >> $GITHUB_ENV
+         echo "OPENSSL_DIR_INSTALL=`pwd/../../`openssl-4.0" >> $GITHUB_ENV
 
       - id: cache-openssl
         name: cache openssl
@@ -54,10 +54,6 @@ jobs:
           cd ../../../../
       - name: test Mock
         run: |
-          which openssl
-          ldd /home/runner/work/gencmpclient/gencmpclient/master/bin/openssl
-          
-          
-          # make -f Makefile_v1 test_Mock V=1 OPENSSL=/home/runner/work/gencmpclient/gencmpclient/master/bin/openssl
-
+          which openssl         
+          make -f Makefile_v1 test_Mock V=1
 

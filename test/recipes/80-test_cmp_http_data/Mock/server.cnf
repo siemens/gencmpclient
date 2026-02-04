@@ -1,6 +1,6 @@
 [cmp] # mock server configuration
 
-port = 1700
+port = 0
 srv_secret = pass:test
 srv_cert = server.crt
 srv_key = server.key

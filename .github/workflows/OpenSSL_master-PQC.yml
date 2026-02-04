@@ -40,8 +40,10 @@ jobs:
           sudo make install_sw install_ssldirs
           cd ..
 
-      # - name: set OpenSSL env
-      #   run: |
+      - name: set OpenSSL env
+        run: |
+            cp ${{ env.OPENSSL_DIR_INSTALL }}/bin/openssl /usr/bin/openssl
+            cp ${{ env.OPENSSL_DIR_INSTALL }}/lib64/* /lib/x86_64-linux-gnu/
       #     echo "OPENSSL_LIB=${{ env.OPENSSL_DIR_INSTALL }}/lib64" >> $GITHUB_ENV
       #     echo "${{ env.OPENSSL_DIR_INSTALL }}/bin" >> "$GITHUB_PATH"
       #     echo "LD_LIBRARY_PATH=${{ env.OPENSSL_DIR_INSTALL }}/lib64" >> "$GITHUB_ENV"

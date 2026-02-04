@@ -47,16 +47,17 @@ jobs:
           echo "LD_LIBRARY_PATH=${{ env.OPENSSL_DIR_INSTALL }}/lib64" >> "$GITHUB_ENV"
           echo "OPENSSL_DIR=${{ env.OPENSSL_DIR_INSTALL }}" >> "$GITHUB_ENV"
           echo "OPENSSL_ROOT_DIR=${{ env.OPENSSL_DIR_INSTALL }}" >> "$GITHUB_ENV"
-      - name: Generate test certificate
-        run: |
-          cd test/recipes/80-test_cmp_http_data/Mock/
-          ./setup-mock.sh all
-          # which openssl
-          # openssl cmp -config server.cnf
-          cd ../../../../
+      # - name: Generate test certificate
+      #   run: |
+      #     cd test/recipes/80-test_cmp_http_data/Mock/
+      #     ./setup-mock.sh all
+      #     # which openssl
+      #     # openssl cmp -config server.cnf
+      #     cd ../../../../
       - name: test Mock
         run: |
           which openssl
           ldd /usr/bin/openssl
-          make -f Makefile_v1 test_Mock V=1
+          make -f Makefile_v1 test_Mock
+          cat test/recipes/faillog_Mock.txt
 

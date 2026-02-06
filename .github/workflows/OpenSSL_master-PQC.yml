@@ -19,8 +19,8 @@ jobs:
 
       - name: set cache env
         run: |
-         echo "cache-name=`git ls-remote https://github.com/openssl/openssl.git openssl-3.6 | awk '{print $1}'`" >> "$GITHUB_ENV"
-         echo "OPENSSL_DIR_INSTALL=`pwd`/openssl-3.6" >> $GITHUB_ENV
+         echo "cache-name=`git ls-remote https://github.com/openssl/openssl.git master | awk '{print $1}'`" >> "$GITHUB_ENV"
+         echo "OPENSSL_DIR_INSTALL=`pwd`/master" >> $GITHUB_ENV
 
       - id: cache-openssl
         name: cache openssl
@@ -33,7 +33,7 @@ jobs:
         name: build openssl
         run: |
           cd ../../
-          git clone https://github.com/openssl/openssl.git --branch openssl-3.6 --depth 1
+          git clone https://github.com/openssl/openssl.git --branch master --depth 1
           cd openssl
           ./config --banner=Configured --strict-warnings --prefix=${{ env.OPENSSL_DIR_INSTALL }}  shared zlib
           make -s -j4

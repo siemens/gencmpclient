@@ -10,6 +10,7 @@ jobs:
   OpenSSL_master:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: set cache env
         run: |
          echo "cache-name=`git ls-remote https://github.com/openssl/openssl.git master | awk '{print $1}'`" >> "$GITHUB_ENV"
@@ -31,7 +32,6 @@ jobs:
           make -s -j4
           sudo make install_sw install_ssldirs
           cd ..
-
       - name: set OpenSSL env
         run: |
           echo "OPENSSL_LIB=${{ env.OPENSSL_DIR }}/lib64" >> $GITHUB_ENV

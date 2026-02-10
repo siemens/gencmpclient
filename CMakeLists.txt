@@ -168,7 +168,7 @@ if(OPENSSL_CRYPTO_LIBRARY MATCHES "optimized|debug")
   endif()
   
   if(NOT CRYPTO_LIB_EXISTS)
-    message(FATAL_ERROR "Neither OpenSSL crypto library exists: ${OPENSSL_CRYPTO_LIBRARY}")
+    message(FATAL_ERROR "No OpenSSL crypto library file (neither optimized or debug variant) found for: ${OPENSSL_CRYPTO_LIBRARY}")
   endif()
 else()
   # Single library path case

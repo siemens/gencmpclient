@@ -11,8 +11,8 @@ endif()
 message(STATUS "generic CMP client version " ${GENCMPCLIENT_VERSION})
 
 # Option to build shared or static library (default: SHARED)
-option(BUILD_STATIC_LIBS "Build static libraries instead of shared" OFF)
-if(BUILD_STATIC_LIBS)
+option(GENCMP_STATIC_LIB "Build static library instead of shared" OFF)
+if(GENCMP_STATIC_LIB)
   set(GENCMP_LIB_TYPE STATIC)
   message(STATUS "Building STATIC library")
 else()
@@ -22,6 +22,15 @@ endif()
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 # set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner when using CMake
+
+# On Windows with MSVC, automatically imply GENCMP_NO_SECUTILS
+# because libSecUtils and CLI are not supported on native Windows builds
+if(MSVC)
+  if(NOT DEFINED ENV{GENCMP_NO_SECUTILS})
+    message(WARNING "Implying GENCMP_NO_SECUTILS because with native Windows builds, libSecUtils and CLI are not supported so far")
+  endif()
+  set(ENV{GENCMP_NO_SECUTILS} 1)
+endif()
 
 if(DEFINED ENV{GENCMP_NO_SECUTILS})
   message(STATUS "will build without libSecUtils and CLI")
@@ -241,12 +250,9 @@ add_compile_definitions(DEBUG_UNUSED)
 add_compile_definitions(PEDANTIC)
 
 if(MSVC)
-  # MSVC compiler flags
+  # MSVC compiler flags (Windows-specific)
   add_compile_options(/W4)  # High warning level
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
-  if(NOT DEFINED GENCMP_NO_SECUTILS)
-    message(FATAL_ERROR "Windows build is not (yet) supported for libSecUtils")
-  endif()
 else()
   # GCC/Clang compiler flags
   add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
@@ -306,6 +312,13 @@ set_target_properties(${LIBGENCMP_NAME} PROPERTIES
   VERSION ${GENCMPCLIENT_VERSION} SOVERSION ${GENCMPCLIENT_VERSION_MAJOR}
   PUBLIC_HEADER "${INC_PUBLIC_HDRS}"
 )
+
+# Automatically export all symbols from Windows DLL (only applicable on Windows)
+if(CMAKE_SYSTEM_NAME MATCHES "Windows" AND NOT GENCMP_STATIC_LIB)
+  set_target_properties(${LIBGENCMP_NAME} PROPERTIES
+    WINDOWS_EXPORT_ALL_SYMBOLS ON
+  )
+endif()
 
 find_package(Git)
 if(GIT_FOUND)

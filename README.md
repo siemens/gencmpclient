@@ -498,6 +498,26 @@ This also builds all required dependencies
 and a CLI application (`./cmpClient`), which is intended
 for demonstration, test, and exploration purposes.
 
+### Building on Windows
+
+When using CMake, `libgencmp` can be built natively under Windows.
+This requires `GENCMP_NO_SECUTILS` because libSecUtils and the CLI application
+are not supported on native Windows builds. When building on Windows,
+CMake automatically implies `GENCMP_NO_SECUTILS=1`, showing the warning:
+
+```
+Implying GENCMP_NO_SECUTILS because with native Windows builds, libSecUtils and CLI are not supported so far
+```
+
+**Example build on Windows using CMake:**
+```bash
+mkdir build
+cd build
+cmake -G "Visual Studio 17 2022" -A x64 ..
+cmake --build . --config Release
+# Produces: gencmp.dll and gencmp.lib
+```
+
 When getting the compiler error: `'openssl/openssl_backport.h' file not found`
 likely `include/genericCMPClient_config.h` is outdated
 and contains `#define USE_LIBCMP` although the environment variable `USE_LIBCMP`

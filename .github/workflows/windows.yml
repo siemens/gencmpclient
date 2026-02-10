@@ -16,25 +16,17 @@ jobs:
           cd  build
           $env:GENCMP_NO_SECUTILS=1; cmake ..
           cmake --build . --config Release
-  cmake-static:
+  cmake-debug-static:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: cmake-Static
+      - name: cmake-debug-static
         run: |
           mkdir build_static
           cd  build_static
-          $env:GENCMP_NO_SECUTILS=1; cmake .. -DGENCMP_STATIC_LIB=ON
-          cmake --build . --config Release
-  cmake-debug:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name : cmake-Debug
-        run: |
-          mkdir build_debug
-          cd  build_debug
-          $env:GENCMP_NO_SECUTILS=1; cmake .. -DCMAKE_BUILD_TYPE=Debug
+          $env:GENCMP_NO_SECUTILS=1; cmake .. -DGENCMP_STATIC_LIB=ON -DCMAKE_BUILD_TYPE=Debug
           cmake --build . --config Debug
+
+
 
 

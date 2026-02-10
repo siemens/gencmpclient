@@ -24,7 +24,7 @@ jobs:
         run: |
           mkdir build_static
           cd  build_static
-          $env:GENCMP_NO_SECUTILS=1; cmake .. -DBUILD_STATIC_LIBS=ON
+          $env:GENCMP_NO_SECUTILS=1; cmake .. -DGENCMP_STATIC_LIB=ON
           cmake --build . --config Release
   cmake-debug:
     runs-on: windows-latest

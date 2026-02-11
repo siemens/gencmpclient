@@ -457,10 +457,10 @@ see the [`Makefile_v1`](Makefile_v1) and [`Makefile_src`](Makefile_src).
 
 When using CMake, by default a **shared library** (`.so` on Linux, `.dylib` on macOS, `.dll` on Windows) is built.
 
-To build a **static library** instead (`.a` on Linux/macOS, `.lib` on Windows), use the CMake option `-DBUILD_STATIC_LIBS=ON`:
+To build a **static library** instead (`.a` on Linux/macOS, `.lib` on Windows), use the CMake option `-DGENCMP_STATIC_LIB=ON`:
 
 ```bash
-cmake -DBUILD_STATIC_LIBS=ON .
+cmake -DGENCMP_STATIC_LIB=ON .
 make
 ```
 
@@ -477,7 +477,7 @@ make
 
 **Building static library:**
 ```bash
-cmake -DBUILD_STATIC_LIBS=ON .
+cmake -DGENCMP_STATIC_LIB=ON .
 make
 # Produces: libgencmp.a (Linux/macOS) or gencmp.lib (Windows)
 ```

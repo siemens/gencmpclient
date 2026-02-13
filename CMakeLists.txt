@@ -10,8 +10,27 @@ if(NOT DEFINED GENCMPCLIENT_VERSION)
 endif()
 message(STATUS "generic CMP client version " ${GENCMPCLIENT_VERSION})
 
+# Option to build shared or static library (default: SHARED)
+option(GENCMP_STATIC_LIB "Build static library instead of shared" OFF)
+if(GENCMP_STATIC_LIB)
+  set(GENCMP_LIB_TYPE STATIC)
+  message(STATUS "Building STATIC library")
+else()
+  set(GENCMP_LIB_TYPE SHARED)
+  message(STATUS "Building SHARED library")
+endif()
+
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 # set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner when using CMake
+
+# On Windows with MSVC, automatically imply GENCMP_NO_SECUTILS
+# because libSecUtils and CLI are not supported on native Windows builds
+if(MSVC)
+  if(NOT DEFINED ENV{GENCMP_NO_SECUTILS})
+    message(WARNING "Implying GENCMP_NO_SECUTILS because with native Windows builds, libSecUtils and CLI are not supported so far")
+  endif()
+  set(ENV{GENCMP_NO_SECUTILS} 1)
+endif()
 
 if(DEFINED ENV{GENCMP_NO_SECUTILS})
   message(STATUS "will build without libSecUtils and CLI")
@@ -133,15 +152,36 @@ if(NOT TARGET OpenSSL::Crypto) # not already done by superordinate module
   endif()
 endif()
 message(STATUS "using OpenSSL library ${OPENSSL_CRYPTO_LIBRARY}, ${OPENSSL_SSL_LIBRARY}")
-if(NOT EXISTS "${OPENSSL_CRYPTO_LIBRARY}")
-  message(FATAL_ERROR "OpenSSL crypto library file does not exist: ${OPENSSL_CRYPTO_LIBRARY}")
+# Handle cases where OPENSSL_CRYPTO_LIBRARY contains both debug and optimized versions
+if(OPENSSL_CRYPTO_LIBRARY MATCHES "optimized|debug")
+  # Extract the actual library paths from the optimized/debug list
+  string(REGEX REPLACE ".*optimized;([^;]+).*" "\\1" OPENSSL_CRYPTO_LIB_RELEASE "${OPENSSL_CRYPTO_LIBRARY}")
+  string(REGEX REPLACE ".*debug;([^;]+).*" "\\1" OPENSSL_CRYPTO_LIB_DEBUG "${OPENSSL_CRYPTO_LIBRARY}")
+  
+  # Check if at least one version exists
+  set(CRYPTO_LIB_EXISTS FALSE)
+  if(DEFINED OPENSSL_CRYPTO_LIB_RELEASE AND EXISTS "${OPENSSL_CRYPTO_LIB_RELEASE}")
+    set(CRYPTO_LIB_EXISTS TRUE)
+  endif()
+  if(DEFINED OPENSSL_CRYPTO_LIB_DEBUG AND EXISTS "${OPENSSL_CRYPTO_LIB_DEBUG}")
+    set(CRYPTO_LIB_EXISTS TRUE)
+  endif()
+  
+  if(NOT CRYPTO_LIB_EXISTS)
+    message(FATAL_ERROR "No OpenSSL crypto library file (neither optimized or debug variant) found for: ${OPENSSL_CRYPTO_LIBRARY}")
+  endif()
+else()
+  # Single library path case
+  if(NOT EXISTS "${OPENSSL_CRYPTO_LIBRARY}")
+    message(FATAL_ERROR "OpenSSL crypto library file does not exist: ${OPENSSL_CRYPTO_LIBRARY}")
+  endif()
 endif()
 
 # workaround for using local OpenSSL builds by default expecting that
 # its dynamic libs have been installed in ./${LIB} when using the libs
 # see for binaries dynamically linked to OpenSSL the output of ${LDD} <binary>
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-  set(USERS "^(\w:)?\\Users\\")
+  set(USERS "^([a-zA-Z]:)?\\\\Users\\\\")
   set(LIB "bin")
 else()
   set(USERS "^/(home|Users)/")
@@ -208,13 +248,19 @@ endif()
 
 add_compile_definitions(DEBUG_UNUSED)
 add_compile_definitions(PEDANTIC)
-add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
-add_compile_options(
-  -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
-  -Wsign-compare -Wformat -Wtype-limits -Wundef -Wconversion -Wunused-parameter)
-add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined)
-if(NOT DEFINED GENCMP_NO_SECUTILS)
-  add_compile_options(-Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow)
+
+if(MSVC)
+  # MSVC compiler flags (Windows-specific)
+  add_compile_options(/W4)  # High warning level
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+else()
+  # GCC/Clang compiler flags
+  add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
+  add_compile_options(
+    -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
+    -Wsign-compare -Wformat -Wtype-limits -Wundef -Wconversion -Wunused-parameter)
+  add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined)
+
 endif()
 # TODO maybe clean up code and re-enable property
 # set_property(TARGET ${LIBGENCMP_NAME} PROPERTY C_STANDARD 90)
@@ -223,7 +269,7 @@ endif()
 # target_compile_features(${LIBGENCMP_NAME} PRIVATE c_std_90)
 # target_compile_features(cmpClient         PRIVATE c_std_90)
 
-add_library(${LIBGENCMP_NAME} SHARED
+add_library(${LIBGENCMP_NAME} ${GENCMP_LIB_TYPE}
   "${PROJECT_SOURCE_DIR}/.github/workflows/build.yml"
   ${SRC_DIR}/genericCMPClient.c
 )
@@ -266,6 +312,13 @@ set_target_properties(${LIBGENCMP_NAME} PROPERTIES
   VERSION ${GENCMPCLIENT_VERSION} SOVERSION ${GENCMPCLIENT_VERSION_MAJOR}
   PUBLIC_HEADER "${INC_PUBLIC_HDRS}"
 )
+
+# Automatically export all symbols from Windows DLL (only applicable on Windows)
+if(CMAKE_SYSTEM_NAME MATCHES "Windows" AND NOT GENCMP_STATIC_LIB)
+  set_target_properties(${LIBGENCMP_NAME} PROPERTIES
+    WINDOWS_EXPORT_ALL_SYMBOLS ON
+  )
+endif()
 
 find_package(Git)
 if(GIT_FOUND)

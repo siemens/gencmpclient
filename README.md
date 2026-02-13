@@ -453,6 +453,35 @@ It is also possible to statically link with `libcmp.a`, by setting `STATIC_LIBCM
 For further details on optional environment variables,
 see the [`Makefile_v1`](Makefile_v1) and [`Makefile_src`](Makefile_src).
 
+### Choosing between shared and static library
+
+When using CMake, by default a **shared library** (`.so` on Linux, `.dylib` on macOS, `.dll` on Windows) is built.
+
+To build a **static library** instead (`.a` on Linux/macOS, `.lib` on Windows), use the CMake option `-DGENCMP_STATIC_LIB=ON`:
+
+```bash
+cmake -DGENCMP_STATIC_LIB=ON .
+make
+```
+
+This will produce a static library (`libgencmp.a` or `gencmp.lib`) instead of a shared library.
+
+#### Examples:
+
+**Building shared library (default):**
+```bash
+cmake .
+make
+# Produces: libgencmp.so.2.0 (Linux), libgencmp.dylib (macOS), or gencmp.dll (Windows)
+```
+
+**Building static library:**
+```bash
+cmake -DGENCMP_STATIC_LIB=ON .
+make
+# Produces: libgencmp.a (Linux/macOS) or gencmp.lib (Windows)
+```
+
 ## Building
 
 Build the software with
@@ -468,6 +497,26 @@ This also builds all required dependencies
 (such as `libsecutils.so.2.0` and possibly `libcmp.so.2.0`)
 and a CLI application (`./cmpClient`), which is intended
 for demonstration, test, and exploration purposes.
+
+### Building on Windows
+
+When using CMake, `libgencmp` can be built natively under Windows.
+This requires `GENCMP_NO_SECUTILS` because libSecUtils and the CLI application
+are not supported on native Windows builds. When building on Windows,
+CMake automatically implies `GENCMP_NO_SECUTILS=1`, showing the warning:
+
+```
+Implying GENCMP_NO_SECUTILS because with native Windows builds, libSecUtils and CLI are not supported so far
+```
+
+**Example build on Windows using CMake:**
+```bash
+mkdir build
+cd build
+cmake -G "Visual Studio 17 2022" -A x64 ..
+cmake --build . --config Release
+# Produces: gencmp.dll and gencmp.lib
+```
 
 When getting the compiler error: `'openssl/openssl_backport.h' file not found`
 likely `include/genericCMPClient_config.h` is outdated

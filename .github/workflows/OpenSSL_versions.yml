@@ -61,7 +61,7 @@ jobs:
         name: Create mock test certificates and keys with PQC algorithms
         run: |
           cd test/recipes/80-test_cmp_http_data/Mock/
-          Algo_used="PQC" ./setup-mock.sh all  # sets up test certificates and keys for Mock test using classic algorithm, 
+          Algo_used="PQC" ./setup-mock.sh all  # sets up  fresh test certificates and keys for Mock test using PQC algorithms 
           cd ../../../../ 
       - name: make
         run: |

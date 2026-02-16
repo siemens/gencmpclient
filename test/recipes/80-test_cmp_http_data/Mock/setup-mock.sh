@@ -18,25 +18,25 @@ if [ -z "$DAYS" ]; then
 fi
 
 if [[ ${Algo_used} == "PQC" ]]; then
-    # sever certificate algorithms
+    # algorithms for server certificate chain
     server_rootca_keyalg="SLH-DSA-SHAKE-192s"
     server_leaf_keyalg="MLDSA65"
     # rootCACert update test case
     new_rootca_keyalg="MLDSA65"
-
-    # End-entity certificate algorithms
+    
+    # algorithms for client certificate chain
     signer_rootca_keyalg="MLDSA65"
     signer_interca_keyalg="MLDSA65"
     signer_subinterca_keyalg="MLDSA65"
     signer_leaf_keyalg="SLH-DSA-SHAKE-192s"
 else
-    # sever certificate algorithms
+    # algorithms for server certificate chain
     server_rootca_keyalg="rsa"
     server_leaf_keyalg="rsa"
     # rootCACert update test case
     new_rootca_keyalg="rsa"
 
-    # End-entity certificate algorithms
+    # algorithms for client certificate chain
     signer_rootca_keyalg="rsa"
     signer_interca_keyalg="rsa"
     signer_subinterca_keyalg="rsa"
@@ -62,7 +62,7 @@ rename_serverfiles() {
 
 remove_serverfiles() {
     echo "Removing server files"
-    rm -f server_root.crt trusted.crt server.key server-crt
+    rm -f server_root.crt trusted.crt server.key server.crt
     rm -f oldWithOld.pem newWithNew.pem oldWithNew.pem newWithOld.pem
 }
 
@@ -122,7 +122,7 @@ rename_signerfiles() {
 remove_signerfiles() {
     echo "Removing signer files"
     rm -f root.crt signer_root.crt newcrl.pem new.key signer.key signer_only.crt \
-        signer_issuing.crt signer.crt issuing.crt
+        signer_no_SKID.crt signer_issuing.crt signer.crt issuing.crt
 }
 
 #  cannot use genee() because this uses a self-signature for the POP in a PKCS#10 CSR
@@ -158,6 +158,8 @@ gen_client_chain() {
     else
         OPENSSL_KEYALG=${signer_leaf_keyalg} \
         $mkcert_sh genee -p clientAuth "signer-leaf" signer_leaf-key signer_leaf-cert signer_subinterCA-key signer_subinterCA-cert
+        # create signer certtificate without subjectKeyIdentifier
+        openssl x509 -new -subj "/CN=signer-leaf-noSKID" -days $DAYS -extfile <(printf "subjectKeyIdentifier=none") -out signer_no_SKID.crt -key signer_leaf-key.pem
     fi
 
     gen_demoCAfolder

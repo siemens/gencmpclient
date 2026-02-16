@@ -116,6 +116,7 @@ rename_signerfiles() {
 
     cp new.key signer.key
     mv signer_leaf-cert.pem signer_only.crt
+    mv signer_leaf-cert-noSKID.crt signer_no_SKID.crt
     mv signer_issuing-cert.pem signer_issuing.crt
     mv signer_chain.pem signer.crt
 }
@@ -137,6 +138,9 @@ genee_kem() {
     openssl x509 -new -subj "/CN=${cn}" -CA ${ca}.pem -CAkey ${cakey}.pem \
         -out ${cert}.pem -force_pubkey ${cn}-pubkey.pem \
         -extfile <(printf "basicConstraints=critical,CA:false\nkeyUsage=critical,keyEncipherment")
+    openssl x509 -new -subj "/CN=${cn}-noSKID" -CA ${ca}.pem -CAkey ${cakey}.pem \
+        -out ${cert}-noSKID.pem -force_pubkey ${cn}-pubkey.pem \
+        -extfile <(printf "basicConstraints=critical,CA:false\nkeyUsage=critical,keyEncipherment\nsubjectKeyIdentifier=none")
     rm -f ${cn}-pubkey.pem
 }
 
@@ -159,7 +163,8 @@ gen_client_chain() {
         OPENSSL_KEYALG=${signer_leaf_keyalg} \
         $mkcert_sh genee -p clientAuth "signer-leaf" signer_leaf-key signer_leaf-cert signer_subinterCA-key signer_subinterCA-cert
         # create signer certtificate without subjectKeyIdentifier
-        openssl x509 -new -subj "/CN=signer-leaf-noSKID" -days $DAYS -extfile <(printf "subjectKeyIdentifier=none") -out signer_no_SKID.crt -key signer_leaf-key.pem
+        openssl req -new -subj "/CN=signer-leaf-noSKID" -key signer_leaf-key.pem \
+         | openssl x509 -req -days $DAYS -extfile <(printf "subjectKeyIdentifier=none") -out signer_leaf-cert-noSKID.crt -CA signer_subinterCA-cert.pem -CAkey signer_subinterCA-key.pem
     fi
 
     gen_demoCAfolder

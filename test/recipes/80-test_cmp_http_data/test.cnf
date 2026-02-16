@@ -13,7 +13,7 @@ policies = certificatePolicies
 #verbosity = 7
 
 ############################# server-dependent configurations
-
+# TODO: remove the reference of EJBCA env variables
 # workarounds in case the environment variables referenced via ${ENV::...} are not set
 EJBCA_HOST =
 EJBCA_TLS_HOST =

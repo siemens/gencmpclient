@@ -386,8 +386,8 @@ sub start_server {
         print "Cannot get expected output from the $server_name server\n";
         return 0;
     }
-    $kur_port = $server_port if $kur_port eq "\$server_port";
-    $pbm_port = $server_port if $pbm_port eq "\$server_port";
+    $kur_port = $server_port;
+    $pbm_port = $server_port;
     $server_tls = $server_port if $server_tls;
     return $pid;
 }

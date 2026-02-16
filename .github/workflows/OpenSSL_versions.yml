@@ -48,22 +48,32 @@ jobs:
           cmake .
           make
           ./cmpClient -help
-
-          mkdir build-with-libcmp
-          cd build-with-libcmp
-          USE_LIBCMP=1 cmake -S .. -B .
+          if [[ $(openssl version | cut -d' ' -f2 | cut -d'.' -f1) -lt 4 ]]; then
+            echo "Using OpenSSL version less than 4.0, proceeding build with libcmp"
+            mkdir build-with-libcmp
+            cd build-with-libcmp
+            USE_LIBCMP=1 cmake -S .. -B .
+          fi
           make clean build
           DESTDIR=tmp make install uninstall
           make deb
+      - if: ${{ matrix.branch == 'openssl-3.5' }}
+        name: Create mock test certificates and keys with PQC algorithms
+        run: |
+          cd test/recipes/80-test_cmp_http_data/Mock/
+          Algo_used="PQC" ./setup-mock.sh all  # sets up  fresh test certificates and keys for Mock test using PQC algorithms 
+          cd ../../../../ 
       - name: make
         run: |
           make -f Makefile_v1
           ./cmpClient -help
-          # make -f Makefile_v1 test_Mock # TODO add after solving issue #76
+          make -f Makefile_v1 test_Mock
           make -f Makefile_v1 clean_all
-          
-          USE_LIBCMP=1 STATIC_LIBCMP=1 make -f Makefile_v1
-          ./cmpClient -help
-          make -f Makefile_v1 clean
+          if [[ $(openssl version | cut -d' ' -f2 | cut -d'.' -f1) -lt 4 ]]; then
+            USE_LIBCMP=1 STATIC_LIBCMP=1 make -f Makefile_v1
+            ./cmpClient -help
+            make -f Makefile_v1 clean
+          fi
+
 
 

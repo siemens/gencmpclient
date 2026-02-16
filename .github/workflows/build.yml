@@ -92,4 +92,7 @@ jobs:
           # sudo apt-get update
           # sudo apt-get install -y >/dev/null libssl-dev build-essential # not needed
           # USE_LIBCMP=1 make -f Makefile_v1 test_Mock OPENSSL_CMP_ASPECTS=credentials V=1 # can be helpful for debugging
+          cd test/recipes/80-test_cmp_http_data/Mock/
+          ./setup-mock.sh all  # sets up fresh test credentials for Mock test using classic algorithms 
+          cd ../../../../
           make -f Makefile_v1 test_all

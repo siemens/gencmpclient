@@ -7,7 +7,7 @@ name: macOS
 on: push
 
 jobs:
-  cmake:
+  make_cmake:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

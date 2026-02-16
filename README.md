@@ -588,60 +588,33 @@ The CLI use with the available options are documented in [`cmpClient.pod`](doc/c
 An example configuration used by the below mentioned demo invocations
 can be found in [`demo.cnf`](config/demo.cnf).
 
-### Demo use, by default with the Insta CA
-
-For simple test invocations the Insta Certifier Demo CA server may be used,
-for instance as follows:
-
-```bash
-./cmpClient -config "" -server pki.certificate.fi:8700/pkix/ \
-  -recipient "/C=FI/O=Insta Demo/CN=Insta Demo CA" \
-  -secret pass:insta -ref 3078 \
-  -newkeytype EC:prime256v1 -newkey test.key.pem \
-  -cmd cr -subject "/CN=test" -certout test.cert.pem
-openssl x509 -noout -text -in test.cert.pem
-```
-
-As the CMP client interacts via HTTP with an external CMP server, depending
-on your network you may need to set the environment variable `http_proxy`.
-
-A demo making use of all supported CMP commands can be executed with
+A demo making use of all supported CMP commands can be executed with, e.g.,
 
 ```bash
 make -f Makefile_v1 demo
 ```
 
-The demo can be run using the online Insta Demo CA, which is the default.
-
-Among others, successful execution should produce a new certificate at `creds/operational.crt`.
+Among others, successful execution should produce new certificates at `creds/manufacturer.crt` and `creds/operational.crt`.
 You can view this certificate for instance by executing
 
 ```bash
-openssl x509 -noout -text -in creds/operational.crt
+openssl x509 -noout -text -in creds/manufacturer.crt
 ```
 
 In order to obtain a trace of the HTTP messages being sent and received,
-one can build the genCMPClient with `USE_LIBCMP=1` and
-set the environment variable `OPENSSL_TRACE` to contain the string `"HTTP"`.
+one can use a build of OpenSSL configured with the `enable-trace` configuration option
+(or build the genCMPClient with `USE_LIBCMP=1`)
+and set the environment variable `OPENSSL_TRACE` to contain the string `"HTTP"`.
 For instance:
 
 ```bash
-OPENSSL_TRACE=HTTP ./cmpClient imprint -section Insta
+OPENSSL_TRACE=HTTP ./cmpClient imprint
 ```
-
-A large set of CLI-based tests using the Insta Demo CA may be invoked using
-
-```bash
-make -f Makefile_v1 test_Insta
-```
-
-where the `http_proxy` environment variable may be used to override the default
-in order to reach the Insta Demo CA.
 
 ### Demo use with a local EJBCA
 
-The demo can also use an included Docker instance of the EJBCA,
-which can be launched locally:
+The demo uses by default a Docker instance of the EJBCA, which is included in the repo and launched locally on demo startup.
+This variant of the demo can be used explicitly as follows:
 
 ```bash
 make -f Makefile_v1 demo_EJBCA
@@ -649,12 +622,16 @@ make -f Makefile_v1 demo_EJBCA
 
 ### Demo use with the Cloud CA
 
-A further option is to use the reference playground CA
-operated by Siemens over a cloud-based test RA:
+An alternative is to use the reference playground CA
+operated by Siemens over a cloud-based test RA.
+The respective variant of the demo can be started as follows:
 
 ```bash
 make -f Makefile_v1 demo_CloudCA
 ```
+
+As the CMP client needs to reach the non-local test RA server via HTTPS, depending
+on your network you may need to set the environment variable `https_proxy`.
 
 To select a specific CMP profile on the CloudCA server,
 set the environment variable `CMP_PROFILE` to the profile name.
@@ -673,6 +650,35 @@ CMP_PROFILE=PPKI%20Playground%20ECC
 ```
 
 an ECC-based CA hierarchy is used.
+
+### Demo use with the Insta CA
+
+At least until end of 2025, also the Insta Certifier Demo CA server could be used.
+The respective variant of the demo can be started as follows:
+
+```bash
+make -f Makefile_v1 demo_Insta
+```
+
+Direct simple test invocations could be done as follows:
+
+```bash
+./cmpClient -config "" -server pki.certificate.fi:8700/pkix/ \
+  -recipient "/C=FI/O=Insta Demo/CN=Insta Demo CA" \
+  -secret pass:insta -ref 3078 \
+  -newkeytype EC:prime256v1 -newkey test.key.pem \
+  -cmd cr -subject "/CN=test" -certout test.cert.pem
+openssl x509 -noout -text -in test.cert.pem
+```
+
+As the CMP client interacts via HTTP with an external CMP server, depending
+on your network you may need to set the environment variable `http_proxy`.
+
+A large set of CLI-based tests using the Insta Demo CA may be invoked using
+
+```bash
+make -f Makefile_v1 test_Insta
+```
 
 ## Using the library in own applications
 

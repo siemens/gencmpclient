@@ -538,7 +538,7 @@ else
 endif
 
 .phony: demo demo_all demo_Insta demo_EJBCA demo_CloudCA
-demo: demo_Insta
+demo: demo_EJBCA
 demo_all: demo demo_CloudCA demo_EJBCA
 ifeq ($(shell expr "$(OPENSSL_VERSION)" \< 3),1)
 demo_Insta:

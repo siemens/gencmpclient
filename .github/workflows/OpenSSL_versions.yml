@@ -57,6 +57,12 @@ jobs:
           make clean build
           DESTDIR=tmp make install uninstall
           make deb
+      - if: ${{ matrix.branch == 'openssl-3.5' }}
+        name: Create mock test certificates and keys with PQC algorithms
+        run: |
+          cd test/recipes/80-test_cmp_http_data/Mock/
+          Algo_used="PQC" ./setup-mock.sh all  # sets up test certificates and keys for Mock test using classic algorithm, 
+          cd ../../../../ 
       - name: make
         run: |
           make -f Makefile_v1

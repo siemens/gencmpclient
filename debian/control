@@ -14,7 +14,7 @@ Description: generic CMP client library
  Generic CMP client library with high-level API based on OpenSSL
 
 Package: libgencmp-dev
-Depends: libgencmp (>= 2.1), ${misc:Depends}
+Depends: libgencmp (>= 2.2), ${misc:Depends}
 Suggests: libsecutils-dev (>= 2.1), libssl-dev
 Section: devel
 Architecture: all

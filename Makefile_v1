@@ -56,7 +56,7 @@ endif
 # $(DESTDIR) set by dh_auto_install
 ROOTFS ?= $(DESTDIR)$(prefix)
 
-VERSION=2.1
+VERSION=2.2
 # must be kept in sync with latest version in debian/changelog
 # PACKAGENAME=libgencmp
 # DIRNAME=$(PACKAGENAME)-$(VERSION)

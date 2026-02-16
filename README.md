@@ -119,14 +119,16 @@ This software should work with any flavor of Linux
 including Debian, macOS and [Cygwin](https://www.cygwin.com/),
 on a native system, a Docker image, or on a virtual machine including the
 Windows Subsystem for Linux ([WSL](https://docs.microsoft.com/windows/wsl/about)).
+The core library can also be built and used natively under Windows.
 
 The following development and network tools are needed or recommended.
 
-* Git (for getting the software, tested versions include 2.7.2, 2.11.0, 2.20, 2.34.1, 2.48.0)
+* Git (for getting the software, tested versions include 2.7.2, 2.11.0, 2.20, 2.34.1, 2.48.0, 2.53.0)
 * CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested versions include 3.18.4, 3.22.1, 3.27.7, 3.31.5)
 * GNU make (tested versions include 3.81, 4.1, 4.2.1, 4.3)
 * GNU C compiler (gcc, tested versions include 5.4.0, 7.3.0, 8.3.0, 10.2.1, 11.4.0, 12.2.0)
   or clang (tested versions include 14.0.3, 17.0.3, 19.1.1)
+* Visual Studio 17 2022 with MSVC 19.44.35222.0 and MSBuild version 17.14.40+3e7442088
 * wget (for running the demo, tested versions include 1.17, 1.18, 1.20, 1.21.3, 1.24.5)
 * Perl (for running the tests, tested versions include 5.30.3, 5.32.1, 5.34.3, 5.36.0, 5.38.2)
 
@@ -455,32 +457,17 @@ see the [`Makefile_v1`](Makefile_v1) and [`Makefile_src`](Makefile_src).
 
 ### Choosing between shared and static library
 
-When using CMake, by default a **shared library** (`.so` on Linux, `.dylib` on macOS, `.dll` on Windows) is built.
+When using CMake, by default a **shared library** will be built,
+e.g., `libgencmp.so.2.2` on Linux, `libgencmp.2.2.dylib` on macOS, `gencmp.dll` on Windows.
 
-To build a **static library** instead (`.a` on Linux/macOS, `.lib` on Windows), use the CMake option `-DGENCMP_STATIC_LIB=ON`:
+To build a **static library** instead, use the CMake option `-DGENCMP_STATIC_LIB=ON`, e.g.:
 
 ```bash
 cmake -DGENCMP_STATIC_LIB=ON .
-make
 ```
 
-This will produce a static library (`libgencmp.a` or `gencmp.lib`) instead of a shared library.
-
-#### Examples:
-
-**Building shared library (default):**
-```bash
-cmake .
-make
-# Produces: libgencmp.so.2.0 (Linux), libgencmp.dylib (macOS), or gencmp.dll (Windows)
-```
-
-**Building static library:**
-```bash
-cmake -DGENCMP_STATIC_LIB=ON .
-make
-# Produces: libgencmp.a (Linux/macOS) or gencmp.lib (Windows)
-```
+This selects producing a static library,
+e.g., `libgencmp.a` on Linux/macOS, `gencmp.lib` on Windows.
 
 ## Building
 
@@ -492,18 +479,24 @@ make
 
 (or `make -f Makefile_v1`).
 
-The result is in, for instance, `libgencmp.so.2.0`.
-This also builds all required dependencies
-(such as `libsecutils.so.2.0` and possibly `libcmp.so.2.0`)
+The result is in, for instance, `libgencmp.so.2.2`.
+On Linux and macOS, this also builds all required dependencies
+(such as `libsecutils.so.2.1` and possibly `libcmp.so.2.0`)
 and a CLI application (`./cmpClient`), which is intended
 for demonstration, test, and exploration purposes.
+
+When getting the compiler error: `'openssl/openssl_backport.h' file not found`
+likely `include/genericCMPClient_config.h` is outdated
+and contains `#define USE_LIBCMP` although the environment variable `USE_LIBCMP`
+is not set.
+In such situations, `make clean`  (or `make -f Makefile_v1 clean`) helps to reset it to a consistent state.
 
 ### Building on Windows
 
 When using CMake, `libgencmp` can be built natively under Windows.
-This requires `GENCMP_NO_SECUTILS` because libSecUtils and the CLI application
-are not supported on native Windows builds. When building on Windows,
-CMake automatically implies `GENCMP_NO_SECUTILS=1`, showing the warning:
+This requires setting the environment variable `GENCMP_NO_SECUTILS`
+because libSecUtils and the CLI application are not supported there.
+When building on Windows without this option, CMake automatically implies `GENCMP_NO_SECUTILS=1`, showing the warning:
 
 ```
 Implying GENCMP_NO_SECUTILS because with native Windows builds, libSecUtils and CLI are not supported so far
@@ -515,14 +508,7 @@ mkdir build
 cd build
 cmake -G "Visual Studio 17 2022" -A x64 ..
 cmake --build . --config Release
-# Produces: gencmp.dll and gencmp.lib
 ```
-
-When getting the compiler error: `'openssl/openssl_backport.h' file not found`
-likely `include/genericCMPClient_config.h` is outdated
-and contains `#define USE_LIBCMP` although the environment variable `USE_LIBCMP`
-is not set.
-In such situations, `make clean`  (or `make -f Makefile_v1 clean`) helps to reset it to a consistent state.
 
 ### Installing and uninstalling
 

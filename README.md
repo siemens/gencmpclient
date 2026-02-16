@@ -303,7 +303,7 @@ make update
 When switching to a certain commit or version, e.g.
 
 ```bash
-git checkout v2.0
+git checkout v2.2
 ```
 
 then also execute

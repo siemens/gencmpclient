@@ -1,3 +1,14 @@
+libgencmp (2.2) stable; urgency=medium
+
+  * Support building core library natively under Windows
+  * Add build option GENCMP_STATIC_LIB
+  * Further improve CMake etc. build support, CI, demo, and documentation
+  * Make sure that suitable X.509 extensions are placed in cert request template of KUR messages
+  * Fix various issues and OpenSSL version incompatibilities
+  * Disable demo_Insta because Insta Demo CA is defunct since end of 2025
+
+ -- David von Oheimb <David.von.Oheimb@siemens.com>  Mon Feb 16 16:17:18 2026 +0100
+
 libgencmp (2.1) stable; urgency=medium
 
   * Improve use of OpenSSL crypto providers and OSSL_STORE for credential loading

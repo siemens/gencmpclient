@@ -204,12 +204,14 @@ opt_t cmp_opts[] = {
       "Configuration file to use. \"\" means none. Default 'config/demo.cnf'"},
     { "section", OPT_TXT, {.txt = NULL}, { NULL },
       "Section(s) in config file to use. \"\" means 'default'. Default 'EJBCA'"},
+    { "verbosity", OPT_NUM, {.num = LOG_INFO}, {(const char **) &opt_verbosity},
+      "Logging level; 3=ERR, 4=WARN, 6=INFO, 7=DEBUG, 8=TRACE. Default 6 = INFO"},
     { "provider-path", OPT_TXT, {.txt = NULL}, { NULL },
       "Provider load path (use before '-provider' option where needed)" },
     { "provider", OPT_TXT, {.txt = NULL}, { NULL },
       "Provider to load (can be specified multiple times)"},
-    { "verbosity", OPT_NUM, {.num = LOG_INFO}, {(const char **) &opt_verbosity},
-      "Logging level; 3=ERR, 4=WARN, 6=INFO, 7=DEBUG, 8=TRACE. Default 6 = INFO"},
+    { "propquery", OPT_TXT, {.txt = NULL}, { NULL },
+      "Property query used when fetching algorithms from providers"},
 
     OPT_HEADER("Generic message"),
     { "cmd", OPT_TXT, {.txt = NULL}, { &opt_cmd },
@@ -2612,6 +2614,21 @@ int main(int argc, char *argv[])
         goto end;
     }
 
+    /*
+     * NOTE: This is an undocumented feature required for testing only.
+     * There are no guarantees that it will exist in future builds.
+     */
+    const char *use_libctx = getenv("OPENSSL_TEST_LIBCTX");
+    if (use_libctx != NULL) {
+        /* Set this to "1" to create a global libctx */
+        if (strcmp(use_libctx, "1") == 0) {
+            if (app_create_libctx() == NULL) {
+                LOG(FL_ERR, "Error creating global libctx on OPENSSL_TEST_LIBCTX=1");
+                goto end;
+            }
+        }
+    }
+
     enum use_case use_case = no_use_case; /* default */
     if (argc > 1) {
         if (strcmp(argv[1], "imprint") == 0) {
@@ -2658,7 +2675,10 @@ int main(int argc, char *argv[])
                          && !opt_provider_path(argv[++i]))
                     goto end;
                 else if (strcmp(argv[i] + 1, "provider") == 0
-                         && !app_provider_load(argv[++i]))
+                         && !app_provider_load(app_get0_libctx(), argv[++i]))
+                    goto end;
+                else if (strcmp(argv[i] + 1, "propquery") == 0
+                         && !app_set_propq(argv[++i]))
                     goto end;
             }
         }

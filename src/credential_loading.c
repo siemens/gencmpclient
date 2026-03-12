@@ -34,6 +34,12 @@
 static OSSL_LIB_CTX *app_libctx = NULL;
 static const char *app_propq = NULL;
 
+int app_set_propq(const char *arg)
+{
+    app_propq = arg;
+    return 1;
+}
+
 const char *app_get0_propq(void)
 {
     return app_propq;
@@ -41,6 +47,24 @@ const char *app_get0_propq(void)
 
 OSSL_LIB_CTX *app_get0_libctx(void)
 {
+    return app_libctx;
+}
+
+OSSL_LIB_CTX *app_create_libctx(void)
+{
+    /*
+     * Load the NULL provider into the default library context and create a
+     * library context which will then be used for any OPT_PROV options.
+     */
+    if (app_libctx == NULL) {
+        if (!app_provider_load(NULL, "null")) {
+            LOG(FL_ERR, "Failed to create null provider");
+            return NULL;
+        }
+        app_libctx = OSSL_LIB_CTX_new();
+    }
+    if (app_libctx == NULL)
+        LOG(FL_ERR, "Failed to create library context");
     return app_libctx;
 }
 
@@ -67,11 +91,11 @@ int opt_provider_path(const char *path)
     return OSSL_PROVIDER_set_default_search_path(app_libctx, path);
 }
 
-int app_provider_load(const char *provider_name)
+int app_provider_load(OSSL_LIB_CTX *libctx, const char *provider_name)
 {
     OSSL_PROVIDER *prov;
 
-    prov = OSSL_PROVIDER_load(app_libctx, provider_name);
+    prov = OSSL_PROVIDER_load(libctx, provider_name);
     if (prov == NULL) {
         LOG(FL_ERR, "unable to load provider %s\n"
             "Hint: use -provider-path option or OPENSSL_MODULES environment variable.\n",

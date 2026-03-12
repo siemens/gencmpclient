@@ -74,6 +74,10 @@ my @cmp_basic_tests = (
     [ "bad int syntax: float",            [ "-config", '""', "-days", "3.14"       ], 0 ],
     [ "bad int syntax: trailing garbage", [ "-config", '""', "-days", "314_+"      ], 0 ],
     [ "bad int: out of range",            [ "-config", '""', "-days", "2147483648" ], 0 ],
+    [ "default provider with propq",      [ "-config", '""', "-propquery", "dummy", "-provider-path", "dummy", "-provider", "default", "-verbosity", "1", "-help"], 1 ],
+    [ "verbosity bad int syntax: non-digit",        [ "-config", '""', "-verbosity", "a/"         ], 0 ],
+    [ "verbosity bad int syntax: trailing garbage", [ "-config", '""', "-verbosity", "3_+"      ], 0 ],
+    [ "verbosity bad int: out of range",  [ "-config", '""', "-verbosity", "9" ], 0 ],
 );
 
 # this uses the mock server directly in the cmp app, without TCP

@@ -773,7 +773,7 @@ endif
 
 test: clean build_no_tls
 	$(MAKE) -C $(SECUTILS_DIR) -f Makefile_v1 clean_config
-	@$(MAKE) -f Makefile_v1 clean $(OUT_DIR_BIN) demo_Insta $(BUILD_FLAGS)
+	@$(MAKE) -f Makefile_v1 clean $(OUT_DIR_BIN) demo $(BUILD_FLAGS)
 
 endif # ndef GENCMP_NO_CLI
 

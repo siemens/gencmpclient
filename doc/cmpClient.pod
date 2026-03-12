@@ -38,6 +38,7 @@ B<cmpClient> I<options>
 [B<-verbosity> I<level>]
 [B<-provider-path> I<path>]
 [B<-provider> I<name>]
+[B<-propquery> I<propq>]
 
 Generic message options:
 
@@ -249,7 +250,8 @@ The levels DEBUG and TRACE are most useful for certificate status check issues.
 
 =item B<-provider-path> I<path>
 
-Specifies the search path that is to be used for looking for providers
+Specifies the search path that is to be used for looking for
+provider module library (Dynamic Shared Object, DSO) files
 referenced via subsequent B<-provider> options.
 Alternatively, the B<OPENSSL_MODULES> environment variable may be set.
 
@@ -263,9 +265,16 @@ Interpretation of relative paths is platform-specific.
 The path specified with the most recently given B<-provider-path> option is prepended to relative paths.
 If no B<-provider-path> option is given before, the value of
 the B<OPENSSL_MODULES> environment variable is used if set.
-In any case, some preconfigured default paths are tried as well.
+In any case, some preconfigured default paths are tried as well,
+such as the OpenSSL "MODULESDIR" configuration.
 
 See the OpenSSL L<provider(7)> man page for a more detailed description.
+
+=item B<-propquery> I<propq>
+
+Specifies the property query clause to be used
+when fetching algorithms from the loaded providers.
+See the OpenSSL L<property(7)> man page for a more detailed description.
 
 =back
 

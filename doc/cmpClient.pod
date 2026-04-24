@@ -50,9 +50,9 @@ Generic message options:
 
 Certificate enrollment options:
 
-[B<-newkeytype> EC:I<curve>|RSA-I<len>]
+[B<-newkeytype> EC:I<curve>|RSA-I<len>|ML-DSA-<level>]
 [B<-centralkeygen>]
-[B<-newkey> I<filename>]
+[B<-newkey> I<filename>|I<url>]
 [B<-newkeypass> I<arg>]
 [B<-subject> I<name>]
 [B<-issuer> I<name>]
@@ -360,13 +360,21 @@ Note: any keySpec field contents received are logged as INFO.
 =item B<-newkeytype> I<spec>
 
 In case of IR, CR, or KUR,
-generate or request a new key of the given type for the requested certificate.
-The I<spec> may be of the form C<EC:>I<curve> or C<RSA->I<length>.
-The key will be saved in the file specified with the B<-newkey> option.
+generate or request a new key pair of the given type for the requested certificate.
+The I<spec> may be of the form C<EC:>I<curve>, C<RSA:>I<length>, C<RSA->I<length>, or simply I<length>.
+Everything else is considered an ECC curve name if the OpenSSL version is below 3.5,
+while for OpenSSL 3.5+, it is taken as an algorithm name, potentially including parameters,
+such as C<ED25519> or C<ML-DSA->I<level>.
+For the full list of available algorithms see the output of C<openssl list -public-key-algorithms>.
+The RSA key length must be between 1024 and 8192 bits.
+The available ECC curves can be shown with the command C<openssl ecparam -list_curves>.
+The new key will be saved in the file specified with the B<-newkey> option,
+unless the key is generated on a hardware secure element such as TPM 2.0.
 
-This option cannot be used to create a key pair via a provider.
-For use with a provider, the key pair must be generated beforehand
-and then can be referenced via B<-newkey>.
+For key generation via the L<tpm2-openssl|https://github.com/tpm2-software/tpm2-openssl> provider, use this option in conjunction
+with the B<-newkey> option having an argument of the form C<tpm2:handle=0x>I<hex-string>.
+The B<-newkeytype> option so far cannot be used to create a key pair via other non-default providers,
+so such a key pair must be generated beforehand and then can be referenced via B<-newkey>.
 
 =item B<-centralkeygen>
 
@@ -375,14 +383,20 @@ This implies B<-popo> C<-1> = NONE.
 All other B<-popo> values are not consistent with this option.
 Default is local key generation.
 
-=item B<-newkey> I<filename>
+=item B<-newkey> I<filename>|I<url>
 
-The file to save the newly generated key
+This option is used only when requesting a certificate via IR, CR, or KUR.
+When a I<filename> or a I<url> in the C<file:> scheme is given,
+this specifies the file to save the newly generated key
 in case B<-newkeytype> or B<-centralkeygen> is given.
-Otherwise the file to read the private or public key from
-for the certificate requested in IR, CR or KUR.
-Defaults to the public key in the PKCS#10 CSR given with the B<-csr> option,
+Otherwise this gives the location (which may be handled by a provider)
+to read the private or public key from for the certificate requested.
+The key defaults to the public key in the PKCS#10 CSR given with the B<-csr> option,
 the public key of the reference certificate, or the current client key.
+
+In conjunction with the B<-newkeytype> option,
+if a I<url> of the form C<tpm2:handle=0x>I<hex-string> is given,
+this specifies key generation and storage via the `tpm2-openssl` provider.
 
 =item B<-newkeypass> I<arg>
 
@@ -1046,7 +1060,7 @@ Specifies name of supported digest to use in RFC 9810's MSG_SIG_ALG
 and as the one-way function (OWF) in MSG_MAC_ALG.
 If applicable, this is used for message protection and
 Proof-of-Possession (POPO) signatures.
-To see the list of supported digests, use B<openssl list -digest-commands>.
+To see the list of supported digests, use C<openssl list -digest-commands>.
 Defaults to C<sha256>.
 
 =item B<-mac> I<name>

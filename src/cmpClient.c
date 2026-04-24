@@ -1825,7 +1825,8 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
     } else {
         if (opt_newkeytype != NULL || opt_centralkeygen) {
             if (opt_newkey == NULL) {
-                LOG_err("Missing -newkey option specifying the file to save the new key");
+                LOG(FL_ERR, "Missing -newkey option specifying the file to save the new key%s",
+                    opt_centralkeygen ? "" : " (or TPM2 provider handle to use)");
                 return -40;
             }
             if (opt_newkeytype != NULL && *opt_newkeytype != '\0') {
@@ -1833,7 +1834,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 const char *key_spec = strcmp(opt_newkeytype, "ECC") == 0
                     ? "EC:secp256r1" : opt_newkeytype;
 
-                if ((*new_pkey = KEY_new(key_spec)) == NULL) {
+                if ((*new_pkey = KEY_new_ex(key_spec, app_get0_libctx(), app_get0_propq())) == NULL) {
                     LOG(FL_ERR, "Unable to generate new private key according to specification '%s'",
                         key_spec);
                     return CMP_R_GENERATE_KEY;

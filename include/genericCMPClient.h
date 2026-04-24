@@ -269,6 +269,11 @@ void CMPclient_finish(OPTIONAL CMP_CTX *ctx);
 #   include <secutils/credentials/key.h>
 #  endif
 
+/* EVP_PKEY helpers */
+EVP_PKEY *KEY_new(const char *spec); /* may be "RSA:<length>","EC:<curve>","ML-DSA-<level>" */
+EVP_PKEY *KEY_new_ex(const char *spec, OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq);
+void KEY_free(OPTIONAL EVP_PKEY *pkey);
+
 /* X509_STORE helpers */
 EVP_PKEY *KEY_load(OPTIONAL const char *file, OPTIONAL const char *pass,
                    OPTIONAL const char *engine, OPTIONAL const char *desc);

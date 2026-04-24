@@ -197,13 +197,13 @@ ifneq ($(filter-out doc start stop doc doc_this doc/cmpClient.md doc/cmpClient.1
         # must use ":=" below to avoid error: Recursive variable `OPENSSL_LIB' references itself (eventually)
         OPENSSL_LIB := $(shell $(GET_LIB) 2>/dev/null)
         ifeq ($(OPENSSL_LIB),)
-            $(shell $(GET_LIB))
+            $(info $(shell $(GET_LIB)))
             $(error Error determining OPENSSL_LIB)
         endif
     endif
     LIB_NAME_PATTERN=libcrypto*$(DLL)*
     ifeq ($(wildcard $(OPENSSL_LIB)/$(LIB_NAME_PATTERN)),)
-        $(shell $(GET_LIB))
+        $(info $(shell $(GET_LIB)))
         $(error Error: cannot find OpenSSL library $(LIB_NAME_PATTERN) at $(OPENSSL_LIB)/)
     endif
     # convert to absolute path

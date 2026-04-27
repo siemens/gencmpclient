@@ -1392,7 +1392,21 @@ static int setup_transfer(CMP_CTX *ctx)
     return err;
 }
 
-/* file (path) name using prefix, subject DN, "_", hash, ".", and suffix */
+static int get_NAME_text_by_NID(const X509_NAME *name, int nid, unsigned char **out)
+{
+    int i;
+
+    for (i = 0; i < X509_NAME_entry_count(name); i++) {
+        const X509_NAME_ENTRY *e = X509_NAME_get_entry(name, i);
+        const ASN1_OBJECT *obj = X509_NAME_ENTRY_get_object(e);
+
+        if (OBJ_obj2nid(obj) == nid)
+            return ASN1_STRING_to_UTF8(out, X509_NAME_ENTRY_get_data(e));
+    }
+    return -2;
+}
+
+/* file (path) name using prefix, subject commonName, "_", hash, ".", and suffix */
 static size_t get_cert_filename(const X509 *cert, const char *prefix,
                                 const char *suffix,
                                 char *buf, size_t buf_len)
@@ -1409,13 +1423,20 @@ static size_t get_cert_filename(const X509 *cert, const char *prefix,
         buf[++len] = '\0';
     }
 
-    char subject[256], *p;
-    if (X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName,
-                                  subject, sizeof(subject)) <= 0)
+    unsigned char *subject_cn = NULL;
+    int cn_len = get_NAME_text_by_NID(X509_get_subject_name(cert), NID_commonName, &subject_cn);
+    if (cn_len < 0 ||
+        (size_t)cn_len != strlen((char *)subject_cn) /* detects embedded NUL bytes */) {
+        LOG_err("Error getting subject commonName");
+        OPENSSL_free(subject_cn);
         return 0;
-    ret = UTIL_safe_string_copy(subject, buf + len, buf_len - len, NULL);
+    }
+    ret = UTIL_safe_string_copy((char *)subject_cn, buf + len, buf_len - len, NULL);
+    OPENSSL_free(subject_cn);
     if (ret < 0)
         return 0;
+
+    char *p;
     for (p = buf + len; *p != '\0'; p++)
         if (*p == ' ')
             *p = '_';

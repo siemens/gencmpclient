@@ -1392,7 +1392,31 @@ static int setup_transfer(CMP_CTX *ctx)
     return err;
 }
 
-/* file (path) name using prefix, subject DN, "_", hash, ".", and suffix */
+static int get_NAME_text_by_NID(const X509_NAME *name, int nid, unsigned char *buf, int buf_len)
+{
+    int i, len;
+
+    for (i = 0; i < X509_NAME_entry_count(name); i++) {
+        const X509_NAME_ENTRY *e = X509_NAME_get_entry(name, i);
+        const ASN1_OBJECT *obj = X509_NAME_ENTRY_get_object(e);
+
+        if (OBJ_obj2nid(obj) == nid) {
+            const ASN1_STRING *data = X509_NAME_ENTRY_get_data(e);
+
+            len = ASN1_STRING_length(data);
+            if (len < 0)
+                return -1;
+            if (len > buf_len - 1)
+                len = buf_len - 1;
+            memcpy(buf, ASN1_STRING_get0_data(data), len);
+            buf[len] = '\0';
+            return len;
+        }
+    }
+    return -2;
+}
+
+/* file (path) name using prefix, subject commonName, "_", hash, ".", and suffix */
 static size_t get_cert_filename(const X509 *cert, const char *prefix,
                                 const char *suffix,
                                 char *buf, size_t buf_len)
@@ -1410,8 +1434,8 @@ static size_t get_cert_filename(const X509 *cert, const char *prefix,
     }
 
     char subject[256], *p;
-    if (X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName,
-                                  subject, sizeof(subject)) <= 0)
+    if (get_NAME_text_by_NID(X509_get_subject_name(cert), NID_commonName,
+                             (unsigned char *)subject, sizeof(subject)) < 0)
         return 0;
     ret = UTIL_safe_string_copy(subject, buf + len, buf_len - len, NULL);
     if (ret < 0)

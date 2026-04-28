@@ -260,15 +260,16 @@ static const UI_METHOD *get_ui_method(void)
 
 /* from OpenSSL/apps/lib/apps.c: */
 
-static const char *format2string(int format)
+static const char *format2string(file_format_t format)
 {
     switch (format) {
     case FORMAT_PEM:
         return "PEM";
     case FORMAT_ASN1:
         return "DER";
+    default:
+        return NULL;
     }
-    return NULL;
 }
 
 static void unbuffer(FILE *fp)
@@ -306,7 +307,7 @@ static void unbuffer(FILE *fp)
      pcrl != NULL ? "CRL" : pcrls != NULL ? "CRLs" : NULL)
 /*
  * Load those types of credentials for which the result pointer is not NULL.
- * Reads from stdin if 'uri' is NULL and 'maybe_stdin' is nonzero.
+ * Reads from stdin if 'uri' is NULL and 'maybe_stdin' is true.
  * 'format' parameter may be FORMAT_PEM, FORMAT_ASN1, or 0 for no hint.
  * desc may contain more detail on the credential(s) to be loaded for error msg
  * For non-NULL ppkey, pcert, and pcrl the first suitable value found is loaded.
@@ -322,7 +323,7 @@ static void unbuffer(FILE *fp)
 
 static
 bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
-                         const char *uri, int format, bool maybe_stdin,
+                         const char *uri, file_format_t format, bool maybe_stdin,
                          const char *pass, const char *desc, bool quiet,
                          EVP_PKEY **ppkey, EVP_PKEY **ppubkey,
                          EVP_PKEY **pparams,
@@ -604,7 +605,7 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
 }
 
 EVP_PKEY *FILES_load_key_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                            const char *uri, int format, bool maybe_stdin,
+                            const char *uri, file_format_t format, bool maybe_stdin,
                             const char *source, const char *desc)
 {
     char *pass;
@@ -620,7 +621,7 @@ EVP_PKEY *FILES_load_key_ex(OSSL_LIB_CTX *libctx, const char *propq,
 }
 
 EVP_PKEY *FILES_load_pubkey_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                               const char *uri, int format, bool maybe_stdin,
+                               const char *uri, file_format_t format, bool maybe_stdin,
                                const char *source, const char *desc)
 {
     char *pass;
@@ -636,7 +637,7 @@ EVP_PKEY *FILES_load_pubkey_ex(OSSL_LIB_CTX *libctx, const char *propq,
 }
 
 X509 *FILES_load_cert_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                         const char *uri, int format, bool maybe_stdin,
+                         const char *uri, file_format_t format, bool maybe_stdin,
                          OPTIONAL const char *source, OPTIONAL const char *desc,
                          int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
@@ -675,7 +676,7 @@ static bool check_cert_chain(const char *src, int type_CA, OPTIONAL const X509_V
 }
 
 bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                         const char *srcs, int format, int timeout, bool maybe_stdin,
+                         const char *srcs, file_format_t format, int timeout, bool maybe_stdin,
                          const char *source, const char *desc, int min_num,
                          int type_CA, OPTIONAL X509_VERIFY_PARAM *vpm,
                          OPTIONAL X509 **cert, OPTIONAL STACK_OF(X509) **certs)
@@ -779,7 +780,7 @@ STACK_OF(X509) *load_certs_multifile(const char *files, const char *source,
 }
 
 X509_CRL *FILES_load_crl_ex(OSSL_LIB_CTX *libctx, const char *propq, const char *src,
-                            int format, int maybe_stdin, int timeout, OPTIONAL const char *desc,
+                            file_format_t format, bool maybe_stdin, int timeout, OPTIONAL const char *desc,
                             OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
     X509_CRL *crl = NULL;
@@ -811,7 +812,7 @@ X509_CRL *FILES_load_crl_ex(OSSL_LIB_CTX *libctx, const char *propq, const char 
 }
 
 STACK_OF(X509_CRL) *FILES_load_crls_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                                       const char *srcs, int format, int timeout,
+                                       const char *srcs, file_format_t format, int timeout,
                                        OPTIONAL const char *desc, int min_num,
                                        OPTIONAL const X509_VERIFY_PARAM *vpm)
 {

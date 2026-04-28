@@ -1408,7 +1408,7 @@ static int get_NAME_text_by_NID(const X509_NAME *name, int nid, unsigned char *b
                 return -1;
             if (len > buf_len - 1)
                 len = buf_len - 1;
-            memcpy(buf, ASN1_STRING_get0_data(data), len);
+            memcpy(buf, ASN1_STRING_get0_data(data), (size_t)len);
             buf[len] = '\0';
             return len;
         }

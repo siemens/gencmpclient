@@ -31,11 +31,23 @@
 #include <secutils/credentials/credentials.h> /* for CERT{,S}_save and CERTS_free */
 #include <secutils/credentials/cert.h> /* for UTIL_parse_name */
 
+
 #ifdef LOCAL_DEFS
 # include "genericCMPClient_use.h"
 #endif
 
 #include "credential_loading.h"
+
+
+#include "atglib-key-attestation-demo/libatg.h"
+
+typedef struct CMP_CTX {
+    OSSL_CMP_CTX *osslctx;
+    bool do_rats;
+    struct token_req tpm_kd_req;
+    struct token_req attest_chal;
+} CMP_RAT_CTX;
+
 
 /*
  * Use cases are split between CMP use cases and others,
@@ -150,6 +162,10 @@ bool opt_implicit_confirm;
 bool opt_disable_confirm;
 const char *opt_certout;
 const char *opt_chainout;
+bool opt_rats;
+
+struct token_req opt_tpm_kd_req;
+struct token_req opt_attest_chal;
 
 /* certificate enrollment and revocation */
 const char *opt_oldcert;
@@ -286,6 +302,28 @@ opt_t cmp_opts[] = {
       "File to save newly enrolled certificate, possibly with chain and key"},
     { "chainout", OPT_TXT, {.txt = NULL}, { &opt_chainout },
       "File to save the chain of the newly enrolled certificate"},
+    { "rats", OPT_BOOL, {.bit = false},
+      { (const char **) &opt_rats },
+      "Request certificate with remote attestation"},
+
+    { "tpmkd_tokenname", OPT_TXT, {.txt = NULL}, {(const char**) &opt_tpm_kd_req.token_name },
+      "Token name for TPM key data request"},
+    { "tpmkd_tokencfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_tpm_kd_req.config_path },
+      "Path to the RATS token configuration file for TPM key data request"},
+    { "tpmkd_plugincfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_tpm_kd_req.plugconf_path },
+      "Path to the RATS plugin configuration file for TPM key data request"},
+    { "tpmkd_nonce", OPT_TXT, {.txt = NULL}, {(const char**) &opt_tpm_kd_req.nonce },
+      "Nonce for TPM key data request"},
+
+    { "atcha_tokenname", OPT_TXT, {.txt = NULL}, {(const char**) &opt_attest_chal.token_name },
+      "Token name for attestation challenge"},
+    { "atcha_tokencfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_attest_chal.config_path },
+      "Path to the RATS token configuration file for attestation challenge"},
+    { "atcha_plugincfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_attest_chal.plugconf_path },
+      "Path to the RATS plugin configuration file for attestation challenge"},
+    { "atcha_nonce", OPT_TXT, {.txt = NULL}, {(const char**) &opt_attest_chal.nonce },
+      "Nonce for attestation challenge"},
+
 
     OPT_HEADER("Certificate enrollment and revocation"),
     { "oldcert", OPT_TXT, {.txt = NULL}, { &opt_oldcert },
@@ -510,7 +548,112 @@ static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
 }
 #endif
 
-static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
+#define EVIDENCE_LEN 2000
+#define NONCE_SZ 32
+static X509_EXTENSIONS *getattestationExt(CMP_RAT_CTX *ctx)
+{
+    X509_EXTENSIONS *exts = NULL;
+    X509_EXTENSION *ext = NULL;
+    unsigned char *der_data = NULL, *evidence = NULL;
+    int der_len = 0, ret = 0;
+    unsigned int atg_ret;
+    ASN1_OCTET_STRING oct;
+    struct token_resp resp;
+    ctx->attest_chal.nonce_size =  ctx->attest_chal.nonce != NULL ?
+            strlen((const char*)opt_attest_chal.nonce) : 0;
+    ctx->attest_chal.user_data_size = 0;
+    atg_ret = atg_generate_evidence(ctx->attest_chal, &resp);
+    if (atg_ret == 0) {
+        printf("Token size: %lu\n", resp.token.buf_size);
+#if 0
+        printf("Token: [ ");
+        for (size_t i = 0; i < resp.token.buf_size; i++)
+            printf("0x%x ", resp.token.buf[i] & 0xff);
+        printf("]\n");
+#endif
+        if (resp.num_submods > 0) {
+            printf("Error: submodules are not supported.");
+            goto err;
+        }
+        oct.data = resp.token.buf;
+        oct.length = (int)resp.token.buf_size;
+        oct.flags = 0;
+    } else {
+        printf("An error has occurred in generating attestation token, return code - %d\n", atg_ret);
+        printf("Token request details:\n");
+        printf("Token Name: %s\n", ctx->attest_chal.token_name);
+        printf("Config Path: %s\n", ctx->attest_chal.config_path);
+        printf("Plugin Config Path: %s\n", ctx->attest_chal.plugconf_path);
+        printf("\nNonce Size: %zu\n", ctx->attest_chal.nonce_size);
+        printf("Nonce: ");
+        for (size_t i = 0; i < ctx->attest_chal.nonce_size; i++)
+            printf("0x%x ", ctx->attest_chal.nonce[i] & 0xff);
+        printf("\nUser Data Size: %zu\n\n", ctx->attest_chal.user_data_size);
+        goto err;
+    }
+
+#ifdef TEST_DUMMY_EVIDENCE
+    int evidence_len = EVIDENCE_LEN;
+    /* TODO: get evidence from library */
+    (void)ctx;
+    evidence = OPENSSL_malloc(EVIDENCE_LEN);
+    if (evidence == NULL)
+        return NULL;
+    memset(evidence, 0xAA, EVIDENCE_LEN);
+    oct.data = evidence;
+    oct.length = evidence_len;
+    oct.flags = 0;
+#endif
+
+    der_len = i2d_ASN1_OCTET_STRING(&oct, &der_data);
+    if (der_len < 0)
+        goto err;
+
+    oct.data = der_data;
+    oct.length = der_len;
+    oct.flags = 0;
+
+    // TODO find right OID
+    ASN1_OBJECT* evidenceStatement =  OBJ_txt2obj ("1.2.3.4.5", 1);
+    if (evidenceStatement == NULL)
+           goto err;
+
+    ext = X509_EXTENSION_create_by_OBJ(NULL, evidenceStatement,
+                                       0, &oct);
+    if (ext == NULL
+        || (exts = sk_X509_EXTENSION_new_null()) == NULL
+        || !sk_X509_EXTENSION_push(exts, ext))
+        goto err;
+    ret = 1;
+
+ err:
+    OPENSSL_free(evidence);
+    OPENSSL_free(der_data);
+    if (atg_ret == 0)
+        atg_free_attestation_token(resp);
+    if (ret == 0) {
+        X509_EXTENSION_free(ext);
+        sk_X509_EXTENSION_free(exts);
+        exts = NULL;
+    }
+    return exts;
+}
+
+static int add_rats_extensions(CMP_RAT_CTX *ctx, X509_EXTENSIONS **exts)
+{
+    int ret = 0;
+    X509_EXTENSIONS *rats_exts;
+
+    if (exts == NULL)
+        return 0;
+    if ((rats_exts = getattestationExt(ctx)) != NULL) {
+        ret = X509v3_add_extensions(exts, rats_exts) != NULL;
+        sk_X509_EXTENSION_pop_free(rats_exts, X509_EXTENSION_free);
+    }
+    return ret;
+}
+
+static int set_gennames(CMP_RAT_CTX *ctx, char *names, const char *desc)
 {
     char *next;
     GENERAL_NAME *n;
@@ -519,7 +662,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
         next = UTIL_next_item(names);
 
         if (strcmp(names, "critical") == 0) {
-            (void)OSSL_CMP_CTX_set_option(ctx,
+            (void)OSSL_CMP_CTX_set_option(ctx->osslctx,
                                           OSSL_CMP_OPT_SUBJECTALTNAME_CRITICAL,
                                           1);
             continue;
@@ -539,7 +682,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
             LOG(FL_ERR, "Bad syntax of %s '%s'", desc, names);
             return 0;
         }
-        if (!OSSL_CMP_CTX_push1_subjectAltName(ctx, n)) {
+        if (!OSSL_CMP_CTX_push1_subjectAltName(ctx->osslctx, n)) {
             GENERAL_NAME_free(n);
             LOG_err("Out of memory");
             return 0;
@@ -670,7 +813,7 @@ static X509_STORE *setup_CMP_truststore(const char *trusted_cert_files)
     return cmp_truststore;
 }
 
-static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
+static X509_EXTENSIONS *setup_X509_extensions(CMP_RAT_CTX *ctx)
 {
     X509_EXTENSIONS *exts = sk_X509_EXTENSION_new_null();
     X509V3_CTX ext_ctx;
@@ -704,7 +847,7 @@ static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
     if (opt_policy_oids_critical) {
         if (opt_policy_oids == NULL)
             LOG_warn("-policy_oids_critical has no effect unless -policy_oids is given");
-        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POLICIES_CRITICAL, 1)) {
+        if (!OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_POLICIES_CRITICAL, 1)) {
             LOG_err("Failed to set 'setPoliciesCritical' field of CMP context");
             goto err;
         }
@@ -727,7 +870,7 @@ static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
         }
         pinfo->policyid = policy;
 
-        if (!OSSL_CMP_CTX_push0_policy(ctx, pinfo)) {
+        if (!OSSL_CMP_CTX_push0_policy(ctx->osslctx, pinfo)) {
             LOG(FL_ERR, "Cannot add policy with OID '%s'", opt_policy_oids);
             POLICYINFO_free(pinfo);
             goto err;
@@ -885,7 +1028,7 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
 
 static int set_name(OPTIONAL const char *str,
                     int (*set_fn) (OSSL_CMP_CTX *ctx, const X509_NAME *name),
-                    OSSL_CMP_CTX *ctx, const char *desc)
+                    CMP_RAT_CTX *ctx, const char *desc)
 {
     if (str != NULL) {
         X509_NAME *n = UTIL_parse_name(str, MBSTRING_UTF8, false);
@@ -894,7 +1037,7 @@ static int set_name(OPTIONAL const char *str,
             LOG(FL_ERR, "Cannot parse %s DN '%s'", desc, str);
             return -03;
         }
-        if (!(*set_fn) (ctx, n)) {
+        if (!(*set_fn) (ctx->osslctx, n)) {
             X509_NAME_free(n);
             LOG_err("Out of memory");
             return -04;
@@ -904,7 +1047,7 @@ static int set_name(OPTIONAL const char *str,
     return CMP_OK;
 }
 
-static int setup_cert_template(CMP_CTX *ctx)
+static int setup_cert_template(CMP_RAT_CTX *ctx)
 {
     int err;
 
@@ -915,7 +1058,7 @@ static int setup_cert_template(CMP_CTX *ctx)
     if (opt_san_nodefault) {
         if (opt_sans != NULL)
             LOG_warn("-san_nodefault has no effect when -sans is used");
-        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT,
+        if (!OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT,
                                      1)) {
             LOG_err("Failed to set 'SubjectAltName_nodefault' field of CMP context");
             goto err;
@@ -1031,7 +1174,7 @@ static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
     return ret;
 }
 
-static int setup_ctx(CMP_CTX *ctx)
+static int setup_ctx(CMP_RAT_CTX *ctx)
 {
     CMP_err err = set_name(opt_expect_sender, OSSL_CMP_CTX_set1_expected_sender,
                            ctx, "expected sender");
@@ -1040,7 +1183,7 @@ static int setup_ctx(CMP_CTX *ctx)
         return err;
 
     err = CMP_R_INVALID_ARGS;
-    if (!OSSL_CMP_CTX_set_log_verbosity(ctx, (int)opt_verbosity))
+    if (!OSSL_CMP_CTX_set_log_verbosity(ctx->osslctx, (int)opt_verbosity))
         return err;
     if (opt_extracerts != NULL) {
         STACK_OF(X509) *certs =
@@ -1053,7 +1196,7 @@ static int setup_ctx(CMP_CTX *ctx)
             err = CMP_R_LOAD_CERTS;
             goto err;
         } else {
-            if (!OSSL_CMP_CTX_set1_extraCertsOut(ctx, certs)) {
+            if (!OSSL_CMP_CTX_set1_extraCertsOut(ctx->osslctx, certs)) {
                 LOG_err("Failed to set 'extraCerts' field of CMP context");
                 CERTS_free(certs);
                 err = -05;
@@ -1078,35 +1221,55 @@ static int setup_ctx(CMP_CTX *ctx)
         goto err;
     }
     /* set option flags directly via CMP API */
-    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
+    if (!OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
                                  opt_unprotected_errors ? 1 : 0)
 #if OPENSSL_4_1_FEATURES
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NONMATCHED_ERROR_NONCES,
+        || !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_NONMATCHED_ERROR_NONCES,
                                     opt_nonmatched_error_nonces ? 1 : 0)
 #endif
 #if OPENSSL_3_3_FEATURES
         || (opt_no_cache_extracerts && /* TODO remove this condition, which is just a workaround for wrong variant of OSSL_CMP_CTX_set_option() being called */
-            !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NO_CACHE_EXTRACERTS,
+            !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_NO_CACHE_EXTRACERTS,
                                      opt_no_cache_extracerts ? 1 : 0))
 #endif
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE,
+        || !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE,
                                     opt_ignore_keyusage ? 1 : 0)
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITY_DAYS,
+        || !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_VALIDITY_DAYS,
                                     (int)opt_days)
         || (opt_popo >= OSSL_CRMF_POPO_NONE
-            && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPO_METHOD,
+            && !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_POPO_METHOD,
                                         (int)opt_popo))
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLE_CONFIRM,
+        || !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_DISABLE_CONFIRM,
                                     opt_disable_confirm ? 1 : 0)
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND,
+        || !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_UNPROTECTED_SEND,
                                     opt_unprotected_requests ? 1 : 0)) {
         LOG_err("Failed to set option flags of CMP context");
         goto err;
     }
+    if (opt_rats) {
+        if (opt_tpm_kd_req.token_name == NULL ||
+                opt_tpm_kd_req.config_path == NULL ||
+                opt_tpm_kd_req.plugconf_path == NULL ||
+                opt_tpm_kd_req.nonce == NULL ||
+
+                opt_attest_chal.token_name == NULL ||
+                opt_attest_chal.config_path == NULL ||
+                opt_attest_chal.plugconf_path == NULL ||
+                opt_attest_chal.nonce == NULL
+                ) {
+                LOG_err("Incomplete RATS configuration");
+                goto err;
+        }
+        ctx->do_rats = true;
+        ctx->tpm_kd_req = opt_tpm_kd_req;
+        ctx->tpm_kd_req.nonce_size=strlen((char*)ctx->tpm_kd_req.nonce);
+        ctx->attest_chal = opt_attest_chal;
+        ctx->attest_chal.nonce_size=strlen((char*)ctx->attest_chal.nonce);
+    }
 
     if (opt_profile != NULL) {
 #if OPENSSL_3_3_FEATURES
-        err = CMPclient_add_certProfile(ctx, opt_profile);
+        err = CMPclient_add_certProfile(ctx->osslctx, opt_profile);
 #else
         LOG_err("-profile option is not supported for OpenSSL < 3.3");
         err = -29;
@@ -1114,7 +1277,7 @@ static int setup_ctx(CMP_CTX *ctx)
         if (err != CMP_OK)
             goto err;
     }
-    if (opt_geninfo != NULL && (err = handle_opt_geninfo(ctx)) != CMP_OK)
+    if (opt_geninfo != NULL && (err = handle_opt_geninfo(ctx->osslctx)) != CMP_OK)
         goto err;
     err = CMP_OK;
 
@@ -1122,7 +1285,8 @@ static int setup_ctx(CMP_CTX *ctx)
     return err;
 }
 
-static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
+
+static CMP_err prepare_CMP_client(CMP_RAT_CTX **pctx, enum use_case use_case,
                                   OPTIONAL LOG_cb_t log_fn)
 {
     X509_STORE *new_cert_truststore = NULL;
@@ -1133,7 +1297,6 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
     OSSL_CMP_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     const bool implicit_confirm = opt_implicit_confirm;
     CMP_err err = -02;
-
     use_case = use_case + 0; /* prevent warning on unused parameter */
     const char *new_cert_trusted =
         opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
@@ -1240,7 +1403,13 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
         err = -69;
         goto err;
     }
-    err = CMPclient_prepare(pctx, app_get0_libctx(), app_get0_propq(), log_fn,
+
+    *pctx = OPENSSL_zalloc(sizeof(CMP_RAT_CTX));
+       if (*pctx == NULL) {
+           goto err;
+    }
+
+    err = CMPclient_prepare(&((*pctx)->osslctx), app_get0_libctx(), app_get0_propq(), log_fn,
                             cmp_truststore, opt_recipient,
                             untrusted_certs,
                             cmp_creds, own_truststore,
@@ -1255,7 +1424,7 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
                                       "directly trusted CMP server certificate",
                                       -1 /* no type check */, vpm);
 
-        if (srvcert == NULL || !OSSL_CMP_CTX_set1_srvCert(*pctx, srvcert))
+        if (srvcert == NULL || !OSSL_CMP_CTX_set1_srvCert((*pctx)->osslctx, srvcert))
             err = -8;
         X509_free(srvcert);
     }
@@ -1788,7 +1957,7 @@ static CMP_err check_options(enum use_case use_case)
     return CMP_OK;
 }
 
-static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
+static CMP_err check_set_template_options(CMP_RAT_CTX *ctx, EVP_PKEY **new_pkey,
                                           X509 **oldcert, X509_REQ **csr,
                                           X509_EXTENSIONS **exts,
                                           enum use_case use_case)
@@ -1842,7 +2011,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                     ? "fallback public key for cert to be enrolled"
                     : "public key for checking cert resulting from p10cr";
                 pkey = load_pubkey_pwd(file, FORMAT_UNDEF, pass, NULL, desc);
-                if (pkey == NULL || !OSSL_CMP_CTX_set0_newPkey(ctx, 0, pkey)) {
+                if (pkey == NULL || !OSSL_CMP_CTX_set0_newPkey(ctx->osslctx, 0, pkey)) {
                     EVP_PKEY_free(pkey);
                     return -41;
                 }
@@ -1929,7 +2098,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                                      use_case == revocation ? "cert to be revoked" :
                                      "reference certificate (oldcert)",
                                      -1 /* no type check */, vpm);
-            if (*oldcert == NULL || !OSSL_CMP_CTX_set1_oldCert(ctx, *oldcert))
+            if (*oldcert == NULL || !OSSL_CMP_CTX_set1_oldCert(ctx->osslctx, *oldcert))
                 return -46;
         }
     }
@@ -1939,7 +2108,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
         } else {
             if ((*csr = CSR_load(opt_csr, "PKCS#10 CSR")) == NULL)
                 return -47;
-            if (!OSSL_CMP_CTX_set1_p10CSR(ctx, *csr))
+            if (!OSSL_CMP_CTX_set1_p10CSR(ctx->osslctx, *csr))
                 return -48;
         }
     }
@@ -1955,7 +2124,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 LOG(FL_ERR, "Cannot read serial number: '%s'", opt_serial);
                 return -71;
             }
-            if (!OSSL_CMP_CTX_set1_serialNumber(ctx, sno)) {
+            if (!OSSL_CMP_CTX_set1_serialNumber(ctx->osslctx, sno)) {
                 ASN1_INTEGER_free(sno);
                 LOG_err("Out of memory");
                 return -72;
@@ -2431,7 +2600,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
 static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 {
     CMP_err err = -01;
-    CMP_CTX *ctx = NULL;
+    CMP_RAT_CTX *ctx = NULL;
     EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
     CREDENTIALS *new_creds = NULL;
@@ -2454,6 +2623,80 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
                                           &exts, use_case)) != CMP_OK)
         goto err;
 
+    if (ctx->do_rats) {
+        // RATS configured
+        // Request TPM key data
+        struct token_resp req_resp;
+        unsigned int status = atg_generate_evidence(ctx->tpm_kd_req, &req_resp);
+        if (status != ATG_SUCCESS) {
+            LOG_err("Request TPM key data failed");
+            goto err;
+        }
+        // TODO find OID for TPM key data
+        ASN1_OBJECT *type = OBJ_txt2obj("1.2.3.4.5", 1);
+        if (type == NULL) {
+            LOG_err("OBJ_txt2obj failed");
+            goto err;
+        }
+        ASN1_OCTET_STRING* octetstring = ASN1_OCTET_STRING_new();
+        if (octetstring == NULL) {
+            LOG_err("ASN1_OCTET_STRING_new failed");
+            goto err;
+        }
+        if (!ASN1_OCTET_STRING_set(
+                octetstring, req_resp.submods->buf, (int)req_resp.submods->buf_size)) {
+            LOG_err("ASN1_OCTET_STRING_set failed");
+             goto err;
+        }
+        atg_free_attestation_token(req_resp);
+        ASN1_TYPE* val = ASN1_TYPE_new();
+        if (val == NULL) {
+            LOG_err("ASN1_TYPE_new failed");
+            goto err;
+        }
+        ASN1_TYPE_set(val, V_ASN1_OCTET_STRING, octetstring);
+
+        OSSL_CMP_ITAV *itav = OSSL_CMP_ITAV_create(type, val);
+        if (itav == NULL) {
+            LOG_err("OSSL_CMP_ITAV_create failed");
+            goto err;
+        }
+        if (!OSSL_CMP_CTX_push0_genm_ITAV(ctx->osslctx, itav)) {
+            LOG_err("OSSL_CMP_CTX_push0_genm_ITAV failed");
+            goto err;
+        }
+
+        STACK_OF(OSSL_CMP_ITAV) *itavs = OSSL_CMP_exec_GENM_ses(ctx->osslctx);
+
+        if (itavs == NULL || sk_OSSL_CMP_ITAV_num(itavs) != 1) {
+            LOG_err("Missing attestation challenge in GENP");
+            goto err;
+        }
+
+        OSSL_CMP_ITAV* ret_itav=sk_OSSL_CMP_ITAV_value(itavs, 0);
+        if (ret_itav == NULL) {
+             LOG_err("sk_OSSL_CMP_ITAV_value failed");
+             goto err;
+         }
+
+        ASN1_TYPE* ret_val=OSSL_CMP_ITAV_get0_value(ret_itav);
+        if (ASN1_TYPE_get(ret_val) != V_ASN1_OCTET_STRING) {
+            LOG_err("attestation challenge in GENP has wrong type");
+            goto err;
+        }
+
+        ctx->attest_chal.user_data_size = (size_t)ret_val->value.octet_string->length;
+        ctx->attest_chal.user_data = ret_val->value.octet_string->data;
+
+        if (!add_rats_extensions(ctx, &exts))
+            goto err;
+
+        sk_OSSL_CMP_ITAV_pop_free(itavs, OSSL_CMP_ITAV_free);
+
+    }
+
+
+
     if (opt_revreason < CRL_REASON_NONE
         || opt_revreason > CRL_REASON_AA_COMPROMISE
         || opt_revreason == 7) {
@@ -2462,37 +2705,37 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         goto err;
     }
 
-    if ((err = setup_transfer(ctx)) != CMP_OK)
+    if ((err = setup_transfer(ctx->osslctx)) != CMP_OK)
         goto err;
 
     switch (use_case) {
     case imprint:
-        err = CMPclient_imprint(ctx, &new_creds, new_pkey, opt_subject, exts);
+        err = CMPclient_imprint(ctx->osslctx, &new_creds, new_pkey, opt_subject, exts);
         break;
     case bootstrap:
-        err = CMPclient_bootstrap(ctx, &new_creds, new_pkey, opt_subject, exts);
+        err = CMPclient_bootstrap(ctx->osslctx, &new_creds, new_pkey, opt_subject, exts);
         break;
     case pkcs10:
-        err = CMPclient_pkcs10(ctx, &new_creds, csr);
+        err = CMPclient_pkcs10(ctx->osslctx, &new_creds, csr);
         break;
     case update:
         if (opt_reqexts != NULL)
-            err = CMPclient_update_with_exts(ctx, &new_creds, oldcert, new_pkey, exts);
+            err = CMPclient_update_with_exts(ctx->osslctx, &new_creds, oldcert, new_pkey, exts);
         else
-            err = CMPclient_update_anycert(ctx, &new_creds, oldcert, new_pkey);
+            err = CMPclient_update_anycert(ctx->osslctx, &new_creds, oldcert, new_pkey);
         break;
     case revocation:
-        err = CMPclient_revoke(ctx, oldcert, (int)opt_revreason);
+        err = CMPclient_revoke(ctx->osslctx, oldcert, (int)opt_revreason);
         break;
     case genm:
-        err = do_genm(ctx, oldcert);
+        err = do_genm(ctx->osslctx, oldcert);
         break;
     default:
         LOG(FL_ERR, "Unknown use case '%d' used", use_case);
         err = -19;
     }
 
-    int status = OSSL_CMP_CTX_get_status(ctx);
+    int status = OSSL_CMP_CTX_get_status(ctx->osslctx);
     if (status < OSSL_CMP_PKISTATUS_accepted && reqout_only_done) {
         /* we got no response because we did not send request */
         ERR_clear_error();
@@ -2502,7 +2745,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     if (err != -19 && use_case != genm && status >= 0) {
         /* we got some response, print PKIStatusInfo */
         char buf[OSSL_CMP_PKISI_BUFLEN];
-        char *string = CMPclient_snprint_PKIStatus(ctx, buf, sizeof(buf));
+        char *string = CMPclient_snprint_PKIStatus(ctx->osslctx, buf, sizeof(buf));
         const char *from = "", *server = "";
 
         if (opt_server != NULL) {
@@ -2520,7 +2763,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
 
 #if OPENSSL_3_2_FEATURES
-    if (!save_cert_or_delete(OSSL_CMP_CTX_get0_validatedSrvCert(ctx),
+    if (!save_cert_or_delete(OSSL_CMP_CTX_get0_validatedSrvCert(ctx->osslctx),
                              opt_srvcertout, "validated server cert"))
         err = -53;
 #endif
@@ -2529,10 +2772,11 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         goto err;
     }
 
-    err = save_credentials(ctx, new_creds, use_case);
+    err = save_credentials(ctx->osslctx, new_creds, use_case);
 
  err:
-    CMPclient_finish(ctx); /* this also frees ctx */
+    CMPclient_finish(ctx->osslctx); /* this also frees osslctx */
+    OPENSSL_free(ctx);
     KEY_free(new_pkey);
     EXTENSIONS_free(exts);
     CREDENTIALS_free(new_creds);

@@ -258,7 +258,8 @@ else()
   add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
   add_compile_options(
     -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
-    -Wsign-compare -Wformat -Wtype-limits -Wundef -Wconversion -Wunused-parameter)
+    -Wsign-compare -Wformat -Wformat-security -Wtype-limits -Wundef -Wconversion
+    -Wpointer-arith -Wunused-parameter -Wshadow)
   add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined)
 
 endif()

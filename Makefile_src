@@ -84,19 +84,18 @@ OPENSSL_DLLS = *{crypto,ssl}*.dll
 CC ?= gcc
 ifdef NDEBUG
     override DEBUG_FLAGS ?= -O3
-    override DEBUG_FLAGS += -DNDEBUG=1 -Werror
+    override DEBUG_FLAGS += -DNDEBUG=1
 else
-    override DEBUG_FLAGS ?= -g -O0 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
+    override DEBUG_FLAGS ?= -g -O0 -Werror -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all # not every compiler(version) supports -Og
 endif
 override CFLAGS += $(DEBUG_FLAGS) -fstack-protector -fno-omit-frame-pointer
 # override CFLAGS += -std=gnu90  # TODO maybe clean up code and re-enable flag
 override CFLAGS += \
-  -Wall -Woverflow -Wextra -Wswitch -Wmissing-prototypes -Wstrict-prototypes \
-  -Wformat -Wformat-security -Wtype-limits -Wundef -Wconversion \
-  -Wsign-compare -Wpointer-arith -Wunused-parameter -Wshadow \
+  -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch \
+  -Wsign-compare -Wformat -Wformat-security -Wtype-limits -Wundef -Wconversion \
+  -Wpointer-arith -Wunused-parameter -Wshadow \
   -pedantic -DPEDANTIC
-override CFLAGS +=-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined \
-  -Wno-sign-conversion -Wno-shorten-64-to-32 -Wno-shadow # due to libsecutils
+override CFLAGS +=-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined
 ifeq ($(LPATH),)
   ifndef GENCMP_NO_SECUTILS
     override CFLAGS += -I$(SECUTILS_DIR)/src/libsecutils/include

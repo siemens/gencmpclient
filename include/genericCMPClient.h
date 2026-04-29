@@ -35,7 +35,10 @@ extern "C" {
 /* for low-level CMP API, in particular, type OSSL_CMP_CTX */
 # include <openssl/cmp.h>
 /* for abbreviation and backward compatibility: */
-typedef OSSL_CMP_CTX CMP_CTX;
+
+typedef struct {
+	OSSL_CMP_CTX *osslctx;
+} CMP_CTX;
 
 # if OPENSSL_VERSION_NUMBER < 0x30000080L
 #  define OSSL_CMP_PKISTATUS_request                -3
@@ -216,10 +219,10 @@ CMP_err CMPclient_pkcs10(CMP_CTX *ctx, CREDENTIALS **new_creds,
                          const X509_REQ *csr);
 CMP_err CMPclient_update(CMP_CTX *ctx, CREDENTIALS **new_creds,
                          OPTIONAL const EVP_PKEY *new_key);
-CMP_err CMPclient_update_anycert(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
+CMP_err CMPclient_update_anycert(CMP_CTX *ctx, CREDENTIALS **new_creds,
                                  OPTIONAL const X509 *old_cert,
                                  OPTIONAL const EVP_PKEY *new_key);
-CMP_err CMPclient_update_with_exts(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds,
+CMP_err CMPclient_update_with_exts(CMP_CTX *ctx, CREDENTIALS **new_creds,
                                    OPTIONAL const X509 *old_cert,
                                    OPTIONAL const EVP_PKEY *new_key,
                                    OPTIONAL const X509_EXTENSIONS *exts);
@@ -252,7 +255,7 @@ CMP_err CMPclient_crlUpdate(CMP_CTX *ctx, OPTIONAL const X509 *cert,
 # endif
 
 /* get error information sent by the server */
-char *CMPclient_snprint_PKIStatus(const OSSL_CMP_CTX *ctx,
+char *CMPclient_snprint_PKIStatus(const CMP_CTX *ctx,
                                   char *buf, size_t bufsize);
 
 /* must be called between any of the above certificate management activities */

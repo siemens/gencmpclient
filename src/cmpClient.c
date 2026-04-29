@@ -510,7 +510,7 @@ static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
 }
 #endif
 
-static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
+static int set_gennames(CMP_CTX *ctx, char *names, const char *desc)
 {
     char *next;
     GENERAL_NAME *n;
@@ -519,7 +519,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
         next = UTIL_next_item(names);
 
         if (strcmp(names, "critical") == 0) {
-            (void)OSSL_CMP_CTX_set_option(ctx,
+            (void)OSSL_CMP_CTX_set_option(ctx->osslctx,
                                           OSSL_CMP_OPT_SUBJECTALTNAME_CRITICAL,
                                           1);
             continue;
@@ -539,7 +539,7 @@ static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
             LOG(FL_ERR, "Bad syntax of %s '%s'", desc, names);
             return 0;
         }
-        if (!OSSL_CMP_CTX_push1_subjectAltName(ctx, n)) {
+        if (!OSSL_CMP_CTX_push1_subjectAltName(ctx->osslctx, n)) {
             GENERAL_NAME_free(n);
             LOG_err("Out of memory");
             return 0;
@@ -704,7 +704,7 @@ static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
     if (opt_policy_oids_critical) {
         if (opt_policy_oids == NULL)
             LOG_warn("-policy_oids_critical has no effect unless -policy_oids is given");
-        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POLICIES_CRITICAL, 1)) {
+        if (!OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_POLICIES_CRITICAL, 1)) {
             LOG_err("Failed to set 'setPoliciesCritical' field of CMP context");
             goto err;
         }
@@ -727,7 +727,7 @@ static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
         }
         pinfo->policyid = policy;
 
-        if (!OSSL_CMP_CTX_push0_policy(ctx, pinfo)) {
+        if (!OSSL_CMP_CTX_push0_policy(ctx->osslctx, pinfo)) {
             LOG(FL_ERR, "Cannot add policy with OID '%s'", opt_policy_oids);
             POLICYINFO_free(pinfo);
             goto err;
@@ -885,7 +885,7 @@ static OSSL_CMP_MSG *read_write_req_resp(OSSL_CMP_CTX *ctx,
 
 static int set_name(OPTIONAL const char *str,
                     int (*set_fn) (OSSL_CMP_CTX *ctx, const X509_NAME *name),
-                    OSSL_CMP_CTX *ctx, const char *desc)
+                    CMP_CTX *ctx, const char *desc)
 {
     if (str != NULL) {
         X509_NAME *n = UTIL_parse_name(str, MBSTRING_UTF8, false);
@@ -894,7 +894,7 @@ static int set_name(OPTIONAL const char *str,
             LOG(FL_ERR, "Cannot parse %s DN '%s'", desc, str);
             return -03;
         }
-        if (!(*set_fn) (ctx, n)) {
+        if (!(*set_fn) (ctx->osslctx, n)) {
             X509_NAME_free(n);
             LOG_err("Out of memory");
             return -04;
@@ -915,7 +915,7 @@ static int setup_cert_template(CMP_CTX *ctx)
     if (opt_san_nodefault) {
         if (opt_sans != NULL)
             LOG_warn("-san_nodefault has no effect when -sans is used");
-        if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT,
+        if (!OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_SUBJECTALTNAME_NODEFAULT,
                                      1)) {
             LOG_err("Failed to set 'SubjectAltName_nodefault' field of CMP context");
             goto err;
@@ -1040,7 +1040,7 @@ static int setup_ctx(CMP_CTX *ctx)
         return err;
 
     err = CMP_R_INVALID_ARGS;
-    if (!OSSL_CMP_CTX_set_log_verbosity(ctx, (int)opt_verbosity))
+    if (!OSSL_CMP_CTX_set_log_verbosity(ctx->osslctx, (int)opt_verbosity))
         return err;
     if (opt_extracerts != NULL) {
         STACK_OF(X509) *certs =
@@ -1053,7 +1053,7 @@ static int setup_ctx(CMP_CTX *ctx)
             err = CMP_R_LOAD_CERTS;
             goto err;
         } else {
-            if (!OSSL_CMP_CTX_set1_extraCertsOut(ctx, certs)) {
+            if (!OSSL_CMP_CTX_set1_extraCertsOut(ctx->osslctx, certs)) {
                 LOG_err("Failed to set 'extraCerts' field of CMP context");
                 CERTS_free(certs);
                 err = -05;
@@ -1078,27 +1078,27 @@ static int setup_ctx(CMP_CTX *ctx)
         goto err;
     }
     /* set option flags directly via CMP API */
-    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
+    if (!OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
                                  opt_unprotected_errors ? 1 : 0)
 #if OPENSSL_4_1_FEATURES
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NONMATCHED_ERROR_NONCES,
+        || !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_NONMATCHED_ERROR_NONCES,
                                     opt_nonmatched_error_nonces ? 1 : 0)
 #endif
 #if OPENSSL_3_3_FEATURES
         || (opt_no_cache_extracerts && /* TODO remove this condition, which is just a workaround for wrong variant of OSSL_CMP_CTX_set_option() being called */
-            !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NO_CACHE_EXTRACERTS,
+            !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_NO_CACHE_EXTRACERTS,
                                      opt_no_cache_extracerts ? 1 : 0))
 #endif
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE,
+        || !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_IGNORE_KEYUSAGE,
                                     opt_ignore_keyusage ? 1 : 0)
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_VALIDITY_DAYS,
+        || !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_VALIDITY_DAYS,
                                     (int)opt_days)
         || (opt_popo >= OSSL_CRMF_POPO_NONE
-            && !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_POPO_METHOD,
+            && !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_POPO_METHOD,
                                         (int)opt_popo))
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_DISABLE_CONFIRM,
+        || !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_DISABLE_CONFIRM,
                                     opt_disable_confirm ? 1 : 0)
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_SEND,
+        || !OSSL_CMP_CTX_set_option(ctx->osslctx, OSSL_CMP_OPT_UNPROTECTED_SEND,
                                     opt_unprotected_requests ? 1 : 0)) {
         LOG_err("Failed to set option flags of CMP context");
         goto err;
@@ -1114,7 +1114,7 @@ static int setup_ctx(CMP_CTX *ctx)
         if (err != CMP_OK)
             goto err;
     }
-    if (opt_geninfo != NULL && (err = handle_opt_geninfo(ctx)) != CMP_OK)
+    if (opt_geninfo != NULL && (err = handle_opt_geninfo(ctx->osslctx)) != CMP_OK)
         goto err;
     err = CMP_OK;
 
@@ -1133,7 +1133,6 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
     OSSL_CMP_transfer_cb_t transfer_fn = NULL; /* default HTTP(S) transfer */
     const bool implicit_confirm = opt_implicit_confirm;
     CMP_err err = -02;
-
     use_case = use_case + 0; /* prevent warning on unused parameter */
     const char *new_cert_trusted =
         opt_out_trusted == NULL ? opt_srvcert : opt_out_trusted;
@@ -1255,7 +1254,7 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
                                       "directly trusted CMP server certificate",
                                       -1 /* no type check */, vpm);
 
-        if (srvcert == NULL || !OSSL_CMP_CTX_set1_srvCert(*pctx, srvcert))
+        if (srvcert == NULL || !OSSL_CMP_CTX_set1_srvCert((*pctx)->osslctx, srvcert))
             err = -8;
         X509_free(srvcert);
     }
@@ -1369,7 +1368,7 @@ static int setup_transfer(CMP_CTX *ctx)
 
     SSL_CTX *tls = NULL;
     if (opt_tls_used
-            && (tls = setup_TLS(OSSL_CMP_CTX_get0_untrusted(ctx))) == NULL) {
+            && (tls = setup_TLS(OSSL_CMP_CTX_get0_untrusted(ctx->osslctx))) == NULL) {
         LOG_err("Unable to set up TLS for CMP client");
         err = -16;
         goto err;
@@ -1842,7 +1841,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                     ? "fallback public key for cert to be enrolled"
                     : "public key for checking cert resulting from p10cr";
                 pkey = load_pubkey_pwd(file, FORMAT_UNDEF, pass, NULL, desc);
-                if (pkey == NULL || !OSSL_CMP_CTX_set0_newPkey(ctx, 0, pkey)) {
+                if (pkey == NULL || !OSSL_CMP_CTX_set0_newPkey(ctx->osslctx, 0, pkey)) {
                     EVP_PKEY_free(pkey);
                     return -41;
                 }
@@ -1929,7 +1928,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                                      use_case == revocation ? "cert to be revoked" :
                                      "reference certificate (oldcert)",
                                      -1 /* no type check */, vpm);
-            if (*oldcert == NULL || !OSSL_CMP_CTX_set1_oldCert(ctx, *oldcert))
+            if (*oldcert == NULL || !OSSL_CMP_CTX_set1_oldCert(ctx->osslctx, *oldcert))
                 return -46;
         }
     }
@@ -1939,7 +1938,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
         } else {
             if ((*csr = CSR_load(opt_csr, "PKCS#10 CSR")) == NULL)
                 return -47;
-            if (!OSSL_CMP_CTX_set1_p10CSR(ctx, *csr))
+            if (!OSSL_CMP_CTX_set1_p10CSR(ctx->osslctx, *csr))
                 return -48;
         }
     }
@@ -1955,7 +1954,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 LOG(FL_ERR, "Cannot read serial number: '%s'", opt_serial);
                 return -71;
             }
-            if (!OSSL_CMP_CTX_set1_serialNumber(ctx, sno)) {
+            if (!OSSL_CMP_CTX_set1_serialNumber(ctx->osslctx, sno)) {
                 ASN1_INTEGER_free(sno);
                 LOG_err("Out of memory");
                 return -72;
@@ -2043,7 +2042,7 @@ CMP_err save_certs(STACK_OF(X509) *certs, const char *field, const char *desc,
 static CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds,
                                 enum use_case use_case)
 {
-    CMP_err err = save_certs(OSSL_CMP_CTX_get1_extraCertsIn(ctx),
+    CMP_err err = save_certs(OSSL_CMP_CTX_get1_extraCertsIn(ctx->osslctx),
                              "extraCerts", "extra", opt_extracerts_dir,
                              opt_extracertsout, opt_extracerts_dir_format);
 
@@ -2053,7 +2052,7 @@ static CMP_err save_credentials(CMP_CTX *ctx, CREDENTIALS *new_creds,
     if (use_case == revocation || use_case == genm || use_case == validate)
         return CMP_OK;
 
-    err = save_certs(OSSL_CMP_CTX_get1_caPubs(ctx), "caPubs", "CA",
+    err = save_certs(OSSL_CMP_CTX_get1_caPubs(ctx->osslctx), "caPubs", "CA",
                      opt_cacerts_dir, opt_cacertsout, opt_cacerts_dir_format);
     if (err != CMP_OK)
         return err;
@@ -2240,10 +2239,10 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
                 err = -58;
             }
         } else {
-            if (reqout_only_done && (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans
+            if (reqout_only_done && (OSSL_CMP_CTX_get_status(ctx->osslctx) == OSSL_CMP_PKISTATUS_trans
                                      || err == CMP_R_GET_ITAV))
                 err = CMP_OK; /* not checking response as we did not send request */
-            else if (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
+            else if (OSSL_CMP_CTX_get_status(ctx->osslctx) == OSSL_CMP_PKISTATUS_trans)
                 LOG(FL_ERR, "Could not obtain valid response message on genm requesting caCerts");
         }
         CERTS_free(cacerts);
@@ -2273,10 +2272,10 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             err = CMPclient_rootCaCert(ctx, oldwithold, &newwithnew,
                                        &newwithold, &oldwithnew);
             if (err != CMP_OK) {
-            if (reqout_only_done && (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans
+            if (reqout_only_done && (OSSL_CMP_CTX_get_status(ctx->osslctx) == OSSL_CMP_PKISTATUS_trans
                                      || err == CMP_R_GET_ITAV))
                     err = CMP_OK; /* not checking response as we did not send request */
-                else if (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
+                else if (OSSL_CMP_CTX_get_status(ctx->osslctx) == OSSL_CMP_PKISTATUS_trans)
                     LOG(FL_ERR, "Could not obtain valid response message on genm requesting rootCaCert");
                 goto end_upd;
             }
@@ -2336,10 +2335,10 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             err = CMPclient_crlUpdate(ctx, crlcert != NULL ? crlcert : oldcert,
                                       oldcrl, &crl);
             if (err != CMP_OK) {
-                if (reqout_only_done && (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans
+                if (reqout_only_done && (OSSL_CMP_CTX_get_status(ctx->osslctx) == OSSL_CMP_PKISTATUS_trans
                                          || err == CMP_R_GET_ITAV))
                     err = CMP_OK; /* not checking response as we did not send request */
-                else if (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
+                else if (OSSL_CMP_CTX_get_status(ctx->osslctx) == OSSL_CMP_PKISTATUS_trans)
                     LOG(FL_ERR, "Could not obtain valid response message on genm requesting crlUpdate");
                 goto end_crlupd;
             }
@@ -2371,10 +2370,10 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
         err = CMPclient_certReqTemplate(ctx, &certTemplate, &keySpec);
 
         if (err != CMP_OK) {
-            if (reqout_only_done && (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans
+            if (reqout_only_done && (OSSL_CMP_CTX_get_status(ctx->osslctx) == OSSL_CMP_PKISTATUS_trans
                                      || err == CMP_R_GET_ITAV))
                 err = CMP_OK; /* not checking response as we did not send request */
-            else if (OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
+            else if (OSSL_CMP_CTX_get_status(ctx->osslctx) == OSSL_CMP_PKISTATUS_trans)
                 LOG(FL_ERR, "Could not obtain valid response message on genm requesting certReqTemplate");
             return err;
         }
@@ -2406,15 +2405,15 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
 
             LOG(FL_WARN, "No specific support for -infotype %s available in OpenSSL version %lx",
                 opt_infotype, OpenSSL_version_num());
-            if (req == NULL || !OSSL_CMP_CTX_push0_genm_ITAV(ctx, req)) {
+            if (req == NULL || !OSSL_CMP_CTX_push0_genm_ITAV(ctx->osslctx, req)) {
                 LOG(FL_ERR, "Failed to create genm for -infotype %s",
                     opt_infotype);
                 return -24;
             }
         }
 
-        STACK_OF(OSSL_CMP_ITAV) *itavs = OSSL_CMP_exec_GENM_ses(ctx);
-        if (reqout_only_done && OSSL_CMP_CTX_get_status(ctx) == OSSL_CMP_PKISTATUS_trans)
+        STACK_OF(OSSL_CMP_ITAV) *itavs = OSSL_CMP_exec_GENM_ses(ctx->osslctx);
+        if (reqout_only_done && OSSL_CMP_CTX_get_status(ctx->osslctx) == OSSL_CMP_PKISTATUS_trans)
             return CMP_OK; /* not checking response as we did not send request */
         if (itavs != NULL) {
             int res = print_itavs(itavs);
@@ -2422,7 +2421,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             sk_OSSL_CMP_ITAV_pop_free(itavs, OSSL_CMP_ITAV_free);
             return res ? CMP_OK : -25;
         }
-        if (OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_request)
+        if (OSSL_CMP_CTX_get_status(ctx->osslctx) != OSSL_CMP_PKISTATUS_request)
             LOG(FL_ERR, "Did not receive response on genm or genp is not valid");
         return -26;
     }
@@ -2492,7 +2491,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         err = -19;
     }
 
-    int status = OSSL_CMP_CTX_get_status(ctx);
+    int status = OSSL_CMP_CTX_get_status(ctx->osslctx);
     if (status < OSSL_CMP_PKISTATUS_accepted && reqout_only_done) {
         /* we got no response because we did not send request */
         ERR_clear_error();
@@ -2520,7 +2519,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     }
 
 #if OPENSSL_3_2_FEATURES
-    if (!save_cert_or_delete(OSSL_CMP_CTX_get0_validatedSrvCert(ctx),
+    if (!save_cert_or_delete(OSSL_CMP_CTX_get0_validatedSrvCert(ctx->osslctx),
                              opt_srvcertout, "validated server cert"))
         err = -53;
 #endif

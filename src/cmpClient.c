@@ -30,6 +30,7 @@
 #include <secutils/certstatus/crl_mgmt.h> /* for CRLMGMT_load_crl_cb */
 #include <secutils/credentials/credentials.h> /* for CERT{,S}_save and CERTS_free */
 #include <secutils/credentials/cert.h> /* for UTIL_parse_name */
+#include "atglib-key-attestation-demo/libatg.h"
 
 #ifdef LOCAL_DEFS
 # include "genericCMPClient_use.h"
@@ -150,6 +151,10 @@ bool opt_implicit_confirm;
 bool opt_disable_confirm;
 const char *opt_certout;
 const char *opt_chainout;
+bool opt_rats;
+
+struct token_req opt_tpm_kd_req;
+struct token_req opt_attest_chal;
 
 /* certificate enrollment and revocation */
 const char *opt_oldcert;
@@ -196,6 +201,12 @@ bool opt_stapling;
 X509_VERIFY_PARAM *vpm = NULL;
 CRLMGMT_DATA *cmdata = NULL;
 STACK_OF(X509_CRL) *crls = NULL;
+
+typedef struct RATS_CTX {
+	OSSL_CMP_CTX *osslctx;
+	struct token_req tpm_kd_req;
+	struct token_req attest_chal;
+} RATS_CTX;
 
 opt_t cmp_opts[] = {
     { "help", OPT_BOOL, {.num = -1}, { NULL },
@@ -286,6 +297,28 @@ opt_t cmp_opts[] = {
       "File to save newly enrolled certificate, possibly with chain and key"},
     { "chainout", OPT_TXT, {.txt = NULL}, { &opt_chainout },
       "File to save the chain of the newly enrolled certificate"},
+    { "rats", OPT_BOOL, {.bit = false},
+      { (const char **) &opt_rats },
+      "Request certificate with remote attestation"},
+
+    { "tpmkd_tokenname", OPT_TXT, {.txt = NULL}, {(const char**) &opt_tpm_kd_req.token_name },
+      "Token name for TPM key data request"},
+    { "tpmkd_tokencfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_tpm_kd_req.config_path },
+      "Path to the RATS token configuration file for TPM key data request"},
+    { "tpmkd_plugincfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_tpm_kd_req.plugconf_path },
+      "Path to the RATS plugin configuration file for TPM key data request"},
+    { "tpmkd_plugincfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_tpm_kd_req.nonce },
+      "Nonce for TPM key data request"},
+
+    { "atcha_tokenname", OPT_TXT, {.txt = NULL}, {(const char**) &opt_attest_chal.token_name },
+      "Token name for attestation challenge"},
+    { "atcha_tokencfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_attest_chal.config_path },
+      "Path to the RATS token configuration file for attestation challenge"},
+    { "atcha_plugincfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_attest_chal.plugconf_path },
+      "Path to the RATS plugin configuration file for attestation challenge"},
+    { "atcha_plugincfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_attest_chal.nonce },
+      "Nonce for attestation challenge"},
+
 
     OPT_HEADER("Certificate enrollment and revocation"),
     { "oldcert", OPT_TXT, {.txt = NULL}, { &opt_oldcert },
@@ -510,7 +543,112 @@ static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
 }
 #endif
 
-static int set_gennames(OSSL_CMP_CTX *ctx, char *names, const char *desc)
+#define EVIDENCE_LEN 2000
+#define NONCE_SZ 32
+static X509_EXTENSIONS *getattestationExt(RATS_CTX *rats_ctx)
+{
+    X509_EXTENSIONS *exts = NULL;
+    X509_EXTENSION *ext = NULL;
+    unsigned char *der_data = NULL, *evidence = NULL;
+    int der_len = 0, ret = 0;
+    unsigned int atg_ret;
+    ASN1_OCTET_STRING oct;
+    struct token_resp resp;
+    rats_ctx->attest_chal.nonce_size =  rats_ctx->attest_chal.nonce != NULL ?
+            strlen((const char*)opt_attest_chal.nonce) : 0;
+    rats_ctx->attest_chal.user_data_size = 0;
+    atg_ret = atg_generate_evidence(rats_ctx->attest_chal, &resp);
+    if (atg_ret == 0) {
+        printf("Token size: %lu\n", resp.token.buf_size);
+#if 0
+        printf("Token: [ ");
+        for (size_t i = 0; i < resp.token.buf_size; i++)
+            printf("0x%x ", resp.token.buf[i] & 0xff);
+        printf("]\n");
+#endif
+        if (resp.num_submods > 0) {
+            printf("Error: submodules are not supported.");
+            goto err;
+        }
+        oct.data = resp.token.buf;
+        oct.length = (int)resp.token.buf_size;
+        oct.flags = 0;
+    } else {
+        printf("An error has occurred in generating attestation token, return code - %d\n", atg_ret);
+        printf("Token request details:\n");
+        printf("Token Name: %s\n", rats_ctx->attest_chal.token_name);
+        printf("Config Path: %s\n", rats_ctx->attest_chal.config_path);
+        printf("Plugin Config Path: %s\n", rats_ctx->attest_chal.plugconf_path);
+        printf("\nNonce Size: %zu\n", rats_ctx->attest_chal.nonce_size);
+        printf("Nonce: ");
+        for (size_t i = 0; i < rats_ctx->attest_chal.nonce_size; i++)
+            printf("0x%x ", rats_ctx->attest_chal.nonce[i] & 0xff);
+        printf("\nUser Data Size: %zu\n\n", rats_ctx->attest_chal.user_data_size);
+        goto err;
+    }
+
+#ifdef TEST_DUMMY_EVIDENCE
+    int evidence_len = EVIDENCE_LEN;
+    /* TODO: get evidence from library */
+    (void)ctx;
+    evidence = OPENSSL_malloc(EVIDENCE_LEN);
+    if (evidence == NULL)
+        return NULL;
+    memset(evidence, 0xAA, EVIDENCE_LEN);
+    oct.data = evidence;
+    oct.length = evidence_len;
+    oct.flags = 0;
+#endif
+
+    der_len = i2d_ASN1_OCTET_STRING(&oct, &der_data);
+    if (der_len < 0)
+        goto err;
+
+    oct.data = der_data;
+    oct.length = der_len;
+    oct.flags = 0;
+
+    // TODO find right OID
+    ASN1_OBJECT* evidenceStatement =  OBJ_txt2obj ("1.2.3.4.5", 1);
+    if (evidenceStatement == NULL)
+           goto err;
+
+    ext = X509_EXTENSION_create_by_OBJ(NULL, evidenceStatement,
+                                       0, &oct);
+    if (ext == NULL
+        || (exts = sk_X509_EXTENSION_new_null()) == NULL
+        || !sk_X509_EXTENSION_push(exts, ext))
+        goto err;
+    ret = 1;
+
+ err:
+    OPENSSL_free(evidence);
+    OPENSSL_free(der_data);
+    if (atg_ret == 0)
+        atg_free_attestation_token(resp);
+    if (ret == 0) {
+        X509_EXTENSION_free(ext);
+        sk_X509_EXTENSION_free(exts);
+        exts = NULL;
+    }
+    return exts;
+}
+
+static int add_rats_extensions(RATS_CTX *rats_ctx, X509_EXTENSIONS **exts)
+{
+    int ret = 0;
+    X509_EXTENSIONS *rats_exts;
+
+    if (exts == NULL)
+        return 0;
+    if ((rats_exts = getattestationExt(rats_ctx)) != NULL) {
+        ret = X509v3_add_extensions(exts, rats_exts) != NULL;
+        sk_X509_EXTENSION_pop_free(rats_exts, X509_EXTENSION_free);
+    }
+    return ret;
+}
+
+static int set_gennames(CMP_CTX *ctx, char *names, const char *desc)
 {
     char *next;
     GENERAL_NAME *n;
@@ -1031,7 +1169,7 @@ static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
     return ret;
 }
 
-static int setup_ctx(CMP_CTX *ctx)
+static int setup_ctx(CMP_CTX *ctx, RATS_CTX *rats_ctx)
 {
     CMP_err err = set_name(opt_expect_sender, OSSL_CMP_CTX_set1_expected_sender,
                            ctx, "expected sender");
@@ -1103,6 +1241,26 @@ static int setup_ctx(CMP_CTX *ctx)
         LOG_err("Failed to set option flags of CMP context");
         goto err;
     }
+    if (opt_rats) {
+        if (opt_tpm_kd_req.token_name == NULL ||
+                opt_tpm_kd_req.config_path == NULL ||
+                opt_tpm_kd_req.plugconf_path == NULL ||
+                opt_tpm_kd_req.nonce == NULL ||
+                opt_tpm_kd_req.token_name == NULL ||
+
+                opt_attest_chal.token_name == NULL ||
+                opt_attest_chal.config_path == NULL ||
+                opt_attest_chal.plugconf_path == NULL ||
+                opt_attest_chal.nonce == NULL
+                )
+            LOG_err("Incomplete RATS configuration");
+                       goto err;
+
+        rats_ctx->tpm_kd_req = opt_tpm_kd_req;
+        rats_ctx->tpm_kd_req.nonce_size=strlen((char*)rats_ctx->tpm_kd_req.nonce);
+        rats_ctx->attest_chal = opt_attest_chal;
+        rats_ctx->attest_chal.nonce_size=strlen((char*)rats_ctx->attest_chal.nonce);
+    }
 
     if (opt_profile != NULL) {
 #if OPENSSL_3_3_FEATURES
@@ -1121,6 +1279,7 @@ static int setup_ctx(CMP_CTX *ctx)
  err:
     return err;
 }
+
 
 static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
                                   OPTIONAL LOG_cb_t log_fn)
@@ -2432,6 +2591,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 {
     CMP_err err = -01;
     CMP_CTX *ctx = NULL;
+    RATS_CTX *rats_ctx = NULL;
     EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
     CREDENTIALS *new_creds = NULL;
@@ -2446,13 +2606,64 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         LOG_err("Failed to prepare CMP client");
         goto err;
     }
-    if ((err = setup_ctx(ctx)) != CMP_OK) {
+    if ((err = setup_ctx(ctx, rats_ctx)) != CMP_OK) {
         LOG_err("Failed to prepare CMP client");
         goto err;
     }
     if ((err = check_set_template_options(ctx, &new_pkey, &oldcert, &csr,
                                           &exts, use_case)) != CMP_OK)
         goto err;
+
+    // TODO add RATS stuff
+    if (rats_ctx->tpm_kd_req.token_name != NULL) {
+        // RATS configured
+        // Request TPM key data
+        struct token_resp req_resp;
+        unsigned int status = atg_generate_evidence(rats_ctx->tpm_kd_req, &req_resp);
+        if (status != ATG_SUCCESS) {
+            LOG_err("Request TPM key data failed");
+            goto err;
+        }
+        // TODO find OID for TPM key data
+        ASN1_OBJECT *type = OBJ_txt2obj("1.2.3.4.5", 1);
+        ASN1_OCTET_STRING* octetstring = ASN1_OCTET_STRING_new();
+        ASN1_OCTET_STRING_set(octetstring, req_resp.submods->buf, (int)req_resp.submods->buf_size);
+        ASN1_TYPE* val = ASN1_TYPE_new();
+        ASN1_TYPE_set(val, V_ASN1_OCTET_STRING, octetstring);
+
+        OSSL_CMP_ITAV *itav = OSSL_CMP_ITAV_create(type, val);
+        OSSL_CMP_CTX_push0_genm_ITAV(ctx, itav);
+
+        STACK_OF(OSSL_CMP_ITAV) *itavs = OSSL_CMP_exec_GENM_ses(ctx);
+
+        atg_free_attestation_token(req_resp);
+
+        if (itavs == NULL || sk_OSSL_CMP_ITAV_num(itavs) != 1) {
+            LOG_err("Missing attestation challenge in GENP");
+            goto err;
+        }
+
+        OSSL_CMP_ITAV* ret_itav=sk_OSSL_CMP_ITAV_value(itavs, 0);
+
+
+        ASN1_TYPE* ret_val=OSSL_CMP_ITAV_get0_value(ret_itav);
+        if (ASN1_TYPE_get(ret_val) != V_ASN1_OCTET_STRING) {
+            LOG_err("attestation challenge in GENP has wrong type");
+            goto err;
+        }
+
+        rats_ctx->attest_chal.user_data_size = (size_t)ret_val->value.octet_string->length;
+        rats_ctx->attest_chal.user_data = ret_val->value.octet_string->data;
+
+        if (add_rats_extensions(rats_ctx, &exts))
+            goto err;
+
+
+        sk_OSSL_CMP_ITAV_pop_free(itavs, OSSL_CMP_ITAV_free);
+
+    }
+
+
 
     if (opt_revreason < CRL_REASON_NONE
         || opt_revreason > CRL_REASON_AA_COMPROMISE

@@ -670,27 +670,24 @@ static X509_STORE *setup_CMP_truststore(const char *trusted_cert_files)
     return cmp_truststore;
 }
 
-static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
+static bool setup_X509_extensions_check_policies(CMP_CTX *ctx, X509_EXTENSIONS **exts)
 {
-    X509_EXTENSIONS *exts = sk_X509_EXTENSION_new_null();
     X509V3_CTX ext_ctx;
 
-    if (exts == NULL)
-        return NULL;
     if (opt_reqexts != NULL || opt_policies != NULL) {
         X509V3_set_ctx(&ext_ctx, NULL, NULL, NULL, NULL, 0);
         X509V3_set_nconf(&ext_ctx, config);
     }
 
     if (opt_reqexts != NULL) {
-        if (!X509V3_EXT_add_nconf_sk(config, &ext_ctx, opt_reqexts, &exts)) {
+        if (!X509V3_EXT_add_nconf_sk(config, &ext_ctx, opt_reqexts, exts)) {
             LOG(FL_ERR, "Cannot load extension section '%s'", opt_reqexts);
             goto err;
         }
     }
 
     if (opt_policies != NULL) {
-        if (!X509V3_EXT_add_nconf_sk(config, &ext_ctx, opt_policies, &exts)) {
+        if (!X509V3_EXT_add_nconf_sk(config, &ext_ctx, opt_policies, exts)) {
             LOG(FL_ERR, "Cannot load policy section '%s'", opt_policies);
             goto err;
         }
@@ -735,11 +732,12 @@ static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
         opt_policy_oids = next;
     }
 
-    return exts;
+    return true;
 
  err:
-    EXTENSIONS_free(exts);
-    return NULL;
+    EXTENSIONS_free(*exts);
+    *exts = NULL;
+    return false;
 }
 
 /*
@@ -1887,7 +1885,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
 
         if ((err = setup_cert_template(ctx)) != CMP_OK)
             return err;
-        if ((*exts = setup_X509_extensions(ctx)) == NULL) {
+        if (!setup_X509_extensions_check_policies(ctx, exts)) {
             LOG_err("Unable to set up X509 extensions for CMP client");
             return -44;
         }
@@ -2472,7 +2470,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         goto err;
     }
     if ((err = setup_ctx(ctx)) != CMP_OK) {
-        LOG_err("Failed to prepare CMP client");
+        LOG_err("Failed to set up CMP client");
         goto err;
     }
     if ((err = check_set_template_options(ctx, &new_pkey, &oldcert, &csr,

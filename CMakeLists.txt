@@ -3,6 +3,18 @@ cmake_minimum_required(VERSION 3.18)
 project(libgencmp)
 set(LIBGENCMP_NAME gencmp)
 
+include(ExternalProject)
+ExternalProject_Add(
+atg 
+GIT_REPOSITORY git@code.siemens.com:ct-rda-cst-ses-de/remote-attestation/base-functionality/attestation-token-generator
+GIT_TAG ak/tcg-key-attestation-plugin
+CONFIGURE_COMMAND ""
+BUILD_COMMAND     ""
+INSTALL_COMMAND   ""
+TEST_COMMAND      ""
+SOURCE_DIR atg
+)
+
 if(NOT DEFINED GENCMPCLIENT_VERSION)
   set(GENCMPCLIENT_VERSION_MAJOR 2)
   set(GENCMPCLIENT_VERSION_MINOR 2)
@@ -215,7 +227,7 @@ if(DEFINED USE_LIBCMP)
 endif()
 
 include_directories(
-  ${INC_DIR}
+  ${INC_DIR} ${PROJECT_SOURCE_DIR}/atg
 )
 if(DEFINED USE_LIBCMP)
   include_directories(SYSTEM ${CMPOSSL_INC_DIR}/cmp)
@@ -288,6 +300,7 @@ target_link_libraries(cmpClient
   # important: libcmp before libcrypto such that its contents are preferred
   OpenSSL::Crypto
   $<$<NOT:$<BOOL:${GENCMP_NO_TLS}>>:OpenSSL::SSL>
+  ${PROJECT_SOURCE_DIR}/atg/atglib-key-attestation-demo/libatg.so
 )
 if(DEFINED ENV{SECUTILS_USE_UTA})
   target_link_libraries(cmpClient uta)

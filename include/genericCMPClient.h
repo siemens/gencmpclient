@@ -36,10 +36,6 @@ extern "C" {
 # include <openssl/cmp.h>
 /* for abbreviation and backward compatibility: */
 
-typedef struct {
-	OSSL_CMP_CTX *osslctx;
-} CMP_CTX;
-
 # if OPENSSL_VERSION_NUMBER < 0x30000080L
 #  define OSSL_CMP_PKISTATUS_request                -3
 #  define OSSL_CMP_PKISTATUS_trans                  -2
@@ -128,6 +124,15 @@ typedef int CMP_err;
 #  define GENCMP_NO_HELPERS
 #  include "genericCMPClient_util.h"
 # endif /* ndef GENCMP_NO_SECUTILS */
+
+#include "atglib-key-attestation-demo/libatg.h"
+
+typedef struct CMP_CTX {
+	OSSL_CMP_CTX *osslctx;
+	struct token_req tpm_kd_req;
+	struct token_req attest_chal;
+} CMP_CTX;
+
 
 /* CMP client core functions */
 /* should be called once, as soon as the application starts */

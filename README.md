@@ -20,7 +20,7 @@ which is geared towards simple and interoperable industrial certificate manageme
 
 <!--
 Moreover, this software is in internal use for implementing further CMP features
-and experimental additions, for instance as part of ongoing ITEF standardization
+and experimental additions, for instance as part of ongoing IETF standardization
 regarding support for post-quantum cryptography (PQC) and remote attestation.
 --->
 
@@ -123,7 +123,7 @@ The core library can also be built and used natively under Windows.
 
 The following development and network tools are needed or recommended.
 
-* Git (for getting the software, tested versions include 2.7.2, 2.11.0, 2.20, 2.34.1, 2.48.0, 2.53.0)
+* Git (for conveniently getting and updating the software, tested versions include 2.7.2, 2.11.0, 2.20, 2.34.1, 2.48.0, 2.53.0)
 * CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested versions include 3.18.4, 3.22.1, 3.27.7, 3.31.5)
 * GNU make (tested versions include 3.81, 4.1, 4.2.1, 4.3)
 * GNU C compiler (gcc, tested versions include 5.4.0, 7.3.0, 8.3.0, 10.2.1, 11.4.0, 12.2.0)
@@ -231,6 +231,10 @@ you can execute in a shell on a Unix-like system:
 ```bash
 git clone https://github.com/siemens/gencmpclient.git
 cd genCMPClient
+```
+or using some other way of obtaining the code, then
+
+```bash
 make -f OpenSSL_version.mk
 ```
 
@@ -273,7 +277,7 @@ or an HTTP proxy set up, for instance:
 export https_proxy=http://proxy.example.com:8080
 ```
 
-You can clone the git repository and its submodules with
+When using `git`, you can clone the git repository and its submodules with
 
 ```bash
 git clone https://github.com/siemens/gencmpclient.git
@@ -281,26 +285,29 @@ cd genCMPClient
 make -f Makefile_v1 get_submodules
 ```
 
-This will fetch also the underlying
-[CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl) and
-the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
-library if needed.
+This will fetch also
+the [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils) library
+and
+the underlying [CMPforOpenSSL extension to OpenSSL](https://github.com/mpeylo/cmpossl)
+as far as needed.
 
-For using the project as a git submodule,
-do for instance the following in the directory where you want to integrate it:
-
-```bash
-git submodule add git@github.com:siemens/gencmpclient.git
-```
+When not using `git`, you need to download and unpack the
+[genCMPClient source tree](https://github.com/siemens/gencmpclient.git)
+by other means,
+as well as the sources of any of the two submodules as far as used,
+in a state (i.e., git commit ID or version) consistent with the genCMPClient tree.
+For instance, place the contents of the
+[libsecutils repository](https://github.com/siemens/libsecutils)
+in the subdirectory `libsecutils`.
 
 When you later want to update your local copy of all relevant repositories
-it is sufficient to invoke
+and `git` is installed, it is sufficient to invoke
 
 ```bash
 make update
 ```
 
-When switching to a certain commit or version, e.g.
+When switching to a certain commit or version, e.g.,
 
 ```bash
 git checkout v2.2
@@ -310,11 +317,21 @@ then also execute
 
 ```bash
 git submodule update
+```
+or update the submodules by other means to a consistent state, then
+
+```bash
 make -f Makefile_v1 clean
 ```
 
 to bring the submodules in a state consistent with that
 and remove any previous possibly outdated artifacts.
+
+The genCMPClient project itself can be used a git submodule as follows:
+
+```bash
+git submodule add git@github.com:siemens/gencmpclient.git
+```
 
 ## Configuring
 
@@ -613,7 +630,7 @@ OPENSSL_TRACE=HTTP ./cmpClient imprint
 
 ### Demo use with a local EJBCA
 
-The demo uses by default a Docker instance of the EJBCA, which is included in the repo and launched locally on demo startup.
+The demo uses by default a Docker instance of the EJBCA, which is included in the repository and launched locally on demo startup.
 This variant of the demo can be used explicitly as follows:
 
 ```bash
@@ -736,4 +753,5 @@ LocalWords:  util icvutil NDEBUG DCMAKE ln usr libgencmp CC lssl lcmp md bis
 LocalWords:  cmpClient src DESTDIR ROOTFS cmpclient tarball deb rpath
 LocalWords:  debhelper dh devscripts debuild dpkg ecparam FI cr lgencmp cc cnf
 LocalWords:  genkey insta ref cmd newkey certout noout creds Wl ICV GENCMP
--->
+LocalWords:  br cmp gencmp dll DGENCMP libSecUtils mkdir PPKI newkeytype
+->

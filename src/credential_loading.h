@@ -30,19 +30,19 @@ int setup_ui_method(void);
 void destroy_ui_method(void);
 
 EVP_PKEY *FILES_load_key_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                            const char *uri, int format, bool maybe_stdin,
+                            const char *uri, file_format_t format, bool maybe_stdin,
                             const char *source, const char *desc);
 #define load_key_pwd(uri, format, pass, e, desc) \
     FILES_load_key_ex(app_get0_libctx(), app_get0_propq(), uri, format, false, pass, desc)
 
 EVP_PKEY *FILES_load_pubkey_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                               const char *uri, int format, bool maybe_stdin,
+                               const char *uri, file_format_t format, bool maybe_stdin,
                                const char *source, const char *desc);
 #define load_pubkey_pwd(uri, format, pass, e, desc) \
     FILES_load_pubkey_ex(app_get0_libctx(), app_get0_propq(), uri, format, false, pass, desc)
 
 X509 *FILES_load_cert_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                         const char *uri, int format, bool maybe_stdin,
+                         const char *uri, file_format_t format, bool maybe_stdin,
                          OPTIONAL const char *source, OPTIONAL const char *desc,
                          int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm);
 #define load_cert_pwd(uri, source, desc, type_CA, vpm) \
@@ -50,7 +50,7 @@ X509 *FILES_load_cert_ex(OSSL_LIB_CTX *libctx, const char *propq,
                        FILES_get_format(uri), false, source, desc, type_CA, vpm)
 
 bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                         const char *srcs, int format, int timeout, bool maybe_stdin,
+                         const char *srcs, file_format_t format, int timeout, bool maybe_stdin,
                          const char *source, const char *desc, int min_num,
                          int type_CA, OPTIONAL X509_VERIFY_PARAM *vpm,
                          OPTIONAL X509 **cert, OPTIONAL STACK_OF(X509) **certs);
@@ -59,15 +59,15 @@ STACK_OF(X509) *load_certs_multifile(const char *files, const char *source,
                                      OPTIONAL X509_VERIFY_PARAM *vpm);
 
 X509_CRL *FILES_load_crl_ex(OSSL_LIB_CTX *libctx, const char *propq, const char *src,
-                            int format, int maybe_stdin, int timeout, OPTIONAL const char *desc,
+                            file_format_t format, bool maybe_stdin, int timeout, OPTIONAL const char *desc,
                             OPTIONAL const X509_VERIFY_PARAM *vpm);
 #define load_crl(src, format, stdin, timeout, desc, vpm) \
     FILES_load_crl_ex(app_get0_libctx(), app_get0_propq(), src, format, stdin, timeout, desc, vpm)
 STACK_OF(X509_CRL) *FILES_load_crls_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                                       const char *files, int format, int timeout,
+                                       const char *files, file_format_t format, int timeout,
                                        OPTIONAL const char *desc, int min_num,
                                        OPTIONAL const X509_VERIFY_PARAM *vpm);
-#define load_crls(files, format, timeout, desc, vpm)                   \
+#define load_crls(files, format, timeout, desc, vpm) \
     FILES_load_crls_ex(app_get0_libctx(), app_get0_propq(), files, format, timeout, desc, 0, vpm)
 
 bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,

@@ -670,27 +670,24 @@ static X509_STORE *setup_CMP_truststore(const char *trusted_cert_files)
     return cmp_truststore;
 }
 
-static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
+static bool setup_X509_extensions_check_policies(CMP_CTX *ctx, X509_EXTENSIONS **exts)
 {
-    X509_EXTENSIONS *exts = sk_X509_EXTENSION_new_null();
     X509V3_CTX ext_ctx;
 
-    if (exts == NULL)
-        return NULL;
     if (opt_reqexts != NULL || opt_policies != NULL) {
         X509V3_set_ctx(&ext_ctx, NULL, NULL, NULL, NULL, 0);
         X509V3_set_nconf(&ext_ctx, config);
     }
 
     if (opt_reqexts != NULL) {
-        if (!X509V3_EXT_add_nconf_sk(config, &ext_ctx, opt_reqexts, &exts)) {
+        if (!X509V3_EXT_add_nconf_sk(config, &ext_ctx, opt_reqexts, exts)) {
             LOG(FL_ERR, "Cannot load extension section '%s'", opt_reqexts);
             goto err;
         }
     }
 
     if (opt_policies != NULL) {
-        if (!X509V3_EXT_add_nconf_sk(config, &ext_ctx, opt_policies, &exts)) {
+        if (!X509V3_EXT_add_nconf_sk(config, &ext_ctx, opt_policies, exts)) {
             LOG(FL_ERR, "Cannot load policy section '%s'", opt_policies);
             goto err;
         }
@@ -735,11 +732,12 @@ static X509_EXTENSIONS *setup_X509_extensions(CMP_CTX *ctx)
         opt_policy_oids = next;
     }
 
-    return exts;
+    return true;
 
  err:
-    EXTENSIONS_free(exts);
-    return NULL;
+    EXTENSIONS_free(*exts);
+    *exts = NULL;
+    return false;
 }
 
 /*
@@ -1392,7 +1390,31 @@ static int setup_transfer(CMP_CTX *ctx)
     return err;
 }
 
-/* file (path) name using prefix, subject DN, "_", hash, ".", and suffix */
+static int get_NAME_text_by_NID(const X509_NAME *name, int nid, unsigned char *buf, int buf_len)
+{
+    int i, len;
+
+    for (i = 0; i < X509_NAME_entry_count(name); i++) {
+        const X509_NAME_ENTRY *e = X509_NAME_get_entry(name, i);
+        const ASN1_OBJECT *obj = X509_NAME_ENTRY_get_object(e);
+
+        if (OBJ_obj2nid(obj) == nid) {
+            const ASN1_STRING *data = X509_NAME_ENTRY_get_data(e);
+
+            len = ASN1_STRING_length(data);
+            if (len < 0)
+                return -1;
+            if (len > buf_len - 1)
+                len = buf_len - 1;
+            memcpy(buf, ASN1_STRING_get0_data(data), (size_t)len);
+            buf[len] = '\0';
+            return len;
+        }
+    }
+    return -2;
+}
+
+/* file (path) name using prefix, subject commonName, "_", hash, ".", and suffix */
 static size_t get_cert_filename(const X509 *cert, const char *prefix,
                                 const char *suffix,
                                 char *buf, size_t buf_len)
@@ -1410,8 +1432,8 @@ static size_t get_cert_filename(const X509 *cert, const char *prefix,
     }
 
     char subject[256], *p;
-    if (X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName,
-                                  subject, sizeof(subject)) <= 0)
+    if (get_NAME_text_by_NID(X509_get_subject_name(cert), NID_commonName,
+                             (unsigned char *)subject, sizeof(subject)) < 0)
         return 0;
     ret = UTIL_safe_string_copy(subject, buf + len, buf_len - len, NULL);
     if (ret < 0)
@@ -1815,7 +1837,8 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
     } else {
         if (opt_newkeytype != NULL || opt_centralkeygen) {
             if (opt_newkey == NULL) {
-                LOG_err("Missing -newkey option specifying the file to save the new key");
+                LOG(FL_ERR, "Missing -newkey option specifying the file to save the new key%s",
+                    opt_centralkeygen ? "" : " (or TPM2 provider handle to use)");
                 return -40;
             }
             if (opt_newkeytype != NULL && *opt_newkeytype != '\0') {
@@ -1823,7 +1846,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
                 const char *key_spec = strcmp(opt_newkeytype, "ECC") == 0
                     ? "EC:secp256r1" : opt_newkeytype;
 
-                if ((*new_pkey = KEY_new(key_spec)) == NULL) {
+                if ((*new_pkey = KEY_new_ex(key_spec, opt_newkey, app_get0_libctx())) == NULL) {
                     LOG(FL_ERR, "Unable to generate new private key according to specification '%s'",
                         key_spec);
                     return CMP_R_GENERATE_KEY;
@@ -1862,7 +1885,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
 
         if ((err = setup_cert_template(ctx)) != CMP_OK)
             return err;
-        if ((*exts = setup_X509_extensions(ctx)) == NULL) {
+        if (!setup_X509_extensions_check_policies(ctx, exts)) {
             LOG_err("Unable to set up X509 extensions for CMP client");
             return -44;
         }
@@ -2447,7 +2470,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         goto err;
     }
     if ((err = setup_ctx(ctx)) != CMP_OK) {
-        LOG_err("Failed to prepare CMP client");
+        LOG_err("Failed to set up CMP client");
         goto err;
     }
     if ((err = check_set_template_options(ctx, &new_pkey, &oldcert, &csr,

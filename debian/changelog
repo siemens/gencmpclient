@@ -7,7 +7,7 @@ libgencmp (2.2) stable; urgency=medium
   * Fix various issues and OpenSSL version incompatibilities
   * Disable demo_Insta because Insta Demo CA is defunct since end of 2025
 
- -- David von Oheimb <David.von.Oheimb@siemens.com>  Mon Feb 16 16:17:18 2026 +0100
+ -- David von Oheimb <David.von.Oheimb@siemens.com>  Mon, 16 Feb 2026 16:17:18 +0100
 
 libgencmp (2.1) stable; urgency=medium
 

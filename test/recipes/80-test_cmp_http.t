@@ -177,48 +177,6 @@ sub test_cmp_http {
         if ($server_name eq "Mock" && !(grep { $_ eq '-server' } @$params));
     my $cmd = app([@app, @$params]);
 
-    sleep($sleep) if $server_name eq "Insta";
-    sleep($sleep) if $server_name eq "Insta"
-        && $title eq "path with additional '/'s fine according to RFC 3986"
-        || $title eq "requesting new signer.crt for Insta"
-        || $title eq "unknown attribute in expected sender DN skipped"
-        || $title eq "no -trusted but -srvcert"
-        || $title eq "ignore key usage"
-        || $title eq "empty ref but correct cert"
-        || $title eq "keypass no prefix"
-        || $title eq "extracerts big file"
-        || $title eq "extracerts empty file"
-        || $title eq "default sha256"
-        || $title eq "--- requesting new signer.crt for Insta ---"
-        || $title eq "--- get certificate for revocation ----"
-        || $title eq "rr with revreason AACompromise"
-        || $title eq "ir + infotype"
-        || $title eq "geninfo empty str"
-        || $title eq "missing chain"
-        || $title eq "newkeypass ignored"
-        || $title eq "subject organization unit missing"
-        || $title eq "subject bad syntax: missing '='"
-        || $title eq "days 1"
-        || $title eq "reqexts"
-        || $title eq "sans 2 dns"
-        || $title eq "san_nodefault"
-        || $title eq "no out_trusted"
-        || $title eq "oldcert wrong cert"
-        || $title eq "kur command explicit options - overwriting oldcert"
-        || $title eq "crls_timeout infinite"
-        || $title eq "total_timeout 0"
-        || $title eq "issuer NULL-DN"
-        || $title eq "sans 1 dns critical"
-        || $title eq "reuse last extracerts"
-        || $title eq "cacertsout given"
-        || $title eq "subject incorrect data"
-        || $title eq "cr command"
-        || $title eq "reqout cr rspout cp"
-        || $title eq "popo SIGNATURE"
-        || $title eq "read newkeypass from file"
-        || $title eq "extracerts wrong chain (some root CA)"
-        || $title eq "reuse last srvcert";
-
     unless (is(my $actual_result = run($cmd), $expected_result, $title)) {
         if ($faillog) {
             my $quote_spc_empty = sub { $_ eq "" ? '""' : $_ =~ m/ / ? '"'.$_.'"' : $_ };
@@ -230,7 +188,6 @@ sub test_cmp_http {
             print $faillog "$invocation\n\n";
         }
         sleep($sleep) if $expected_result == 1;
-        sleep($sleep) if $server_name eq "Insta" && $expected_result == 1;
     }
 }
 
@@ -299,9 +256,7 @@ indir data_dir() => sub {
                     print "Skipping certstatus check as not supported by $server_name server with OpenSSL version $mock_openssl_version\n";
                     next;
                 }
-                if (not($server_name =~ m/Insta/)) { # do not update aspect-specific settings for Insta
                 load_config($server_name, $aspect); # update with any aspect-specific settings
-                }
                 indir $server_name => sub {
                     my $tests = load_tests($server_name, $aspect);
                     test_cmp_http_aspect($server_name, $aspect, $tests);

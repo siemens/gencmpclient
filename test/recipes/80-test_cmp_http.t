@@ -164,6 +164,7 @@ my $Mock_serverlog;
 my $faillog;
 my $faillog_file = $ENV{HARNESS_FAILLOG} // "failed_client_invocations.txt"; # pathname relative to result_dir
 open($faillog, ">", $faillog_file) or die "Cannot open '$faillog_file' for writing: $!";
+$faillog->autoflush(1);
 
 sub test_cmp_http {
     my $server_name = shift;
@@ -209,11 +210,11 @@ sub test_cmp_http_aspect {
 sub print_file_prefixed {
     my ($file, $desc) = @_;
     print "$desc (each line prefixed by \"# \"):\n";
-    if (open F, $file) {
-        while (<F>) {
+    if (open(my $fh, '<', $file)) {
+        while (<$fh>) {
             print "# $_";
         }
-        close F;
+        close $fh;
     }
 }
 
@@ -321,7 +322,7 @@ sub load_tests {
             $line =~ s{-section,,}{-section,,-no_proxy,$server_plain,} ;
         }
         if ($line =~ m/,\s*-proxy\s*,/) {
-            next LOOP if $no_proxy && ($noproxy =~ $server_plain);
+            next LOOP if $no_proxy && ($noproxy =~ /\Q$server_plain\E/);
         } else {
             $line =~ s{-section,,}{-section,,-proxy,$proxy,};
         }
@@ -378,12 +379,12 @@ sub start_server {
             next if m/[Uu]sing section/;
             s/\R$//;                # Better chomp
             ($host, $port, $pid) = ($1, $2, $3)
-                if /^ACCEPT\s(.*?):(\d+) PID=(\d+)$/;
+                if /^ACCEPT\s(\[[^\]]+\]|[^:]+):(\d+) PID=(\d+)$/;
             last; # Do not loop further to prevent hangs on server misbehavior
         }
         if ($server_host eq '*' && defined $host) {
-            $server_host = "[::1]"     if $host eq "[::]";
-            $server_host = "127.0.0.1" if $host eq "0.0.0.0";
+            $server_host = $host eq "[::]" ? "[::1]"
+                : $host eq "0.0.0.0" ? "127.0.0.1" : $host;
         }
         $server_port = $port if $server_port == 0 && defined $port;
         if ($pid0 != $pid) {

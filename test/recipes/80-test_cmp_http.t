@@ -156,7 +156,7 @@ my $openssl = $ENV{OPENSSL};
 my $mock_openssl_version = `$openssl version | perl -pe 's/OpenSSL (\\d\\.\\d).*/\$1/es;'` if grep(/^Mock$/, @server_configurations);
 
 my @all_aspects = ("connection", "verification", "credentials", "commands", "enrollment");
-# push (@all_aspects, "certstatus"); 
+push (@all_aspects, "certstatus");
 @all_aspects = split /\s+/, $ENV{OPENSSL_CMP_ASPECTS} if $ENV{OPENSSL_CMP_ASPECTS};
 # set env variable, e.g., OPENSSL_CMP_ASPECTS="commands enrollment" to select specific aspects
 

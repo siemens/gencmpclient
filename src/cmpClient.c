@@ -84,9 +84,7 @@ const char *opt_recipient;
 const char *opt_expect_sender;
 bool opt_ignore_keyusage;
 bool opt_unprotected_errors;
-#if OPENSSL_4_1_FEATURES
 bool opt_nonmatched_error_nonces;
-#endif
 #if OPENSSL_3_3_FEATURES
 bool opt_no_cache_extracerts;
 #endif
@@ -350,11 +348,9 @@ opt_t cmp_opts[] = {
     { "unprotected_errors", OPT_BOOL, {.bit = false},
       { (const char **) &opt_unprotected_errors },
       "Accept missing or invalid protection of regular error messages and negative"},
-#if OPENSSL_4_1_FEATURES
     { "nonmatched_error_nonces", OPT_BOOL, {.bit = false},
       { (const char **) &opt_nonmatched_error_nonces },
       "Accept missing or non-matching transactionID or recipNonce in error messages"},
-#endif
     OPT_MORE("certificate responses (ip/cp/kup), revocation responses (rp), and PKIConf"),
 #if OPENSSL_3_3_FEATURES
     { "no_cache_extracerts", OPT_BOOL, {.bit = false},
@@ -1079,10 +1075,6 @@ static int setup_ctx(CMP_CTX *ctx)
     /* set option flags directly via CMP API */
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
                                  opt_unprotected_errors ? 1 : 0)
-#if OPENSSL_4_1_FEATURES
-        || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NONMATCHED_ERROR_NONCES,
-                                    opt_nonmatched_error_nonces ? 1 : 0)
-#endif
 #if OPENSSL_3_3_FEATURES
         || (opt_no_cache_extracerts && /* TODO remove this condition, which is just a workaround for wrong variant of OSSL_CMP_CTX_set_option() being called */
             !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NO_CACHE_EXTRACERTS,
@@ -1102,6 +1094,19 @@ static int setup_ctx(CMP_CTX *ctx)
         LOG_err("Failed to set option flags of CMP context");
         goto err;
     }
+#if OPENSSL_4_1_FEATURES
+    if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NONMATCHED_ERROR_NONCES,
+                                 opt_nonmatched_error_nonces ? 1 : 0)) {
+        LOG_err("Failed to set option flags of CMP context");
+        goto err;
+    }
+#else
+    if (opt_nonmatched_error_nonces) {
+        LOG_err("-nonmatched_error_nonces option is not supported for OpenSSL < 4.1");
+        err = -29;
+        goto err;
+    }
+#endif
 
     if (opt_profile != NULL) {
 #if OPENSSL_3_3_FEATURES

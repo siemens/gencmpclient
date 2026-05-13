@@ -98,7 +98,7 @@ int app_provider_load(OSSL_LIB_CTX *libctx, const char *provider_name)
     prov = OSSL_PROVIDER_load(libctx, provider_name);
     if (prov == NULL) {
         LOG(FL_ERR, "unable to load provider %s\n"
-            "Hint: use -provider-path option or OPENSSL_MODULES environment variable.\n",
+            "Hint: use -provider-path option or OPENSSL_MODULES environment variable.",
             provider_name);
         ERR_print_errors(bio_err);
         return 0;
@@ -303,7 +303,7 @@ static void unbuffer(FILE *fp)
 #define FAIL_NAME \
     (ppkey != NULL ? "private key" : ppubkey != NULL ? "public key" :  \
      pparams != NULL ? "key parameters" :                              \
-     pcert != NULL ? "certificate" : pcerts != NULL ? "certificates" : \
+     pcert != NULL ? "certificate" : pcerts != NULL ? "certificate(s)" : \
      pcrl != NULL ? "CRL" : pcrls != NULL ? "CRLs" : NULL)
 /*
  * Load those types of credentials for which the result pointer is not NULL.
@@ -613,6 +613,7 @@ EVP_PKEY *FILES_load_key_ex(OSSL_LIB_CTX *libctx, const char *propq,
 
     if (desc == NULL)
         desc = "private key";
+    LOG(FL_DEBUG, "Loading %s from %s", desc, uri != NULL ? uri : "<stdin>");
     pass = FILES_get_pass(source, desc);
     (void)load_key_certs_crls(libctx, propq, uri, format, maybe_stdin, pass, desc, false,
                               &pkey, NULL, NULL, NULL, NULL, 0, NULL, NULL, 0);
@@ -629,6 +630,7 @@ EVP_PKEY *FILES_load_pubkey_ex(OSSL_LIB_CTX *libctx, const char *propq,
 
     if (desc == NULL)
         desc = "public key";
+    LOG(FL_DEBUG, "Loading %s from %s", desc, uri != NULL ? uri : "<stdin>");
     pass = FILES_get_pass(source, desc);
     (void)load_key_certs_crls(libctx, propq, uri, format, maybe_stdin, pass, desc, false,
                               NULL, &pkey, NULL, NULL, NULL, 0, NULL, NULL, 0);
@@ -646,6 +648,7 @@ X509 *FILES_load_cert_ex(OSSL_LIB_CTX *libctx, const char *propq,
 
     if (desc == NULL)
         desc = "certificate";
+    LOG(FL_DEBUG, "Loading %s from %s", desc, uri != NULL ? uri : "<stdin>");
     pass = FILES_get_pass(source, desc);
     (void)load_key_certs_crls(libctx, propq, uri, format, maybe_stdin, pass, desc, false,
                               NULL, NULL, NULL, &cert, NULL, 1, NULL, NULL, 0);
@@ -689,6 +692,7 @@ bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
 
     if (desc == NULL)
         desc = "certs";
+    LOG(FL_DEBUG, "Loading %s from %s", desc, srcs);
     pass = FILES_get_pass(source, desc);
 
     if (names == NULL || (all_crts = sk_X509_new_null()) == NULL)
@@ -743,7 +747,7 @@ bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
     }
 
     if (!check_cert_chain(srcs, type_CA, vpm, cert, certs))
-        LOG(FL_WARN, "Ignoring error(s) checking %s from '%s' because for trust anchor certs enforcing the validity period is generally not required",
+        LOG(FL_WARN, "Ignoring error(s) checking %s from '%s' because for trust anchors such checks are generally not required",
             desc, srcs);
     goto end;
 
@@ -787,8 +791,9 @@ X509_CRL *FILES_load_crl_ex(OSSL_LIB_CTX *libctx, const char *propq, const char 
 
     if (desc == NULL)
         desc = "CRL";
+    LOG(FL_DEBUG, "Loading %s from %s", desc, src != NULL ? src : "<stdin>");
     if (CONN_IS_HTTPS(src)) {
-        LOG(FL_ERR, "Loading %s over HTTPS is unsupported; uri=%s\n", desc, src);
+        LOG(FL_ERR, "Loading %s over HTTPS is unsupported; src=%s\n", desc, src);
     } else if (CONN_IS_HTTP(src)) { /* TODO maybe also support PEM format */
 #if 1
         crl = CONN_load_crl_http(src, timeout, 0, desc);
@@ -796,7 +801,7 @@ X509_CRL *FILES_load_crl_ex(OSSL_LIB_CTX *libctx, const char *propq, const char 
         crl = X509_CRL_load_http(src, NULL, NULL, timeout);
         if (crl == NULL) {
             ERR_print_errors(bio_err);
-            LOG(FL_ERR, "Unable to load %s from %s\n", desc, src);
+            LOG(FL_ERR, "Unable to load %s from %s\n", desc, src != NULL ? src : "<stdin>");
         }
 #endif
     } else {
@@ -822,6 +827,7 @@ STACK_OF(X509_CRL) *FILES_load_crls_ex(OSSL_LIB_CTX *libctx, const char *propq,
 
     if (desc == NULL)
         desc = "CRLs";
+    LOG(FL_DEBUG, "Loading %s from %s", desc, srcs);
 
     if (names == NULL || (all_crls = sk_X509_CRL_new_null()) == NULL)
         goto oom;
@@ -855,7 +861,7 @@ STACK_OF(X509_CRL) *FILES_load_crls_ex(OSSL_LIB_CTX *libctx, const char *propq,
         crls = NULL;
     }
     if (sk_X509_CRL_num(all_crls) < min_num) {
-        LOG(FL_ERR, "Could not load at least %d %s from %s\n", min_num, desc, srcs);
+        LOG(FL_ERR, "Could not load at least %d %s from %s", min_num, desc, srcs);
         goto err;
     }
     goto end;
@@ -885,12 +891,14 @@ bool STORE_load_more_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
         LOG_err("null pointer argument");
         goto err;
     }
+    if (desc == NULL)
+        desc = "trusted cert(s)";
+    /* LOG(FL_DEBUG, ...) will be done by FILES_load_certs_ex() */
     if (CONN_IS_HTTP(file)) {
-        LOG(FL_ERR, "Loading %s over HTTP is not allowed; uri=%s\n", desc, file);
+        LOG(FL_ERR, "Loading %s over HTTP is not allowed; uri=%s", desc, file);
         goto err;
     }
 
-    LOG(FL_DEBUG, "Loading %s from file '%s'", desc != NULL ? desc : "?", file);
     const char *store_desc = desc;
     if (store_desc != NULL) {
         CHECK_AND_SKIP_PREFIX(store_desc, "trusted cert(s) for ");
@@ -919,7 +927,7 @@ bool STORE_load_more_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
     }
 
 err:
-    LOG(FL_ERR, "Could not load %s", desc != NULL ? desc : file);
+    LOG(FL_ERR, "Could not load %s from %s", desc, file);
     return false;
 }
 
@@ -967,10 +975,19 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
                                OPTIONAL EVP_PKEY **pkey, OPTIONAL X509 **cert,
                                OPTIONAL STACK_OF(X509) **chain)
 {
+    const char *orig_desc = desc;
     bool joint_credentials = certs != NULL && key != NULL && strcmp(certs, key) == 0;
-    char *pass = FILES_get_pass(source, desc);
+    char *pass;
     bool res = false;
 
+    if (certs == NULL && key == NULL)
+        return true;
+    if (orig_desc == NULL)
+        desc = certs == NULL ? (key == NULL ? "nothing" /* not possible here */ : "private key") :
+            (key == NULL ? "certificate(s)" : "private key and certificate(s)");
+    LOG(FL_DEBUG, "Loading %s from '%s' and '%s'", desc,
+        key == NULL ? "(nowhere)" : key, certs == NULL ? "(nowhere)" : certs);
+    pass = FILES_get_pass(source, desc);
     if (joint_credentials) {
         if (desc == NULL)
             desc = "both private key and related certificate(s)";
@@ -979,15 +996,13 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
                                   pkey, NULL, NULL, cert, chain, 1, NULL, NULL, 0);
     }
     if (!res) {
-        const char *orig_desc = desc;
-
         if (orig_desc == NULL)
             desc = "private key";
         if (pkey != NULL)
             EVP_PKEY_free(*pkey);
         if (key != NULL && pkey != NULL
-            && (*pkey = FILES_load_key_ex(libctx, propq, key, format,
-                                          maybe_stdin, source, desc)) == NULL)
+            && !load_key_certs_crls(libctx, propq, key, format, maybe_stdin, pass, desc, false,
+                                    pkey, NULL, NULL, NULL, NULL, 0, NULL, NULL, 0))
             goto err;
         if (orig_desc == NULL)
             desc = "certificate(s)";
@@ -1003,9 +1018,12 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
         }
     }
     UTIL_cleanse_free(pass);
-    res = check_cert_chain(certs, type_CA, vpm, cert, chain);
+    if (orig_desc == NULL)
+        desc = "certificate(s)";
+    res = (cert == NULL && chain == NULL)
+        || check_cert_chain(certs, type_CA, vpm, cert, chain);
     if (!res)
-        LOG(FL_ERR, "Error(s) checking %s from '%s'", desc, certs);
+        LOG(FL_ERR, "Error(s) checking %s from %s", desc, certs);
     return res;
 
 err:

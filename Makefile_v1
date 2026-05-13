@@ -586,9 +586,8 @@ else
 	@echo
 	$(CMPCLIENT) bootstrap -section $(CA_SECTION) -provider default $(EXTRA_OPTS) $(BOOTSTRAP_CREDS)
 	$(GENERATE_OPERATIONAL)
-	$(OPENSSL) x509 -noout -text -in creds/operational.crt
+	$(OPENSSL) x509 -noout -text -in creds/operational.crt | sed -E '/^ *([0-9a-f]{2}:).*/d'
 	@echo :
-	$(OPENSSL) x509 -noout -text -in creds/operational.crt | sed '/^         [0-9a-f].*/d'
     ifneq ($(CA_SECTION),Insta) # on p10cr, Insta responds with an empty message PKIBody
 	@echo
 	@$(SLEEP)

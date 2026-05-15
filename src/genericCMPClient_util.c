@@ -629,7 +629,7 @@ bool STORE_set1_host_ip(X509_STORE *ts, OPTIONAL const char *name, OPTIONAL cons
         !X509_VERIFY_PARAM_set1_host(ts_vpm, 0, 0)
         || !X509_VERIFY_PARAM_set1_ip(ts_vpm, 0, 0)
         || !X509_VERIFY_PARAM_set1_email(ts_vpm, 0, 0)) {
-        LOG_err("Could not clear host name and IP address from store");
+        LOG_err("Could not clear host names and IP and email addresses from store");
         return false;
     }
 
@@ -637,13 +637,22 @@ bool STORE_set1_host_ip(X509_STORE *ts, OPTIONAL const char *name, OPTIONAL cons
         return true;
 
     char *name_str = CONN_get_host(name);
+    char *ip_str = NULL;
     if (name != NULL && name_str == NULL)
         return false;
-
-    char *ip_str = CONN_get_host(ip);
-    if (ip != NULL && ip_str == NULL) {
-        OPENSSL_free(name_str);
-        return false;
+    if (name != NULL && ip != NULL && strcmp(name, ip) == 0) {
+        if (CONN_IS_IP_ADDR(name)) {
+            ip_str = name_str;
+            name = name_str = NULL;
+        } else {
+            ip = NULL;
+        }
+    } else {
+        ip_str = CONN_get_host(ip);
+        if (ip != NULL && ip_str == NULL) {
+            OPENSSL_free(name_str);
+            return false;
+        }
     }
 
     X509_VERIFY_PARAM_set_hostflags(ts_vpm,
@@ -652,8 +661,8 @@ bool STORE_set1_host_ip(X509_STORE *ts, OPTIONAL const char *name, OPTIONAL cons
     bool res = true;
     if (ip_str != NULL && !X509_VERIFY_PARAM_set1_ip_asc(ts_vpm, ip_str))
         res = false;
-    if (name_str != NULL && (ip_str == NULL || (res && strcmp(name, ip) == 0))) {
-        res = X509_VERIFY_PARAM_set1_host(ts_vpm, name_str, 0) != 0;
+    if (name_str != NULL) {
+        res = res && X509_VERIFY_PARAM_set1_host(ts_vpm, name_str, 0) != 0;
 # if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
         /*
          * Before OpenSSL 3.0, there was no API function for retrieving the
@@ -661,8 +670,7 @@ bool STORE_set1_host_ip(X509_STORE *ts, OPTIONAL const char *name, OPTIONAL cons
          * in ex_data for use in CREDENTIALS_print_cert_verify_cb().
          * Since OpenSSL 3.0, this is no more needed as X509_VERIFY_PARAM_get0_host() is available.
          */
-        if (res)
-            res = STORE_set1_host(ts, name_str);
+        res = res && STORE_set1_host(ts, name_str);
 # endif
     }
     if (!res)

@@ -319,7 +319,6 @@ static char *opt_getprog(void)
 }
 
 typedef struct app_http_tls_info_st {
-    const char *sni_hostname;
     const char *server;
     const char *port;
     int use_proxy;
@@ -378,7 +377,8 @@ static BIO *app_http_tls_cb(BIO *bio, void *arg, int connect, int detail)
 
         SSL_set_connect_state(ssl);
         BIO_set_ssl(sbio, ssl, BIO_CLOSE);
-        if (!SSL_set_tlsext_host_name(ssl, info->sni_hostname /* may be NULL */))
+        if (!CONN_IS_IP_ADDR(info->server)
+            && !SSL_set_tlsext_host_name(ssl, info->server)) /* set SNI */
             goto err;
 
         bio = BIO_push(sbio, bio);
@@ -413,7 +413,6 @@ static BIO *app_http_tls_cb(BIO *bio, void *arg, int connect, int detail)
 static void APP_HTTP_TLS_INFO_free(APP_HTTP_TLS_INFO *info)
 {
     if (info != NULL) {
-        OPENSSL_free((char *)info->sni_hostname);
         OPENSSL_free((char *)info->server);
         OPENSSL_free((char *)info->port);
         SSL_CTX_free(info->ssl_ctx);
@@ -429,6 +428,10 @@ static int is_localhost(const char *host)
 }
 #endif /* ndef GENCMP_NO_TLS */
 
+#if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
+# define X509_VERIFY_PARAM_get0_email(vpm) ((void)(vpm), NULL) /* dummy */
+# define X509_VERIFY_PARAM_get1_ip_asc(vpm) ((void)(vpm), NULL) /* dummy */
+#endif
 /* Will return error when used with OpenSSL compiled with OPENSSL_NO_SOCK. */
 CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *path,
                              int keep_alive, int timeout, OPTIONAL SSL_CTX *tls,
@@ -451,7 +454,6 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
         return err;
     }
 #endif
-    char *hostaddr_to_free = NULL;
     char *host = NULL, *server_port = NULL, *parsed_path = NULL;
     const char *proxy_host = NULL;
 
@@ -480,29 +482,31 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
         OSSL_HTTP_adapt_proxy(proxy, no_proxy, host, tls != NULL);
 #ifndef GENCMP_NO_TLS
     if (tls != NULL) {
-        const char *hostaddr = NULL;
         X509_STORE *ts = SSL_CTX_get_cert_store(tls);
         if (ts != NULL) {
             X509_VERIFY_PARAM *vpm = X509_STORE_get0_param(ts);
-            hostaddr = STORE_get0_host(ts);
-            if (hostaddr == NULL && vpm != NULL) {
-                ERR_set_mark();
-                hostaddr = hostaddr_to_free = X509_VERIFY_PARAM_get1_ip_asc(vpm);
-                ERR_pop_to_mark();
+            const char *custom_tls_host = STORE_get0_host(ts);
+            if (custom_tls_host == NULL && vpm != NULL) {
+                custom_tls_host = X509_VERIFY_PARAM_get0_email(vpm); /* theoretical case, just for completeness */
+                if (custom_tls_host == NULL) {
+                    ERR_set_mark();
+                    char *ip = X509_VERIFY_PARAM_get1_ip_asc(vpm);
+                    ERR_pop_to_mark();
+                    if (ip != NULL)
+                        custom_tls_host = "some IP address";
+                    OPENSSL_free(ip);
+                }
             }
 
-            if (hostaddr == NULL) { /* tls_host (name or IP address) not yet explicitly set */
+            if (custom_tls_host == NULL) {
                 if (is_localhost(host)) {
                     LOG(FL_WARN, "Skipping TLS server host name verification for %s because it is local", host);
                     /* enables self-bootstrapping of local RA using its device cert */
                 } else {
-                    hostaddr = host;
                     /* set expected host in ts, if no name validation whatsoever has been set there so far */
-                    if (vpm == NULL || X509_VERIFY_PARAM_get0_email(vpm) == NULL) {
-                        if (!STORE_set1_host_ip(ts, host, host)) {
-                            err = CMPOSSL_error();
-                            goto err;
-                        }
+                    if (!STORE_set1_host_ip(ts, host, host)) {
+                        err = CMPOSSL_error();
+                        goto err;
                     }
                 }
             }
@@ -522,14 +526,6 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
         /* info will be freed along with ctx */
         OSSL_CMP_CTX_set_transfer_cb_arg(ctx, NULL); /* indicate SSL not used */
 
-        if (!CONN_IS_IP_ADDR(hostaddr)) {
-            if (hostaddr == NULL) {
-                info->sni_hostname = NULL;
-            } else if ((info->sni_hostname = OPENSSL_strdup(hostaddr)) == NULL) {
-                err = CMPOSSL_error();
-                goto err;
-            }
-        }
         info->server = OPENSSL_strdup(host);
         info->port = OPENSSL_strdup(server_port);
         info->use_proxy = proxy_host != NULL;
@@ -556,7 +552,6 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
     err = CMP_OK;
 
  err:
-    OPENSSL_free(hostaddr_to_free);
     OPENSSL_free(host);
     OPENSSL_free(server_port);
     OPENSSL_free(parsed_path);

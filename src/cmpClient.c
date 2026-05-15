@@ -434,7 +434,7 @@ opt_t cmp_opts[] = {
     { "tls_trusted", OPT_TXT, {.txt = NULL}, { &opt_tls_trusted },
       "File(s) with certs to trust for TLS server verification (TLS trust anchor)"},
     { "tls_host", OPT_TXT, {.txt = NULL}, { &opt_tls_host },
-      "Address to be used for SNI and to be checked during TLS hostname validation"},
+      "Host name/address (rather than -server) to check in TLS server cert"},
 
     OPT_HEADER("Debugging"),
     {"reqin", OPT_TXT, {.txt = NULL}, { (const char **) &opt_reqin},

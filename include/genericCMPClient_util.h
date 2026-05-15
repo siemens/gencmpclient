@@ -120,7 +120,8 @@ X509_STORE *STORE_create(OPTIONAL X509_STORE *store, OPTIONAL const X509 *cert,
 
 # ifndef GENCMP_NO_TLS
 /* conn.h: */
-#  define CONN_IS_IP_ADDR(host) ((host) != NULL && ((*(host) >= '0' && *(host) <= '9') || *(host) == '[')) // TODO improve
+bool CONN_is_IP_address(OPTIONAL const char *host);
+#  define CONN_IS_IP_ADDR(host) CONN_is_IP_address(host)
 
 /* tls.h: */
 #  define TLS_init() true /* initialize OpenSSL's SSL lib, no needed at least since 3.0 */

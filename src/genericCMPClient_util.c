@@ -577,6 +577,24 @@ oom:
 
 /* conn.c: */
 
+bool CONN_is_IP_address(OPTIONAL const char *host)
+{
+    if (host == NULL)
+        return false;
+
+    /* presume IPv6 address literal if host has the form "[<other-chars>]" */
+    size_t len = strlen(host);
+    if (len > 2 && *host == '[' && strchr(host + 1, '[') == NULL
+            && strchr(host + 1, ']') == host + len - 1)
+        return true;
+
+    ERR_set_mark();
+    ASN1_OCTET_STRING *str = a2i_IPADDRESS(host);
+    ERR_pop_to_mark();
+    ASN1_OCTET_STRING_free(str);
+    return str != NULL;
+}
+
 static const char *const CONN_scheme_postfix = "://";
 
 static const char *skip_scheme(const char *str)
@@ -690,7 +708,7 @@ const char *STORE_get0_host(const X509_STORE *store)
      * We could use ex_data, but do not support this with GENCMP_NO_SECUTILS.
      */
     (void)store; /* prevent compiler warning on unused parameter */
-    return false;
+    return NULL;
 # else
     /* first hostname set in store vpm: */
     return X509_VERIFY_PARAM_get0_host(X509_STORE_get0_param(store), 0);

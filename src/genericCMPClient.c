@@ -451,6 +451,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
         return err;
     }
 #endif
+    char *hostaddr_to_free = NULL;
     char *host = NULL, *server_port = NULL, *parsed_path = NULL;
     const char *proxy_host = NULL;
 
@@ -479,26 +480,30 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
         OSSL_HTTP_adapt_proxy(proxy, no_proxy, host, tls != NULL);
 #ifndef GENCMP_NO_TLS
     if (tls != NULL) {
+        const char *hostaddr = NULL;
         X509_STORE *ts = SSL_CTX_get_cert_store(tls);
-        X509_VERIFY_PARAM *vpm = ts != NULL ? X509_STORE_get0_param(ts) : NULL;
-        char *ip;
-        const char *hostaddr = ts != NULL ? STORE_get0_host(ts) : NULL;
-
-        if (is_localhost(host)) {
-            hostaddr = NULL;
-            LOG(FL_WARN, "Skipping host name verification on localhost");
-            /* enables self-bootstrapping of local RA using its device cert */
-        } else if (hostaddr == NULL) {
-            hostaddr = host;
-            /* set expected host in ts, if no name validation has been set there so far */
-            if (vpm != NULL && X509_VERIFY_PARAM_get0_email(vpm) == NULL) {
+        if (ts != NULL) {
+            X509_VERIFY_PARAM *vpm = X509_STORE_get0_param(ts);
+            hostaddr = STORE_get0_host(ts);
+            if (hostaddr == NULL && vpm != NULL) {
                 ERR_set_mark();
-                ip = X509_VERIFY_PARAM_get1_ip_asc(vpm);
+                hostaddr = hostaddr_to_free = X509_VERIFY_PARAM_get1_ip_asc(vpm);
                 ERR_pop_to_mark();
-                OPENSSL_free(ip);
-                if (ip == NULL && !STORE_set1_host_ip(ts, host, 0)) {
-                    err = CMPOSSL_error();
-                    goto err;
+            }
+
+            if (hostaddr == NULL) { /* tls_host (name or IP address) not yet explicitly set */
+                if (is_localhost(host)) {
+                    LOG(FL_WARN, "Skipping TLS server host name verification for %s because it is local", host);
+                    /* enables self-bootstrapping of local RA using its device cert */
+                } else {
+                    hostaddr = host;
+                    /* set expected host in ts, if no name validation whatsoever has been set there so far */
+                    if (vpm == NULL || X509_VERIFY_PARAM_get0_email(vpm) == NULL) {
+                        if (!STORE_set1_host_ip(ts, host, host)) {
+                            err = CMPOSSL_error();
+                            goto err;
+                        }
+                    }
                 }
             }
         }
@@ -551,6 +556,7 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
     err = CMP_OK;
 
  err:
+    OPENSSL_free(hostaddr_to_free);
     OPENSSL_free(host);
     OPENSSL_free(server_port);
     OPENSSL_free(parsed_path);

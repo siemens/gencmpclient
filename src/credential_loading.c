@@ -784,7 +784,7 @@ STACK_OF(X509) *load_certs_multifile(const char *files, OPTIONAL const char *sou
 }
 
 X509_CRL *FILES_load_crl_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                            OPTIONAL const char *src, file_format_t format, bool maybe_stdin,
+                            OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
                             int timeout, OPTIONAL const char *desc,
                             OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
@@ -792,25 +792,25 @@ X509_CRL *FILES_load_crl_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *
 
     if (desc == NULL)
         desc = "CRL";
-    LOG(FL_DEBUG, "Loading %s from %s", desc, src != NULL ? src : "<stdin>");
-    if (CONN_IS_HTTPS(src)) {
-        LOG(FL_ERR, "Loading %s over HTTPS is unsupported; src=%s\n", desc, src);
-    } else if (CONN_IS_HTTP(src)) { /* TODO maybe also support PEM format */
+    LOG(FL_DEBUG, "Loading %s from %s", desc, uri != NULL ? uri : "<stdin>");
+    if (CONN_IS_HTTPS(uri)) {
+        LOG(FL_ERR, "Loading %s over HTTPS is unsupported; uri=%s\n", desc, uri);
+    } else if (CONN_IS_HTTP(uri)) { /* TODO maybe also support PEM format */
 #if 1
-        crl = CONN_load_crl_http(src, timeout, 0, desc);
+        crl = CONN_load_crl_http(uri, timeout, 0, desc);
 #else
-        crl = X509_CRL_load_http(src, NULL, NULL, timeout);
+        crl = X509_CRL_load_http(uri, NULL, NULL, timeout);
         if (crl == NULL) {
             ERR_print_errors(bio_err);
-            LOG(FL_ERR, "Unable to load %s from %s\n", desc, src != NULL ? src : "<stdin>");
+            LOG(FL_ERR, "Unable to load %s from %s\n", desc, uri != NULL ? uri : "<stdin>");
         }
 #endif
     } else {
         (void)load_key_certs_crls(libctx, propq,
-                                  src, format, maybe_stdin, NULL, desc, false,
+                                  uri, format, maybe_stdin, NULL, desc, false,
                                   NULL, NULL,  NULL, NULL, NULL, 0, &crl, NULL, 1);
     }
-    if (!CRL_check(src, crl, vpm) && vpm != NULL) {
+    if (!CRL_check(uri, crl, vpm) && vpm != NULL) {
         X509_CRL_free(crl);
         return NULL;
     }

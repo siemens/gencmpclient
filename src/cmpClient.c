@@ -552,8 +552,6 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     LOG_err("TLS is not enabled in this build");
     return NULL;
 #else
-    const char *host = opt_tls_host;
-    char *server_host = NULL;
     CREDENTIALS *tls_creds = NULL;
     SSL_CTX *tls = NULL;
 
@@ -602,23 +600,9 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     if (tls == NULL)
         goto err;
 
-    /*
-     * Enable and parameterize server hostname/IP address check.
-     * If we did this before checking our own TLS cert in TLS_new(),
-     * the expected hostname would mislead the check.
-     */
-    if (host == NULL && opt_server != NULL) {
-        if (!OSSL_HTTP_parse_url(opt_server, NULL, NULL, &server_host, NULL, NULL,
-                                 NULL, NULL, NULL)) {
-            LOG(FL_ERR, "Cannot parse -server URL: %s", opt_server);
-            goto err;
-        }
-        host = server_host;
-    }
-
-    if (tls_trust != NULL && !STORE_set1_host_ip(tls_trust, host, host))
+    if (tls_trust != NULL && opt_tls_host != NULL
+        && !STORE_set1_host_ip(tls_trust, opt_tls_host, opt_tls_host))
         goto err;
-    OPENSSL_free(server_host);
 
     /* If present we append to the list also the certs from opt_tls_extra */
     if (opt_tls_extra != NULL) {

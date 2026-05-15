@@ -59,11 +59,11 @@ STACK_OF(X509) *load_certs_multifile(const char *files, OPTIONAL const char *sou
                                      OPTIONAL X509_VERIFY_PARAM *vpm);
 
 X509_CRL *FILES_load_crl_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                            OPTIONAL const char *src, file_format_t format, bool maybe_stdin,
+                            OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
                             int timeout, OPTIONAL const char *desc,
                             OPTIONAL const X509_VERIFY_PARAM *vpm);
-#define load_crl(src, format, stdin, timeout, desc, vpm) \
-    FILES_load_crl_ex(app_get0_libctx(), app_get0_propq(), src, format, stdin, timeout, desc, vpm)
+#define load_crl(uri, format, stdin, timeout, desc, vpm) \
+    FILES_load_crl_ex(app_get0_libctx(), app_get0_propq(), uri, format, stdin, timeout, desc, vpm)
 STACK_OF(X509_CRL) *FILES_load_crls_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                                        const char *srcs, file_format_t format, int timeout,
                                        OPTIONAL const char *desc, int min_num,

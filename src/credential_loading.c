@@ -91,7 +91,7 @@ int opt_provider_path(const char *path)
     return OSSL_PROVIDER_set_default_search_path(app_libctx, path);
 }
 
-int app_provider_load(OSSL_LIB_CTX *libctx, const char *provider_name)
+int app_provider_load(OPTIONAL OSSL_LIB_CTX *libctx, const char *provider_name)
 {
     OSSL_PROVIDER *prov;
 
@@ -322,13 +322,13 @@ static void unbuffer(FILE *fp)
  */
 
 static
-bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
-                         const char *uri, file_format_t format, bool maybe_stdin,
-                         const char *pass, const char *desc, bool quiet,
-                         EVP_PKEY **ppkey, EVP_PKEY **ppubkey,
-                         EVP_PKEY **pparams,
-                         X509 **pcert, STACK_OF(X509) **pcerts, int min_certs,
-                         X509_CRL **pcrl, STACK_OF(X509_CRL) **pcrls, int min_crls)
+bool load_key_certs_crls(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                         OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
+                         OPTIONAL const char *pass, OPTIONAL const char *desc, bool quiet,
+                         OPTIONAL EVP_PKEY **ppkey, OPTIONAL EVP_PKEY **ppubkey,
+                         OPTIONAL EVP_PKEY **pparams,
+                         OPTIONAL X509 **pcert, OPTIONAL STACK_OF(X509) **pcerts, int min_certs,
+                         OPTIONAL X509_CRL **pcrl, OPTIONAL STACK_OF(X509_CRL) **pcrls, int min_crls)
 {
     PW_CB_DATA ui_data = {pass, uri};
     OSSL_STORE_CTX *ctx = NULL;
@@ -604,9 +604,9 @@ bool load_key_certs_crls(OSSL_LIB_CTX *libctx, const char *propq,
     return failed == NULL;
 }
 
-EVP_PKEY *FILES_load_key_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                            const char *uri, file_format_t format, bool maybe_stdin,
-                            const char *source, const char *desc)
+EVP_PKEY *FILES_load_key_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
+                            OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
+                            OPTIONAL const char *source, OPTIONAL const char *desc)
 {
     char *pass;
     EVP_PKEY *pkey = NULL;
@@ -621,9 +621,9 @@ EVP_PKEY *FILES_load_key_ex(OSSL_LIB_CTX *libctx, const char *propq,
     return pkey;
 }
 
-EVP_PKEY *FILES_load_pubkey_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                               const char *uri, file_format_t format, bool maybe_stdin,
-                               const char *source, const char *desc)
+EVP_PKEY *FILES_load_pubkey_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                               OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
+                               OPTIONAL const char *source, OPTIONAL const char *desc)
 {
     char *pass;
     EVP_PKEY *pkey = NULL;
@@ -638,8 +638,8 @@ EVP_PKEY *FILES_load_pubkey_ex(OSSL_LIB_CTX *libctx, const char *propq,
     return pkey;
 }
 
-X509 *FILES_load_cert_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                         const char *uri, file_format_t format, bool maybe_stdin,
+X509 *FILES_load_cert_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                         OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
                          OPTIONAL const char *source, OPTIONAL const char *desc,
                          int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
@@ -678,9 +678,9 @@ static bool check_cert_chain(const char *src, int type_CA, OPTIONAL const X509_V
     return res;
 }
 
-bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                         const char *srcs, file_format_t format, int timeout, bool maybe_stdin,
-                         const char *source, const char *desc, int min_num,
+bool FILES_load_certs_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                         const char *srcs, file_format_t format, int timeout,
+                         OPTIONAL const char *source, OPTIONAL const char *desc, int min_num,
                          int type_CA, OPTIONAL X509_VERIFY_PARAM *vpm,
                          OPTIONAL X509 **cert, OPTIONAL STACK_OF(X509) **certs)
 {
@@ -715,7 +715,7 @@ bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
             goto handle_crt;
         } else {
             if (!load_key_certs_crls(libctx, propq, src,
-                                     format, maybe_stdin, pass, desc, false,
+                                     format, false, pass, desc, false,
                                      NULL, NULL, NULL, NULL /* cert */, &crts,
                                      min_num, NULL, NULL, 0))
                 goto err;
@@ -771,20 +771,21 @@ bool FILES_load_certs_ex(OSSL_LIB_CTX *libctx, const char *propq,
     return res;
 }
 
-STACK_OF(X509) *load_certs_multifile(const char *files, const char *source,
-                                     const char *desc, int type_CA,
+STACK_OF(X509) *load_certs_multifile(const char *files, OPTIONAL const char *source,
+                                     OPTIONAL const char *desc, int type_CA,
                                      OPTIONAL X509_VERIFY_PARAM *vpm)
 {
     STACK_OF(X509) *certs = NULL;
 
     (void)FILES_load_certs_ex(app_get0_libctx(), app_get0_propq(), files, FORMAT_UNDEF,
-                              0 /* timeout */, false, source, desc,
+                              0 /* timeout */, source, desc,
                               1 /* min_num */, type_CA, vpm, NULL, &certs);
     return certs;
 }
 
-X509_CRL *FILES_load_crl_ex(OSSL_LIB_CTX *libctx, const char *propq, const char *src,
-                            file_format_t format, bool maybe_stdin, int timeout, OPTIONAL const char *desc,
+X509_CRL *FILES_load_crl_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                            OPTIONAL const char *src, file_format_t format, bool maybe_stdin,
+                            int timeout, OPTIONAL const char *desc,
                             OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
     X509_CRL *crl = NULL;
@@ -816,7 +817,7 @@ X509_CRL *FILES_load_crl_ex(OSSL_LIB_CTX *libctx, const char *propq, const char 
     return crl;
 }
 
-STACK_OF(X509_CRL) *FILES_load_crls_ex(OSSL_LIB_CTX *libctx, const char *propq,
+STACK_OF(X509_CRL) *FILES_load_crls_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                                        const char *srcs, file_format_t format, int timeout,
                                        OPTIONAL const char *desc, int min_num,
                                        OPTIONAL const X509_VERIFY_PARAM *vpm)
@@ -881,9 +882,9 @@ STACK_OF(X509_CRL) *FILES_load_crls_ex(OSSL_LIB_CTX *libctx, const char *propq,
 /*
  * extend or create cert store structure with cert(s) read from file
  */
-bool STORE_load_more_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
+bool STORE_load_more_check_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                               X509_STORE **pstore, const char *file,
-                              file_format_t format, const char *source,
+                              file_format_t format, OPTIONAL const char *source,
                               OPTIONAL const char *desc, int min_certs,
                               OPTIONAL X509_VERIFY_PARAM *vpm, OPTIONAL uta_ctx *ctx)
 {
@@ -914,7 +915,7 @@ bool STORE_load_more_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
         STACK_OF(X509) *certs = NULL;
 
         if (!FILES_load_certs_ex(libctx, propq, file, format,
-                                 0 /* timeout */, false /* maybe_stdin */, source, desc, min_certs,
+                                 0 /* timeout */, source, desc, min_certs,
                                  vpm != NULL ? 1 /* strictly check CA */ : -1,
                                  vpm, NULL, &certs))
             return false;
@@ -931,9 +932,9 @@ err:
     return false;
 }
 
-X509_STORE *STORE_load_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
+X509_STORE *STORE_load_check_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                                 const char *files, file_format_t format,
-                                const char *source, OPTIONAL const char *desc,
+                                OPTIONAL const char *source, OPTIONAL const char *desc,
                                 int min_certs_per_file,
                                 OPTIONAL X509_VERIFY_PARAM *vpm, OPTIONAL uta_ctx *ctx)
 
@@ -967,7 +968,7 @@ X509_STORE *STORE_load_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
     return store;
 }
 
-bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
+bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                                OPTIONAL const char *certs, OPTIONAL const char *key,
                                file_format_t format, bool maybe_stdin,
                                OPTIONAL const char *source, OPTIONAL const char *desc,
@@ -1036,7 +1037,7 @@ err:
     return false;
 }
 
-CREDENTIALS *CREDENTIALS_load_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
+CREDENTIALS *CREDENTIALS_load_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                                  OPTIONAL const char *certs, OPTIONAL const char *key,
                                  OPTIONAL const char *source,
                                  OPTIONAL const char *desc,

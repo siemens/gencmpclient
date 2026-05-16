@@ -892,13 +892,24 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const cha
     char *pass;
     bool res = false;
 
+    if (pkey != NULL)
+        *pkey = NULL;
+    if (cert != NULL)
+        *cert = NULL;
+    if (chain != NULL)
+        *chain = NULL;
     if (certs == NULL && key == NULL)
         return true;
+
     if (orig_desc == NULL)
-        desc = certs == NULL ? (key == NULL ? "nothing" /* not possible here */ : "private key") :
+        desc = certs == NULL ? "private key" :
             (key == NULL ? "certificate(s)" : "private key and certificate(s)");
-    LOG(FL_DEBUG, "Loading %s from '%s' and '%s'", desc,
-        key == NULL ? "(nowhere)" : key, certs == NULL ? "(nowhere)" : certs);
+    const char *src1 = key != NULL ? key : certs;
+    const char *sep = "", *src2 = "";
+    if (key != NULL && certs != NULL && !joint_credentials)
+        sep = "' and '", src2 = certs;
+    LOG(FL_DEBUG, "Loading %s from '%s%s%s'", desc, src1, sep, src2);
+
     pass = FILES_get_pass(source, desc);
     if (joint_credentials) {
         if (orig_desc == NULL)
@@ -910,8 +921,10 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const cha
     if (!res) {
         if (orig_desc == NULL)
             desc = "private key";
-        if (pkey != NULL)
+        if (pkey != NULL) {
             EVP_PKEY_free(*pkey);
+            *pkey = NULL;
+        }
         if (key != NULL && pkey != NULL
             && !load_key_certs_crls(libctx, propq, key, format, maybe_stdin, pass, desc, false,
                                     pkey, NULL, NULL, NULL, NULL, 0, NULL, NULL, 0))
@@ -920,31 +933,41 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const cha
             desc = "certificate(s)";
         if (certs != NULL && (cert != NULL || chain != NULL)) {
             if (format == FORMAT_HTTP || CONN_IS_HTTP(certs)) {
-                LOG(FL_ERR, "Loading %s over HTTP is not allowed; uri=%s\n", desc, certs);
+                LOG(FL_ERR, "Loading %s over HTTP is not allowed; uri=%s", desc, certs);
                 goto err;
             }
-                if (!load_key_certs_crls(libctx, propq, certs,
-                                         format, maybe_stdin, pass, desc, false,
-                                         NULL, NULL, NULL, cert, chain, 1, NULL, NULL, 0))
-                    goto err;
+            if (!load_key_certs_crls(libctx, propq, certs,
+                                     format, maybe_stdin, pass, desc, false,
+                                     NULL, NULL, NULL, cert, chain, 1, NULL, NULL, 0))
+                goto err;
         }
     }
     UTIL_cleanse_free(pass);
+    pass = NULL;
     if (orig_desc == NULL)
         desc = "certificate(s)";
     res = (cert == NULL && chain == NULL)
         || check_cert_chain(certs, type_CA, vpm, cert, chain);
-    if (!res)
-        LOG(FL_ERR, "Error(s) checking %s from %s", desc, certs);
-    return res;
+    if (res)
+        return true;
+
+    LOG(FL_ERR, "Error(s) checking %s from %s", desc, certs == NULL ? "<stdin>" : certs);
+    if (cert != NULL) {
+        X509_free(*cert);
+        *cert = NULL;
+    }
+    if (chain != NULL) {
+        CERTS_free(*chain);
+        *chain = NULL;
+    }
 
 err:
-    if (pkey != NULL)
+    if (pkey != NULL) {
         EVP_PKEY_free(*pkey);
+        *pkey = NULL;
+    }
     UTIL_cleanse_free(pass);
-    LOG(FL_ERR, "Could not load %s from %s%s%s", desc, key != NULL ? key : certs,
-        key == NULL || certs == NULL || joint_credentials ? "" : " and ",
-        joint_credentials ? "" : certs);
+    LOG(FL_ERR, "Could not load %s from '%s%s%s'", desc, src1, sep, src2);
     return false;
 }
 

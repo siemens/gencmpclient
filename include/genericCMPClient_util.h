@@ -30,6 +30,8 @@ typedef struct credentials CREDENTIALS;
 /* util.h: */
 # define OPENSSL_V_3_0_0 0x30000000L
 # define UTIL_setup_openssl(version, build_name) /* no-op */
+#define HAS_PREFIX(str, pre) (strncmp(str, pre "", sizeof(pre) - 1) == 0)
+#define CHECK_AND_SKIP_PREFIX(str, pre) (HAS_PREFIX(str, pre) ? ((str) += sizeof(pre) - 1, 1) : 0)
 
 /* log.h: */
 extern BIO *bio_err; /* for low-level error output if verbosity >= LOG_DEBUG */
@@ -96,6 +98,15 @@ void CREDENTIALS_free(OPTIONAL CREDENTIALS *creds);
 static const char *const sec_PASS_STR = "pass:";
 
 /* cert.h: */
+# include <ctype.h> /* needed for UTIL_SKIP_SCHEME() */
+/* Advance string pointer s, which must a modifiable lvalue, past scheme according to RFC 3986: ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ) */
+#define UTIL_SKIP_SCHEME(s)                                                        \
+    do {                                                                           \
+        if (isalpha(*(s)))                                                         \
+            while (*(s) != '\0' && (isalnum(*(s)) || strchr("+-.", *(s)) != NULL)) \
+                (s)++;                                                             \
+    } while (0)
+#define UTIL_SCHEME_SUFFIX "://"
 X509_NAME *UTIL_parse_name(const char *dn, int chtype, bool multirdn);
 int UTIL_cmp_timeframe(OPTIONAL const X509_VERIFY_PARAM *vpm,
                        OPTIONAL const ASN1_TIME *start, OPTIONAL const ASN1_TIME *end);

@@ -17,6 +17,8 @@
 #include <openssl/provider.h>
 #include <openssl/store.h>
 #include <openssl/core_names.h>
+#include <openssl/http.h>
+#include <openssl/pem.h>
 #include <secutils/credentials/credentials.h>
 #include <secutils/credentials/store.h>
 #include <secutils/credentials/cert.h>
@@ -638,24 +640,133 @@ EVP_PKEY *FILES_load_pubkey_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const cha
     return pkey;
 }
 
+static BIO *bio_to_mem_bio(BIO *in, size_t max_len)
+{
+    char buf[4096];
+    size_t total = 0;
+
+    if (in == NULL)
+        return NULL;
+
+    BIO *mem = BIO_new(BIO_s_mem());
+    if (mem == NULL)
+        return NULL;
+
+    for (;;) {
+        int n = BIO_read(in, buf, sizeof(buf));
+        if (n == 0)
+            break; /* EOF */
+
+        if (n > 0) {
+            if (max_len != 0 && total + (size_t)n > max_len) {
+                BIO_free(mem);
+                return NULL;
+            }
+
+            if (BIO_write(mem, buf, n) != n) {
+                BIO_free(mem);
+                return NULL;
+            }
+
+            total += (size_t)n;
+            continue;
+        }
+
+        if (BIO_should_retry(in))
+            continue;
+
+        BIO_free(mem);
+        return NULL;
+    }
+
+    return mem;
+}
+
+static bool contains_str(const char *buf, size_t len, const char *str)
+{
+    size_t nlen = strlen(str);
+    if (nlen == 0 || len < nlen)
+        return false;
+
+    const char *max = buf + len - nlen;
+    while (buf <= max)
+        if (memcmp(buf++, str, nlen) == 0)
+            return true;
+    return false;
+}
+
+static BIO *http_get_mem(const char *uri, int timeout, const char *str, bool *found, const char *desc)
+{
+    *found = false;
+    if (CONN_IS_HTTPS(uri)) {
+        LOG(FL_ERR, "Loading %s over HTTPS is unsupported; uri=%s", desc, uri);
+        return NULL;
+    }
+    BIO *res = OSSL_HTTP_get(uri, NULL /* proxy */, NULL /* no_proxy */,
+                             NULL /* bio */, NULL /* rbio */, NULL /* cb */, NULL /* arg */,
+                             0 /* buf_size */, NULL /* headers */,
+                             NULL /* expected_ct */, 0 /* expect_asn1 */,
+                             100000 /* max_resp_len */, timeout);
+    if (res == NULL) {
+        LOG(FL_ERR, "Unable to download %s from %s\n", desc, uri);
+        return NULL;
+    }
+    if (str == NULL)
+        return res;
+
+    BIO *mem = bio_to_mem_bio(res, 0);
+    BIO_free(res);
+    if (mem == NULL) {
+        LOG(FL_ERR, "Error reading %s data received from %s", desc, uri);
+        return NULL;
+    }
+
+    char *data = NULL;
+    long len = BIO_get_mem_data(mem, &data);
+    if (len <= 0 || data == NULL) {
+        LOG(FL_ERR, "Error peeking at %s data received from %s", desc, uri);
+        BIO_free(mem);
+        return NULL;
+    }
+
+    *found = contains_str(data, (size_t)len, str);
+    return mem;
+}
+
 X509 *FILES_load_cert_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                          OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
-                         OPTIONAL const char *source, OPTIONAL const char *desc,
+                         int timeout, OPTIONAL const char *source, OPTIONAL const char *desc,
                          int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
     char *pass;
-    X509 *cert;
+    X509 *cert = NULL;
 
     if (desc == NULL)
         desc = "certificate";
-    LOG(FL_DEBUG, "Loading %s from %s", desc, uri != NULL ? uri : "<stdin>");
-    pass = FILES_get_pass(source, desc);
-    (void)load_key_certs_crls(libctx, propq, uri, format, maybe_stdin, pass, desc, false,
-                              NULL, NULL, NULL, &cert, NULL, 1, NULL, NULL, 0);
-    UTIL_cleanse_free(pass);
-    if (!CERT_check(uri, cert, type_CA, vpm) && vpm != NULL) {
+    const char *uri_or_stdin = uri != NULL ? uri : "<stdin>";
+    LOG(FL_DEBUG, "Loading %s from %s", desc, uri_or_stdin);
+    if (CONN_IS_HTTP(uri) || CONN_IS_HTTPS(uri)) {
+        bool is_pem;
+        BIO *mem = http_get_mem(uri, timeout, "-----BEGIN CERTIFICATE-----", &is_pem, desc);
+        if (mem != NULL) {
+            cert = is_pem ? PEM_read_bio_X509(mem, NULL, NULL, NULL) : d2i_X509_bio(mem, NULL);
+            BIO_free(mem);
+            if (cert == NULL)
+                LOG(FL_ERR, "Unable to decode %s from %s", desc, uri);
+        }
+    } else {
+        pass = FILES_get_pass(source, desc);
+        (void)load_key_certs_crls(libctx, propq, uri, format, maybe_stdin, pass, desc, false,
+                                  NULL, NULL, NULL, &cert, NULL, 1, NULL, NULL, 0);
+        UTIL_cleanse_free(pass);
+    }
+    if (!CERT_check(uri_or_stdin, cert, type_CA, vpm) && vpm != NULL) {
         X509_free(cert);
         cert = NULL;
+    }
+    if (cert == NULL) {
+        ERR_print_errors(bio_err);
+        LOG(FL_ERR, "Unable to load %s from %s\n", desc, uri_or_stdin);
     }
     return cert;
 }
@@ -692,7 +803,8 @@ bool FILES_load_certs_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *pro
 
     if (desc == NULL)
         desc = "certs";
-    LOG(FL_DEBUG, "Loading %s from %s", desc, srcs);
+    if (!CONN_IS_HTTP(srcs)) /* well, this suppresses output also if only part of the srcs is HTTP-based */
+        LOG(FL_DEBUG, "Loading %s from %s", desc, srcs);
     pass = FILES_get_pass(source, desc);
 
     if (names == NULL || (all_crts = sk_X509_new_null()) == NULL)
@@ -700,18 +812,11 @@ bool FILES_load_certs_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *pro
     for (src = UTIL_first_item(names); src != NULL; src = next) {
         next = UTIL_next_item(src); /* must do this here to split string */
 
-        if (CONN_IS_HTTPS(src)) {
-            LOG(FL_ERR, "Loading %s over HTTPS is unsupported; uri=%s\n", desc, src);
-            goto err;
-        }
-
-        if (CONN_IS_HTTP(src)) {
-            crt = X509_load_http(src, NULL, NULL, timeout);
-            if (crt == NULL) {
-                ERR_print_errors(bio_err);
-                LOG(FL_ERR, "Unable to load %s from %s\n", desc, src);
+        if (CONN_IS_HTTP(src) || CONN_IS_HTTPS(src)) {
+            crt = FILES_load_cert_ex(libctx, propq, src, format, false,
+                                     timeout, NULL, desc, type_CA, vpm);
+            if (crt == NULL)
                 goto err;
-            }
             goto handle_crt;
         } else {
             if (!load_key_certs_crls(libctx, propq, src,
@@ -792,27 +897,29 @@ X509_CRL *FILES_load_crl_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *
 
     if (desc == NULL)
         desc = "CRL";
-    LOG(FL_DEBUG, "Loading %s from %s", desc, uri != NULL ? uri : "<stdin>");
-    if (CONN_IS_HTTPS(uri)) {
-        LOG(FL_ERR, "Loading %s over HTTPS is unsupported; uri=%s\n", desc, uri);
-    } else if (CONN_IS_HTTP(uri)) { /* TODO maybe also support PEM format */
-#if 1
-        crl = CONN_load_crl_http(uri, timeout, 0, desc);
-#else
-        crl = X509_CRL_load_http(uri, NULL, NULL, timeout);
-        if (crl == NULL) {
-            ERR_print_errors(bio_err);
-            LOG(FL_ERR, "Unable to load %s from %s\n", desc, uri != NULL ? uri : "<stdin>");
+    const char *uri_or_stdin = uri != NULL ? uri : "<stdin>";
+    LOG(FL_DEBUG, "Loading %s from %s", desc, uri_or_stdin);
+    if (CONN_IS_HTTP(uri) || CONN_IS_HTTPS(uri)) {
+        bool is_pem;
+        BIO *mem = http_get_mem(uri, timeout, "-----BEGIN X509 CRL-----", &is_pem, desc);
+        if (mem != NULL) {
+            crl = is_pem ? PEM_read_bio_X509_CRL(mem, NULL, NULL, NULL) : d2i_X509_CRL_bio(mem, NULL);
+            BIO_free(mem);
+            if (crl == NULL)
+                LOG(FL_ERR, "Unable to decode %s from %s", desc, uri);
         }
-#endif
     } else {
         (void)load_key_certs_crls(libctx, propq,
                                   uri, format, maybe_stdin, NULL, desc, false,
                                   NULL, NULL,  NULL, NULL, NULL, 0, &crl, NULL, 1);
     }
-    if (!CRL_check(uri, crl, vpm) && vpm != NULL) {
+    if (!CRL_check(uri_or_stdin, crl, vpm) && vpm != NULL) {
         X509_CRL_free(crl);
-        return NULL;
+        crl = NULL;
+    }
+    if (crl == NULL) {
+        ERR_print_errors(bio_err);
+        LOG(FL_ERR, "Unable to load %s from %s\n", desc, uri_or_stdin);
     }
     return crl;
 }
@@ -828,20 +935,18 @@ STACK_OF(X509_CRL) *FILES_load_crls_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL c
 
     if (desc == NULL)
         desc = "CRLs";
-    LOG(FL_DEBUG, "Loading %s from %s", desc, srcs);
+    if (!CONN_IS_HTTP(srcs)) /* well, this suppresses output also if only part of the srcs is HTTP-based */
+        LOG(FL_DEBUG, "Loading %s from %s", desc, srcs);
 
     if (names == NULL || (all_crls = sk_X509_CRL_new_null()) == NULL)
         goto oom;
     for (src = UTIL_first_item(names); src != NULL; src = next) {
         next = UTIL_next_item(src); /* must do this here to split string */
 
-        if (CONN_IS_HTTPS(src)) {
-            LOG(FL_ERR, "Loading %s over HTTPS is unsupported; uri=%s\n", desc, src);
-            goto err;
-        }
 
-        if (CONN_IS_HTTP(src)) {
-            if ((crl = CONN_load_crl_http(src, timeout, 0, desc)) == NULL)
+        if (CONN_IS_HTTP(src) || CONN_IS_HTTPS(src)) {
+            if ((crl = FILES_load_crl_ex(libctx, propq, src, format, false,
+                                         timeout, desc, vpm)) == NULL)
                 goto err;
             goto handle_crl;
         } else {

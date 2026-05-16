@@ -43,11 +43,11 @@ EVP_PKEY *FILES_load_pubkey_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const cha
 
 X509 *FILES_load_cert_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                          OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
-                         OPTIONAL const char *source, OPTIONAL const char *desc,
+                         int timeout, OPTIONAL const char *source, OPTIONAL const char *desc,
                          int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm);
 #define load_cert_pwd(uri, source, desc, type_CA, vpm) \
     FILES_load_cert_ex(app_get0_libctx(), app_get0_propq(), uri, \
-                       FILES_get_format(uri), false, source, desc, type_CA, vpm)
+                       FILES_get_format(uri), false, 0, source, desc, type_CA, vpm)
 
 bool FILES_load_certs_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                          const char *srcs, file_format_t format, int timeout,

@@ -1005,11 +1005,16 @@ bool FILES_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const cha
         *chain = NULL;
     if (certs == NULL && key == NULL)
         return true;
+
     if (orig_desc == NULL)
-        desc = certs == NULL ? (key == NULL ? "nothing" /* not possible here */ : "private key") :
+        desc = certs == NULL ? "private key" :
             (key == NULL ? "certificate(s)" : "private key and certificate(s)");
-    LOG(FL_DEBUG, "Loading %s from '%s' and '%s'", desc,
-        key == NULL ? "(nowhere)" : key, certs == NULL ? "(nowhere)" : certs);
+    const char *src1 = key != NULL ? key : certs;
+    const char *sep, *src2 = "";
+    if (key != NULL && certs != NULL && !joint_credentials)
+        sep = "' and '", src2 = certs;
+    LOG(FL_DEBUG, "Loading %s from '%s%s%s'", desc, src1, sep, src2);
+
     pass = FILES_get_pass(source, desc);
     if (joint_credentials) {
         if (orig_desc == NULL)
@@ -1067,9 +1072,7 @@ err:
         *pkey = NULL;
     }
     UTIL_cleanse_free(pass);
-    LOG(FL_ERR, "Could not load %s from %s%s%s", desc, key != NULL ? key : certs,
-        key == NULL || certs == NULL || joint_credentials ? "" : " and ",
-        joint_credentials ? "" : certs);
+    LOG(FL_ERR, "Could not load %s from '%s%s%s'", desc, src1, sep, src2);
     return false;
 }
 

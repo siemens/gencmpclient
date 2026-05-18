@@ -1106,8 +1106,13 @@ bool STORE_load_more_check_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char
 {
     if (desc == NULL)
         desc = "trusted cert(s)";
-    if (pstore == NULL || file == NULL) {
-        LOG_err("null pointer argument");
+    if (file == NULL) {
+        LOG_err("null pointer file argument");
+        file = "(NULL)";
+        goto err;
+    }
+    if (pstore == NULL) {
+        LOG_err("null pointer pstore argument");
         goto err;
     }
     /* LOG(FL_DEBUG, ...) will be done by FILES_load_certs_ex() */

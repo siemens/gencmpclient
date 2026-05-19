@@ -203,7 +203,7 @@ CRLMGMT_DATA *cmdata = NULL;
 STACK_OF(X509_CRL) *crls = NULL;
 
 typedef struct RATS_CTX {
-	OSSL_CMP_CTX *osslctx;
+    bool do_rats;
 	struct token_req tpm_kd_req;
 	struct token_req attest_chal;
 } RATS_CTX;
@@ -1256,6 +1256,7 @@ static int setup_ctx(CMP_CTX *ctx, RATS_CTX *rats_ctx)
             LOG_err("Incomplete RATS configuration");
                        goto err;
 
+        rats_ctx->do_rats = true;
         rats_ctx->tpm_kd_req = opt_tpm_kd_req;
         rats_ctx->tpm_kd_req.nonce_size=strlen((char*)rats_ctx->tpm_kd_req.nonce);
         rats_ctx->attest_chal = opt_attest_chal;
@@ -2615,7 +2616,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         goto err;
 
     // TODO add RATS stuff
-    if (rats_ctx->tpm_kd_req.token_name != NULL) {
+    if (rats_ctx->do_rats) {
         // RATS configured
         // Request TPM key data
         struct token_resp req_resp;
@@ -2626,13 +2627,37 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         }
         // TODO find OID for TPM key data
         ASN1_OBJECT *type = OBJ_txt2obj("1.2.3.4.5", 1);
+        if (type == NULL) {
+            LOG_err("OBJ_txt2obj failed");
+            goto err;
+        }
         ASN1_OCTET_STRING* octetstring = ASN1_OCTET_STRING_new();
-        ASN1_OCTET_STRING_set(octetstring, req_resp.submods->buf, (int)req_resp.submods->buf_size);
+        if (octetstring == NULL) {
+            LOG_err("ASN1_OCTET_STRING_new failed");
+            goto err;
+        }
+        if (!ASN1_OCTET_STRING_set(
+                octetstring, req_resp.submods->buf, (int)req_resp.submods->buf_size)) {
+            LOG_err("ASN1_OCTET_STRING_set failed");
+             goto err;
+        }
+        atg_free_attestation_token(req_resp);
         ASN1_TYPE* val = ASN1_TYPE_new();
+        if (val == NULL) {
+            LOG_err("ASN1_TYPE_new failed");
+            goto err;
+        }
         ASN1_TYPE_set(val, V_ASN1_OCTET_STRING, octetstring);
 
         OSSL_CMP_ITAV *itav = OSSL_CMP_ITAV_create(type, val);
-        OSSL_CMP_CTX_push0_genm_ITAV(ctx, itav);
+        if (itav == NULL) {
+            LOG_err("OSSL_CMP_ITAV_create failed");
+            goto err;
+        }
+        if (!OSSL_CMP_CTX_push0_genm_ITAV(ctx, itav)) {
+            LOG_err("OSSL_CMP_CTX_push0_genm_ITAV failed");
+            goto err;
+        }
 
         STACK_OF(OSSL_CMP_ITAV) *itavs = OSSL_CMP_exec_GENM_ses(ctx);
 
@@ -2644,7 +2669,10 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         }
 
         OSSL_CMP_ITAV* ret_itav=sk_OSSL_CMP_ITAV_value(itavs, 0);
-
+        if (ret_itav == NULL) {
+             LOG_err("sk_OSSL_CMP_ITAV_value failed");
+             goto err;
+         }
 
         ASN1_TYPE* ret_val=OSSL_CMP_ITAV_get0_value(ret_itav);
         if (ASN1_TYPE_get(ret_val) != V_ASN1_OCTET_STRING) {
@@ -2655,9 +2683,8 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         rats_ctx->attest_chal.user_data_size = (size_t)ret_val->value.octet_string->length;
         rats_ctx->attest_chal.user_data = ret_val->value.octet_string->data;
 
-        if (add_rats_extensions(rats_ctx, &exts))
+        if (!add_rats_extensions(rats_ctx, &exts))
             goto err;
-
 
         sk_OSSL_CMP_ITAV_pop_free(itavs, OSSL_CMP_ITAV_free);
 

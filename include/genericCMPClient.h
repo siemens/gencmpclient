@@ -129,6 +129,7 @@ typedef int CMP_err;
 
 typedef struct CMP_CTX {
 	OSSL_CMP_CTX *osslctx;
+	bool do_rats;
 	struct token_req tpm_kd_req;
 	struct token_req attest_chal;
 } CMP_CTX;

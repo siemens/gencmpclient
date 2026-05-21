@@ -307,7 +307,7 @@ opt_t cmp_opts[] = {
       "Path to the RATS token configuration file for TPM key data request"},
     { "tpmkd_plugincfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_tpm_kd_req.plugconf_path },
       "Path to the RATS plugin configuration file for TPM key data request"},
-    { "tpmkd_plugincfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_tpm_kd_req.nonce },
+    { "tpmkd_nonce", OPT_TXT, {.txt = NULL}, {(const char**) &opt_tpm_kd_req.nonce },
       "Nonce for TPM key data request"},
 
     { "atcha_tokenname", OPT_TXT, {.txt = NULL}, {(const char**) &opt_attest_chal.token_name },
@@ -316,7 +316,7 @@ opt_t cmp_opts[] = {
       "Path to the RATS token configuration file for attestation challenge"},
     { "atcha_plugincfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_attest_chal.plugconf_path },
       "Path to the RATS plugin configuration file for attestation challenge"},
-    { "atcha_plugincfgpath", OPT_TXT, {.txt = NULL}, {(const char**) &opt_attest_chal.nonce },
+    { "atcha_nonce", OPT_TXT, {.txt = NULL}, {(const char**) &opt_attest_chal.nonce },
       "Nonce for attestation challenge"},
 
 
@@ -1246,15 +1246,15 @@ static int setup_ctx(CMP_CTX *ctx, RATS_CTX *rats_ctx)
                 opt_tpm_kd_req.config_path == NULL ||
                 opt_tpm_kd_req.plugconf_path == NULL ||
                 opt_tpm_kd_req.nonce == NULL ||
-                opt_tpm_kd_req.token_name == NULL ||
 
                 opt_attest_chal.token_name == NULL ||
                 opt_attest_chal.config_path == NULL ||
                 opt_attest_chal.plugconf_path == NULL ||
                 opt_attest_chal.nonce == NULL
-                )
+                ) {
             LOG_err("Incomplete RATS configuration");
                        goto err;
+        }
 
         rats_ctx->do_rats = true;
         rats_ctx->tpm_kd_req = opt_tpm_kd_req;

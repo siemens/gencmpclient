@@ -52,7 +52,7 @@ EJBCA_CMP_SUBJECT_IMPRINT =
 # no_check_time = 1  # is not supported by OpenSSL 1.0.2
 #attime = 1524704000
 server_host = 127.0.0.1 # localhost
-server_port = 0 # 0 means that the port is determined by the server
+server_port = 8888 # 0 means that the port is determined by the server
 server_tls = 0
 server_cert = server.crt
 server = $server_host:$server_port
@@ -75,6 +75,9 @@ keypass = pass:12345
 ignore_keyusage = 0
 column = 0
 sleep = 0
+reqout = "/tmp/req1.der /tmp/req2.der /tmp/req3.der /tmp/req4.der /tmp/req5.der /tmp/req6.der"
+rspout = "/tmp/rsp1.der /tmp/rsp2.der /tmp/rsp3.der /tmp/rsp4.der /tmp/rsp5.der /tmp/rsp6.der"
+
 
 [LwCmp]
 #attime = 1524704000

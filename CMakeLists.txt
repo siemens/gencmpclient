@@ -279,6 +279,8 @@ add_executable(cmpClient
   ${SRC_DIR}/cmpClient.c
   ${SRC_DIR}/credential_loading.h
   ${SRC_DIR}/credential_loading.c
+  ${SRC_DIR}/creds.h # TODO move to libsecutils
+  ${SRC_DIR}/creds.c # TODO move to libsecutils
 )
 
 target_link_libraries(cmpClient

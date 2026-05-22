@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include "creds.h"
+
 int app_set_propq(const char *arg);
 const char *app_get0_propq(void);
 OSSL_LIB_CTX *app_get0_libctx(void);
@@ -25,75 +27,24 @@ int opt_provider_path(const char *path);
 int app_provider_load(OPTIONAL OSSL_LIB_CTX *libctx, const char *provider_name);
 void app_providers_cleanup(void);
 
-int set_base_ui_method(const UI_METHOD *ui_meth);
-int setup_ui_method(void);
-void destroy_ui_method(void);
-
-EVP_PKEY *CREDS_load_key_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
-                            OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
-                            OPTIONAL const char *source, OPTIONAL const char *desc);
 #define load_key_pwd(uri, format, pass, e, desc) \
     CREDS_load_key_ex(app_get0_libctx(), app_get0_propq(), uri, format, false, pass, desc)
 
-EVP_PKEY *CREDS_load_pubkey_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                               OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
-                               OPTIONAL const char *source, OPTIONAL const char *desc);
 #define load_pubkey_pwd(uri, format, pass, e, desc) \
     CREDS_load_pubkey_ex(app_get0_libctx(), app_get0_propq(), uri, format, false, pass, desc)
 
-X509 *CREDS_load_cert_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                         OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
-                         int timeout, OPTIONAL const char *source, OPTIONAL const char *desc,
-                         int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm);
 #define load_cert_pwd(uri, source, desc, type_CA, vpm) \
     CREDS_load_cert_ex(app_get0_libctx(), app_get0_propq(), uri, \
                        FILES_get_format(uri), false, 0, source, desc, type_CA, vpm)
-
-bool CREDS_load_certs_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                         const char *srcs, file_format_t format, int timeout,
-                         OPTIONAL const char *source, OPTIONAL const char *desc, int min_num,
-                         int type_CA, OPTIONAL X509_VERIFY_PARAM *vpm,
-                         OPTIONAL X509 **cert, OPTIONAL STACK_OF(X509) **certs);
-STACK_OF(X509) *load_certs_multifile(const char *files, OPTIONAL const char *source,
-                                     const char *desc, int type_CA,
-                                     OPTIONAL X509_VERIFY_PARAM *vpm);
-
-X509_CRL *CREDS_load_crl_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                            OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
-                            int timeout, OPTIONAL const char *desc,
-                            OPTIONAL const X509_VERIFY_PARAM *vpm);
 #define load_crl(uri, format, stdin, timeout, desc, vpm) \
     CREDS_load_crl_ex(app_get0_libctx(), app_get0_propq(), uri, format, stdin, timeout, desc, vpm)
-STACK_OF(X509_CRL) *CREDS_load_crls_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                                       const char *srcs, file_format_t format, int timeout,
-                                       OPTIONAL const char *desc, int min_num,
-                                       OPTIONAL const X509_VERIFY_PARAM *vpm);
 #define load_crls(files, format, timeout, desc, vpm) \
     CREDS_load_crls_ex(app_get0_libctx(), app_get0_propq(), files, format, timeout, desc, 0, vpm)
 
-bool CREDS_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                               OPTIONAL const char *certs, OPTIONAL const char *key,
-                               file_format_t format, bool maybe_stdin,
-                               OPTIONAL const char *source, OPTIONAL const char *desc,
-                               OPTIONAL X509_VERIFY_PARAM *vpm, int type_CA,
-                               OPTIONAL EVP_PKEY **pkey, OPTIONAL X509 **cert,
-                               OPTIONAL STACK_OF(X509) **chain);
-CREDENTIALS *CREDENTIALS_load_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
-                                 OPTIONAL const char *certs, OPTIONAL const char *key,
-                                 OPTIONAL const char *source,
-                                 OPTIONAL const char *desc,
-                                 OPTIONAL X509_VERIFY_PARAM *vpm);
-
-bool STORE_load_more_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                              X509_STORE **pstore, const char *file,
-                              file_format_t format, OPTIONAL const char *source,
-                              OPTIONAL const char *desc, int min_certs,
-                              OPTIONAL X509_VERIFY_PARAM *vpm, OPTIONAL uta_ctx *ctx);
-X509_STORE *STORE_load_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
-                                const char *files, file_format_t format,
-                                OPTIONAL const char *source, OPTIONAL const char *desc,
-                                int min_certs_per_file,
-                                OPTIONAL X509_VERIFY_PARAM *vpm, OPTIONAL uta_ctx *ctx);
 #define load_certstore(files, source, desc, vpm) \
     STORE_load_check_ex(app_get0_libctx(), app_get0_propq(), \
                         files, FORMAT_PEM, source, desc, 1, vpm, NULL)
+
+STACK_OF(X509) *load_certs_multifile(const char *files, OPTIONAL const char *source,
+                                     const char *desc, int type_CA,
+                                     OPTIONAL X509_VERIFY_PARAM *vpm);

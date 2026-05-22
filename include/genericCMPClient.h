@@ -15,7 +15,7 @@
 #ifndef GENERIC_CMP_CLIENT_H
 # define GENERIC_CMP_CLIENT_H
 
-# include "genericCMPClient_config.h"
+# include "./genericCMPClient_config.h"
 
 # ifdef __cplusplus
 extern "C" {

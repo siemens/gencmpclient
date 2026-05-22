@@ -228,6 +228,7 @@ endif()
 
 include_directories(
   ${INC_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 if(DEFINED USE_LIBCMP)
   include_directories(SYSTEM ${CMPOSSL_INC_DIR}/cmp)
@@ -237,7 +238,11 @@ endif()
 # must not add the system OpenSSL include dir before ${CMPOSSL_INC_DIR}/cmp etc.
 include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 
-configure_file(${INC_DIR}/genericCMPClient_config.h.in ${INC_DIR}/genericCMPClient_config.h)
+configure_file(${INC_DIR}/genericCMPClient_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/genericCMPClient_config.h)
+install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/include/genericCMPClient_config.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   # help CPackDeb please dpkg-shlibdeps
@@ -319,7 +324,7 @@ target_link_libraries(${LIBGENCMP_NAME}
 
 set(INC_PUBLIC_HDRS
   ${INC_DIR}/genericCMPClient.h
-  ${INC_DIR}/genericCMPClient_config.h
+  ${CMAKE_CURRENT_BINARY_DIR}/include/genericCMPClient_config.h
 )
 set_target_properties(${LIBGENCMP_NAME} PROPERTIES
   VERSION ${GENCMPCLIENT_VERSION} SOVERSION ${GENCMPCLIENT_VERSION_MAJOR}

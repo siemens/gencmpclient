@@ -13,6 +13,13 @@ if(NOT DEFINED GENCMPCLIENT_VERSION)
 endif()
 message(STATUS "generic CMP client version " ${GENCMPCLIENT_VERSION})
 
+set(PROJECT_VERSION ${GENCMPCLIENT_VERSION})
+set(CMAKE_PROJECT_DESCRIPTION "Generic CMP client library with high-level API based on OpenSSL
+")
+set(CMAKE_PROJECT_HOMEPAGE_URL "https://github.com/siemens/gencmpclient")
+set(pc_req_public "openssl, libsecutils")
+set(pc_req_private "")
+
 # Option to build shared or static library (default: SHARED)
 option(GENCMP_STATIC_LIB "Build static library instead of shared" OFF)
 if(GENCMP_STATIC_LIB)
@@ -244,6 +251,13 @@ install(
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
+configure_file(libgencmp.pc.in ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc @ONLY)
+install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+    COMPONENT dev
+)
+
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   # help CPackDeb please dpkg-shlibdeps
   if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0")
@@ -414,6 +428,7 @@ if(NOT TARGET uninstall)
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}" -empty | xargs -r rmdir
     COMMAND rm -vfr "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/cmake/security-utilities" # seems not needed: ${PROJECT_NAME} cmpossl
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/cmake" -empty | xargs -r rmdir
+    COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig" -empty | xargs -r rmdir
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}" -empty | xargs -r rmdir
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/share/man/man1" -empty | xargs -r rmdir
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/share/man" -empty | xargs -r rmdir
@@ -479,7 +494,7 @@ if(NOT TARGET clean_all)
 if(NOT DEFINED CPACK_PACKAGE_NAME)
 
 SET(CPACK_PACKAGE_NAME ${PROJECT_NAME})
-SET(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/siemens/gencmpclient")
+SET(CPACK_PACKAGE_HOMEPAGE_URL $(CMAKE_PROJECT_HOMEPAGE_URL))
 SET(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
 SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
 SET(CPACK_PACKAGE_VENDOR "Siemens")

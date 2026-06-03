@@ -23,6 +23,9 @@
 
 #include <openssl/provider.h>
 #include <openssl/ssl.h>
+#include <openssl/x509.h>
+#include <openssl/types.h>
+#include <openssl/asn1.h>
 
 #include <secutils/config/config.h>
 #include <secutils/connections/conn.h> /* for CONN_IS_HTTPS */
@@ -552,15 +555,16 @@ static X509_EXTENSIONS *getattestationExt(RATS_CTX *rats_ctx)
     unsigned char *der_data = NULL, *evidence = NULL;
     int der_len = 0, ret = 0;
     unsigned int atg_ret;
-    ASN1_OCTET_STRING oct;
+    ASN1_OCTET_STRING *oct = NULL;
     struct token_resp resp;
+
     rats_ctx->attest_chal.nonce_size =  rats_ctx->attest_chal.nonce != NULL ?
             strlen((const char*)opt_attest_chal.nonce) : 0;
-    rats_ctx->attest_chal.user_data_size = 0;
+    // rats_ctx->attest_chal.user_data_size = 0;
     atg_ret = atg_generate_evidence(rats_ctx->attest_chal, &resp);
     if (atg_ret == 0) {
         printf("Token size: %lu\n", resp.token.buf_size);
-#if 0
+#if 1
         printf("Token: [ ");
         for (size_t i = 0; i < resp.token.buf_size; i++)
             printf("0x%x ", resp.token.buf[i] & 0xff);
@@ -570,9 +574,11 @@ static X509_EXTENSIONS *getattestationExt(RATS_CTX *rats_ctx)
             printf("Error: submodules are not supported.");
             goto err;
         }
-        oct.data = resp.token.buf;
-        oct.length = (int)resp.token.buf_size;
-        oct.flags = 0;
+        oct = ASN1_OCTET_STRING_new();
+        if (oct == NULL)
+            goto err;
+        ASN1_OCTET_STRING_set(oct, resp.token.buf, (int)resp.token.buf_size);
+        //oct->flags = 0;
     } else {
         printf("An error has occurred in generating attestation token, return code - %d\n", atg_ret);
         printf("Token request details:\n");
@@ -595,26 +601,23 @@ static X509_EXTENSIONS *getattestationExt(RATS_CTX *rats_ctx)
     if (evidence == NULL)
         return NULL;
     memset(evidence, 0xAA, EVIDENCE_LEN);
-    oct.data = evidence;
-    oct.length = evidence_len;
-    oct.flags = 0;
+    oct->data = evidence;
+    oct->length = evidence_len;
+    oct->flags = 0;
 #endif
 
-    der_len = i2d_ASN1_OCTET_STRING(&oct, &der_data);
+    der_len = i2d_ASN1_OCTET_STRING(oct, &der_data);
     if (der_len < 0)
         goto err;
 
-    oct.data = der_data;
-    oct.length = der_len;
-    oct.flags = 0;
-
+    ASN1_OCTET_STRING_set(oct, der_data, der_len);
     // TODO find right OID
     ASN1_OBJECT* evidenceStatement =  OBJ_txt2obj ("1.2.3.4.5", 1);
     if (evidenceStatement == NULL)
            goto err;
 
     ext = X509_EXTENSION_create_by_OBJ(NULL, evidenceStatement,
-                                       0, &oct);
+                                       0, oct);
     if (ext == NULL
         || (exts = sk_X509_EXTENSION_new_null()) == NULL
         || !sk_X509_EXTENSION_push(exts, ext))
@@ -624,6 +627,9 @@ static X509_EXTENSIONS *getattestationExt(RATS_CTX *rats_ctx)
  err:
     OPENSSL_free(evidence);
     OPENSSL_free(der_data);
+    ASN1_OBJECT_free(evidenceStatement);
+    if (oct != NULL)
+        ASN1_OCTET_STRING_free(oct);
     if (atg_ret == 0)
         atg_free_attestation_token(resp);
     if (ret == 0) {
@@ -1218,7 +1224,7 @@ static int setup_ctx(CMP_CTX *ctx, RATS_CTX *rats_ctx)
     /* set option flags directly via CMP API */
     if (!OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_UNPROTECTED_ERRORS,
                                  opt_unprotected_errors ? 1 : 0)
-#if OPENSSL_4_1_FEATURES
+#if OPENSSL_4_2_FEATURES
         || !OSSL_CMP_CTX_set_option(ctx, OSSL_CMP_OPT_NONMATCHED_ERROR_NONCES,
                                     opt_nonmatched_error_nonces ? 1 : 0)
 #endif
@@ -1245,12 +1251,12 @@ static int setup_ctx(CMP_CTX *ctx, RATS_CTX *rats_ctx)
         if (opt_tpm_kd_req.token_name == NULL ||
                 opt_tpm_kd_req.config_path == NULL ||
                 opt_tpm_kd_req.plugconf_path == NULL ||
-                opt_tpm_kd_req.nonce == NULL ||
+                // opt_tpm_kd_req.nonce == NULL ||
 
                 opt_attest_chal.token_name == NULL ||
                 opt_attest_chal.config_path == NULL ||
-                opt_attest_chal.plugconf_path == NULL ||
-                opt_attest_chal.nonce == NULL
+                opt_attest_chal.plugconf_path == NULL //||
+                // opt_attest_chal.nonce == NULL
                 ) {
             LOG_err("Incomplete RATS configuration");
                        goto err;
@@ -1258,7 +1264,10 @@ static int setup_ctx(CMP_CTX *ctx, RATS_CTX *rats_ctx)
 
         rats_ctx->do_rats = true;
         rats_ctx->tpm_kd_req = opt_tpm_kd_req;
-        rats_ctx->tpm_kd_req.nonce_size=strlen((char*)rats_ctx->tpm_kd_req.nonce);
+        rats_ctx->tpm_kd_req.nonce_size = 0; //strlen((char*)rats_ctx->tpm_kd_req.nonce);
+        rats_ctx->tpm_kd_req.user_data = NULL;
+        rats_ctx->tpm_kd_req.user_data_size = 0;
+
         rats_ctx->attest_chal = opt_attest_chal;
         rats_ctx->attest_chal.nonce_size=strlen((char*)rats_ctx->attest_chal.nonce);
     }
@@ -2588,11 +2597,326 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
     }
 }
 
+#define OID_GENM_NONCE_REQUEST "1.3.6.1.5.5.7.0.116.100"
+#define OID_GENM_NONCE_RESPONSE "1.3.6.1.5.5.7.0.116.101"
+#define OID_ATTESTATION_NONCE_REQUEST "1.2.840.113549.1.9.16.2.8888"
+#define OID_ATTESTATION_NONCE_RESPONSE "1.2.840.113549.1.9.16.2.8889"
+
+/*
+ * Creates a NonceRequest ITAV from TPM key data and pushes it onto
+ * the CMP context's genm ITAV list, ready for an
+ * OSSL_CMP_exec_GENM_ses() call.
+ *
+ * Returns CMP_OK on success, negative error code on failure.
+ */
+static CMP_err rats_create_nonce_itav(CMP_CTX *ctx, RATS_CTX *rats_ctx)
+{
+    CMP_err err = -50;
+    struct token_resp req_resp;
+    int req_resp_valid = 0;
+    ASN1_OBJECT *OBJ_id_attestation_nonce = NULL;
+    ASN1_OBJECT *OBJ_id_it_nonceRequest = NULL;
+    unsigned char *nonce_req_der = NULL;
+    int nonce_req_der_len = 0;
+    unsigned int status;
+    const unsigned char *p;
+    ASN1_TYPE *val = NULL;
+    OSSL_CMP_ITAV *itav = NULL;
+
+    /* Request TPM key data */
+    status = atg_generate_evidence(rats_ctx->tpm_kd_req, &req_resp);
+    if (status != ATG_SUCCESS) {
+        LOG_err("Request TPM key data failed");
+        goto err;
+    }
+    req_resp_valid = 1;
+
+    OBJ_id_attestation_nonce = OBJ_txt2obj(OID_ATTESTATION_NONCE_REQUEST, 1);
+    if (OBJ_id_attestation_nonce == NULL) {
+        LOG_err("OBJ_txt2obj failed for attestation nonce OID");
+        goto err;
+    }
+
+    /*
+     * NonceRequest ::= SEQUENCE {
+     *     len    INTEGER (8..64) OPTIONAL,
+     *     type   ATTESTATION-NONCE-REQUEST.&id(
+     *                 {AttestationNonceRequestSet}) OPTIONAL,
+     *     reqInfo ATTESTATION-NONCE-REQUEST.&Type(
+     *                 {AttestationNonceRequestSet}{@type}) OPTIONAL
+     * }
+     */
+
+    /* Build DER-encoded NonceRequest SEQUENCE { type, reqInfo } */
+    {
+        STACK_OF(ASN1_TYPE) *nonce_req_seq = sk_ASN1_TYPE_new_null();
+        ASN1_OBJECT *oid_dup = NULL;
+        ASN1_TYPE *type_asn1 = NULL;
+        ASN1_OCTET_STRING *req_info_oct = NULL;
+        ASN1_TYPE *req_info_asn1 = NULL;
+
+        if (nonce_req_seq == NULL) {
+            LOG_err("Failed to allocate NonceRequest SEQUENCE");
+            goto err;
+        }
+        /* type: OID identifying the attestation nonce-request syntax */
+        oid_dup = OBJ_dup(OBJ_id_attestation_nonce);
+        type_asn1 = ASN1_TYPE_new();
+        if (oid_dup == NULL || type_asn1 == NULL) {
+            ASN1_OBJECT_free(oid_dup);
+            ASN1_TYPE_free(type_asn1);
+            sk_ASN1_TYPE_free(nonce_req_seq);
+            LOG_err("Failed to create NonceRequest type field");
+            goto err;
+        }
+        ASN1_TYPE_set(type_asn1, V_ASN1_OBJECT, oid_dup);
+        if (!sk_ASN1_TYPE_push(nonce_req_seq, type_asn1)) {
+            ASN1_TYPE_free(type_asn1); /* also frees oid_dup */
+            sk_ASN1_TYPE_free(nonce_req_seq);
+            LOG_err("Failed to add type to NonceRequest SEQUENCE");
+            goto err;
+        }
+        /* reqInfo: OCTET STRING containing TPM key data */
+        req_info_oct = ASN1_OCTET_STRING_new();
+        req_info_asn1 = ASN1_TYPE_new();
+        if (req_info_oct == NULL
+                || !ASN1_OCTET_STRING_set(req_info_oct, req_resp.token.buf,
+                                          (int)req_resp.token.buf_size)
+                || req_info_asn1 == NULL) {
+            ASN1_OCTET_STRING_free(req_info_oct);
+            ASN1_TYPE_free(req_info_asn1);
+            sk_ASN1_TYPE_pop_free(nonce_req_seq, ASN1_TYPE_free);
+            LOG_err("Failed to create NonceRequest reqInfo field");
+            goto err;
+        }
+        ASN1_TYPE_set(req_info_asn1, V_ASN1_OCTET_STRING, req_info_oct);
+        if (!sk_ASN1_TYPE_push(nonce_req_seq, req_info_asn1)) {
+            ASN1_TYPE_free(req_info_asn1); /* also frees req_info_oct */
+            sk_ASN1_TYPE_pop_free(nonce_req_seq, ASN1_TYPE_free);
+            LOG_err("Failed to add reqInfo to NonceRequest SEQUENCE");
+            goto err;
+        }
+        nonce_req_der_len = i2d_ASN1_SEQUENCE_ANY(nonce_req_seq, &nonce_req_der);
+        sk_ASN1_TYPE_pop_free(nonce_req_seq, ASN1_TYPE_free);
+        if (nonce_req_der_len <= 0) {
+            LOG_err("Failed to DER-encode NonceRequest");
+            goto err;
+        }
+    }
+
+    /* TPM key data is no longer needed once DER is encoded */
+    atg_free_attestation_token(req_resp);
+    req_resp_valid = 0;
+
+    /* TODO Id-it TBD1 */
+    OBJ_id_it_nonceRequest = OBJ_txt2obj(OID_GENM_NONCE_REQUEST, 1);
+    if (OBJ_id_it_nonceRequest == NULL) {
+        LOG_err("OBJ_txt2obj failed for nonceRequest OID");
+        goto err;
+    }
+
+    p = nonce_req_der;
+    val = d2i_ASN1_TYPE(NULL, &p, nonce_req_der_len);
+    OPENSSL_free(nonce_req_der);
+    nonce_req_der = NULL;
+    if (val == NULL) {
+        LOG_err("d2i_ASN1_TYPE failed for NonceRequest");
+        goto err;
+    }
+
+    itav = OSSL_CMP_ITAV_create(OBJ_id_it_nonceRequest, val);
+    if (itav == NULL) {
+        LOG_err("OSSL_CMP_ITAV_create failed");
+        goto err;
+    }
+    OBJ_id_it_nonceRequest = NULL; /* ownership transferred to itav */
+    val = NULL; /* ownership transferred to itav */
+
+    if (!OSSL_CMP_CTX_push0_genm_ITAV(ctx, itav)) {
+        LOG_err("OSSL_CMP_CTX_push0_genm_ITAV failed");
+        goto err;
+    }
+    itav = NULL; /* ownership transferred to ctx */
+
+    err = CMP_OK;
+ err:
+    if (req_resp_valid)
+        atg_free_attestation_token(req_resp);
+    ASN1_OBJECT_free(OBJ_id_attestation_nonce);
+    ASN1_OBJECT_free(OBJ_id_it_nonceRequest);
+    OPENSSL_free(nonce_req_der);
+    ASN1_TYPE_free(val);
+    OSSL_CMP_ITAV_free(itav);
+    return err;
+}
+
+/*
+ * Parses a NonceResponse ITAV received in a CMP genp message and
+ * extracts the respInfo field.
+ *
+ * On success, *rspinfo_out is set to a newly-allocated ASN1_OCTET_STRING
+ * that the caller must free with ASN1_OCTET_STRING_free().
+ *
+ * Returns CMP_OK on success, negative error code on failure.
+ */
+static CMP_err rats_parse_nonce_response(const OSSL_CMP_ITAV *itav,
+                                         ASN1_OCTET_STRING **rspinfo_out)
+{
+    CMP_err err = -50;
+    ASN1_SEQUENCE_ANY *fields = NULL;
+    ASN1_OCTET_STRING *rspinfo = NULL;
+    ASN1_OBJECT *ret_type;
+    ASN1_TYPE *ret_val;
+    ASN1_STRING *rspsequence;
+    const unsigned char *seq_der;
+    long seq_der_len;
+    int nonce_seen = 0;
+    int octet_count = 0;
+    int i;
+
+    *rspinfo_out = NULL;
+
+    ret_type = OSSL_CMP_ITAV_get0_type(itav);
+    if (OBJ_obj2nid(ret_type) != OBJ_txt2nid(OID_GENM_NONCE_RESPONSE)) {
+        LOG_err("attestation challenge in GENP has wrong type");
+        goto err;
+    }
+
+    ret_val = OSSL_CMP_ITAV_get0_value(itav);
+    if (ASN1_TYPE_get(ret_val) != V_ASN1_SEQUENCE) {
+        LOG_err("attestation challenge in GENP has wrong ASN.1 type");
+        goto err;
+    }
+
+    /*
+     * NonceResponse ::= SEQUENCE {
+     *     nonce    OCTET STRING (SIZE(0 | 8..64)),
+     *     expiry   INTEGER OPTIONAL,
+     *     type     ATTESTATION-NONCE-RESPONSE.&id(...) OPTIONAL,
+     *     respInfo ATTESTATION-NONCE-RESPONSE.&Type(...) OPTIONAL
+     * }
+     */
+    rspsequence = ret_val->value.sequence;
+    if (rspsequence == NULL) {
+        LOG_err("attestation challenge in GENP has no fields");
+        goto err;
+    }
+
+    /* Decode the NonceResponse SEQUENCE using the OpenSSL API. */
+    seq_der = ASN1_STRING_get0_data(rspsequence);
+    seq_der_len = (long)ASN1_STRING_length(rspsequence);
+    fields = d2i_ASN1_SEQUENCE_ANY(NULL, &seq_der, seq_der_len);
+    if (fields == NULL) {
+        LOG_err("failed to decode NonceResponse SEQUENCE");
+        goto err;
+    }
+
+    for (i = 0; i < sk_ASN1_TYPE_num(fields); i++) {
+        ASN1_TYPE *f = sk_ASN1_TYPE_value(fields, i);
+
+        if (f->type == V_ASN1_INTEGER) {
+            /* expiry: INTEGER OPTIONAL -- skip */
+        } else if (f->type == V_ASN1_OBJECT) {
+            /* type: OID OPTIONAL -- skip */
+            /* TODO - add the OID check */
+        } else if (f->type == V_ASN1_OCTET_STRING) {
+            octet_count++;
+            if (octet_count == 1) {
+                /* nonce: first OCTET STRING (mandatory) */
+                if (f->value.octet_string == NULL) {
+                    LOG_err("NonceResponse: nonce field is NULL");
+                    goto err;
+                }
+                nonce_seen = 1;
+            } else if (octet_count == 2) {
+                /* respInfo: second OCTET STRING */
+                if (f->value.octet_string == NULL) {
+                    LOG_err("NonceResponse: respInfo field is NULL");
+                    goto err;
+                }
+                rspinfo = ASN1_OCTET_STRING_dup(f->value.octet_string);
+                if (rspinfo == NULL) {
+                    LOG_err("NonceResponse: out of memory copying respInfo");
+                    goto err;
+                }
+            }
+        }
+    }
+
+    if (!nonce_seen) {
+        LOG_err("NonceResponse: missing mandatory nonce field");
+        goto err;
+    }
+    if (rspinfo == NULL) {
+        LOG_err("NonceResponse: missing respInfo field");
+        goto err;
+    }
+
+    *rspinfo_out = rspinfo;
+    rspinfo = NULL;
+    err = CMP_OK;
+ err:
+    sk_ASN1_TYPE_pop_free(fields, ASN1_TYPE_free);
+    ASN1_OCTET_STRING_free(rspinfo);
+    return err;
+}
+
+/*
+ * Perform the RATS attestation-nonce exchange via CMP genm/genp:
+ * 1. Build a NonceRequest ITAV from TPM key data and send it via genm.
+ * 2. Parse the NonceResponse from the returned genp ITAV.
+ * 3. Populate *exts with the attestation extension derived from the response.
+ *
+ * Returns CMP_OK on success, negative error code on failure.
+ */
+static CMP_err rats_do_genm(CMP_CTX *ctx, RATS_CTX *rats_ctx,
+                            X509_EXTENSIONS **exts)
+{
+    CMP_err err = -50;
+    STACK_OF(OSSL_CMP_ITAV) *itavs = NULL;
+    ASN1_OCTET_STRING *rspinfo = NULL;
+    OSSL_CMP_ITAV *ret_itav;
+
+    if ((err = rats_create_nonce_itav(ctx, rats_ctx)) != CMP_OK)
+        goto err;
+
+    itavs = OSSL_CMP_exec_GENM_ses(ctx);
+    if (itavs == NULL || sk_OSSL_CMP_ITAV_num(itavs) != 1) {
+        LOG_err("Missing attestation challenge in GENP");
+        err = -50;
+        goto err;
+    }
+
+    ret_itav = sk_OSSL_CMP_ITAV_value(itavs, 0);
+    if (ret_itav == NULL) {
+        LOG_err("sk_OSSL_CMP_ITAV_value failed");
+        err = -50;
+        goto err;
+    }
+
+    if ((err = rats_parse_nonce_response(ret_itav, &rspinfo)) != CMP_OK)
+        goto err;
+
+    rats_ctx->attest_chal.user_data_size = (size_t)ASN1_STRING_length(rspinfo);
+    rats_ctx->attest_chal.user_data = (unsigned char *)ASN1_STRING_get0_data(rspinfo);
+
+    if (!add_rats_extensions(rats_ctx, exts)) {
+        err = -50;
+        goto err;
+    }
+
+    err = CMP_OK;
+ err:
+    ASN1_OCTET_STRING_free(rspinfo);
+    sk_OSSL_CMP_ITAV_pop_free(itavs, OSSL_CMP_ITAV_free);
+    return err;
+}
+
 static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 {
     CMP_err err = -01;
     CMP_CTX *ctx = NULL;
-    RATS_CTX *rats_ctx = NULL;
+    RATS_CTX rats_ctx;
     EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
     CREDENTIALS *new_creds = NULL;
@@ -2607,7 +2931,7 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         LOG_err("Failed to prepare CMP client");
         goto err;
     }
-    if ((err = setup_ctx(ctx, rats_ctx)) != CMP_OK) {
+    if ((err = setup_ctx(ctx, &rats_ctx)) != CMP_OK) {
         LOG_err("Failed to prepare CMP client");
         goto err;
     }
@@ -2615,80 +2939,15 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
                                           &exts, use_case)) != CMP_OK)
         goto err;
 
+    if ((err = setup_transfer(ctx)) != CMP_OK)
+        goto err;
+
     // TODO add RATS stuff
-    if (rats_ctx->do_rats) {
-        // RATS configured
-        // Request TPM key data
-        struct token_resp req_resp;
-        unsigned int status = atg_generate_evidence(rats_ctx->tpm_kd_req, &req_resp);
-        if (status != ATG_SUCCESS) {
-            LOG_err("Request TPM key data failed");
+    if (rats_ctx.do_rats) {
+        if ((err = rats_do_genm(ctx, &rats_ctx, &exts)) != CMP_OK)
             goto err;
-        }
-        // TODO find OID for TPM key data
-        ASN1_OBJECT *type = OBJ_txt2obj("1.2.3.4.5", 1);
-        if (type == NULL) {
-            LOG_err("OBJ_txt2obj failed");
-            goto err;
-        }
-        ASN1_OCTET_STRING* octetstring = ASN1_OCTET_STRING_new();
-        if (octetstring == NULL) {
-            LOG_err("ASN1_OCTET_STRING_new failed");
-            goto err;
-        }
-        if (!ASN1_OCTET_STRING_set(
-                octetstring, req_resp.submods->buf, (int)req_resp.submods->buf_size)) {
-            LOG_err("ASN1_OCTET_STRING_set failed");
-             goto err;
-        }
-        atg_free_attestation_token(req_resp);
-        ASN1_TYPE* val = ASN1_TYPE_new();
-        if (val == NULL) {
-            LOG_err("ASN1_TYPE_new failed");
-            goto err;
-        }
-        ASN1_TYPE_set(val, V_ASN1_OCTET_STRING, octetstring);
-
-        OSSL_CMP_ITAV *itav = OSSL_CMP_ITAV_create(type, val);
-        if (itav == NULL) {
-            LOG_err("OSSL_CMP_ITAV_create failed");
-            goto err;
-        }
-        if (!OSSL_CMP_CTX_push0_genm_ITAV(ctx, itav)) {
-            LOG_err("OSSL_CMP_CTX_push0_genm_ITAV failed");
-            goto err;
-        }
-
-        STACK_OF(OSSL_CMP_ITAV) *itavs = OSSL_CMP_exec_GENM_ses(ctx);
-
-        atg_free_attestation_token(req_resp);
-
-        if (itavs == NULL || sk_OSSL_CMP_ITAV_num(itavs) != 1) {
-            LOG_err("Missing attestation challenge in GENP");
-            goto err;
-        }
-
-        OSSL_CMP_ITAV* ret_itav=sk_OSSL_CMP_ITAV_value(itavs, 0);
-        if (ret_itav == NULL) {
-             LOG_err("sk_OSSL_CMP_ITAV_value failed");
-             goto err;
-         }
-
-        ASN1_TYPE* ret_val=OSSL_CMP_ITAV_get0_value(ret_itav);
-        if (ASN1_TYPE_get(ret_val) != V_ASN1_OCTET_STRING) {
-            LOG_err("attestation challenge in GENP has wrong type");
-            goto err;
-        }
-
-        rats_ctx->attest_chal.user_data_size = (size_t)ret_val->value.octet_string->length;
-        rats_ctx->attest_chal.user_data = ret_val->value.octet_string->data;
-
-        if (!add_rats_extensions(rats_ctx, &exts))
-            goto err;
-
-        sk_OSSL_CMP_ITAV_pop_free(itavs, OSSL_CMP_ITAV_free);
-
     }
+
 
 
 
@@ -2699,9 +2958,6 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         err = -27;
         goto err;
     }
-
-    if ((err = setup_transfer(ctx)) != CMP_OK)
-        goto err;
 
     switch (use_case) {
     case imprint:

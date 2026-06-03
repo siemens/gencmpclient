@@ -4,12 +4,20 @@ project(libgencmp)
 set(LIBGENCMP_NAME gencmp)
 
 include(ExternalProject)
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  set(ATG_GO_LDFLAGS "GO_LDFLAGS=")
+  set(ATG_GO_GCFLAGS "GO_GCFLAGS=all=-N -l")
+else()
+  set(ATG_GO_LDFLAGS "GO_LDFLAGS=-s -w")
+  set(ATG_GO_GCFLAGS "")
+endif()
 ExternalProject_Add(
 atg 
 GIT_REPOSITORY git@code.siemens.com:ct-rda-cst-ses-de/remote-attestation/base-functionality/attestation-token-generator
-GIT_TAG ak/tcg-key-attestation-plugin
+GIT_TAG rr/tcg-integration
 CONFIGURE_COMMAND ""
-BUILD_COMMAND     ""
+BUILD_COMMAND     make build-lib ${ATG_GO_LDFLAGS} ${ATG_GO_GCFLAGS}
+BUILD_IN_SOURCE   1
 INSTALL_COMMAND   ""
 TEST_COMMAND      ""
 SOURCE_DIR atg
@@ -300,7 +308,7 @@ target_link_libraries(cmpClient
   # important: libcmp before libcrypto such that its contents are preferred
   OpenSSL::Crypto
   $<$<NOT:$<BOOL:${GENCMP_NO_TLS}>>:OpenSSL::SSL>
-  ${PROJECT_SOURCE_DIR}/atg/atglib-key-attestation-demo/libatg.so
+  ${PROJECT_SOURCE_DIR}/atg/build/libatg.so
 )
 if(DEFINED ENV{SECUTILS_USE_UTA})
   target_link_libraries(cmpClient uta)
@@ -528,7 +536,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   set(CPACK_DEBIAN_PACKAGE_GENERATE_SHLIBS ON)
   set(CPACK_DEBIAN_ENABLE_COMPONENT_DEPENDS ON)
   set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-  # set(CPACK_DEBIAN_PACKAGE_DEBUG ON)
+  set(CPACK_DEBIAN_PACKAGE_DEBUG ON)
   # see above assignments
   # to CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS or CMAKE_INSTALL_RPATH
 

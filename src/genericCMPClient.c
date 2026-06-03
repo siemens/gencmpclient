@@ -670,10 +670,10 @@ CMP_err CMPclient_enroll(OSSL_CMP_CTX *ctx, CREDENTIALS **new_creds, int cmd)
         LOG(FL_ERR, "No ctx parameter given");
         return CMP_R_INVALID_CONTEXT;
     }
-    if (OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_unspecified) {
-        LOG(FL_ERR, "The ctx parameter is not clean - call CMPclient_reinit()");
-        return CMP_R_INVALID_CONTEXT;
-    }
+    // if (OSSL_CMP_CTX_get_status(ctx) != OSSL_CMP_PKISTATUS_unspecified) {
+    //     LOG(FL_ERR, "The ctx parameter is not clean - call CMPclient_reinit()");
+    //     return CMP_R_INVALID_CONTEXT;
+    // }
     if (new_creds == NULL) {
         LOG(FL_ERR, "No new_creds parameter given");
         return CMP_R_NULL_ARGUMENT;

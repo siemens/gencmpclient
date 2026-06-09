@@ -27,6 +27,10 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Debug ..
           make clean build
           DESTDIR=tmp make install uninstall
+          [[ -d tmp/usr/local/lib ]] && (echo "uninstall incomplete: lib/ remains"; ls -R tmp/usr/local/lib; false)
+          [[ -d tmp/usr/local/bin ]] && (echo "uninstall incomplete: bin/ remains"; false)
+          [[ -d tmp/usr/local/include ]] && (echo "uninstall incomplete: include/ remains"; ls -R tmp/usr/local/include; false)
+          [[ -d tmp/usr/local/share ]] && (echo "uninstall incomplete: share/ remains"; ls -R tmp/usr/local/share; false)
           cd ..
 
           mkdir build-with-libcmp

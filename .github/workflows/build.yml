@@ -37,7 +37,7 @@ jobs:
           cd build-with-libcmp
           USE_LIBCMP=1 cmake -S .. -B .
           # not needed because implied by "make deb": make build
-          make deb
+          USE_LIBCMP=1 make deb
           DESTDIR=tmp make install uninstall
           make clean_all
 

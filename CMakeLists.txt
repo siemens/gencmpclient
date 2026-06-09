@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 
+# set(CMAKE_VERBOSE_MAKEFILE ON)
+# set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner when using CMake
+
 project(libgencmp)
 set(LIBGENCMP_NAME gencmp)
 
@@ -20,8 +23,17 @@ else()
   message(STATUS "Building SHARED library")
 endif()
 
-# set(CMAKE_VERBOSE_MAKEFILE ON)
-# set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner when using CMake
+# default destination on Linux and macOS: "/usr/local"
+#if(UNIX AND NOT APPLE)
+#  set(CMAKE_INSTALL_PREFIX "/usr")
+#else()
+#  set(CMAKE_INSTALL_PREFIX "tmp")
+#endif()
+if(DEFINED ENV{ROOTFS})
+  set(CMAKE_INSTALL_PREFIX $ENV{ROOTFS} CACHE PATH "comment" FORCE)
+endif()
+include(GNUInstallDirs) # needed for install(...), CMAKE_INSTALL_FULL_LIBDIR, etc.; any CMAKE_INSTALL_PREFIX must be set before
+
 
 # On Windows with MSVC, automatically imply GENCMP_NO_SECUTILS
 # because libSecUtils and CLI are not supported on native Windows builds
@@ -358,17 +370,6 @@ endif()
 
 
 # installation and uninstall
-
-# default destination on Linux and macOS: "/usr/local"
-#if(UNIX AND NOT APPLE)
-#  set(CMAKE_INSTALL_PREFIX "/usr")
-#else()
-#  set(CMAKE_INSTALL_PREFIX "tmp")
-#endif()
-if(DEFINED ENV{ROOTFS})
-  set(CMAKE_INSTALL_PREFIX $ENV{ROOTFS} CACHE PATH "comment" FORCE)
-endif()
-include(GNUInstallDirs) # CMAKE_INSTALL_PREFIX must be set before
 
 install(FILES doc/Generic_CMP_client_API.pdf
   DESTINATION ${CMAKE_INSTALL_DOCDIR}-dev

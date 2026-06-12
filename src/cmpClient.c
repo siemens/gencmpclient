@@ -88,7 +88,7 @@ const char *opt_recipient;
 const char *opt_expect_sender;
 bool opt_ignore_keyusage;
 bool opt_unprotected_errors;
-#if OPENSSL_4_1_FEATURES
+#if OPENSSL_4_2_FEATURES
 bool opt_nonmatched_error_nonces;
 #endif
 #if OPENSSL_3_3_FEATURES
@@ -386,7 +386,7 @@ opt_t cmp_opts[] = {
     { "unprotected_errors", OPT_BOOL, {.bit = false},
       { (const char **) &opt_unprotected_errors },
       "Accept missing or invalid protection of regular error messages and negative"},
-#if OPENSSL_4_1_FEATURES
+#if OPENSSL_4_2_FEATURES
     { "nonmatched_error_nonces", OPT_BOOL, {.bit = false},
       { (const char **) &opt_nonmatched_error_nonces },
       "Accept missing or non-matching transactionID or recipNonce in error messages"},
@@ -546,78 +546,180 @@ static int SSL_CTX_add_extra_chain_free(SSL_CTX *ssl_ctx, STACK_OF(X509) *certs)
 }
 #endif
 
-#define EVIDENCE_LEN 2000
-#define NONCE_SZ 32
+#define ID_AA_ATTESTATION "1.2.840.113549.1.9.16.2.100"
+#define ID_SIEMENS_ATTESTATION "2.16.840.1.113733.1.2.3.4.5"
+/*
+ * Build AttestationBundle DER from stmt_type (OID) and stmt (raw token).
+ * Returns a new ASN1_OCTET_STRING with the DER-encoded bundle on success,
+ * or NULL on failure. Neither stmt_type nor stmt is modified or freed.
+ * The caller is responsible for freeing the returned object.
+ */
+static ASN1_OCTET_STRING *build_attestation_bundle(ASN1_OBJECT *stmt_type,
+                                                   ASN1_OCTET_STRING *stmt)
+{
+    STACK_OF(ASN1_TYPE) *attest_stmt_seq = NULL;
+    STACK_OF(ASN1_TYPE) *attestations_seq = NULL;
+    STACK_OF(ASN1_TYPE) *bundle_seq = NULL;
+    ASN1_TYPE *type_item = NULL;
+    ASN1_TYPE *stmt_item = NULL;
+    ASN1_TYPE *attest_stmt_asn1 = NULL;
+    ASN1_TYPE *attestations_asn1 = NULL;
+    unsigned char *attest_stmt_der = NULL;
+    unsigned char *attestations_der = NULL;
+    unsigned char *bundle_der = NULL;
+    const unsigned char *p = NULL;
+    int attest_stmt_der_len = 0;
+    int attestations_der_len = 0;
+    int bundle_der_len = 0;
+    ASN1_OCTET_STRING *oct_ret = NULL;
+
+    /* Build AttestationStatement SEQUENCE { OID, OCTET STRING } */
+    type_item = ASN1_TYPE_new();
+    if (type_item == NULL)
+        goto err;
+    if (!ASN1_TYPE_set1(type_item, V_ASN1_OBJECT, stmt_type))
+        goto err;
+
+    stmt_item = ASN1_TYPE_new();
+    if (stmt_item == NULL)
+        goto err;
+    if (!ASN1_TYPE_set1(stmt_item, V_ASN1_OCTET_STRING, stmt))
+        goto err;
+
+    attest_stmt_seq = sk_ASN1_TYPE_new_null();
+    if (attest_stmt_seq == NULL)
+        goto err;
+    if (!sk_ASN1_TYPE_push(attest_stmt_seq, type_item))
+        goto err;
+    type_item = NULL;
+    if (!sk_ASN1_TYPE_push(attest_stmt_seq, stmt_item))
+        goto err;
+    stmt_item = NULL;
+
+    /* DER-encode AttestationStatement and round-trip via ASN1_TYPE */
+    attest_stmt_der_len = i2d_ASN1_SEQUENCE_ANY(attest_stmt_seq, &attest_stmt_der);
+    if (attest_stmt_der_len < 0)
+        goto err;
+
+    p = attest_stmt_der;
+    attest_stmt_asn1 = d2i_ASN1_TYPE(NULL, &p, (long)attest_stmt_der_len);
+    if (attest_stmt_asn1 == NULL)
+        goto err;
+
+    /* Build SEQUENCE OF AttestationStatement */
+    attestations_seq = sk_ASN1_TYPE_new_null();
+    if (attestations_seq == NULL)
+        goto err;
+    if (!sk_ASN1_TYPE_push(attestations_seq, attest_stmt_asn1))
+        goto err;
+    attest_stmt_asn1 = NULL;
+
+    /* DER-encode SEQUENCE OF and round-trip via ASN1_TYPE */
+    attestations_der_len =
+        i2d_ASN1_SEQUENCE_ANY(attestations_seq, &attestations_der);
+    if (attestations_der_len < 0)
+        goto err;
+    p = attestations_der;
+    attestations_asn1 = d2i_ASN1_TYPE(NULL, &p, (long)attestations_der_len);
+    if (attestations_asn1 == NULL)
+        goto err;
+    /* Build AttestationBundle SEQUENCE { attestations } */
+    bundle_seq = sk_ASN1_TYPE_new_null();
+    if (bundle_seq == NULL)
+        goto err;
+    if (!sk_ASN1_TYPE_push(bundle_seq, attestations_asn1))
+        goto err;
+    attestations_asn1 = NULL;
+    /* DER-encode AttestationBundle */
+    bundle_der_len = i2d_ASN1_SEQUENCE_ANY(bundle_seq, &bundle_der);
+    if (bundle_der_len < 0)
+        goto err;
+    oct_ret = ASN1_OCTET_STRING_new();
+    if (oct_ret == NULL)
+        goto err;
+
+    if (!ASN1_OCTET_STRING_set(oct_ret, bundle_der, bundle_der_len)) {
+        ASN1_OCTET_STRING_free(oct_ret);
+        oct_ret = NULL;
+        goto err;
+    }
+
+ err:
+    OPENSSL_free(bundle_der);
+    OPENSSL_free(attestations_der);
+    OPENSSL_free(attest_stmt_der);
+    sk_ASN1_TYPE_pop_free(bundle_seq, ASN1_TYPE_free);
+    sk_ASN1_TYPE_pop_free(attestations_seq, ASN1_TYPE_free);
+    sk_ASN1_TYPE_pop_free(attest_stmt_seq, ASN1_TYPE_free);
+    ASN1_TYPE_free(attestations_asn1);
+    ASN1_TYPE_free(attest_stmt_asn1);
+    ASN1_TYPE_free(stmt_item);
+    ASN1_TYPE_free(type_item);
+    return oct_ret;
+}
+
 static X509_EXTENSIONS *getattestationExt(RATS_CTX *rats_ctx)
 {
     X509_EXTENSIONS *exts = NULL;
     X509_EXTENSION *ext = NULL;
     unsigned char *der_data = NULL, *evidence = NULL;
-    int der_len = 0, ret = 0;
+    int ret = 0;
     unsigned int atg_ret;
-    ASN1_OCTET_STRING *oct = NULL;
+    ASN1_OCTET_STRING *stmt = NULL;
+    ASN1_OCTET_STRING *attestation_bundle = NULL;
     struct token_resp resp;
+    ASN1_OBJECT *attestation_oid = NULL, *stmt_type = NULL;
 
-    rats_ctx->attest_chal.nonce_size =  rats_ctx->attest_chal.nonce != NULL ?
-            strlen((const char*)opt_attest_chal.nonce) : 0;
-    // rats_ctx->attest_chal.user_data_size = 0;
+    rats_ctx->attest_chal.nonce_size = rats_ctx->attest_chal.nonce != NULL ?
+            strlen((const char *)rats_ctx->attest_chal.nonce) : 0;
+
     atg_ret = atg_generate_evidence(rats_ctx->attest_chal, &resp);
     if (atg_ret == 0) {
-        printf("Token size: %lu\n", resp.token.buf_size);
-#if 1
-        printf("Token: [ ");
-        for (size_t i = 0; i < resp.token.buf_size; i++)
-            printf("0x%x ", resp.token.buf[i] & 0xff);
-        printf("]\n");
-#endif
+        LOG(FL_INFO, "Token size: %zu", resp.token.buf_size);
         if (resp.num_submods > 0) {
-            printf("Error: submodules are not supported.");
+            LOG_err("submodules in attestation response are not supported");
             goto err;
         }
-        oct = ASN1_OCTET_STRING_new();
-        if (oct == NULL)
+        stmt = ASN1_OCTET_STRING_new();
+        if (stmt == NULL)
             goto err;
-        ASN1_OCTET_STRING_set(oct, resp.token.buf, (int)resp.token.buf_size);
-        //oct->flags = 0;
+        if (!ASN1_OCTET_STRING_set(stmt, resp.token.buf, (int)resp.token.buf_size))
+            goto err;
     } else {
-        printf("An error has occurred in generating attestation token, return code - %d\n", atg_ret);
-        printf("Token request details:\n");
-        printf("Token Name: %s\n", rats_ctx->attest_chal.token_name);
-        printf("Config Path: %s\n", rats_ctx->attest_chal.config_path);
-        printf("Plugin Config Path: %s\n", rats_ctx->attest_chal.plugconf_path);
-        printf("\nNonce Size: %zu\n", rats_ctx->attest_chal.nonce_size);
-        printf("Nonce: ");
-        for (size_t i = 0; i < rats_ctx->attest_chal.nonce_size; i++)
-            printf("0x%x ", rats_ctx->attest_chal.nonce[i] & 0xff);
-        printf("\nUser Data Size: %zu\n\n", rats_ctx->attest_chal.user_data_size);
+        LOG(FL_ERR, "Failed to generate attestation token, return code %d",
+            atg_ret);
+        LOG(FL_ERR,
+            "RATS config: token_name='%s' config_path='%s' plugconf_path='%s'",
+            rats_ctx->attest_chal.token_name,
+            rats_ctx->attest_chal.config_path,
+            rats_ctx->attest_chal.plugconf_path);
         goto err;
     }
 
-#ifdef TEST_DUMMY_EVIDENCE
-    int evidence_len = EVIDENCE_LEN;
-    /* TODO: get evidence from library */
-    (void)ctx;
-    evidence = OPENSSL_malloc(EVIDENCE_LEN);
-    if (evidence == NULL)
-        return NULL;
-    memset(evidence, 0xAA, EVIDENCE_LEN);
-    oct->data = evidence;
-    oct->length = evidence_len;
-    oct->flags = 0;
-#endif
+ /*
+    AttestationStatement ::= SEQUENCE {
+        type   ATTESTATION-STATEMENT.&id({AttestationStatementSet}),
+        stmt   ATTESTATION-STATEMENT.&Type(
+                      {AttestationStatementSet}{@type})
+    }
 
-    der_len = i2d_ASN1_OCTET_STRING(oct, &der_data);
-    if (der_len < 0)
-        goto err;
-
-    ASN1_OCTET_STRING_set(oct, der_data, der_len);
-    // TODO find right OID
-    ASN1_OBJECT* evidenceStatement =  OBJ_txt2obj ("1.2.3.4.5", 1);
-    if (evidenceStatement == NULL)
+    AttestationBundle ::= SEQUENCE {
+        attestations SEQUENCE SIZE (1..MAX) OF AttestationStatement,
+        certs SEQUENCE SIZE (1..MAX) OF LimitedCertChoices OPTIONAL
+    }
+  */
+    stmt_type =  OBJ_txt2obj(ID_SIEMENS_ATTESTATION, 1);
+    if (stmt_type == NULL)
            goto err;
+    attestation_oid = OBJ_txt2obj(ID_AA_ATTESTATION, 1);
+    if (attestation_oid == NULL)
+            goto err;
 
-    ext = X509_EXTENSION_create_by_OBJ(NULL, evidenceStatement,
-                                       0, oct);
+    attestation_bundle = build_attestation_bundle(stmt_type, stmt); 
+    if (attestation_bundle == NULL)
+        goto err;
+    ext = X509_EXTENSION_create_by_OBJ(NULL, attestation_oid,
+                                       0, attestation_bundle);
     if (ext == NULL
         || (exts = sk_X509_EXTENSION_new_null()) == NULL
         || !sk_X509_EXTENSION_push(exts, ext))
@@ -627,9 +729,10 @@ static X509_EXTENSIONS *getattestationExt(RATS_CTX *rats_ctx)
  err:
     OPENSSL_free(evidence);
     OPENSSL_free(der_data);
-    ASN1_OBJECT_free(evidenceStatement);
-    if (oct != NULL)
-        ASN1_OCTET_STRING_free(oct);
+    ASN1_OBJECT_free(stmt_type);
+    ASN1_OBJECT_free(attestation_oid);
+    ASN1_OCTET_STRING_free(attestation_bundle);
+    ASN1_OCTET_STRING_free(stmt);
     if (atg_ret == 0)
         atg_free_attestation_token(resp);
     if (ret == 0) {
@@ -1255,8 +1358,8 @@ static int setup_ctx(CMP_CTX *ctx, RATS_CTX *rats_ctx)
 
                 opt_attest_chal.token_name == NULL ||
                 opt_attest_chal.config_path == NULL ||
-                opt_attest_chal.plugconf_path == NULL //||
-                // opt_attest_chal.nonce == NULL
+                opt_attest_chal.plugconf_path == NULL ||
+                opt_attest_chal.nonce == NULL
                 ) {
             LOG_err("Incomplete RATS configuration");
                        goto err;
@@ -1269,7 +1372,8 @@ static int setup_ctx(CMP_CTX *ctx, RATS_CTX *rats_ctx)
         rats_ctx->tpm_kd_req.user_data_size = 0;
 
         rats_ctx->attest_chal = opt_attest_chal;
-        rats_ctx->attest_chal.nonce_size=strlen((char*)rats_ctx->attest_chal.nonce);
+        rats_ctx->attest_chal.nonce_size =
+            strlen((const char *)rats_ctx->attest_chal.nonce);
     }
 
     if (opt_profile != NULL) {
@@ -1954,6 +2058,10 @@ static CMP_err check_options(enum use_case use_case)
     if (opt_stapling)
         LOG_warn("OCSP stapling may be not supported by the OpenSSL build used by the SecUtils");
 #endif
+    if (opt_rats && use_case != imprint) {
+        LOG_err("-rats option requires 'imprint' command");
+        return -39;
+    }
     return CMP_OK;
 }
 
@@ -2715,6 +2823,7 @@ static CMP_err rats_create_nonce_itav(CMP_CTX *ctx, RATS_CTX *rats_ctx)
         goto err;
     }
 
+    /* d2i_ASN1_TYPE strips the outer 0x30 tag, storing only content in value.sequence */
     p = nonce_req_der;
     val = d2i_ASN1_TYPE(NULL, &p, nonce_req_der_len);
     OPENSSL_free(nonce_req_der);
@@ -2765,6 +2874,7 @@ static CMP_err rats_parse_nonce_response(const OSSL_CMP_ITAV *itav,
     CMP_err err = -50;
     ASN1_SEQUENCE_ANY *fields = NULL;
     ASN1_OCTET_STRING *rspinfo = NULL;
+    ASN1_OBJECT *expected_oid = NULL;
     ASN1_OBJECT *ret_type;
     ASN1_TYPE *ret_val;
     ASN1_STRING *rspsequence;
@@ -2777,10 +2887,17 @@ static CMP_err rats_parse_nonce_response(const OSSL_CMP_ITAV *itav,
     *rspinfo_out = NULL;
 
     ret_type = OSSL_CMP_ITAV_get0_type(itav);
-    if (OBJ_obj2nid(ret_type) != OBJ_txt2nid(OID_GENM_NONCE_RESPONSE)) {
+    expected_oid = OBJ_txt2obj(OID_GENM_NONCE_RESPONSE, 1);
+    if (expected_oid == NULL) {
+        LOG_err("Failed to create expected OID for GENP type check");
+        goto err;
+    }
+    if (OBJ_cmp(ret_type, expected_oid) != 0) {
         LOG_err("attestation challenge in GENP has wrong type");
         goto err;
     }
+    ASN1_OBJECT_free(expected_oid);
+    expected_oid = NULL;
 
     ret_val = OSSL_CMP_ITAV_get0_value(itav);
     if (ASN1_TYPE_get(ret_val) != V_ASN1_SEQUENCE) {
@@ -2856,6 +2973,7 @@ static CMP_err rats_parse_nonce_response(const OSSL_CMP_ITAV *itav,
     rspinfo = NULL;
     err = CMP_OK;
  err:
+    ASN1_OBJECT_free(expected_oid);
     sk_ASN1_TYPE_pop_free(fields, ASN1_TYPE_free);
     ASN1_OCTET_STRING_free(rspinfo);
     return err;
@@ -2912,11 +3030,26 @@ static CMP_err rats_do_genm(CMP_CTX *ctx, RATS_CTX *rats_ctx,
     return err;
 }
 
+static int rats_ctx_init(RATS_CTX **rats_ctx)
+{
+    if (rats_ctx == NULL) {
+        LOG_err("Invalid argument: rats_ctx is NULL");
+        return 0;
+    }   
+    *rats_ctx = OPENSSL_malloc(sizeof(RATS_CTX));
+    if (*rats_ctx == NULL) {
+        LOG_err("Failed to allocate RATS context");
+        return 0;
+    }
+    memset(*rats_ctx, 0, sizeof(**rats_ctx));
+    return 1;
+}
+
 static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
 {
     CMP_err err = -01;
     CMP_CTX *ctx = NULL;
-    RATS_CTX rats_ctx;
+    RATS_CTX *rats_ctx = NULL;
     EVP_PKEY *new_pkey = NULL;
     X509_EXTENSIONS *exts = NULL;
     CREDENTIALS *new_creds = NULL;
@@ -2931,7 +3064,11 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
         LOG_err("Failed to prepare CMP client");
         goto err;
     }
-    if ((err = setup_ctx(ctx, &rats_ctx)) != CMP_OK) {
+    if (!rats_ctx_init(&rats_ctx)) {
+        LOG_err("Failed to allocate RATS context");
+        goto err;
+    }
+    if ((err = setup_ctx(ctx, rats_ctx)) != CMP_OK) {
         LOG_err("Failed to prepare CMP client");
         goto err;
     }
@@ -2942,14 +3079,10 @@ static int CMPclient(enum use_case use_case, OPTIONAL LOG_cb_t log_fn)
     if ((err = setup_transfer(ctx)) != CMP_OK)
         goto err;
 
-    // TODO add RATS stuff
-    if (rats_ctx.do_rats) {
-        if ((err = rats_do_genm(ctx, &rats_ctx, &exts)) != CMP_OK)
+    if (rats_ctx->do_rats) {
+        if ((err = rats_do_genm(ctx, rats_ctx, &exts)) != CMP_OK)
             goto err;
     }
-
-
-
 
     if (opt_revreason < CRL_REASON_NONE
         || opt_revreason > CRL_REASON_AA_COMPROMISE

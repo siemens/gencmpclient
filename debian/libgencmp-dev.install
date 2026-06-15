@@ -1,3 +1,4 @@
 include/genericCMPClient.h     /usr/include
 doc/Generic_CMP_client_API.pdf /usr/share/doc/libgencmp-dev
+usr/lib/*/libgencmp.so
 usr/*/*/pkgconfig/libgencmp.pc

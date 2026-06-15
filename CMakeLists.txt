@@ -13,7 +13,7 @@ else()
 endif()
 ExternalProject_Add(
 atg 
-GIT_REPOSITORY git@code.siemens.com:ct-rda-cst-ses-de/remote-attestation/base-functionality/attestation-token-generator
+GIT_REPOSITORY https://code.siemens.com/ct-rda-cst-ses-de/remote-attestation/base-functionality/attestation-token-generator
 GIT_TAG rr/tcg-integration
 CONFIGURE_COMMAND ""
 BUILD_COMMAND     make build-lib ${ATG_GO_LDFLAGS} ${ATG_GO_GCFLAGS}

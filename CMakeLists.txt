@@ -219,7 +219,7 @@ endif()
 # its dynamic libs have been installed in ./${LIB} when using the libs
 # see for binaries dynamically linked to OpenSSL the output of ${LDD} <binary>
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-  set(USERS "^([a-zA-Z]:)?\\\\Users\\\\")
+  set(USERS "^([a-zA-Z]:)?[\\\\/]+Users[\\\\/]+")
   set(LIB "bin")
 else()
   set(USERS "^/(home|Users)/")
@@ -293,7 +293,7 @@ endif()
 
 # must do add_compile_options() before add_library() and add_executable() see
 # https://stackoverflow.com/questions/40516794/cmake-not-applying-compile-option-using-add-compile-options
-if(CMAKE_BUILD_TYPE MATCHES Debug)
+if(CMAKE_BUILD_TYPE MATCHES Debug AND NOT MSVC)
   add_compile_options(-O0)  # workaround for -O0 not being added by default when libSecUtils is not used
 endif()
 
@@ -304,15 +304,23 @@ add_compile_definitions(PEDANTIC)
 if(MSVC)
   # MSVC compiler flags (Windows-specific)
   add_compile_options(/W4)  # High warning level
+  # add_compile_options(/WX-)
+  # Disable specific warnings if needed
+  # add_compile_options(/wd4100) # unreferenced formal parameter
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 else()
   # GCC/Clang compiler flags
   add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
   add_compile_options(
     -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
-    -Wsign-compare -Wformat -Wformat-security -Wtype-limits -Wundef -Wconversion
-    -Wpointer-arith -Wunused-parameter -Wshadow)
-  add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined)
+    -Wsign-compare -Wformat -Wtype-limits -Wundef -Wunused-parameter -Wformat-security
+    -Wpointer-arith # -Wc99-extensions -Wlanguage-extension-token
+    -Wconversion -Wshadow
+    # TODO clean up code and re-enable warnings instead:
+    # Using here "no-" variants to cancel options potentially set in parent project(s):
+    -Wno-declaration-after-statement -Wno-expansion-to-defined
+  )
+# add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined)
 
 endif()
 # TODO maybe clean up code and re-enable property

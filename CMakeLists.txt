@@ -244,6 +244,7 @@ endif()
 if(DEFINED ENV{USE_LIBCMP} OR OPENSSL_VERSION_BELOW_3)
   set(USE_LIBCMP 1)
   message(STATUS "using libcmp, which is deprecated")
+  add_compile_definitions(USE_LIBCMP)
 endif()
 
 set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)

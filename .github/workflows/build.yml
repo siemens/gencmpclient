@@ -13,6 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: cmake
         run: |
+          sudo apt-get install -y >/dev/null cmake lintian
           cmake .
                                                make; make clean
           SECUTILS_USE_ICV=1                   make; make clean
@@ -38,6 +39,7 @@ jobs:
           USE_LIBCMP=1 cmake -S .. -B .
           # not needed because implied by "make deb": make build
           USE_LIBCMP=1 make deb
+          lintian --fail-on error,warning *.deb
           DESTDIR=tmp make install uninstall
           make clean_all
 
@@ -78,8 +80,9 @@ jobs:
           echo
           echo ************************* doc finished *************************
           echo
-          sudo apt-get install -y >/dev/null debhelper devscripts build-essential:native cmake
+          sudo apt-get install -y >/dev/null debhelper devscripts build-essential:native cmake lintian
           make -f Makefile_v1 deb
+          lintian --fail-on error,warning *.deb
 
   test_all:
     runs-on: ubuntu-latest

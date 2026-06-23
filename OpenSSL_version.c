@@ -22,6 +22,13 @@
     #define OpenSSL_version_num SSLeay
     #define DEBUG_MESSAGE "[DEBUG] Using SSLeay() for OpenSSL version\n"
 #elif OPENSSL_VERSION_NUMBER >= 0x30000000L
+    #ifndef _OPENSSL_VERSION_PRE_RELEASE
+    # ifdef OPENSSL_VERSION_PRE_RELEASE
+    #  define _OPENSSL_VERSION_PRE_RELEASE 0x0L
+    # else
+    #  define _OPENSSL_VERSION_PRE_RELEASE 0xfL
+    # endif
+    #endif
     #define OpenSSL_version_num() ((unsigned long) \
                                    ((OPENSSL_version_major()<<28) \
                                    |(OPENSSL_version_minor()<<20) \

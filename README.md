@@ -124,12 +124,12 @@ The core library can also be built and used natively under Windows.
 The following development and network tools are needed or recommended.
 
 * Git (for conveniently getting and updating the software, tested versions include 2.7.2, 2.11.0, 2.20, 2.34.1, 2.48.0, 2.53.0)
-* CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested versions include 3.18.4, 3.22.1, 3.27.7, 3.31.5)
+* CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested versions include 3.18.4, 3.22.1, 3.27.7, 3.31.5, 4.3.0)
 * GNU make (tested versions include 3.81, 4.1, 4.2.1, 4.3)
-* GNU C compiler (gcc, tested versions include 5.4.0, 7.3.0, 8.3.0, 10.2.1, 11.4.0, 12.2.0)
-  or clang (tested versions include 14.0.3, 17.0.3, 19.1.1)
-* Visual Studio 17 2022 with MSVC 19.44.35222.0 and MSBuild version 17.14.40+3e7442088
-* wget (for running the demo, tested versions include 1.17, 1.18, 1.20, 1.21.3, 1.24.5)
+* GNU C compiler (gcc, tested versions include 5.4.0, 7.3.0, 8.3.0, 10.2.1, 11.4.0, 12.2.0, 13.3.0)
+  or clang (tested versions include 14.0.3, 17.0.3, 19.1.1, 22.1.1)
+* native Windows builds have been tested with Visual Studio 2022 with MSVC 19.44.35222.0, Visual Studio 2026 with MSVC 19.51.36247.0
+* wget (for running the demo, tested versions include 1.17, 1.18, 1.20, 1.21.3, 1.24.5, 1.25.0)
 * Perl (for running the tests, tested versions include 5.30.3, 5.32.1, 5.34.3, 5.36.0, 5.38.2)
 
 ## Dependencies

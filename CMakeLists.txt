@@ -257,8 +257,8 @@ if(DEFINED USE_LIBCMP)
 endif()
 
 include_directories(
-  ${INC_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}/include
+  ${INC_DIR}
 )
 if(DEFINED USE_LIBCMP)
   include_directories(SYSTEM ${CMPOSSL_INC_DIR}/cmp)

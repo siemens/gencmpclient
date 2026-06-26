@@ -57,6 +57,7 @@ provision_tpm_EK() {
 create_IDevID() {
 	alg="rsa"
 	iddev_persistent_handle="0x81010003"
+	IdevID_pubkey_file="./pki-demo/certs/idevid_pub.pem"
 
 	echo "Creating IDevID ..."
 	tpm2_createprimary \
@@ -66,6 +67,9 @@ create_IDevID() {
 	-c ${VTPM_DIR}/idevid.ctx > /dev/null 2>&1
 	
 	tpm2_evictcontrol -C o -c ${VTPM_DIR}/idevid.ctx 0x81010003 > /dev/null 2>&1
+	tpm2_readpublic -c "${iddev_persistent_handle}" -f pem -o "${IdevID_pubkey_file}" > /dev/null 2>&1 \
+		|| { echo "Error: failed to extract public key" >&2; return 1; }
+	
 	tpm2_flushcontext -t > /dev/null 2>&1
 }
 

@@ -487,6 +487,7 @@ if(NOT TARGET clean_all)
     COMMAND ${CMAKE_BUILD_TOOL} clean
     COMMAND find . -name "*.o" -o -name "*.d" -o -regex "./libgencmp[0-9-].*" | xargs -r rm
     COMMAND rm -rf debian/{tmp,libgencmp,libgencmp-dev,libgencmp-bin}
+    COMMAND rm -rf ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc
 # not needed and can go wrong for cmpossl:
 #   COMMAND find . -path ./libsecutils/Makefile
 #       | xargs -r -I% ${CMAKE_BUILD_TOOL} -C libsecutils clean

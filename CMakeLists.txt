@@ -100,8 +100,11 @@ if(DEFINED ENV{NDEBUG} OR NOT CMAKE_BUILD_TYPE MATCHES Debug)
   set(CMAKE_BUILD_TYPE Release  # automatically leads to CFLAGS += -DNDEBUG -O3
       CACHE STRING "Choose the type of build." FORCE)
 else()
-  set(CMAKE_BUILD_TYPE Debug  # automatically leads to CFLAGS += -g  # -O0 not added by default
+  set(CMAKE_BUILD_TYPE Debug  # automatically leads to CFLAGS += -g
       CACHE STRING "Choose the type of build." FORCE)
+    if(NOT MSVC)
+      add_compile_options(-O1) # workaround in case not added by default when libSecUtils is not used
+    endif()
   set(SANITIZER_FLAGS -fsanitize=address,undefined -fno-sanitize-recover=all)
   add_compile_options(${SANITIZER_FLAGS})
   link_libraries(${SANITIZER_FLAGS})
@@ -290,12 +293,6 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(CMAKE_INSTALL_RPATH # must be done before add_executable()
         "../${CMAKE_INSTALL_LIBDIR}")
   endif()
-endif()
-
-# must do add_compile_options() before add_library() and add_executable() see
-# https://stackoverflow.com/questions/40516794/cmake-not-applying-compile-option-using-add-compile-options
-if(CMAKE_BUILD_TYPE MATCHES Debug AND NOT MSVC)
-  add_compile_options(-O0)  # workaround for -O0 not being added by default when libSecUtils is not used
 endif()
 
 

@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 
+# set(CMAKE_VERBOSE_MAKEFILE ON)
+# set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner when using CMake
+
 project(libgencmp)
 set(LIBGENCMP_NAME gencmp)
 
@@ -9,6 +12,12 @@ if(NOT DEFINED GENCMPCLIENT_VERSION)
   set(GENCMPCLIENT_VERSION ${GENCMPCLIENT_VERSION_MAJOR}.${GENCMPCLIENT_VERSION_MINOR})
 endif()
 message(STATUS "generic CMP client version " ${GENCMPCLIENT_VERSION})
+
+set(PROJECT_VERSION ${GENCMPCLIENT_VERSION})
+set(CMAKE_PROJECT_DESCRIPTION "Generic CMP client library with high-level API based on OpenSSL")
+set(CMAKE_PROJECT_HOMEPAGE_URL "https://github.com/siemens/genCMPClient")
+set(pc_req_public "openssl, libsecutils")
+set(pc_req_private "")
 
 # Option to build shared or static library (default: SHARED)
 option(GENCMP_STATIC_LIB "Build static library instead of shared" OFF)
@@ -20,8 +29,37 @@ else()
   message(STATUS "Building SHARED library")
 endif()
 
-# set(CMAKE_VERBOSE_MAKEFILE ON)
-# set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # needed for sonarCloud scanner when using CMake
+# default destination on Linux and macOS: "/usr/local"
+#if(UNIX AND NOT APPLE)
+#  set(CMAKE_INSTALL_PREFIX "/usr")
+#else()
+#  set(CMAKE_INSTALL_PREFIX "tmp")
+#endif()
+if(DEFINED ENV{ROOTFS})
+  set(CMAKE_INSTALL_PREFIX $ENV{ROOTFS} CACHE PATH "comment" FORCE)
+endif()
+
+# Ensure the .pc file lands in usr/lib/<triplet>/pkgconfig/ not usr/lib/pkgconfig/
+# (pkg-config-unavailable-for-cross-compilation).
+# Prefer the env var set by dpkg-buildpackage; fall back to calling dpkg-architecture
+# directly so CPack builds and plain cmake invocations are also covered.
+if(UNIX AND NOT APPLE)
+  if(DEFINED ENV{DEB_HOST_MULTIARCH})
+    set(_deb_multiarch "$ENV{DEB_HOST_MULTIARCH}")
+  else()
+    execute_process(
+      COMMAND dpkg-architecture -qDEB_HOST_MULTIARCH
+      OUTPUT_VARIABLE _deb_multiarch
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET)
+  endif()
+  if(_deb_multiarch)
+    set(CMAKE_INSTALL_LIBDIR "lib/${_deb_multiarch}" CACHE STRING
+      "Object code libraries (multiarch)" FORCE)
+  endif()
+endif()
+include(GNUInstallDirs) # needed for install(...), CMAKE_INSTALL_FULL_LIBDIR, etc.; any CMAKE_INSTALL_PREFIX must be set before
+
 
 # On Windows with MSVC, automatically imply GENCMP_NO_SECUTILS
 # because libSecUtils and CLI are not supported on native Windows builds
@@ -62,8 +100,11 @@ if(DEFINED ENV{NDEBUG} OR NOT CMAKE_BUILD_TYPE MATCHES Debug)
   set(CMAKE_BUILD_TYPE Release  # automatically leads to CFLAGS += -DNDEBUG -O3
       CACHE STRING "Choose the type of build." FORCE)
 else()
-  set(CMAKE_BUILD_TYPE Debug  # automatically leads to CFLAGS += -g  # -O0 not added by default
+  set(CMAKE_BUILD_TYPE Debug  # automatically leads to CFLAGS += -g
       CACHE STRING "Choose the type of build." FORCE)
+    if(NOT MSVC)
+      add_compile_options(-O1) # workaround in case not added by default when libSecUtils is not used
+    endif()
   set(SANITIZER_FLAGS -fsanitize=address,undefined -fno-sanitize-recover=all)
   add_compile_options(${SANITIZER_FLAGS})
   link_libraries(${SANITIZER_FLAGS})
@@ -181,7 +222,7 @@ endif()
 # its dynamic libs have been installed in ./${LIB} when using the libs
 # see for binaries dynamically linked to OpenSSL the output of ${LDD} <binary>
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-  set(USERS "^([a-zA-Z]:)?\\\\Users\\\\")
+  set(USERS "^([a-zA-Z]:)?[\\\\/]+Users[\\\\/]+")
   set(LIB "bin")
 else()
   set(USERS "^/(home|Users)/")
@@ -206,6 +247,7 @@ endif()
 if(DEFINED ENV{USE_LIBCMP} OR OPENSSL_VERSION_BELOW_3)
   set(USE_LIBCMP 1)
   message(STATUS "using libcmp, which is deprecated")
+  add_compile_definitions(USE_LIBCMP)
 endif()
 
 set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)
@@ -215,6 +257,7 @@ if(DEFINED USE_LIBCMP)
 endif()
 
 include_directories(
+  ${CMAKE_CURRENT_BINARY_DIR}/include
   ${INC_DIR}
 )
 if(DEFINED USE_LIBCMP)
@@ -225,10 +268,23 @@ endif()
 # must not add the system OpenSSL include dir before ${CMPOSSL_INC_DIR}/cmp etc.
 include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 
-configure_file(${INC_DIR}/genericCMPClient_config.h.in ${INC_DIR}/genericCMPClient_config.h)
+configure_file(${INC_DIR}/genericCMPClient_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/genericCMPClient_config.h)
+install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/include/genericCMPClient_config.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    COMPONENT dev
+)
+
+configure_file(libgencmp.pc.in ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc @ONLY)
+install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+    COMPONENT dev
+)
 
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   # help CPackDeb please dpkg-shlibdeps
+  # maybe use "${CMAKE_INSTALL_FULL_LIBDIR}", as in libsecutils?
   if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0")
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS
         ${CMAKE_CURRENT_BINARY_DIR} "${CMAKE_CURRENT_BINARY_DIR}/cmpossl"
@@ -239,12 +295,6 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   endif()
 endif()
 
-# must do add_compile_options() before add_library() and add_executable() see
-# https://stackoverflow.com/questions/40516794/cmake-not-applying-compile-option-using-add-compile-options
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-  add_compile_options(-O0)  # workaround for -O0 not being added by default when libSecUtils is not used
-endif()
-
 
 add_compile_definitions(DEBUG_UNUSED)
 add_compile_definitions(PEDANTIC)
@@ -252,15 +302,23 @@ add_compile_definitions(PEDANTIC)
 if(MSVC)
   # MSVC compiler flags (Windows-specific)
   add_compile_options(/W4)  # High warning level
+  # add_compile_options(/WX-)
+  # Disable specific warnings if needed
+  # add_compile_options(/wd4100) # unreferenced formal parameter
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 else()
   # GCC/Clang compiler flags
   add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
   add_compile_options(
     -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
-    -Wsign-compare -Wformat -Wformat-security -Wtype-limits -Wundef -Wconversion
-    -Wpointer-arith -Wunused-parameter -Wshadow)
-  add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined)
+    -Wsign-compare -Wformat -Wtype-limits -Wundef -Wunused-parameter -Wformat-security
+    -Wpointer-arith # -Wc99-extensions -Wlanguage-extension-token
+    -Wconversion -Wshadow
+    # TODO clean up code and re-enable warnings instead:
+    # Using here "no-" variants to cancel options potentially set in parent project(s):
+    -Wno-declaration-after-statement -Wno-expansion-to-defined
+  )
+# add_compile_options(-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined)
 
 endif()
 # TODO maybe clean up code and re-enable property
@@ -307,7 +365,7 @@ target_link_libraries(${LIBGENCMP_NAME}
 
 set(INC_PUBLIC_HDRS
   ${INC_DIR}/genericCMPClient.h
-  ${INC_DIR}/genericCMPClient_config.h
+  ${CMAKE_CURRENT_BINARY_DIR}/include/genericCMPClient_config.h
 )
 set_target_properties(${LIBGENCMP_NAME} PROPERTIES
   VERSION ${GENCMPCLIENT_VERSION} SOVERSION ${GENCMPCLIENT_VERSION_MAJOR}
@@ -359,17 +417,6 @@ endif()
 
 # installation and uninstall
 
-# default destination on Linux and macOS: "/usr/local"
-#if(UNIX AND NOT APPLE)
-#  set(CMAKE_INSTALL_PREFIX "/usr")
-#else()
-#  set(CMAKE_INSTALL_PREFIX "tmp")
-#endif()
-if(DEFINED ENV{ROOTFS})
-  set(CMAKE_INSTALL_PREFIX $ENV{ROOTFS} CACHE PATH "comment" FORCE)
-endif()
-include(GNUInstallDirs) # CMAKE_INSTALL_PREFIX must be set before
-
 install(FILES doc/Generic_CMP_client_API.pdf
   DESTINATION ${CMAKE_INSTALL_DOCDIR}-dev
   COMPONENT dev
@@ -384,6 +431,7 @@ install(TARGETS ${LIBGENCMP_NAME}
   LIBRARY
     DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     COMPONENT lib
+    NAMELINK_COMPONENT dev
   PUBLIC_HEADER
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
     COMPONENT dev
@@ -401,14 +449,22 @@ if(NOT TARGET uninstall)
   add_custom_target(uninstall
     COMMAND xargs -r -I% rm -vf \${DESTDIR}% <install_manifest.txt
     COMMAND rm -vfr "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/{secutils,cmp}"
+    COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/secutils"
+         | xargs -r rmdir "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/secutils/*"
+    COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/cmp" -empty | xargs -r rmdir
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}" -empty | xargs -r rmdir
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}" -empty | xargs -r rmdir
     COMMAND rm -vfr "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/cmake/security-utilities" # seems not needed: ${PROJECT_NAME} cmpossl
+    COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/security-utilities" -empty | xargs -r rmdir
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/cmake" -empty | xargs -r rmdir
+    COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig" -empty | xargs -r rmdir
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}" -empty | xargs -r rmdir
-    COMMAND rm -vfr "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DOCDIR}-dev"
+    COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/lib" -empty | xargs -r rmdir
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/share/man/man1" -empty | xargs -r rmdir
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/share/man" -empty | xargs -r rmdir
+    COMMAND rm -vfr "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/share/doc/libgencmp{,-*}/*"
+    COMMAND rmdir   "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/share/doc/libgencmp*"
+    COMMAND rm -vfr "\${DESTDIR}${CMAKE_INSTALL_PREFIX}/share/doc/cmpclient"
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/share/doc" -empty | xargs -r rmdir
     COMMAND find . -path "./\${DESTDIR}${CMAKE_INSTALL_PREFIX}/share" -empty | xargs -r rmdir
 )
@@ -435,7 +491,9 @@ set_property(
 if(NOT TARGET clean_all)
   add_custom_target(clean_all
     COMMAND ${CMAKE_BUILD_TOOL} clean
-    COMMAND find . -name "*.o" -o -name "*.d" -o -regex "./libgencmp-.*" | xargs -r rm
+    COMMAND find . -name "*.o" -o -name "*.d" -o -regex "./libgencmp[0-9-].*" | xargs -r rm
+    COMMAND rm -rf debian/{tmp,libgencmp,libgencmp-dev,libgencmp-bin}
+    COMMAND rm -rf ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc
 # not needed and can go wrong for cmpossl:
 #   COMMAND find . -path ./libsecutils/Makefile
 #       | xargs -r -I% ${CMAKE_BUILD_TOOL} -C libsecutils clean
@@ -465,11 +523,16 @@ if(NOT TARGET clean_all)
  )
  endif()
 
-# generate Debian etc. packages using CPack, relying on installation defined above
-if(NOT DEFINED CPACK_PACKAGE_NAME)
+ # =============================
+ # Packaging
+ # =============================
+
+ # generate Debian etc. packages using CPack, relying on installation defined above
+if(NOT DEBIAN_BUILD) # TODO increase indentation below
+if(NOT DEFINED CPACK_PACKAGE_NAME) # TODO increase indentation below
 
 SET(CPACK_PACKAGE_NAME ${PROJECT_NAME})
-SET(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/siemens/gencmpclient")
+SET(CPACK_PACKAGE_HOMEPAGE_URL "${CMAKE_PROJECT_HOMEPAGE_URL}")
 SET(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
 SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
 SET(CPACK_PACKAGE_VENDOR "Siemens")
@@ -479,8 +542,14 @@ set(CPACK_PACKAGE_VERSION_MAJOR ${GENCMPCLIENT_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${GENCMPCLIENT_VERSION_MINOR})
 set(CPACK_STRIP_FILES ON)
 
+# Ensure installed directories get standard 0755 permissions (non-standard-dir-perm)
+set(CMAKE_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS
+  OWNER_READ OWNER_WRITE OWNER_EXECUTE
+  GROUP_READ GROUP_EXECUTE
+  WORLD_READ WORLD_EXECUTE)
+
 set(CPACK_COMPONENT_LIB_DESCRIPTION "generic CMP client library
-Generic CMP client library with high-level API based on OpenSSL
+This provides an high-level API for CMP clients based on OpenSSL.
 With extended support for certficate status checking using CRLs and/or OCSP")
 set(CPACK_COMPONENT_DEV_DESCRIPTION "libgencmp C headers and documentation
 Development support for libgencmp and cmpclient")
@@ -505,11 +574,11 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
 
   set(CPACK_DEB_COMPONENT_INSTALL ON)
   set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
-  set(CPACK_DEBIAN_LIB_PACKAGE_NAME "${PROJECT_NAME}")
+  set(CPACK_DEBIAN_LIB_PACKAGE_NAME "libgencmp2")
   if(NOT DEFINED GENCMP_NO_CLI)
     set(CPACK_DEBIAN_BIN_PACKAGE_NAME "cmpclient")
   endif()
-  set(CPACK_DEBIAN_DEV_PACKAGE_ARCHITECTURE "all")
+  # set(CPACK_DEBIAN_DEV_PACKAGE_ARCHITECTURE "any")
   set(CPACK_DEBIAN_LIB_PACKAGE_SECTION "libs")
   set(CPACK_DEBIAN_DEV_PACKAGE_SECTION "devel")
   set(CPACK_DEBIAN_BIN_PACKAGE_SECTION "utils")
@@ -520,13 +589,25 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   # see above assignments
   # to CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS or CMAKE_INSTALL_RPATH
 
-  if(FALSE) # for now, disable dependencies to libs of subprojectx because their .so files for some reason already get included in the package:
+    set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_NAME "libgencmp2")
+    set(CPACK_DEBIAN_LIBRARY_RUNTIME_FILE_NAME DEB-DEFAULT)
+    set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_SECTION "libs")
+    # see also https://gitlab.kitware.com/cmake/cmake/-/issues/21834
+    # Custom postinst/postrm suppress CPack's auto-generated ldconfig calls;
+    # ldconfig is handled by the activate-noawait trigger instead (maintscript-calls-ldconfig)
+    set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_CONTROL_EXTRA
+      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/triggers"
+      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postinst"
+      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postrm")
+    set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
+
+    if(FALSE) # for now, disable dependencies to libs of subprojectx because their .so files for some reason already get included in the package:
     if(NOT DEFINED GENCMP_NO_SECUTILS)
       if(DEFINED USE_LIBCMP)
         set(CPACK_DEBIAN_PACKAGE_DEPENDS
-            "libcmp (>= ${CPACK_PACKAGE_VERSION}), libsecutils (>= ${CPACK_PACKAGE_VERSION})")
+            "libcmp (>= ${CPACK_PACKAGE_VERSION}), libsecutils2 (>= ${CPACK_PACKAGE_VERSION})")
       else()
-        set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsecutils (>= ${CPACK_PACKAGE_VERSION})")
+        set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsecutils2 (>= ${CPACK_PACKAGE_VERSION})")
       endif()
     else()
       if(DEFINED USE_LIBCMP)
@@ -537,11 +618,16 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     endif()
   endif(FALSE)
 
-  set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "libgencmp (>= ${CPACK_PACKAGE_VERSION})")
-  set(CPACK_DEBIAN_DEV_PACKAGE_SUGGESTS "libcmp-dev (>= ${CPACK_PACKAGE_VERSION}), libsecutils-dev (>= ${CPACK_PACKAGE_VERSION}), libssl-dev")
+  set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "libgencmp2 (>= ${CPACK_PACKAGE_VERSION})")
+  if(DEFINED USE_LIBCMP)
+    set(CPACK_DEBIAN_DEV_PACKAGE_SUGGESTS "libcmp-dev (>= ${CPACK_PACKAGE_VERSION}), libsecutils-dev (>= ${CPACK_PACKAGE_VERSION}), libssl-dev")
+  endif()
   # see also https://gitlab.kitware.com/cmake/cmake/-/issues/21834
   # CPack Deb does not create postinst when installing to /usr/lib/x86_64-linux-gnu
-  set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/triggers")
+  set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_EXTRA
+      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/triggers"
+      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postinst"
+      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postrm")
   set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
 
 else(Linux)
@@ -610,21 +696,29 @@ set(CPACK_SOURCE_IGNORE_FILES
   Simple/
   )
 
+set(CPACK_COMPONENTS_ALL lib dev)
+if(NOT DEFINED GENCMP_NO_CLI)
+  list(APPEND CPACK_COMPONENTS_ALL bin)
+endif()
+
 include(CPack)
 
 # see also https://gitlab.kitware.com/cmake/cmake/-/issues/21832
 # CPack Deb lacks a way to configure copyright files by component
 foreach(component IN LISTS CPACK_COMPONENTS_ALL)
-  if(${component} STREQUAL "lib" OR ${component} STREQUAL "bin")
-    set(suffix "")
+  string(TOUPPER "${component}" _comp_upper)
+  if(DEFINED CPACK_DEBIAN_${_comp_upper}_PACKAGE_NAME)
+    set(_doc_dest "${CMAKE_INSTALL_DATADIR}/doc/${CPACK_DEBIAN_${_comp_upper}_PACKAGE_NAME}")
+  elseif(${component} STREQUAL "lib" OR ${component} STREQUAL "bin")
+    set(_doc_dest "${CMAKE_INSTALL_DOCDIR}")
   else()
-    set(suffix "-${component}")
+    set(_doc_dest "${CMAKE_INSTALL_DOCDIR}-${component}")
   endif()
   if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     install(FILES
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/copyright"
       "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz"
-      DESTINATION "${CMAKE_INSTALL_DOCDIR}${suffix}"
+      DESTINATION "${_doc_dest}"
       COMPONENT ${component}
       )
   endif()
@@ -644,6 +738,7 @@ if(NOT TARGET ${EXT})
 endif()
 
 endif(NOT DEFINED CPACK_PACKAGE_NAME)
+endif(NOT DEBIAN_BUILD)
 
 
 # submodules
@@ -692,6 +787,9 @@ if(NOT YOCTO_BUILD)
         message(FATAL_ERROR "Git not found; please install git.")
       endif()
     endif()
+    # libcmp.so* must not be bundled into libgencmp2.deb: libcmp is a separate
+    # package declared in Depends. Skip its install rules entirely.
+    set(LIBCMP_SKIP_INSTALL ON)
     add_subdirectory(cmpossl)
     add_clean_target(cmpossl)
   endif()

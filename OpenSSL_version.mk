@@ -86,7 +86,13 @@ else
             ifeq ($(wildcard $(OPENSSL_LIB)/$(LIB_NAME_PATTERN)),)
                 ifeq ($(OS),Linux)
                     ifeq ($(shell echo $(OPENSSL_FULL_DIR) | grep -E $(USERS)),)
-                        override OPENSSL_LIB = $(wildcard /lib/$(shell uname -i)-linux-*)
+                        ifneq ($(shell command -v dpkg-architecture 2>/dev/null),)
+                            override OPENSSL_LIB = $(wildcard /lib/$(shell dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null))
+                        endif
+                        ifeq ($(OPENSSL_LIB),)
+                            override OPENSSL_LIB = $(wildcard /lib/*linux-gnu*)
+                        #or override OPENSSL_LIB = $(wildcard /lib/$(shell uname -m)-linux-*)
+                        endif
                         $(warning Warning: cannot find OpenSSL libraries at $(OPENSSL_DIR), now trying $(OPENSSL_LIB))
                     endif
                 endif

@@ -15,7 +15,7 @@
 #ifndef GENERIC_CMP_CLIENT_H
 # define GENERIC_CMP_CLIENT_H
 
-# include "genericCMPClient_config.h"
+# include <genericCMPClient_config.h> /* this may change USE_LIBCMP */
 
 # ifdef __cplusplus
 extern "C" {
@@ -44,13 +44,15 @@ typedef OSSL_CMP_CTX CMP_CTX;
 
 # if OPENSSL_VERSION_NUMBER < 0x30200000L && !defined(USE_LIBCMP) /* == !(OPENSSL_3_2_FEATURES) */
 static ossl_inline
-OSSL_LIB_CTX *OSSL_CMP_CTX_get0_libctx(ossl_unused const OSSL_CMP_CTX *ctx)
+OSSL_LIB_CTX *OSSL_CMP_CTX_get0_libctx(const OSSL_CMP_CTX *ctx)
 {
+    (void)ctx;
     return NULL; /* sorry, dummy */
 }
 static ossl_inline
-const char *OSSL_CMP_CTX_get0_propq(ossl_unused const OSSL_CMP_CTX *ctx)
+const char *OSSL_CMP_CTX_get0_propq(const OSSL_CMP_CTX *ctx)
 {
+    (void)ctx;
     return NULL; /* sorry, dummy */
 }
 #  define SN_id_mod_cmp2000_02            "id-mod-cmp2000-02"

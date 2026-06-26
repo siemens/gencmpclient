@@ -2,41 +2,11 @@
 
 # rules for Debian packaging of libgencmp and cmpclient
 
-CC=$(DEB_HOST_GNU_TYPE)-gcc
-CXX=$(DEB_HOST_GNU_TYPE)-g++
-AR=$(DEB_HOST_GNU_TYPE)-ar
-
 %:
 	dh $@
 
-# prevent dh_build from trying to use "cmake"
-override_dh_auto_configure:
-	ln -sf Makefile_v1 Makefile
-
-## make sure that clean_deb is used and CMake is not used
-override_dh_auto_clean:
-	make -f Makefile_v1 clean clean_deb
-
-override_dh_auto_build:
-#	CFLAGS="-O2 -DNDEBUG" CXXFLAGS="-O2 -DNDEBUG" DEBUG_FLAGS="" LDFLAGS=""  # can be used to avoid dependency on libasan and libubsan
-#	OPENSSL_DIR=/usr
-	CC=$(CC) CXX=$(CXX) AR=$(AR) \
-	  dh_auto_build -- -f Makefile_v1 OPENSSL_DIR="$(OPENSSL_DIR)" -j1 build doc_this
-
 override_dh_auto_test:
-# do not run any tests
-
-#override_dh_builddeb:
-#	dh_builddeb --destdir . --
-
-override_dh_auto_install:
-	dh_auto_install --destdir debian/tmp -- -f Makefile_v1
+	@echo "Skipping tests"
 
 override_dh_shlibdeps:
-	dh_shlibdeps --dpkg-shlibdeps-params="--ignore-missing-info -l. -l$(OPENSSL_DIR) -l$(OPENSSL_LIB)" # -llibsecutils -lcmpossl
-
-# https://stackoverflow.com/questions/11238134/dpkg-shlibdeps-error-no-dependency-information-found-for
-# alternatively to  --dpkg-shlibdeps-params=--ignore-missing-info
-# may add file debian/shlibs.local containing:
-# libcmp 2.0 libcmp
-# libsecutils 1.0 libsecutils
+	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info -l$(CURDIR)/obj-$(DEB_HOST_GNU_TYPE)/libsecutils/src/libsecutils

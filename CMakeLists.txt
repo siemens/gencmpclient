@@ -619,7 +619,9 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   endif(FALSE)
 
   set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "libgencmp2 (>= ${CPACK_PACKAGE_VERSION})")
-  set(CPACK_DEBIAN_DEV_PACKAGE_SUGGESTS "libcmp-dev (>= ${CPACK_PACKAGE_VERSION}), libsecutils-dev (>= ${CPACK_PACKAGE_VERSION}), libssl-dev")
+  if(DEFINED USE_LIBCMP)
+    set(CPACK_DEBIAN_DEV_PACKAGE_SUGGESTS "libcmp-dev (>= ${CPACK_PACKAGE_VERSION}), libsecutils-dev (>= ${CPACK_PACKAGE_VERSION}), libssl-dev")
+  endif()
   # see also https://gitlab.kitware.com/cmake/cmake/-/issues/21834
   # CPack Deb does not create postinst when installing to /usr/lib/x86_64-linux-gnu
   set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_EXTRA
@@ -785,6 +787,9 @@ if(NOT YOCTO_BUILD)
         message(FATAL_ERROR "Git not found; please install git.")
       endif()
     endif()
+    # libcmp.so* must not be bundled into libgencmp2.deb: libcmp is a separate
+    # package declared in Depends. Skip its install rules entirely.
+    set(LIBCMP_SKIP_INSTALL ON)
     add_subdirectory(cmpossl)
     add_clean_target(cmpossl)
   endif()

@@ -545,7 +545,10 @@ bool load_key_certs_crls(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *pro
         unsigned long err = ERR_peek_last_error();
 
         /* continue the error message with the type of credential affected */
-        if (desc != NULL && strstr(desc, failed) != NULL) {
+        if (desc != NULL && (strstr(desc, failed) != NULL
+                             || (ppkey != NULL) + (ppubkey != NULL) + (pparams != NULL)
+                             + (pcert != NULL) + (pcerts != NULL)
+                             + (pcrl != NULL) + (pcrls != NULL))) {
             BIO_printf(bio_mem, " %s", desc);
         } else {
             BIO_printf(bio_mem, " %s", failed);
@@ -764,10 +767,8 @@ X509 *CREDS_load_cert_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *pro
         X509_free(cert);
         cert = NULL;
     }
-    if (cert == NULL) {
-        ERR_print_errors(bio_err);
+    if (cert == NULL)
         LOG(FL_ERR, "Unable to load %s from %s\n", desc, uri_or_stdin);
-    }
     return cert;
 }
 
@@ -917,10 +918,8 @@ X509_CRL *CREDS_load_crl_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *
         X509_CRL_free(crl);
         crl = NULL;
     }
-    if (crl == NULL) {
-        ERR_print_errors(bio_err);
+    if (crl == NULL)
         LOG(FL_ERR, "Unable to load %s from %s\n", desc, uri_or_stdin);
-    }
     return crl;
 }
 

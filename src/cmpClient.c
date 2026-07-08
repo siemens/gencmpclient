@@ -35,7 +35,7 @@
 # include "genericCMPClient_use.h"
 #endif
 
-#include "credential_loading.h"
+#include <credential_loading.h>
 
 /*
  * Use cases are split between CMP use cases and others,

@@ -807,8 +807,8 @@ endif
 zip:
 	zip genCMPClient.zip \
             LICENSE.txt *.md .gitmodules Makefile_{v1,src} CMakeLists.txt \
-	    OpenSSL_version.{c,mk} include/genericCMPClient.h \
-	    src/cmpClient.c src/genericCMPClient.c \
+	    OpenSSL_version.{c,mk} include/{genericCMPClient.h,credential_loading.h} \
+	    src/cmpClient.c src/genericCMPClient.c src/credential_loading.c \
 	    cmpClient.pod Generic_CMP_client_API.odt
 
 

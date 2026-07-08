@@ -30,7 +30,7 @@
 #include <secutils/util/log.h>
 #include <genericCMPClient.h> /* for CRLs_free() */
 
-#include "credential_loading.h"
+#include <credential_loading.h>
 
 /* from OpenSSL/apps/lib/app_libctx.c: */
 static OSSL_LIB_CTX *app_libctx = NULL;

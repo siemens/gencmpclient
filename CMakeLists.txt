@@ -331,13 +331,12 @@ endif()
 add_library(${LIBGENCMP_NAME} ${GENCMP_LIB_TYPE}
   "${PROJECT_SOURCE_DIR}/.github/workflows/build.yml"
   ${SRC_DIR}/genericCMPClient.c
+  ${SRC_DIR}/credential_loading.c
 )
 
 if(NOT DEFINED GENCMP_NO_CLI)
 add_executable(cmpClient
   ${SRC_DIR}/cmpClient.c
-  ${SRC_DIR}/credential_loading.h
-  ${SRC_DIR}/credential_loading.c
 )
 
 target_link_libraries(cmpClient
@@ -366,6 +365,7 @@ target_link_libraries(${LIBGENCMP_NAME}
 set(INC_PUBLIC_HDRS
   ${INC_DIR}/genericCMPClient.h
   ${CMAKE_CURRENT_BINARY_DIR}/include/genericCMPClient_config.h
+  ${INC_DIR}/credential_loading.h
 )
 set_target_properties(${LIBGENCMP_NAME} PROPERTIES
   VERSION ${GENCMPCLIENT_VERSION} SOVERSION ${GENCMPCLIENT_VERSION_MAJOR}

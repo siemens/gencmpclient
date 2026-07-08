@@ -609,9 +609,9 @@ bool load_key_certs_crls(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *pro
     return failed == NULL;
 }
 
-EVP_PKEY *CREDS_load_key_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
-                            OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
-                            OPTIONAL const char *source, OPTIONAL const char *desc)
+EVP_PKEY *CREDS_load_key(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
+                         OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
+                         OPTIONAL const char *source, OPTIONAL const char *desc)
 {
     char *pass;
     EVP_PKEY *pkey = NULL;
@@ -626,9 +626,9 @@ EVP_PKEY *CREDS_load_key_ex(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
     return pkey;
 }
 
-EVP_PKEY *CREDS_load_pubkey_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                               OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
-                               OPTIONAL const char *source, OPTIONAL const char *desc)
+EVP_PKEY *CREDS_load_pubkey(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                            OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
+                            OPTIONAL const char *source, OPTIONAL const char *desc)
 {
     char *pass;
     EVP_PKEY *pkey = NULL;
@@ -736,10 +736,10 @@ static BIO *http_get_mem(const char *uri, int timeout, const char *str, bool *fo
     return mem;
 }
 
-X509 *CREDS_load_cert_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                         OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
-                         int timeout, OPTIONAL const char *source, OPTIONAL const char *desc,
-                         int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm)
+X509 *CREDS_load_cert(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                      OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
+                      int timeout, OPTIONAL const char *source, OPTIONAL const char *desc,
+                      int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
     char *pass;
     X509 *cert = NULL;
@@ -790,11 +790,11 @@ static bool check_cert_chain(const char *src, int type_CA, OPTIONAL const X509_V
     return res;
 }
 
-bool CREDS_load_certs_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                         const char *srcs, file_format_t format, int timeout,
-                         OPTIONAL const char *source, OPTIONAL const char *desc, int min_num,
-                         int type_CA, OPTIONAL X509_VERIFY_PARAM *vpm,
-                         OPTIONAL X509 **cert, OPTIONAL STACK_OF(X509) **certs)
+bool CREDS_load_certs(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                      const char *srcs, file_format_t format, int timeout,
+                      OPTIONAL const char *source, OPTIONAL const char *desc, int min_num,
+                      int type_CA, OPTIONAL X509_VERIFY_PARAM *vpm,
+                      OPTIONAL X509 **cert, OPTIONAL STACK_OF(X509) **certs)
 {
     char *pass;
     X509 *crt = NULL;
@@ -814,8 +814,8 @@ bool CREDS_load_certs_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *pro
         next = UTIL_next_item(src); /* must do this here to split string */
 
         if (CONN_IS_HTTP(src) || CONN_IS_HTTPS(src)) {
-            crt = CREDS_load_cert_ex(libctx, propq, src, format, false,
-                                     timeout, NULL, desc, type_CA, vpm);
+            crt = CREDS_load_cert(libctx, propq, src, format, false,
+                                  timeout, NULL, desc, type_CA, vpm);
             if (crt == NULL)
                 goto err;
             goto handle_crt;
@@ -883,16 +883,16 @@ STACK_OF(X509) *load_certs_multifile(const char *files, OPTIONAL const char *sou
 {
     STACK_OF(X509) *certs = NULL;
 
-    (void)CREDS_load_certs_ex(app_get0_libctx(), app_get0_propq(), files, FORMAT_UNDEF,
-                              0 /* timeout */, source, desc,
-                              1 /* min_num */, type_CA, vpm, NULL, &certs);
+    (void)CREDS_load_certs(app_get0_libctx(), app_get0_propq(), files, FORMAT_UNDEF,
+                           0 /* timeout */, source, desc,
+                           1 /* min_num */, type_CA, vpm, NULL, &certs);
     return certs;
 }
 
-X509_CRL *CREDS_load_crl_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                            OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
-                            int timeout, OPTIONAL const char *desc,
-                            OPTIONAL const X509_VERIFY_PARAM *vpm)
+X509_CRL *CREDS_load_crl(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                         OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
+                         int timeout, OPTIONAL const char *desc,
+                         OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
     X509_CRL *crl = NULL;
 
@@ -923,10 +923,10 @@ X509_CRL *CREDS_load_crl_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *
     return crl;
 }
 
-STACK_OF(X509_CRL) *CREDS_load_crls_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                                       const char *srcs, file_format_t format, int timeout,
-                                       OPTIONAL const char *desc, int min_num,
-                                       OPTIONAL const X509_VERIFY_PARAM *vpm)
+STACK_OF(X509_CRL) *CREDS_load_crls(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                                    const char *srcs, file_format_t format, int timeout,
+                                    OPTIONAL const char *desc, int min_num,
+                                    OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
     X509_CRL *crl = NULL;
     STACK_OF(X509_CRL) *crls = NULL, *all_crls = NULL;
@@ -944,8 +944,8 @@ STACK_OF(X509_CRL) *CREDS_load_crls_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL c
 
 
         if (CONN_IS_HTTP(src) || CONN_IS_HTTPS(src)) {
-            if ((crl = CREDS_load_crl_ex(libctx, propq, src, format, false,
-                                         timeout, desc, vpm)) == NULL)
+            if ((crl = CREDS_load_crl(libctx, propq, src, format, false,
+                                      timeout, desc, vpm)) == NULL)
                 goto err;
             goto handle_crl;
         } else {
@@ -983,13 +983,13 @@ STACK_OF(X509_CRL) *CREDS_load_crls_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL c
     return all_crls;
 }
 
-bool CREDS_load_credentials_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                               OPTIONAL const char *certs, OPTIONAL const char *key,
-                               file_format_t format, bool maybe_stdin,
-                               OPTIONAL const char *source, OPTIONAL const char *desc,
-                               OPTIONAL X509_VERIFY_PARAM *vpm, int type_CA,
-                               OPTIONAL EVP_PKEY **pkey, OPTIONAL X509 **cert,
-                               OPTIONAL STACK_OF(X509) **chain)
+bool CREDS_load_credentials(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                            OPTIONAL const char *certs, OPTIONAL const char *key,
+                            file_format_t format, bool maybe_stdin,
+                            OPTIONAL const char *source, OPTIONAL const char *desc,
+                            OPTIONAL X509_VERIFY_PARAM *vpm, int type_CA,
+                            OPTIONAL EVP_PKEY **pkey, OPTIONAL X509 **cert,
+                            OPTIONAL STACK_OF(X509) **chain)
 {
     const char *orig_desc = desc;
     bool joint_credentials = certs != NULL && key != NULL && strcmp(certs, key) == 0;
@@ -1075,19 +1075,19 @@ err:
     return false;
 }
 
-CREDENTIALS *CREDENTIALS_load_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                                 OPTIONAL const char *certs, OPTIONAL const char *key,
-                                 OPTIONAL const char *source,
-                                 OPTIONAL const char *desc,
-                                 OPTIONAL X509_VERIFY_PARAM *vpm)
+CREDENTIALS *CREDS_load(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                        OPTIONAL const char *certs, OPTIONAL const char *key,
+                        OPTIONAL const char *source,
+                        OPTIONAL const char *desc,
+                        OPTIONAL X509_VERIFY_PARAM *vpm)
 {
     EVP_PKEY *pkey = NULL;
     X509 *cert = NULL;
     STACK_OF(X509) *chain = NULL;
     CREDENTIALS *res;
 
-    if (!CREDS_load_credentials_ex(libctx, propq, certs, key, FORMAT_UNDEF, false,
-                                   source, desc, vpm, -1, &pkey, &cert, &chain))
+    if (!CREDS_load_credentials(libctx, propq, certs, key, FORMAT_UNDEF, false,
+                                source, desc, vpm, -1, &pkey, &cert, &chain))
         return NULL;
 
     res = CREDENTIALS_new(pkey, cert, chain, NULL, NULL);
@@ -1137,10 +1137,10 @@ bool STORE_load_more_check_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char
         ) {
         STACK_OF(X509) *certs = NULL;
 
-        if (!CREDS_load_certs_ex(libctx, propq, file, format,
-                                 0 /* timeout */, source, desc, min_certs,
-                                 vpm != NULL ? 1 /* strictly check CA */ : -1,
-                                 vpm, NULL, &certs))
+        if (!CREDS_load_certs(libctx, propq, file, format,
+                              0 /* timeout */, source, desc, min_certs,
+                              vpm != NULL ? 1 /* strictly check CA */ : -1,
+                              vpm, NULL, &certs))
             return false;
 
         if (vpm == NULL)

@@ -587,9 +587,8 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
         }
     }
     if (opt_tls_key != NULL) {
-        tls_creds = CREDENTIALS_load_ex(app_get0_libctx(), app_get0_propq(),
-                                        opt_tls_cert, opt_tls_key, opt_tls_keypass,
-                                        "credentials for TLS level", vpm);
+        tls_creds = load_creds(opt_tls_cert, opt_tls_key, opt_tls_keypass,
+                               "credentials for TLS level", vpm);
         if (tls_creds == NULL)
             goto err;
     } else {
@@ -1151,9 +1150,8 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
     if (opt_secret != NULL || opt_key != NULL) {
         const char *const creds_desc = "credentials for CMP level";
 
-        if ((cmp_creds = CREDENTIALS_load_ex(app_get0_libctx(), app_get0_propq(),
-                                             opt_cert, opt_key, opt_keypass,
-                                             creds_desc, vpm)) == NULL) {
+        if ((cmp_creds = load_creds(opt_cert, opt_key, opt_keypass,
+                                    creds_desc, vpm)) == NULL) {
             LOG(FL_ERR, "Unable to set up %s", creds_desc);
             err = CMP_R_LOAD_CREDS;
             goto err;

@@ -548,7 +548,7 @@ bool load_key_certs_crls(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *pro
         if (desc != NULL && (strstr(desc, failed) != NULL
                              || (ppkey != NULL) + (ppubkey != NULL) + (pparams != NULL)
                              + (pcert != NULL) + (pcerts != NULL)
-                             + (pcrl != NULL) + (pcrls != NULL))) {
+                             + (pcrl != NULL) + (pcrls != NULL) > 1)) {
             BIO_printf(bio_mem, " %s", desc);
         } else {
             BIO_printf(bio_mem, " %s", failed);

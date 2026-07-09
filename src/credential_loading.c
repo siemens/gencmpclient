@@ -40,7 +40,7 @@
 static OSSL_LIB_CTX *app_libctx = NULL;
 static const char *app_propq = NULL;
 
-int app_set_propq(const char *arg)
+int app_set_propq(OPTIONAL const char *arg)
 {
     app_propq = arg;
     return 1;
@@ -90,7 +90,7 @@ void app_providers_cleanup(void)
     app_providers = NULL;
 }
 
-int opt_provider_path(const char *path)
+int app_set_provider_path(OPTIONAL const char *path)
 {
     if (path != NULL && *path == '\0')
         path = NULL;
@@ -613,7 +613,7 @@ bool load_key_certs_crls(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *pro
     return failed == NULL;
 }
 
-EVP_PKEY *CREDS_load_key(OPTIONAL OSSL_LIB_CTX *libctx, const char *propq,
+EVP_PKEY *CREDS_load_key(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                          OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
                          OPTIONAL const char *source, OPTIONAL const char *desc)
 {
@@ -702,11 +702,17 @@ static bool contains_str(const char *buf, size_t len, const char *str)
     return false;
 }
 
-static BIO *http_get_mem(const char *uri, int timeout, const char *str, bool *found, const char *desc)
+static BIO *http_get_mem(const char *uri, OPTIONAL X509_STORE *tls_ts, int timeout,
+                         const char *str, bool *found, const char *desc)
 {
     *found = false;
-    if (CONN_IS_HTTPS(uri)) {
-        LOG(FL_ERR, "Loading %s over HTTPS is unsupported; uri=%s", desc, uri);
+    if (CONN_IS_HTTPS(uri) || tls_ts != NULL) {
+        LOG(FL_ERR, "Loading %s over HTTPS is not yet supported; uri=%s", desc, uri);
+        return NULL;
+    }
+    if ((CONN_IS_HTTP(uri) || CONN_IS_HTTPS(uri)) && timeout < 0) {
+        LOG(FL_ERR, "Loading %s via HTTP(S) not allowed; uri = %s\n",
+            desc, uri);
         return NULL;
     }
     BIO *res = OSSL_HTTP_get(uri, NULL /* proxy */, NULL /* no_proxy */,
@@ -742,7 +748,7 @@ static BIO *http_get_mem(const char *uri, int timeout, const char *str, bool *fo
 
 X509 *CREDS_load_cert(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                       OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
-                      int timeout, OPTIONAL const char *source, OPTIONAL const char *desc,
+                      OPTIONAL X509_STORE *tls_ts, int timeout, OPTIONAL const char *source, OPTIONAL const char *desc,
                       int type_CA, OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
     char *pass;
@@ -754,7 +760,8 @@ X509 *CREDS_load_cert(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
     LOG(FL_DEBUG, "Loading %s from %s", desc, uri_or_stdin);
     if (CONN_IS_HTTP(uri) || CONN_IS_HTTPS(uri)) {
         bool is_pem;
-        BIO *mem = http_get_mem(uri, timeout, "-----BEGIN CERTIFICATE-----", &is_pem, desc);
+        BIO *mem = http_get_mem(uri, tls_ts, timeout,
+                                "-----BEGIN CERTIFICATE-----", &is_pem, desc);
         if (mem != NULL) {
             cert = is_pem ? PEM_read_bio_X509(mem, NULL, NULL, NULL) : d2i_X509_bio(mem, NULL);
             BIO_free(mem);
@@ -794,17 +801,15 @@ static bool check_cert_chain(const char *src, int type_CA, OPTIONAL const X509_V
     return res;
 }
 
-bool CREDS_load_certs(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                      const char *srcs, file_format_t format, int timeout,
-                      OPTIONAL const char *source, OPTIONAL const char *desc, int min_num,
-                      int type_CA, OPTIONAL X509_VERIFY_PARAM *vpm,
-                      OPTIONAL X509 **cert, OPTIONAL STACK_OF(X509) **certs)
+STACK_OF(X509) *CREDS_load_certs(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
+                                 const char *srcs, file_format_t format, bool maybe_stdin,
+                                 OPTIONAL X509_STORE *tls_ts, int timeout,
+                                 OPTIONAL const char *source, OPTIONAL const char *desc,
+                                 int min_num, int type_CA, OPTIONAL X509_VERIFY_PARAM *vpm)
 {
     char *pass;
-    X509 *crt = NULL;
-    STACK_OF(X509) *crts = NULL, *all_crts = NULL;
-    char *src, *next, *names = OPENSSL_strdup(srcs);
-    bool res = false;
+    STACK_OF(X509) *certs = NULL;
+    char *src, *next, *names;
 
     if (desc == NULL)
         desc = "certs";
@@ -812,51 +817,36 @@ bool CREDS_load_certs(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
         LOG(FL_DEBUG, "Loading %s from %s", desc, srcs);
     pass = FILES_get_pass(source, desc);
 
-    if (names == NULL || (all_crts = sk_X509_new_null()) == NULL)
+    if ((names = OPENSSL_strdup(srcs)) == NULL)
         goto oom;
     for (src = UTIL_first_item(names); src != NULL; src = next) {
         next = UTIL_next_item(src); /* must do this here to split string */
 
         if (CONN_IS_HTTP(src) || CONN_IS_HTTPS(src)) {
-            crt = CREDS_load_cert(libctx, propq, src, format, false,
-                                  timeout, NULL, desc, type_CA, vpm);
-            if (crt == NULL)
-                goto err;
-            goto handle_crt;
+#if 0 // TODO 
+            bool is_pem;
+            BIO *mem = http_get_mem(src, tls_ts, timeout,
+                                    "-----BEGIN CERTIFICATE-----", &is_pem, desc);
+#else
+            (void)tls_ts, (void)timeout;
+            LOG(FL_ERR, "Loading %s via HTTP(S) not yet supported; uri = %s\n",
+                desc, src);
+            goto err;
+#endif
         } else {
             if (!load_key_certs_crls(libctx, propq, src,
-                                     format, false, pass, desc, false,
-                                     NULL, NULL, NULL, NULL /* cert */, &crts,
+                                     format, maybe_stdin, pass, desc, false,
+                                     NULL, NULL, NULL, NULL /* cert */, &certs,
                                      min_num, NULL, NULL, 0))
                 goto err;
         }
-        while (sk_X509_num(crts) > 0) { /* effectively skipped on error */
-            crt = sk_X509_shift(crts);
-        handle_crt:
-            if (!sk_X509_push(all_crts, crt))
-                goto oom;
-            crt = NULL;
-        }
-        sk_X509_free(crts);
-        crts = NULL;
     }
 
-    res = sk_X509_num(all_crts) >= min_num;
-    if (!res) {
+    if (sk_X509_num(certs) < min_num) {
         LOG(FL_ERR, "Could not load at least %d %s from %s\n", min_num, desc, srcs);
         goto err;
     }
-    if (cert != NULL) {
-        *cert = NULL;
-        if (sk_X509_num(all_crts) > 0)
-            *cert = sk_X509_shift(all_crts);
-    }
-    if (certs != NULL) {
-        *certs = all_crts;
-        all_crts = NULL;
-    }
-
-    if (!check_cert_chain(srcs, type_CA, vpm, cert, certs))
+    if (!check_cert_chain(srcs, type_CA, vpm, NULL /* cert */, &certs))
         LOG(FL_WARN, "Ignoring error(s) checking %s from '%s' because for trust anchors such checks are generally not required",
             desc, srcs);
     goto end;
@@ -864,38 +854,17 @@ bool CREDS_load_certs(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
  oom:
     LOG(FL_ERR, "out of memory");
  err:
-    X509_free(crt);
-    CERTS_free(crts);
-    CERTS_free(all_crts);
-    if (cert != NULL) {
-        X509_free(*cert);
-        *cert = NULL;
-    }
-    if (certs != NULL) {
-        CERTS_free(*certs);
-        *certs = NULL;
-    }
+    CERTS_free(certs);
+    certs = NULL;
  end:
     OPENSSL_free(names);
     UTIL_cleanse_free(pass);
-    return res;
-}
-
-STACK_OF(X509) *load_certs_multifile(const char *files, OPTIONAL const char *source,
-                                     OPTIONAL const char *desc, int type_CA,
-                                     OPTIONAL X509_VERIFY_PARAM *vpm)
-{
-    STACK_OF(X509) *certs = NULL;
-
-    (void)CREDS_load_certs(app_get0_libctx(), app_get0_propq(), files, FORMAT_UNDEF,
-                           0 /* timeout */, source, desc,
-                           1 /* min_num */, type_CA, vpm, NULL, &certs);
     return certs;
 }
 
 X509_CRL *CREDS_load_crl(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                          OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
-                         int timeout, OPTIONAL const char *desc,
+                         OPTIONAL X509_STORE *tls_ts, int timeout, OPTIONAL const char *desc,
                          OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
     X509_CRL *crl = NULL;
@@ -906,7 +875,7 @@ X509_CRL *CREDS_load_crl(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *pro
     LOG(FL_DEBUG, "Loading %s from %s", desc, uri_or_stdin);
     if (CONN_IS_HTTP(uri) || CONN_IS_HTTPS(uri)) {
         bool is_pem;
-        BIO *mem = http_get_mem(uri, timeout, "-----BEGIN X509 CRL-----", &is_pem, desc);
+        BIO *mem = http_get_mem(uri, tls_ts, timeout, "-----BEGIN X509 CRL-----", &is_pem, desc);
         if (mem != NULL) {
             crl = is_pem ? PEM_read_bio_X509_CRL(mem, NULL, NULL, NULL) : d2i_X509_CRL_bio(mem, NULL);
             BIO_free(mem);
@@ -928,7 +897,8 @@ X509_CRL *CREDS_load_crl(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *pro
 }
 
 STACK_OF(X509_CRL) *CREDS_load_crls(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                                    const char *srcs, file_format_t format, int timeout,
+                                    const char *srcs, file_format_t format, bool maybe_stdin,
+                                    OPTIONAL X509_STORE *tls_ts, int timeout,
                                     OPTIONAL const char *desc, int min_num,
                                     OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
@@ -948,12 +918,12 @@ STACK_OF(X509_CRL) *CREDS_load_crls(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL cons
 
 
         if (CONN_IS_HTTP(src) || CONN_IS_HTTPS(src)) {
-            if ((crl = CREDS_load_crl(libctx, propq, src, format, false,
-                                      timeout, desc, vpm)) == NULL)
+            if ((crl = CREDS_load_crl(libctx, propq, src, format, maybe_stdin,
+                                      tls_ts, timeout, desc, vpm)) == NULL)
                 goto err;
             goto handle_crl;
         } else {
-            if (!load_key_certs_crls(libctx, propq, src, format, false, NULL, desc, false,
+            if (!load_key_certs_crls(libctx, propq, src, format, maybe_stdin, NULL, desc, false,
                                      NULL, NULL, NULL, NULL, NULL, 0, NULL, &crls, 0))
                 goto err;
         }
@@ -991,7 +961,7 @@ bool CREDS_load_credentials(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *
                             OPTIONAL const char *certs, OPTIONAL const char *key,
                             file_format_t format, bool maybe_stdin,
                             OPTIONAL const char *source, OPTIONAL const char *desc,
-                            OPTIONAL X509_VERIFY_PARAM *vpm, int type_CA,
+                            int type_CA, OPTIONAL X509_VERIFY_PARAM *vpm,
                             OPTIONAL EVP_PKEY **pkey, OPTIONAL X509 **cert,
                             OPTIONAL STACK_OF(X509) **chain)
 {
@@ -1012,6 +982,14 @@ bool CREDS_load_credentials(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *
     if (orig_desc == NULL)
         desc = certs == NULL ? "private key" :
             (key == NULL ? "certificate(s)" : "private key and certificate(s)");
+    if (format == FORMAT_HTTP
+        || CONN_IS_HTTP(certs) || CONN_IS_HTTPS(certs)
+        || CONN_IS_HTTP(key) || CONN_IS_HTTPS(key)) {
+        LOG(FL_ERR, "Loading %s via HTTP(S) is not allowed; certs uri=%s, key uri=%s",
+            desc, certs != NULL ? certs : "(none)", key != NULL ? key : "(none)");
+        return false;
+    }
+
     const char *src1 = key != NULL ? key : certs;
     const char *sep = "", *src2 = "";
     if (key != NULL && certs != NULL && !joint_credentials)
@@ -1040,10 +1018,6 @@ bool CREDS_load_credentials(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *
         if (orig_desc == NULL)
             desc = "certificate(s)";
         if (certs != NULL && (cert != NULL || chain != NULL)) {
-            if (format == FORMAT_HTTP || CONN_IS_HTTP(certs)) {
-                LOG(FL_ERR, "Loading %s over HTTP is not allowed; uri=%s", desc, certs);
-                goto err;
-            }
             if (!load_key_certs_crls(libctx, propq, certs,
                                      format, maybe_stdin, pass, desc, false,
                                      NULL, NULL, NULL, cert, chain, 1, NULL, NULL, 0))
@@ -1090,8 +1064,8 @@ CREDENTIALS *CREDS_load(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *prop
     STACK_OF(X509) *chain = NULL;
     CREDENTIALS *res;
 
-    if (!CREDS_load_credentials(libctx, propq, certs, key, FORMAT_UNDEF, false,
-                                source, desc, vpm, -1, &pkey, &cert, &chain))
+    if (!CREDS_load_credentials(libctx, propq, certs, key, FORMAT_UNDEF, false /* maybe_stdin */,
+                                source, desc, -1, vpm, &pkey, &cert, &chain))
         return NULL;
 
     res = CREDENTIALS_new(pkey, cert, chain, NULL, NULL);
@@ -1105,16 +1079,18 @@ CREDENTIALS *CREDS_load(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *prop
  * extend or create cert store structure with cert(s) read from file
  */
 bool STORE_load_more_check_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                              X509_STORE **pstore, const char *file,
-                              file_format_t format, OPTIONAL const char *source,
+                              X509_STORE **pstore, const char *uri,
+                              file_format_t format,
+                              OPTIONAL X509_STORE *tls_ts, int timeout,
+                              OPTIONAL const char *source,
                               OPTIONAL const char *desc, int min_certs,
                               OPTIONAL X509_VERIFY_PARAM *vpm, OPTIONAL uta_ctx *ctx)
 {
     if (desc == NULL)
         desc = "trusted cert(s)";
-    if (file == NULL) {
-        LOG_err("null pointer file argument");
-        file = "(NULL)";
+    if (uri == NULL) {
+        LOG_err("null pointer uri argument");
+        uri = "(NULL)";
         goto err;
     }
     if (pstore == NULL) {
@@ -1122,10 +1098,6 @@ bool STORE_load_more_check_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char
         goto err;
     }
     /* LOG(FL_DEBUG, ...) will be done by CREDS_load_certs_ex() */
-    if (CONN_IS_HTTP(file)) {
-        LOG(FL_ERR, "Loading %s over HTTP is not allowed; uri=%s", desc, file);
-        goto err;
-    }
 
     const char *store_desc = desc;
     if (store_desc != NULL) {
@@ -1136,31 +1108,33 @@ bool STORE_load_more_check_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char
 
     if (ctx == NULL
 #ifdef SECUTILS_USE_ICV
-        || FILES_check_icv(ctx, file)
+        || CONN_IS_HTTP(uri) || CONN_IS_HTTPS(uri) || FILES_check_icv(ctx, uri)
 #endif
         ) {
         STACK_OF(X509) *certs = NULL;
 
-        if (!CREDS_load_certs(libctx, propq, file, format,
-                              0 /* timeout */, source, desc, min_certs,
-                              vpm != NULL ? 1 /* strictly check CA */ : -1,
-                              vpm, NULL, &certs))
+        certs = CREDS_load_certs(libctx, propq, uri, format, false /* maybe_stdin */,
+                                 tls_ts, CONN_IS_HTTP(uri) ? -1 : timeout,
+                                 source, desc, min_certs,
+                                 vpm != NULL ? 1 /* strictly check CA */ : -1, vpm);
+        if (certs == NULL)
             return false;
 
         if (vpm == NULL)
-            (void)CERT_check_all(file, certs, 1 /* warn on non-CA certs */, NULL);
+            (void)CERT_check_all(uri, certs, 1 /* warn on non-CA certs */, NULL);
         *pstore = STORE_create(*pstore, 0, certs);
         CERTS_free(certs);
         return *pstore != NULL && STORE_set1_desc(*pstore, store_desc);
     }
 
 err:
-    LOG(FL_ERR, "Could not load %s from %s", desc, file);
+    LOG(FL_ERR, "Could not load %s from %s", desc, uri);
     return false;
 }
 
 X509_STORE *STORE_load_check_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
-                                const char *files, file_format_t format,
+                                const char *srcs, file_format_t format,
+                                OPTIONAL X509_STORE *tls_ts, int timeout,
                                 OPTIONAL const char *source, OPTIONAL const char *desc,
                                 int min_certs_per_file,
                                 OPTIONAL X509_VERIFY_PARAM *vpm, OPTIONAL uta_ctx *ctx)
@@ -1168,23 +1142,23 @@ X509_STORE *STORE_load_check_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const ch
 {
     X509_STORE *store = NULL;
 
-    if (files == NULL) {
-        LOG_err("null pointer files arg");
+    if (srcs == NULL) {
+        LOG_err("null pointer srcs arg");
         return 0;
     }
 
-    char *names = OPENSSL_strdup(files);
+    char *names = OPENSSL_strdup(srcs);
     if (names == NULL) {
         LOG_err("Out of memory");
         return 0;
     }
 
-    char *file;
+    char *uri;
     char *next;
-    for (file = UTIL_first_item(names); file != NULL; file = next) {
-        next = UTIL_next_item(file); /* must do this here to split string */
-        if (not STORE_load_more_check_ex(libctx, propq, &store, file, format,
-                                         source, desc, min_certs_per_file, vpm, ctx)) {
+    for (uri = UTIL_first_item(names); uri != NULL; uri = next) {
+        next = UTIL_next_item(uri); /* must do this here to split string */
+        if (!STORE_load_more_check_ex(libctx, propq, &store, uri, format,
+                                      tls_ts, timeout, source, desc, min_certs_per_file, vpm, ctx)) {
             X509_STORE_free(store);
             store = NULL;
             break;

@@ -36,7 +36,8 @@
 #endif
 
 #include <credential_loading.h>
-
+#define load_certs_multifile(srcs, source, desc, type_CA, vpm) \
+    app_load_certs(srcs, NULL, -1 /* no HTTP(S) */, source, desc, type_CA,vpm)
 /*
  * Use cases are split between CMP use cases and others,
  * which do not use CMP and therefore do not need its complex setup.
@@ -561,8 +562,9 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
     const int security_level = -1;
 
     if (opt_tls_trusted != NULL) {
-        tls_trust = load_certstore(opt_tls_trusted, opt_otherpass, "trusted cert(s) for TLS level",
-                                   vpm /* will respect vpm without strict checking */);
+        tls_trust = app_load_certstore(opt_tls_trusted, opt_otherpass,
+                                       "trusted cert(s) for TLS level",
+                                       vpm /* TODO will respect vpm without strict checking? */);
         if (tls_trust == NULL)
             goto err;
         if (!STORE_set_parameters(tls_trust, vpm,
@@ -587,8 +589,8 @@ static SSL_CTX *setup_TLS(STACK_OF(X509) *untrusted_certs)
         }
     }
     if (opt_tls_key != NULL) {
-        tls_creds = load_creds(opt_tls_cert, opt_tls_key, opt_tls_keypass,
-                               "credentials for TLS level", vpm);
+        tls_creds = app_load_creds(opt_tls_cert, opt_tls_key, opt_tls_keypass,
+                                   "credentials for TLS level", vpm);
         if (tls_creds == NULL)
             goto err;
     } else {
@@ -629,8 +631,9 @@ static X509_STORE *setup_CMP_truststore(const char *trusted_cert_files)
     if (trusted_cert_files == NULL)
         return NULL;
     X509_STORE *cmp_truststore =
-        load_certstore(trusted_cert_files, opt_otherpass, "trusted cert(s) for CMP level",
-                       vpm /* will respect vpm without strict checking */);
+        app_load_certstore(trusted_cert_files, opt_otherpass,
+                           "trusted cert(s) for CMP level",
+                           vpm /* will respect vpm without strict checking */);
 
     if (cmp_truststore == NULL)
         goto err;
@@ -1128,8 +1131,8 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
         LOG(FL_TRACE, "Using '%s' as trust store for validating new cert",
             new_cert_trusted);
         new_cert_truststore =
-            load_certstore(new_cert_trusted, opt_otherpass,
-                           "trusted cert(s) for validating new cert", vpm);
+            app_load_certstore(new_cert_trusted, opt_otherpass,
+                               "trusted cert(s) for validating new cert", vpm);
         if (new_cert_truststore == NULL)
             goto err;
         /* use separate flag for checking any cert, for new certificate store */
@@ -1150,8 +1153,8 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
     if (opt_secret != NULL || opt_key != NULL) {
         const char *const creds_desc = "credentials for CMP level";
 
-        if ((cmp_creds = load_creds(opt_cert, opt_key, opt_keypass,
-                                    creds_desc, vpm)) == NULL) {
+        if ((cmp_creds = app_load_creds(opt_cert, opt_key, opt_keypass,
+                                        creds_desc, vpm)) == NULL) {
             LOG(FL_ERR, "Unable to set up %s", creds_desc);
             err = CMP_R_LOAD_CREDS;
             goto err;
@@ -1176,9 +1179,9 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
             } else {
                 LOG(FL_TRACE, "Using '%s' as trust store for validating own CMP signer cert",
                     opt_own_trusted);
-                own_truststore = load_certstore(opt_own_trusted, opt_otherpass,
-                                                "trusted cert(s) for validating own CMP signer cert",
-                                                vpm);
+                own_truststore =
+                    app_load_certstore(opt_own_trusted, opt_otherpass,
+                                       "trusted cert(s) for validating own CMP signer cert", vpm);
                 err = -06;
                 if (own_truststore == NULL)
                     goto err;
@@ -1237,7 +1240,7 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
         goto err;
 
     if (opt_srvcert != NULL) {
-        X509 *srvcert = load_cert_pwd(opt_srvcert, opt_otherpass,
+        X509 *srvcert = app_load_cert(opt_srvcert, opt_otherpass,
                                       "directly trusted CMP server certificate",
                                       -1 /* no type check */, vpm);
 
@@ -1487,7 +1490,7 @@ static bool validate_cert(void)
     LOG(FL_INFO, "Trusted certs: %s", STR_OR_NONE(opt_trusted));
     LOG(FL_INFO, "Untrusted certs: %s", STR_OR_NONE(opt_untrusted));
 
-    target = load_cert_pwd(opt_cert, opt_keypass, "target cert",
+    target = app_load_cert(opt_cert, opt_keypass, "target cert",
                            -1 /* no type check */, vpm);
     if (target == NULL)
         return false;
@@ -1495,8 +1498,8 @@ static bool validate_cert(void)
     LOG_cert_CDP(FL_DEBUG, target);
 
     /* TODO combine with part of prepare_CMP_client() */
-    store = load_certstore(opt_trusted, opt_otherpass,
-                           "trusted cert(s) for validating certificate", vpm);
+    store = app_load_certstore(opt_trusted, opt_otherpass,
+                               "trusted cert(s) for validating certificate", vpm);
     if (store == NULL)
         goto err;
     /* no cert status/revocation checks done for this validation use case */
@@ -1847,13 +1850,13 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
             const char *desc = "private key to use for certificate request";
             EVP_PKEY *pkey;
 
-            *new_pkey = load_key_pwd(file, FORMAT_UNDEF, pass, NULL, desc);
+            *new_pkey = app_load_key(file, pass, desc);
             if (*new_pkey == NULL) {
                 ERR_clear_error();
                 desc = opt_csr == NULL
                     ? "fallback public key for cert to be enrolled"
                     : "public key for checking cert resulting from p10cr";
-                pkey = load_pubkey_pwd(file, FORMAT_UNDEF, pass, NULL, desc);
+                pkey = app_load_pubkey_pwd(file, FORMAT_UNDEF, pass, NULL, desc);
                 if (pkey == NULL || !OSSL_CMP_CTX_set0_newPkey(ctx, 0, pkey)) {
                     EVP_PKEY_free(pkey);
                     return -41;
@@ -1936,7 +1939,7 @@ static CMP_err check_set_template_options(CMP_CTX *ctx, EVP_PKEY **new_pkey,
         if (use_case == genm && strcmp(opt_infotype, "crlStatusList") != 0) {
             LOG_warn("-oldcert option is ignored for 'genm' command except with -infotype crlStatusList");
         } else {
-            *oldcert = load_cert_pwd(opt_oldcert, opt_keypass,
+            *oldcert = app_load_cert(opt_oldcert, opt_keypass,
                                      use_case == update ? "cert to be updated" :
                                      use_case == revocation ? "cert to be revoked" :
                                      "reference certificate (oldcert)",
@@ -2276,7 +2279,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
             if (opt_oldwithold == NULL) {
                 LOG(FL_WARN, "No -oldwithold given, will use all certs given with -trusted as trust anchors for verifying the newWithNew cert");
             } else {
-                oldwithold = load_cert_pwd(opt_oldwithold, NULL,
+                oldwithold = app_load_cert(opt_oldwithold, NULL,
                                            "OldWithOld cert for genm with -infotype rootCaCert",
                                            1 /* CA */, NULL /* vpm */);
                 if (oldwithold == NULL)
@@ -2329,7 +2332,7 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
 
             err = -51;
             if (opt_crlcert != NULL) {
-                crlcert = load_cert_pwd(opt_crlcert, opt_otherpass,
+                crlcert = app_load_cert(opt_crlcert, opt_otherpass,
                                         "Cert for genm with -infotype crlStatusList",
                                         -1 /* no type check */, vpm);
                 if (crlcert == NULL)
@@ -2340,8 +2343,8 @@ static CMP_err do_genm(CMP_CTX *ctx, X509 *oldcert)
                 if (opt_crlcert == NULL)
                     LOG(FL_WARN, "No -oldcrl nor -crlcert given, will use data from -oldcert");
             } else {
-                oldcrl = load_crl(opt_oldcrl, FORMAT_UNDEF, false, (int)opt_crls_timeout,
-                                  "CRL for genm with -infotype crlStatusList", NULL /* vpm */);
+                oldcrl = app_load_crl(opt_oldcrl, (int)opt_crls_timeout,
+                                      "CRL for genm with -infotype crlStatusList", NULL /* vpm */);
                 if (oldcrl == NULL)
                     goto end_crlupd;
             }
@@ -2684,7 +2687,7 @@ int main(int argc, char *argv[])
                          && !set_verbosity(UTIL_atoint(argv[++i])))
                     goto end; /* INT_MIN on parse error */
                 else if (strcmp(argv[i] + 1, "provider-path") == 0
-                         && !opt_provider_path(argv[++i]))
+                         && !app_set_provider_path(argv[++i]))
                     goto end;
                 else if (strcmp(argv[i] + 1, "provider") == 0
                          && !app_provider_load(app_get0_libctx(), argv[++i]))
@@ -2778,7 +2781,8 @@ int main(int argc, char *argv[])
     }
 
     if (opt_crls != NULL) {
-        crls = load_crls(opt_crls, FORMAT_UNDEF, (int)opt_crls_timeout, "pre-determined CRLs", vpm);
+        /* note: crls are a global variable */
+        crls = app_load_crls(opt_crls, (int)opt_crls_timeout, "pre-determined CRLs", vpm);
         if (crls == NULL)
             goto end;
     }

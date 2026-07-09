@@ -13,6 +13,8 @@
  *  SPDX-License-Identifier: Apache-2.0
  */
 
+#include <genericCMPClient_util.h>
+
 /* util.c: */
 
 static
@@ -29,11 +31,44 @@ void UTIL_cleanse(char *str)
         UTIL_erase_mem((void *)str, strlen(str));
 }
 
-static
 void UTIL_cleanse_free(OPTIONAL char *str)
 {
     UTIL_cleanse(str);
     OPENSSL_free(str);
+}
+
+char *UTIL_first_item(char *str)
+{
+    if (str == NULL)
+        return NULL;
+
+    /* skip any initial separators (comma or whitespace) */
+    while (*str == ',' || isspace(*str))
+        str++;
+    return *str == '\0' ? NULL : str;
+}
+
+char *UTIL_next_item(char *opt) /* in list separated by comma and/or spaces */
+{
+    /* advance to separator (comma or whitespace), if any */
+    while (*opt != '\0' && *opt != ',' && !isspace(*opt)) {
+        if (*opt == '\\' && opt[1] != '\0') {
+            /* skip and unescape '\'-escaped char */
+            memmove(opt, opt + 1, strlen(opt));
+        }
+        opt++;
+    }
+    if (*opt != '\0') {
+        int found_comma = *opt == ',';
+
+        /* terminate current item */
+        *opt++ = '\0';
+        /* skip over any further separators, but only one comma */
+        while ((!found_comma && *opt == ',' && (found_comma = 1))
+               || isspace(*opt))
+            opt++;
+    }
+    return *opt == '\0' ? NULL : opt; /* NULL indicates end of input */
 }
 
 /* log.c: */
@@ -242,6 +277,91 @@ bool LOG(OPTIONAL const char *func, OPTIONAL const char *file,
     return res;
 }
 
+/* files.c: */
+static bool istext(file_format_t format)
+{
+    return ((unsigned)format & (unsigned) B_FORMAT_TEXT) == B_FORMAT_TEXT;
+}
+
+static BIO* dup_bio_in(file_format_t format)
+{
+    return BIO_new_fp(stdin, BIO_NOCLOSE | (istext(format) ? BIO_FP_TEXT : 0));
+}
+
+char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc)
+{
+    BIO* bio = 0;
+    char buf[256 /* sec_PASS_MAX_LEN */ + 1];
+    const char* pass = 0;
+
+    if (source == NULL) {
+        return 0; /* no password is fine */
+    } else if (strncmp(source, sec_PASS_STR, strlen(sec_PASS_STR)) == 0) {
+        pass = source + strlen(sec_PASS_STR);
+    }
+#ifndef OPENSSL_NO_ENGINE
+    else if (strncmp(source, sec_ENGINE_STR, strlen(sec_ENGINE_STR)) == 0) {
+        pass = source + strlen(sec_ENGINE_STR);
+    }
+#endif
+    else if (strncmp(source, sec_ENV_STR, strlen(sec_ENV_STR)) == 0) {
+        pass = getenv(source + strlen(sec_ENV_STR));
+        if (pass == NULL) {
+            LOG(FL_ERR, "No environment variable %s\n", source + strlen(sec_ENV_STR));
+        }
+    }
+    else if (strncmp(source, sec_FILE_STR, strlen(sec_FILE_STR)) == 0) {
+        bio = BIO_new_file(source + strlen(sec_FILE_STR), "r");
+        if (bio == NULL) {
+            LOG(FL_ERR, "Cannot open file %s\n", source + strlen(sec_FILE_STR));
+        }
+    }
+#if !defined(_WIN32)
+    /*
+     * Under _WIN32, which covers even Win64 and CE, file
+     * descriptors referenced by BIO_s_fd are not inherited
+     * by child process and therefore below is not an option.
+     * It could have been an option if bss_fd.c was operating
+     * on real Windows descriptors, such as those obtained
+     * with CreateFile.
+     */
+    else if (strncmp(source, sec_FD_STR, strlen(sec_FD_STR)) == 0) {
+        int i = atoi(source + strlen(sec_FD_STR));
+        if (i >= 0) {
+            bio = BIO_new_fd(i, BIO_NOCLOSE);
+        }
+        if (i < 0 || bio == NULL) {
+            LOG(FL_ERR, "Cannot access file descriptor %s\n", source + strlen(sec_FD_STR));
+        }
+        /* Cannot do BIO_gets on an fd BIO so add a buffering BIO */
+        bio = BIO_push(BIO_new(BIO_f_buffer()), bio);
+#endif
+    }
+    else if (strcmp(source, sec_STDIN_STR) == 0) {
+        bio = dup_bio_in(FORMAT_TEXT);
+        if (bio == NULL) {
+            LOG(FL_ERR, "Cannot open BIO for stdin");
+        }
+    } else {
+        pass = source;
+        LOG(FL_WARN, "No 'pass:' or 'engine:' or 'env:' or 'file:' or 'fd:' prefix or 'stdin' found; assuming plain password for '%s'",
+            desc != NULL ? desc : "key");
+    }
+    if (bio != NULL) {
+        if (BIO_gets(bio, buf, sec_PASS_MAX_LEN + 1) <= 0) {
+            LOG(FL_ERR, "Error reading password from BIO");
+        } else {
+            char* tmp = strchr(buf, '\n');
+            if (tmp != NULL) {
+                *tmp = '\0';
+            }
+            pass = buf;
+        }
+        BIO_free_all(bio);
+    }
+    return OPENSSL_strdup(pass);
+}
+
 /* cert.c: */
 
 /*
@@ -414,7 +534,6 @@ static void cert_msg(OPTIONAL const char *func, OPTIONAL const char *file, int l
     OPENSSL_free(subj);
 }
 
-static
 bool CERT_check(const char *src, OPTIONAL X509 *cert, int type_CA,
                 OPTIONAL const X509_VERIFY_PARAM *vpm)
 {
@@ -625,10 +744,6 @@ static char *CONN_get_host(const char *uri)
 }
 
 /* store.c: */
-
-/* with GENCMP_NO_SECUTILS, not supported before 3.0: */
-# define STORE_set1_host(store, host) (OPENSSL_VERSION_NUMBER >= OPENSSL_V_3_0_0)
-
 bool STORE_set1_host_ip(X509_STORE *ts, OPTIONAL const char *name, OPTIONAL const char *ip)
 {
     if (ts == NULL) {

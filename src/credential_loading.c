@@ -19,17 +19,21 @@
 #include <openssl/core_names.h>
 #include <openssl/http.h>
 #include <openssl/pem.h>
+
+#ifndef GENCMP_NO_SECUTILS
 #include <secutils/credentials/credentials.h>
 #include <secutils/credentials/store.h>
 #include <secutils/credentials/cert.h>
+#include <secutils/connections/conn.h> /* for CONN_IS_HTTP[S] */
+#include <secutils/certstatus/crls.h> /* for CRL_check() and CERT_check() */
+#include <secutils/util/log.h>
+#endif
+
 #ifdef SECUTILS_USE_ICV
 # include <secutils/storage/files_icv.h> /* for FILES_check_icv */
 #endif
-#include <secutils/connections/conn.h> /* for CONN_IS_HTTP[S] */
-#include <secutils/certstatus/crls.h> /* for CONN_load_crl_http */
-#include <secutils/util/log.h>
-#include <genericCMPClient.h> /* for CRLs_free() */
 
+#include <genericCMPClient.h> /* for CRLs_free() */
 #include <credential_loading.h>
 
 /* from OpenSSL/apps/lib/app_libctx.c: */

@@ -16,6 +16,7 @@
 # define GENERIC_CMP_CLIENT_UTIL_H
 
 # include <openssl/err.h>
+# include <openssl/cmp.h>
 
 /* basic.h: */
 # define OPTIONAL /*!< marker for non-required parameter, i.e., null pointer allowed */
@@ -30,8 +31,17 @@ typedef struct credentials CREDENTIALS;
 /* util.h: */
 # define OPENSSL_V_3_0_0 0x30000000L
 # define UTIL_setup_openssl(version, build_name) /* no-op */
+/* Check if |pre|, which must be a string literal, is a prefix of |str| */
 #define HAS_PREFIX(str, pre) (strncmp(str, pre "", sizeof(pre) - 1) == 0)
+/* As before, and if check succeeds, advance |str| past the prefix |pre| */
 #define CHECK_AND_SKIP_PREFIX(str, pre) (HAS_PREFIX(str, pre) ? ((str) += sizeof(pre) - 1, 1) : 0)
+/* Check if the string literal |p| is a case-insensitive prefix of |s| */
+#define HAS_CASE_PREFIX(s, p) (strncasecmp(s, p "", sizeof(p) - 1) == 0)
+/* As before, and if check succeeds, advance |str| past the prefix |pre| */
+#define CHECK_AND_SKIP_CASE_PREFIX(str, pre) (HAS_CASE_PREFIX(str, pre) ? ((str) += sizeof(pre) - 1, 1) : 0)
+void UTIL_cleanse_free(OPTIONAL char *str);
+char *UTIL_first_item(char *str);
+char *UTIL_next_item(char *opt); /* in list separated by comma and/or spaces */
 
 /* log.h: */
 extern BIO *bio_err; /* for low-level error output if verbosity >= LOG_DEBUG */
@@ -95,7 +105,31 @@ void CREDENTIALS_free(OPTIONAL CREDENTIALS *creds);
 # define CREDENTIALS_get_pwdref(creds) (creds)->pwdref
 
 /* files.h: */
-static const char *const sec_PASS_STR = "pass:";
+/*! supported format for security-related files */
+/* taken over from OpenSSL:apps/include/apps.h */
+enum
+{
+    B_FORMAT_TEXT = 0x8000
+};
+typedef enum
+{
+    FORMAT_UNDEF = 0,               /*! undefined file format */
+    FORMAT_TEXT = 1 | B_FORMAT_TEXT,/* Generic text */
+    FORMAT_ASN1 = 4,                /*! ASN.1/DER */
+    FORMAT_PEM = 5 | B_FORMAT_TEXT, /*! PEM */
+    FORMAT_PKCS12 = 6,              /*! PKCS#12 */
+    FORMAT_ENGINE = 8,              /*! crypto engine, which is not really a file format */
+    FORMAT_HTTP = 13                /*! download using HTTP */
+} file_format_t;                  /*! type of format for security-related files or other input */
+/**< string constants used for the 'source' parameter of some credentials load/store functions */
+static const char* const sec_PASS_STR = "pass:";
+static const char* const sec_ENGINE_STR = "engine:";
+static const char* const sec_ENV_STR = "env:";
+static const char* const sec_FILE_STR = "file:";
+static const char* const sec_FD_STR = "fd:";
+static const char* const sec_STDIN_STR = "stdin";
+static const int sec_PASS_MAX_LEN = 256;
+char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc);
 
 /* cert.h: */
 # include <ctype.h> /* needed for UTIL_SKIP_SCHEME() */
@@ -110,15 +144,23 @@ static const char *const sec_PASS_STR = "pass:";
 X509_NAME *UTIL_parse_name(const char *dn, int chtype, bool multirdn);
 int UTIL_cmp_timeframe(OPTIONAL const X509_VERIFY_PARAM *vpm,
                        OPTIONAL const ASN1_TIME *start, OPTIONAL const ASN1_TIME *end);
-# define CERTS_free(certs) sk_X509_pop_free(certs, X509_free)
+#define CERTS_free(certs) sk_X509_pop_free(certs, X509_free)
+#define CRLs_free(crls) sk_X509_CRL_pop_free(crls, X509_CRL_free)
+bool CERT_check(const char *src, OPTIONAL X509 *cert, int type_CA,
+                OPTIONAL const X509_VERIFY_PARAM *vpm);
 bool CERT_check_all(const char *src, OPTIONAL STACK_OF(X509) *certs, int type_CA,
                     OPTIONAL const X509_VERIFY_PARAM *vpm); /* used by CMPclient_caCerts() */
 
 /* crls.h: */
 bool CRL_check(const char *src, OPTIONAL X509_CRL *crl, OPTIONAL const X509_VERIFY_PARAM *vpm);
 
+/* uta_api.h: */
+typedef void uta_ctx; /* dummy */
 /* store.h: */
+# define STORE_set1_desc(store, desc) true /* no-op */
 # ifndef GENCMP_NO_TLS
+/* with GENCMP_NO_SECUTILS, not supported before 3.0: */
+# define STORE_set1_host(store, host) (OPENSSL_VERSION_NUMBER >= OPENSSL_V_3_0_0)
 bool STORE_set1_host_ip(X509_STORE *ts, OPTIONAL const char *name, OPTIONAL const char *ip);
 const char *STORE_get0_host(const X509_STORE *store);
 /* would be needed only with CREDENTIALS_print_cert_verify_cb(): */
@@ -129,12 +171,17 @@ X509_STORE *STORE_create(OPTIONAL X509_STORE *store, OPTIONAL const X509 *cert,
                          OPTIONAL const STACK_OF(X509) *certs);
 # define STORE_free(store) X509_STORE_free(store)
 
-# ifndef GENCMP_NO_TLS
 /* conn.h: */
+static const char* const CONN_scheme_postfix = "://";
+static const char* const CONN_http_prefix = OSSL_HTTP_PREFIX;
+static const char* const CONN_https_prefix = OSSL_HTTPS_PREFIX;
+#define CONN_IS_HTTP( uri) ((uri) != NULL && HAS_CASE_PREFIX(uri, OSSL_HTTP_PREFIX ))
+#define CONN_IS_HTTPS(uri) ((uri) != NULL && HAS_CASE_PREFIX(uri, OSSL_HTTPS_PREFIX))
+#define CONN_IS_IP_ADDR(host) CONN_is_IP_address(host)
 bool CONN_is_IP_address(OPTIONAL const char *host);
-#  define CONN_IS_IP_ADDR(host) CONN_is_IP_address(host)
 
 /* tls.h: */
+# ifndef GENCMP_NO_TLS
 #  define TLS_init() true /* initialize OpenSSL's SSL lib, no needed at least since 3.0 */
 # endif
 

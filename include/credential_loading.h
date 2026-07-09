@@ -16,6 +16,13 @@
 
 #pragma once
 
+#ifndef GENCMP_NO_SECUTILS
+#include <secutils/storage/files.h> /* for file_format_t */
+#include <secutils/storage/uta_api.h> /* for utx_ctx */
+#else
+#include "genericCMPClient_util.h"
+#endif
+
 int app_set_propq(const char *arg);
 const char *app_get0_propq(void);
 OSSL_LIB_CTX *app_get0_libctx(void);

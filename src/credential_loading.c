@@ -719,7 +719,7 @@ static BIO *http_get_mem(const char *uri, OPTIONAL X509_STORE *tls_ts, int timeo
                              NULL /* bio */, NULL /* rbio */, NULL /* cb */, NULL /* arg */,
                              0 /* buf_size */, NULL /* headers */,
                              NULL /* expected_ct */, 0 /* expect_asn1 */,
-                             100000 /* max_resp_len */, timeout);
+                             1024 * 1024 /* max_resp_len */, timeout);
     if (res == NULL) {
         LOG(FL_ERR, "Unable to download %s from %s\n", desc, uri);
         return NULL;

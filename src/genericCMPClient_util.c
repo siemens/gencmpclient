@@ -335,8 +335,8 @@ char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc)
         }
         /* Cannot do BIO_gets on an fd BIO so add a buffering BIO */
         bio = BIO_push(BIO_new(BIO_f_buffer()), bio);
-#endif
     }
+#endif
     else if (strcmp(source, sec_STDIN_STR) == 0) {
         bio = dup_bio_in(FORMAT_TEXT);
         if (bio == NULL) {

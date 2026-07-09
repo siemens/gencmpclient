@@ -29,6 +29,9 @@ typedef enum {
 typedef struct credentials CREDENTIALS;
 
 /* util.h: */
+#if defined(_WIN32) && !defined(strncasecmp)
+    #define strncasecmp _strnicmp
+#endif
 # define OPENSSL_V_3_0_0 0x30000000L
 # define UTIL_setup_openssl(version, build_name) /* no-op */
 /* Check if |pre|, which must be a string literal, is a prefix of |str| */

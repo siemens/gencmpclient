@@ -502,7 +502,7 @@ if(NOT TARGET clean_all)
     COMMAND find . -type d -name "build" | xargs -r rm -r
     # cowardly not doing rm -r ${CMAKE_BINARY_DIR}
 
-    COMMAND rm CMakeCache.txt
+    COMMAND rm -f CMakeCache.txt
     # after the following, cannot call this target again:
     COMMAND find . ( -name "*.cmake" -o -name Makefile )
 #           -not -path ./libsecutils/* -not -path ./cmpossl/*

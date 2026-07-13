@@ -67,11 +67,13 @@ static int CMPOSSL_error(void)
 
 CMP_err CMPclient_init(OPTIONAL const char *name, OPTIONAL LOG_cb_t log_fn)
 {
+    if (name != NULL || log_fn != NULL) {
+        LOG_set_name(name != NULL ? name : CMPCLIENT_MODULE_NAME);
+        LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
+        LOG_set_verbosity(LOG_INFO);
+    }
     if (name == NULL)
         name = CMPCLIENT_MODULE_NAME;
-    LOG_set_name(name);
-    LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
-    LOG_set_verbosity(LOG_INFO);
 
     UTIL_setup_openssl(OPENSSL_VERSION_NUMBER, name);
 #if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0

@@ -77,6 +77,8 @@ void LOG_set_name(OPTIONAL const char *name);
 void LOG_set_verbosity(severity level);
 bool LOG(OPTIONAL const char *func, OPTIONAL const char *file,
          int lineno, severity level, const char *fmt, ...);
+bool LOG_syslog(OPTIONAL const char *func, OPTIONAL const char *file,
+                int lineno, severity level, const char *msg);
 bool LOG_console(OPTIONAL const char *func, OPTIONAL const char *file,
                  int lineno, severity level, const char *msg);
 # define LOG_alert(msg) LOG(FL_ALERT, msg) /*!< simple alert message */

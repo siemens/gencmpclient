@@ -253,6 +253,12 @@ bool LOG_default(OPTIONAL const char *func, OPTIONAL const char *file,
     return LOG_generic(func, file, lineno, level, msg, 1, 1);
 }
 
+bool LOG_syslog(OPTIONAL const char *func, OPTIONAL const char *file,
+                 int lineno, severity level, const char *msg)
+{
+    return LOG_generic(func, file, lineno, level, msg, 1, 0);
+}
+
 bool LOG_console(OPTIONAL const char *func, OPTIONAL const char *file,
                  int lineno, severity level, const char *msg)
 {

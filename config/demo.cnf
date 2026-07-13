@@ -181,7 +181,7 @@ caPubs = creds/trusted/caPubs.pem # filled in from caPubs field extracted from I
 trusted = $caPubs
 out_trusted = $caPubs
 own_trusted = $caPubs
-partial_chain = 1 # all using trust anchors from caPubs also for non-root certs
+partial_chain = 1 # allow using also non-root trust anchor certs from caPubs
 
 # User in tenant
 ref = CloudPKI-Integration-Test-User

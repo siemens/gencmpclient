@@ -17,6 +17,16 @@
 
 /* util.c: */
 
+int UTIL_atoint(const char *str)
+{
+    char *tailptr = 0;
+    long res = strtol(str, &tailptr, 10);
+
+    if (*tailptr != '\0' || res < INT_MIN || res > INT_MAX)
+        return INT_MIN;
+    return (int)res;
+}
+
 static
 void UTIL_erase_mem(void *dst, size_t len)
 {
@@ -502,6 +512,37 @@ EVP_PKEY *KEY_new_ex(const char *spec, OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL c
         (void)ERR_print_errors(bio_err);
     return pkey;
 
+}
+
+/* supports most of the spec syntax options of KEY_new_ex() */
+bool KEY_type_supported(const char *spec,
+                        OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq)
+{
+    EVP_KEYMGMT *km;
+
+    if (CHECK_AND_SKIP_CASE_PREFIX(spec, "RSA")) {
+        int nbits;
+
+        if (*spec != '\0' && strchr(" -_:", *spec) != NULL)
+            spec++;
+        nbits = UTIL_atoint(spec);
+        if (1024 <= nbits && nbits <= 8192)
+            return true;
+    } else if (CHECK_AND_SKIP_CASE_PREFIX(spec, "EC")) {
+        int curve_nid = OBJ_sn2nid(spec);
+
+        if (*spec != '\0' && strchr(" -_:", *spec) != NULL)
+            spec++;
+        curve_nid = OBJ_sn2nid(spec);
+        if (curve_nid == 0)
+            curve_nid = EC_curve_nist2nid(spec);
+        if (curve_nid != 0)
+            return true;
+    } else if ((km = EVP_KEYMGMT_fetch(libctx, spec, propq)) != NULL) {
+        EVP_KEYMGMT_free(km);
+        return true;
+    }
+    return false;
 }
 #endif
 

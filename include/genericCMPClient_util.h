@@ -43,6 +43,7 @@ typedef struct credentials CREDENTIALS;
 #define HAS_CASE_PREFIX(s, p) (strncasecmp(s, p "", sizeof(p) - 1) == 0)
 /* As before, and if check succeeds, advance |str| past the prefix |pre| */
 #define CHECK_AND_SKIP_CASE_PREFIX(str, pre) (HAS_CASE_PREFIX(str, pre) ? ((str) += sizeof(pre) - 1, 1) : 0)
+int UTIL_atoint(const char *str); /* returns INT_MIN on error */
 void UTIL_cleanse_free(OPTIONAL char *str);
 char *UTIL_first_item(char *str);
 char *UTIL_next_item(char *opt); /* in list separated by comma and/or spaces */
@@ -143,6 +144,8 @@ char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc);
 EVP_PKEY *KEY_new_ex(const char *spec, OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq);
 #define SECUTILS_RSA_STR "RSA"
 #define SECUTILS_EC_STR  "EC"
+bool KEY_type_supported(const char *spec,
+                        OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq);
 #endif
 
 /* cert.h: */

@@ -1121,8 +1121,6 @@ oom:
     return 0;
 }
 
-#ifndef GENCMP_NO_TLS
-
 /* conn.c: */
 
 bool CONN_is_IP_address(OPTIONAL const char *host)
@@ -1183,9 +1181,9 @@ bool STORE_set1_host_ip(X509_STORE *ts, OPTIONAL const char *name, OPTIONAL cons
 
     /* first clear any host names, IP addresses, and email addresses */
     if (
-# if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
+#if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
         !STORE_set1_host(ts, 0) ||
-# endif
+#endif
         !X509_VERIFY_PARAM_set1_host(ts_vpm, 0, 0)
         || !X509_VERIFY_PARAM_set1_ip(ts_vpm, 0, 0)
         || !X509_VERIFY_PARAM_set1_email(ts_vpm, 0, 0)) {
@@ -1223,7 +1221,7 @@ bool STORE_set1_host_ip(X509_STORE *ts, OPTIONAL const char *name, OPTIONAL cons
         res = false;
     if (name_str != NULL) {
         res = res && X509_VERIFY_PARAM_set1_host(ts_vpm, name_str, 0) != 0;
-# if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
+#if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
         /*
          * Before OpenSSL 3.0, there was no API function for retrieving the
          * hostname/ip entries in X509_VERIFY_PARAM. So we stored the host value
@@ -1231,7 +1229,7 @@ bool STORE_set1_host_ip(X509_STORE *ts, OPTIONAL const char *name, OPTIONAL cons
          * Since OpenSSL 3.0, this is no more needed as X509_VERIFY_PARAM_get0_host() is available.
          */
         res = res && STORE_set1_host(ts, name_str);
-# endif
+#endif
     }
     if (!res)
         LOG(FL_ERR, "Could not set host name '%s' and/or IP address '%s' in store",
@@ -1243,7 +1241,7 @@ bool STORE_set1_host_ip(X509_STORE *ts, OPTIONAL const char *name, OPTIONAL cons
 
 const char *STORE_get0_host(const X509_STORE *store)
 {
-# if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
+#if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_0_0
     /*
      * Before OpenSSL 3.0, there is no OpenSSL API function for retrieving the
      * hostname/ip entries in X509_VERIFY_PARAM.
@@ -1251,10 +1249,192 @@ const char *STORE_get0_host(const X509_STORE *store)
      */
     (void)store; /* prevent compiler warning on unused parameter */
     return NULL;
-# else
+#else
     /* first hostname set in store vpm: */
     return X509_VERIFY_PARAM_get0_host(X509_STORE_get0_param(store), 0);
+#endif
+}
+
+#ifndef GENCMP_NO_TLS
+
+SSL_CTX *TLS_CTX_new(OPTIONAL SSL_CTX *ssl_ctx,
+                     int client, OPTIONAL X509_STORE *truststore,
+                     OPTIONAL const STACK_OF(X509)  *untrusted,
+                     OPTIONAL const CREDENTIALS *creds,
+                     OPTIONAL const char *ciphers, int security_level,
+                     OPTIONAL X509_STORE_CTX_verify_cb verify_cb)
+{
+    SSL_CTX *ctx = ssl_ctx;
+    SSL_CTX *res = 0;
+    X509_VERIFY_PARAM *vpm = 0;
+
+    if (ssl_ctx == NULL) {
+        /* allocate new client/server context struture */
+        ctx = SSL_CTX_new(client  > 0 ? TLS_client_method() :
+                          client == 0 ? TLS_server_method() : TLS_method());
+        if (ctx == NULL) {
+            LOG_err("SSL_CTX_new() failed. Likely forgot to call TLS_init()");
+            goto end;
+        }
+    }
+
+    /* set allowed cipher list and security level if provided, else use default */
+    if (ciphers != NULL) {
+        if (!SSL_CTX_set_cipher_list(ctx, ciphers)) {
+            LOG(FL_ERR, "could not set cipher list '%s'", ciphers);
+            goto end;
+        }
+        if (security_level < 0) {
+            if (strcmp(ciphers, STRONG_CIPHER_SUITES) == 0)
+                security_level = STRONG_SECURITY_LEVEL;
+            else if(strstr(ciphers, INTEGRITY_ONLY_CIPHER_SUITES_MARK) != NULL)
+                security_level = INTEGRITY_ONLY_SECURITY_LEVEL;
+            else if(strstr(ciphers, HIGH_CIPHER_SUITES_MARK) != NULL)
+                security_level = HIGH_SECURITY_LEVEL;
+            /* else use default OPENSSL_TLS_SECURITY_LEVEL */
+        }
+    }
+    if (security_level >= 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        SSL_CTX_set_security_level(ctx, security_level);
+#else
+        LOG_warn("OpenSSL <1.1 does not support setting the TLS security level");
+#endif
+    }
+
+    /* set store of trusted certificates, CRLs, verification parameters etc.
+     * if provided, else do not verify peer */
+    if (truststore != NULL) {
+        vpm = X509_STORE_get0_param((X509_STORE*)truststore);
+        SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, verify_cb);
+        SSL_CTX_set1_cert_store(ctx, truststore);
+
+#ifndef OPENSSL_NO_OCSP
+#if OPENSSL_VERSION_NUMBER >= 0x1010001fL
+        if (X509_VERIFY_PARAM_get_flags(vpm) & X509_V_FLAG_OCSP_STAPLING) {
+            SSL_CTX_set_tlsext_status_type(ctx, TLSEXT_STATUSTYPE_ocsp);
+#if 0
+            SSL_CTX_set_tlsext_status_cb(ctx, ocsp_stapling_cb);
+#else
+            LOG_err("OSCP stapling not supported with GENCMP_NO_SECUTILS");
+            goto end;
+            /* untrusted certs may help chain building verifying stapled OCSP responses */
+#endif
+            SSL_CTX_set_tlsext_status_arg(ctx, (STACK_OF(X509) *)untrusted);
+        }
+#endif
+#endif
+    }
+
+    /* set own credentials if supplied, else no authentication to the peer */
+    if (creds != NULL) {
+        EVP_PKEY *pkey = CREDENTIALS_get_pkey(creds);
+        X509 *cert = CREDENTIALS_get_cert(creds);
+        STACK_OF(X509)  *chain = CREDENTIALS_get_chain(creds);
+        if (pkey != NULL && cert != NULL) {
+            /* verify that the key matches the cert already here;
+             * not using SSL_CTX_check_private_key
+             * because it gives poor and sometimes misleading diagnostics */
+            if (X509_check_private_key(cert, pkey) == 0) {
+                LOG_err("private key does not match the certificate in the TLS credentials");
+                goto end;
+            }
+            /* set certificate and related private key */
+            if (SSL_CTX_use_certificate(ctx, cert) != 1) {
+                LOG_err("could not set TLS cert");
+                goto end;
+            }
+            if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
+                LOG_err("could not set TLS private key");
+                goto end;
+            }
+
+            if (!SSL_CTX_set1_chain(ctx, chain/* may be NULL */)) {
+                LOG_err("could not set TLS cert chain");
+                goto end;
+            }
+            int i; /* untrusted certs may be useful to augment the own chain */
+            for (i = 0; i < sk_X509_num(untrusted); i++) {
+                if (!SSL_CTX_add1_chain_cert(ctx, sk_X509_value(untrusted, i))) {
+                    LOG_err("could not add untrusted cert to TLS cert chain");
+                    goto end;
+                }
+            }
+
+            LOG_debug("trying to build cert chain for own TLS cert");
+            unsigned long bak_flags;
+            if (truststore != NULL) {
+                bak_flags = X509_VERIFY_PARAM_get_flags(vpm);
+                /* disable any cert status/revocation checking etc. */
+                X509_VERIFY_PARAM_clear_flags(vpm, (unsigned long)
+                                              ~(X509_V_FLAG_USE_CHECK_TIME
+                                                | X509_V_FLAG_NO_CHECK_TIME
+                                                | X509_V_FLAG_PARTIAL_CHAIN
+                                                | X509_V_FLAG_POLICY_CHECK));
+                X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_NONFINAL_CHECK);
+            }
+            bool ret = SSL_CTX_build_cert_chain(ctx,
+                                                SSL_BUILD_CHAIN_FLAG_UNTRUSTED |
+                                                SSL_BUILD_CHAIN_FLAG_NO_ROOT) != 0;
+            if (truststore != NULL) {
+                /* restore any cert status/revocation checking etc. */
+                X509_VERIFY_PARAM_set_flags(vpm, bak_flags);
+                X509_VERIFY_PARAM_clear_flags(vpm, X509_V_FLAG_NONFINAL_CHECK);
+            }
+            if (ret) {
+                LOG_debug("succeeded building cert chain for own TLS cert");
+            } else {
+                LOG_warn("could not build chain for own TLS cert");
+                (void)ERR_print_errors(bio_err); /* better would be to print only new entries */
+                if (!SSL_CTX_set1_chain(ctx, chain/* may be null */)) {
+                    LOG_err("could not set default TLS cert chain");
+                    goto end;
+                }
+            }
+        }
+    }
+
+/* set various TLS options using sensible defaults */
+#if OPENSSL_VERSION_NUMBER >= 0x10100002L
+    unsigned long context_options =
+#else
+    long context_options = SSL_OP_SINGLE_DH_USE
+                           | SSL_OP_SINGLE_ECDH_USE
+                           /* Do not allow outdated SSl/TLS protocol versions: */
+                           | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1
+                           | SSL_OP_NO_COMPRESSION
+# if 0x10101000L <= OPENSSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER < 0x101010bfL
+                           /* Disable TLS renegotiation as workaround for CVE-2021-3449 in OpenSSL 1.1.1 before patch 'k' */
+                           /* BSI TR-02102-2 also recommends to use either RFC5746 compliant renegotiation or reject renegotiation
+                              initiated by the client. Thus for the sake of simplicity and to lower the attack surface, we
+                              completely disable renegotiation. */
+                           | SSL_OP_NO_RENEGOTIATION
 # endif
+                           | (long)
+#endif
+        SSL_OP_ALL; /*!< bug workarounds */
+    SSL_CTX_set_options(ctx, context_options);
+
+    /* Do not allow outdated SSl/TLS protocol versions: */
+#if OPENSSL_VERSION_NUMBER >= 0x10100002L
+    if (SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION) <= 0) {
+        LOG_err("could not set the minimal protocol version");
+        goto end;
+    }
+#else
+        LOG_warn("OpenSSL <1.1 does not support setting minimal protocol version");
+#endif
+    /* The flag SSL_MODE_AUTO_RETRY will cause read/write operations to
+       only return after the handshake and successful completion. */
+    (void)SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY);
+
+    res = ctx;
+
+end:
+    /* deallocate context again in case of errors */
+    if (ssl_ctx == NULL && res == NULL)
+        SSL_CTX_free(ctx);
+    return res;
 }
 
 #endif /* ndef GENCMP_NO_TLS */

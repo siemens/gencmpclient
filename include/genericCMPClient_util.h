@@ -215,12 +215,15 @@ bool CERT_check(const char *src, OPTIONAL X509 *cert, int type_CA,
 bool CERT_check_all(const char *src, OPTIONAL STACK_OF(X509) *certs, int type_CA,
                     OPTIONAL const X509_VERIFY_PARAM *vpm); /* used by CMPclient_caCerts() */
 
+/* certstatus.h: */
+#define X509_V_FLAG_NONFINAL_CHECK  0x10000000 /* do not log failure as error */
+#define X509_V_FLAG_OCSP_STAPLING 0x2000000 /* Use OCSP stapling (for TLS) */
+
 /* crls.h: */
 bool CRL_check(const char *src, OPTIONAL X509_CRL *crl, OPTIONAL const X509_VERIFY_PARAM *vpm);
 
 /* store.h: */
 # define STORE_set1_desc(store, desc) true /* no-op */
-# ifndef GENCMP_NO_TLS
 /* with GENCMP_NO_SECUTILS, not supported before 3.0: */
 # define STORE_set1_host(store, host) (OPENSSL_VERSION_NUMBER >= OPENSSL_V_3_0_0)
 bool STORE_set1_host_ip(X509_STORE *ts, OPTIONAL const char *name, OPTIONAL const char *ip);
@@ -228,7 +231,6 @@ const char *STORE_get0_host(const X509_STORE *store);
 /* would be needed only with CREDENTIALS_print_cert_verify_cb(): */
 #  define STORE_EX_check_index() true
 #  define STORE_set0_tls_bio(store, bio) true
-# endif
 X509_STORE *STORE_create(OPTIONAL X509_STORE *store, OPTIONAL const X509 *cert,
                          OPTIONAL const STACK_OF(X509) *certs);
 # define STORE_free(store) X509_STORE_free(store)
@@ -243,8 +245,25 @@ static const char* const CONN_https_prefix = OSSL_HTTPS_PREFIX;
 bool CONN_is_IP_address(OPTIONAL const char *host);
 
 /* tls.h: */
-# ifndef GENCMP_NO_TLS
-#  define TLS_init() true /* initialize OpenSSL's SSL lib, no needed at least since 3.0 */
-# endif
+#ifndef GENCMP_NO_TLS
+#include <openssl/ssl.h>
+#define TLS_init() true /* initialize OpenSSL's SSL lib, no needed at least since 3.0 */
+static const char* const STRONG_CIPHER_SUITES = "ECDHE-ECDSA-AES256-GCM-SHA384";
+static const char* const INTEGRITY_ONLY_CIPHER_SUITES = "NULL-SHA256:ECDHE-ECDSA-NULL-SHA";
+static const char* const INTEGRITY_ONLY_CIPHER_SUITES_MARK = "NULL-";
+static const char* const HIGH_CIPHER_SUITES = "HIGH:!ADH:!LOW:!EXP:!MD5:@STRENGTH";
+static const char* const HIGH_CIPHER_SUITES_MARK = "HIGH";
+
+static const int INTEGRITY_ONLY_SECURITY_LEVEL = 0;
+static const int HIGH_SECURITY_LEVEL = 2;
+static const int STRONG_SECURITY_LEVEL = 3;
+SSL_CTX *TLS_CTX_new(OPTIONAL SSL_CTX *ssl_ctx,
+                     int client, OPTIONAL X509_STORE *truststore,
+                     OPTIONAL const STACK_OF(X509)  *untrusted,
+                     OPTIONAL const CREDENTIALS *creds,
+                     OPTIONAL const char *ciphers, int security_level,
+                     OPTIONAL X509_STORE_CTX_verify_cb verify_cb);
+#define TLS_CTX_free SSL_CTX_free
+#endif
 
 #endif /* GENERIC_CMP_CLIENT_UTIL_H */

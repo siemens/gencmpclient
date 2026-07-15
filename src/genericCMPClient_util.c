@@ -141,7 +141,6 @@ static void log_close_bios(void)
     }
 }
 
-static
 void LOG_close(void)
 {
     log_close_bios();

@@ -90,6 +90,7 @@ bool LOG_console(OPTIONAL const char *func, OPTIONAL const char *file,
 # define LOG_info(msg) LOG(FL_INFO, msg)   /*!< simple information message */
 # define LOG_debug(msg) LOG(FL_DEBUG, msg) /*!< simple debug message */
 # define LOG_trace(msg) LOG(FL_TRACE, msg) /*!< simple trace message */
+void LOG_close(void);
 
 /* uta_api.h: */
 typedef void uta_ctx; /* dummy */

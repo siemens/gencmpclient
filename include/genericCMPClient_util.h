@@ -33,6 +33,7 @@ typedef struct credentials CREDENTIALS;
     #define strncasecmp _strnicmp
 #endif
 # define OPENSSL_V_3_0_0 0x30000000L
+# define OPENSSL_V_3_5_0 0x30500000L
 # define UTIL_setup_openssl(version, build_name) /* no-op */
 /* Check if |pre|, which must be a string literal, is a prefix of |str| */
 #define HAS_PREFIX(str, pre) (strncmp(str, pre "", sizeof(pre) - 1) == 0)
@@ -136,6 +137,13 @@ static const char* const sec_FD_STR = "fd:";
 static const char* const sec_STDIN_STR = "stdin";
 static const int sec_PASS_MAX_LEN = 256;
 char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc);
+
+/* key.h: */
+#if OPENSSL_VERSION_NUMBER >= OPENSSL_V_3_0_0
+EVP_PKEY *KEY_new_ex(const char *spec, OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq);
+#define SECUTILS_RSA_STR "RSA"
+#define SECUTILS_EC_STR  "EC"
+#endif
 
 /* cert.h: */
 # include <ctype.h> /* needed for UTIL_SKIP_SCHEME() */

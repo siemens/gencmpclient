@@ -383,6 +383,128 @@ char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc)
     return OPENSSL_strdup(pass);
 }
 
+/* key.c: */
+
+#if OPENSSL_VERSION_NUMBER >= OPENSSL_V_3_0_0
+EVP_PKEY *KEY_new_ex(const char *spec, OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq)
+{
+    if (spec == NULL) {
+        LOG(FL_ERR, "null pointer argument");
+        return NULL;
+    }
+    if (libctx != NULL) {
+        LOG(FL_ERR, "libctx not supported by OpenSSL < 3.0");
+        return NULL;
+    }
+    if (propq != NULL) {
+        LOG(FL_ERR, "provider property query not supported by OpenSSL < 3.0");
+        return NULL;
+    }
+
+    EVP_PKEY *pkey = NULL;
+    int type = EVP_PKEY_NONE;
+    const char *name = spec;
+    int nbits = 0, nid = 0;
+
+    if (CHECK_AND_SKIP_CASE_PREFIX(spec, SECUTILS_RSA_STR)) {
+        type = EVP_PKEY_RSA;
+        name = SECUTILS_RSA_STR;
+    } else if ('0' <= *spec && *spec <= '9') {
+        type = EVP_PKEY_RSA;
+        name = SECUTILS_RSA_STR;
+    } else if (CHECK_AND_SKIP_CASE_PREFIX(spec, SECUTILS_EC_STR)
+               && *spec != '\0' && strchr(" -_:", *spec) != NULL) {
+        type = EVP_PKEY_EC;
+        name = SECUTILS_EC_STR;
+    } else {
+        spec = name;
+
+        /* Backward compatibility: treat bare EC curve names as EC parameters. */
+         int curve_nid = OBJ_sn2nid(spec);
+         if (curve_nid == 0)
+             curve_nid = EC_curve_nist2nid(spec);
+         if (curve_nid != 0) {
+             type = EVP_PKEY_EC;
+             name = SECUTILS_EC_STR;
+         }
+#if OPENSSL_VERSION_NUMBER < OPENSSL_V_3_5_0
+         else {
+             /* For OpenSSL < 3.5, treat everything else as an EC curve name. */
+             type = EVP_PKEY_EC;
+             name = SECUTILS_EC_STR;
+         }
+#endif
+    }
+    if (type != EVP_PKEY_NONE && *spec != '\0' && strchr(" -_:", *spec) != NULL) {
+        spec++;
+    }
+    if (type == EVP_PKEY_RSA) { /* take spec as RSA key length */
+        nbits = UTIL_atoint(spec);
+        if (nbits < 1024 || 8192 < nbits)
+        {
+            LOG(FL_ERR, "bad RSA key length specification '%.40s'; must be integer between 1024 and 8192", spec);
+            return NULL;
+        }
+    } else if (type == EVP_PKEY_EC) { /* take spec as ECC curve name */
+        if (strcmp(spec, "secp192r1") == 0) {
+            LOG(FL_INFO, "using EC curve name prime192v1 instead of secp192r1");
+            nid = NID_X9_62_prime192v1;
+        } else if(strcmp(spec, "secp256r1") == 0) {
+            LOG(FL_INFO, "using EC curve name prime256v1 instead of secp256r1");
+            nid = NID_X9_62_prime256v1;
+        } else {
+            nid = OBJ_sn2nid(spec);
+        }
+        if (nid == 0) {
+            nid = EC_curve_nist2nid(spec);
+        }
+        if (nid == 0)
+        {
+            LOG(FL_ERR, "unknown EC curve name %.40s", spec);
+            return NULL;
+        }
+    }
+
+    EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_from_name(libctx, name, propq);
+    if (ctx == NULL) {
+        LOG(FL_ERR, "failed to create key generation context for %.40s (propq=%.100s); algorithm may be unknown or required provider may be unavailable",
+            name, propq != NULL ? propq : "(null)");
+        goto end;
+    }
+    if (EVP_PKEY_keygen_init(ctx) <= 0) {
+        LOG(FL_ERR, "failed to prepare generating %.40s key pair (propq=%.100s)",
+            name, propq != NULL ? propq : "(null)");
+        goto end;
+    }
+
+    if (type == EVP_PKEY_RSA) {
+        if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, nbits) <= 0) {
+            LOG(FL_ERR, "Failed to set %d RSA bits", nbits);
+            goto end;
+        }
+    } else if (type == EVP_PKEY_EC) {
+        if (EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx, nid) <= 0) {
+            LOG(FL_ERR, "Failed to set EC curve nid = %d for %.40s", nid, spec);
+            goto end;
+        }
+    } else {
+        /* With OpenSSL >= 3.5; attempting to use full name/spec by itself, which may be sufficient, e.g., "ML-DSA-65" */
+    }
+
+    if (EVP_PKEY_keygen(ctx, &pkey) <= 0) {
+        LOG(FL_ERR, "failed generating %.40s key pair", name);
+        pkey = NULL;
+    }
+
+ end:
+    EVP_PKEY_CTX_free(ctx);
+    if (pkey == NULL)
+        (void)ERR_print_errors(bio_err);
+    return pkey;
+
+}
+#endif
+
 /* cert.c: */
 
 /*

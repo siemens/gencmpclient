@@ -34,6 +34,7 @@ typedef struct credentials CREDENTIALS;
 #endif
 # define OPENSSL_V_3_0_0 0x30000000L
 # define OPENSSL_V_3_5_0 0x30500000L
+# define OPENSSL_V_4_0_0 0x40000000L
 # define UTIL_setup_openssl(version, build_name) /* no-op */
 /* Check if |pre|, which must be a string literal, is a prefix of |str| */
 #define HAS_PREFIX(str, pre) (strncmp(str, pre "", sizeof(pre) - 1) == 0)

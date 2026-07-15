@@ -45,6 +45,7 @@ typedef struct credentials CREDENTIALS;
 void UTIL_cleanse_free(OPTIONAL char *str);
 char *UTIL_first_item(char *str);
 char *UTIL_next_item(char *opt); /* in list separated by comma and/or spaces */
+const char *UTIL_file_ext(OPTIONAL const char *filename);
 
 /* log.h: */
 extern BIO *bio_err; /* for low-level error output if verbosity >= LOG_DEBUG */

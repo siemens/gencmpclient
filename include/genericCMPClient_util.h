@@ -91,6 +91,50 @@ bool LOG_console(OPTIONAL const char *func, OPTIONAL const char *file,
 # define LOG_debug(msg) LOG(FL_DEBUG, msg) /*!< simple debug message */
 # define LOG_trace(msg) LOG(FL_TRACE, msg) /*!< simple trace message */
 
+/* uta_api.h: */
+typedef void uta_ctx; /* dummy */
+
+/* config.h: */
+/* extended from opt.h */
+#define OPT_REQUIRED 0x8000
+typedef enum
+{
+    OPT_TXT, /** String variable receives a pointer to the option argument */
+    OPT_NUM, /** Integer variable receives the decimal number given as argument */
+    OPT_BOOL,/** Boolean variable receives a truth value */
+    OPT_TXT_REQUIRED  = OPT_TXT  | OPT_REQUIRED,
+    OPT_NUM_REQUIRED  = OPT_NUM  | OPT_REQUIRED,
+    OPT_BOOL_REQUIRED = OPT_BOOL | OPT_REQUIRED,
+} opttype_t; /** all possible selector values for union in below varref_union */
+
+union varval_union {
+    const char *txt; /** String value */
+    long num;  /** Integer value, or vpm_opt */
+    bool bit;  /** Boolean value */
+};
+
+union varref_union {
+    const char **txt; /** Pointer to string variable, or null */
+    long *num;  /** Pointer to integer variable */
+    bool *bit;  /** Pointer to Boolean variable */
+};
+
+typedef struct opt_t
+{
+    const char *name; /** option name */
+    opttype_t type;   /** option type, selects in below unions */
+    union varval_union default_value; /** default value for the option */
+    union varref_union varref_u; /** reference to the variable to receive the option value */
+    const char *help_str; /** a short description of the option for help output */
+} opt_t; /** an option with its name, type, default value, variable, and help string */
+
+#define OPT_END { NULL, OPT_BOOL, {.bit = false}, {NULL}, NULL}
+CONF *CONF_load_config(OPTIONAL ossl_unused uta_ctx *ctx, const char *file);
+bool CONF_entry_in_sections(const CONF *conf, const char *sections, const char *entry);
+bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt);
+bool CONF_read_check_options(const CONF *conf, const char *sections, const opt_t *opts);
+
+
 /* credentials.h: */
 struct credentials
 {
@@ -171,8 +215,6 @@ bool CERT_check_all(const char *src, OPTIONAL STACK_OF(X509) *certs, int type_CA
 /* crls.h: */
 bool CRL_check(const char *src, OPTIONAL X509_CRL *crl, OPTIONAL const X509_VERIFY_PARAM *vpm);
 
-/* uta_api.h: */
-typedef void uta_ctx; /* dummy */
 /* store.h: */
 # define STORE_set1_desc(store, desc) true /* no-op */
 # ifndef GENCMP_NO_TLS

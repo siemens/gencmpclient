@@ -193,6 +193,7 @@ EVP_PKEY *KEY_new_ex(const char *spec, OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL c
 bool KEY_type_supported(const char *spec,
                         OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq);
 #endif
+#define KEY_free EVP_PKEY_free
 
 /* cert.h: */
 # include <ctype.h> /* needed for UTIL_SKIP_SCHEME() */

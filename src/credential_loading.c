@@ -1168,3 +1168,226 @@ X509_STORE *STORE_load_check_ex(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const ch
     OPENSSL_free(names);
     return store;
 }
+
+#ifdef GENCMP_NO_SECUTILS
+
+static bool FMT_istext(file_format_t format)
+{
+    return ((unsigned)format & (unsigned)B_FORMAT_TEXT) == B_FORMAT_TEXT;
+}
+
+static BIO *dup_bio_in(file_format_t format)
+{
+    return BIO_new_fp(stdin,
+        BIO_NOCLOSE | (FMT_istext(format) ? BIO_FP_TEXT : 0));
+}
+
+static BIO *dup_bio_out(file_format_t format)
+{
+    BIO *b = BIO_new_fp(stdout,
+        BIO_NOCLOSE | (FMT_istext(format) ? BIO_FP_TEXT : 0));
+
+#ifdef OPENSSL_SYS_VMS
+    if (b != NULL && FMT_istext(format)) {
+        BIO *btmp = BIO_new(BIO_f_linebuffer());
+
+        if (btmp == NULL) {
+            BIO_free(b);
+            return NULL;
+        }
+        b = BIO_push(btmp, b);
+    }
+#endif
+
+    return b;
+}
+
+#define MODESTR_LEN1 3 /* strlen("rb") + 1 */
+static BIO *bio_open_default_(const char *filename, char mode,
+                              file_format_t format, bool quiet)
+{
+    BIO *ret;
+
+    if (filename == NULL) {
+        LOG(FL_ERR, "null filename argument");
+        return NULL;
+    }
+    if (/* filename == NULL || */ strcmp(filename, "-") == 0) {
+        ret = mode == 'r' ? dup_bio_in(format) : dup_bio_out(format);
+        if (quiet)
+            ERR_clear_error();
+        if (quiet || ret != NULL)
+            return ret;
+        LOG(FL_ERR, "cannot open %s, %s", mode == 'r' ? "stdin" : "stdout", strerror(errno));
+    } else {
+        char modestr[MODESTR_LEN1];
+
+        CHECK_AND_SKIP_PREFIX(filename, "file:");
+        snprintf(modestr, MODESTR_LEN1, "%c%c", mode, FMT_istext(format) ? '\0' : 'b');
+        ret = BIO_new_file(filename, modestr);
+        if (quiet)
+            ERR_clear_error();
+        if (quiet || ret != NULL)
+            return ret;
+        LOG(FL_ERR, "cannot open file '%s' for mode '%c', %s", filename, mode, strerror(errno));
+    }
+    (void)ERR_print_errors(bio_err);
+    return NULL;
+}
+
+
+static BIO *bio_open_default(const char *filename, char mode, file_format_t format)
+{
+    return bio_open_default_(filename, mode, format, false);
+}
+
+
+static int password_callback(char *buf, int bufsiz, ossl_unused int verify, void *cb_tmp)
+{
+    size_t len = 0;
+    const char *password = NULL;
+    PW_CB_DATA *cb_data = (PW_CB_DATA *)cb_tmp;
+
+    if (cb_data != NULL && cb_data->password != NULL)
+        password = cb_data->password;
+
+    if (password != NULL) {
+        len = strlen(password);
+        if (len > (size_t)bufsiz)
+            len = (size_t)bufsiz;
+        memcpy(buf, password, len);
+    }
+    return (int)len;
+}
+
+bool FILES_store_key(const EVP_PKEY *pkey, const char *file, file_format_t format,
+                     OPTIONAL const char *source, OPTIONAL const char *desc)
+{
+    char mode = 'w';
+    BIO *bio = NULL;
+    PW_CB_DATA cb_data;
+    char *pass = FILES_get_pass(source, desc);
+    bool result = false;
+
+    LOG(FL_INFO, "Storing private key in file '%s'", file);
+    if (format == FORMAT_PKCS12 && mode == 'w') {
+        LOG(FL_ERR, "Writing keys in PKCS#12 file format not supported with GENCMP_NO_SECUTILS=");
+        goto end;
+    }
+    if (format != FORMAT_PEM && format != FORMAT_ASN1) {
+        LOG(FL_ERR, "Unsupported format (%d) or mode '%c' for storing %s",
+            format, mode, desc != NULL ? desc : file);
+        goto end;
+    }
+
+    cb_data.password = pass;
+    cb_data.prompt_info = file;
+
+    /* create bio and connect it with the file */
+    if ((bio = bio_open_default(file, mode, format)) == NULL)
+        goto end;
+
+    /* Write the private key to file */
+    const EVP_CIPHER *enc = pass == NULL ? NULL : EVP_aes_256_cbc();
+    if (format == FORMAT_ASN1)
+        result = pass == NULL ? i2d_PrivateKey_bio(bio, (EVP_PKEY *)pkey) > 0
+                              : i2d_PKCS8PrivateKey_bio(bio, (EVP_PKEY*)pkey, enc, NULL, 0, password_callback, &cb_data) > 0;
+    else if (format == FORMAT_PEM)
+        result = PEM_write_bio_PrivateKey(bio, (EVP_PKEY*)pkey, enc, NULL, 0, password_callback, &cb_data) != 0;
+    if (!result) {
+        if (desc != NULL)
+            LOG(FL_ERR, "failed to write %s", desc);
+        goto end;
+    }
+    result = true;
+
+ end:
+    UTIL_cleanse_free(pass);
+    BIO_free(bio);
+    return result;
+}
+
+int FILES_store_certs(OPTIONAL const STACK_OF(X509) *certs, const char *file,
+                      file_format_t format, OPTIONAL const char *desc)
+{
+    int n = sk_X509_num(certs);
+    BIO *bio = 0;
+    int i;
+    X509 *cert = 0;
+
+    if (n < 0)
+        n = 0;
+    LOG(FL_INFO, "storing %d certificate%s%s%s in file '%s'", n, n == 1 ? "" : "s",
+        desc == 0 ? "" : " of ", desc == 0 ? "" : desc, file);
+    if (format == FORMAT_PKCS12) {
+        LOG(FL_ERR, "Writing certs in PKCS#12 file format not supported with GENCMP_NO_SECUTILS=");
+        return false;
+    }
+
+    if (format != FORMAT_ASN1 && format != FORMAT_PEM) {
+        LOG(FL_ERR, "unsupported output format (%d) for %s", format, desc != NULL ? desc : "certs");
+        n = -1;
+        goto err;
+    }
+    if (n > 1 && format == FORMAT_ASN1)
+        LOG(FL_WARN, "jointly saving more than one certificate in DER format");
+
+    if ((bio = bio_open_default(file, 'w', format)) == NULL) {
+        LOG(FL_ERR, "cannot open file '%s' for writing %s", file, desc != NULL ? desc : "certs");
+        n = -1;
+        goto err;
+    }
+    for (i = 0; i < n; i++) {
+        cert = sk_X509_value(certs, i);
+        if ((format == FORMAT_PEM && !PEM_write_bio_X509(bio, cert)) ||
+            (format == FORMAT_ASN1 && !i2d_X509_bio(bio, cert))) {
+            LOG(FL_ERR, "cannot write %s certificates to file '%s'", desc, file);
+            n = -1;
+            goto err;
+        }
+    }
+
+err:
+    BIO_free(bio); /* may be NULL */
+    return n;
+}
+
+int FILES_store_crls(const STACK_OF(X509_CRL) *crls, const char *file,
+                     file_format_t format, OPTIONAL const char *desc)
+{
+    int n = sk_X509_CRL_num(crls);
+    BIO *bio = 0;
+    int i;
+    X509_CRL *crl = 0;
+
+    LOG(FL_INFO, "storing %d CRL%s%s%s in file '%s'", n < 0 ? 0: n, n == 1 ? "" : "s",
+        desc == 0 ? "" : " of ", desc == 0 ? "" : desc, file);
+    if (format != FORMAT_ASN1 && format != FORMAT_PEM) {
+        LOG(FL_ERR, "unsupported output format (%d) for %s", format, desc != NULL ? desc : "CRLs");
+        n = -1;
+        goto err;
+    }
+    if (n > 1 && format == FORMAT_ASN1)
+        LOG(FL_WARN, "saving more than one certificate in DER format");
+
+    if ((bio = bio_open_default(file, 'w', format)) == NULL) {
+        LOG(FL_ERR, "cannot open file '%s' for writing %s", file, desc != NULL ? desc : "CRLs");
+        n = -1;
+        goto err;
+    }
+    for (i = 0; i < n; i++) {
+        crl = sk_X509_CRL_value(crls, i);
+        if ((format == FORMAT_PEM && !PEM_write_bio_X509_CRL(bio, crl)) ||
+            (format == FORMAT_ASN1 && !i2d_X509_CRL_bio(bio, crl))) {
+            LOG(FL_ERR, "cannot write CRLs to file '%s'", file);
+            n = -1;
+            goto err;
+        }
+    }
+
+err:
+    BIO_free(bio); /* may be NULL; */
+    return n;
+}
+
+#endif /* def GENCMP_NO_SECUTILS */

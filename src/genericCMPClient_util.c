@@ -222,8 +222,14 @@ bool LOG_generic(OPTIONAL const char *func, OPTIONAL const char *file, int linen
     if (len < 0)
         len = 0; /* on error, cannot assume any string written to loc buffer */
     /* print fct name, source file name, and lineno only if debugging is enabled at build time */
-    if (snprintf(loc + len, sizeof(loc) - (size_t)len, ":%s():%s:%d:", func, file, lineno) < 0)
-        loc[0] = '\0'; /* on error, resort to empty string */
+    else
+        len = (int)strlen(loc); /* the actual length printed */
+    if (snprintf(loc + len, sizeof(loc) - (size_t)len, ":%s():%s:%d:", func, file, lineno) < 0) {
+        loc[len] = '\0'; /* make sure to undo on error */
+        /* 2nd try: append the function name only */
+        if (snprintf(loc + len, sizeof(loc) - (size_t)len, ":%s():", func) < 0)
+            loc[len] = '\0'; /* make sure to undo on error */
+    }
 #endif
 
     /* print string corresponding to level */

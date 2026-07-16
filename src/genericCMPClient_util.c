@@ -364,7 +364,7 @@ static const char *prev_item(char item[], const char *opt, const char *end)
 
 bool CONF_entry_in_sections(const CONF *conf, const char *sections, const char *entry)
 {
-    static char section[SECTION_NAME_MAX+1];
+    char section[SECTION_NAME_MAX+1];
     const char *end = sections + strlen(sections);
     while ((end = prev_item(section, sections, end)) != NULL) {
         STACK_OF(CONF_VALUE) *entries = NCONF_get_section(conf, section);
@@ -392,7 +392,7 @@ static bool conf_entry_in_sections_or_default(const CONF *conf,
 static const char *conf_get_string(const CONF *conf, const char *sections,
                                    const char *name)
 {
-    static char section[SECTION_NAME_MAX+1];
+    char section[SECTION_NAME_MAX+1];
     const char *end = sections + strlen(sections);
     while ((end = prev_item(section, sections, end)) != NULL) {
         const char *res;

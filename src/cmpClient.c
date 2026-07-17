@@ -2746,25 +2746,39 @@ static CMP_err rats_create_nonce_itav(CMP_CTX *ctx, RATS_CTX *rats_ctx)
     }
 
     /*
-     * NonceRequest ::= SEQUENCE {
-     *     len    INTEGER (8..64) OPTIONAL,
-     *     type   ATTESTATION-NONCE-REQUEST.&id(
-     *                 {AttestationNonceRequestSet}) OPTIONAL,
-     *     reqInfo ATTESTATION-NONCE-REQUEST.&Type(
-     *                 {AttestationNonceRequestSet}{@type}) OPTIONAL
-     * }
+
+    NonceRequestTypeInfo ::= SEQUENCE {
+        type ATTESTATION-NONCE-REQUEST.&id(
+                    {AttestationNonceRequestSet}),
+        -- identifies the nonce-request syntax for the selected
+        --   attestation statement type
+        reqInfo  ATTESTATION-NONCE-REQUEST.&Type(
+                    {AttestationNonceRequestSet}{@type}) OPTIONAL
+        -- contains type-specific nonce-request information
+    }
+
+    NonceRequest ::= SEQUENCE {
+         len      INTEGER (8..64) OPTIONAL,
+         -- indicates the required length of the requested nonce
+         reqTypeInfo NonceRequestTypeInfo OPTIONAL
+    }
      */
 
-    /* Build DER-encoded NonceRequest SEQUENCE { type, reqInfo } */
+    /* Build DER-encoded NonceRequest SEQUENCE { reqTypeInfo } */
+    /* Inner: NonceRequestTypeInfo SEQUENCE { type, reqInfo } */
     {
-        STACK_OF(ASN1_TYPE) *nonce_req_seq = sk_ASN1_TYPE_new_null();
+        STACK_OF(ASN1_TYPE) *nonce_req_type_seq = sk_ASN1_TYPE_new_null();
+        STACK_OF(ASN1_TYPE) *nonce_req_seq = NULL;
         ASN1_OBJECT *oid_dup = NULL;
         ASN1_TYPE *type_asn1 = NULL;
         ASN1_OCTET_STRING *req_info_oct = NULL;
         ASN1_TYPE *req_info_asn1 = NULL;
+        ASN1_TYPE *nonce_req_type_asn1 = NULL;
+        unsigned char *nonce_req_type_der = NULL;
+        int nonce_req_type_der_len = 0;
 
-        if (nonce_req_seq == NULL) {
-            LOG_err("Failed to allocate NonceRequest SEQUENCE");
+        if (nonce_req_type_seq == NULL) {
+            LOG_err("Failed to allocate NonceRequestTypeInfo SEQUENCE");
             goto err;
         }
         /* type: OID identifying the attestation nonce-request syntax */
@@ -2773,15 +2787,15 @@ static CMP_err rats_create_nonce_itav(CMP_CTX *ctx, RATS_CTX *rats_ctx)
         if (oid_dup == NULL || type_asn1 == NULL) {
             ASN1_OBJECT_free(oid_dup);
             ASN1_TYPE_free(type_asn1);
-            sk_ASN1_TYPE_free(nonce_req_seq);
-            LOG_err("Failed to create NonceRequest type field");
+            sk_ASN1_TYPE_free(nonce_req_type_seq);
+            LOG_err("Failed to create NonceRequestTypeInfo type field");
             goto err;
         }
         ASN1_TYPE_set(type_asn1, V_ASN1_OBJECT, oid_dup);
-        if (!sk_ASN1_TYPE_push(nonce_req_seq, type_asn1)) {
+        if (!sk_ASN1_TYPE_push(nonce_req_type_seq, type_asn1)) {
             ASN1_TYPE_free(type_asn1); /* also frees oid_dup */
-            sk_ASN1_TYPE_free(nonce_req_seq);
-            LOG_err("Failed to add type to NonceRequest SEQUENCE");
+            sk_ASN1_TYPE_free(nonce_req_type_seq);
+            LOG_err("Failed to add type to NonceRequestTypeInfo SEQUENCE");
             goto err;
         }
         /* reqInfo: OCTET STRING containing TPM key data */
@@ -2793,15 +2807,40 @@ static CMP_err rats_create_nonce_itav(CMP_CTX *ctx, RATS_CTX *rats_ctx)
                 || req_info_asn1 == NULL) {
             ASN1_OCTET_STRING_free(req_info_oct);
             ASN1_TYPE_free(req_info_asn1);
-            sk_ASN1_TYPE_pop_free(nonce_req_seq, ASN1_TYPE_free);
-            LOG_err("Failed to create NonceRequest reqInfo field");
+            sk_ASN1_TYPE_pop_free(nonce_req_type_seq, ASN1_TYPE_free);
+            LOG_err("Failed to create NonceRequestTypeInfo reqInfo field");
             goto err;
         }
         ASN1_TYPE_set(req_info_asn1, V_ASN1_OCTET_STRING, req_info_oct);
-        if (!sk_ASN1_TYPE_push(nonce_req_seq, req_info_asn1)) {
+        if (!sk_ASN1_TYPE_push(nonce_req_type_seq, req_info_asn1)) {
             ASN1_TYPE_free(req_info_asn1); /* also frees req_info_oct */
-            sk_ASN1_TYPE_pop_free(nonce_req_seq, ASN1_TYPE_free);
-            LOG_err("Failed to add reqInfo to NonceRequest SEQUENCE");
+            sk_ASN1_TYPE_pop_free(nonce_req_type_seq, ASN1_TYPE_free);
+            LOG_err("Failed to add reqInfo to NonceRequestTypeInfo SEQUENCE");
+            goto err;
+        }
+        /* DER-encode NonceRequestTypeInfo and round-trip via ASN1_TYPE */
+        nonce_req_type_der_len =
+            i2d_ASN1_SEQUENCE_ANY(nonce_req_type_seq, &nonce_req_type_der);
+        sk_ASN1_TYPE_pop_free(nonce_req_type_seq, ASN1_TYPE_free);
+        if (nonce_req_type_der_len <= 0) {
+            LOG_err("Failed to DER-encode NonceRequestTypeInfo");
+            goto err;
+        }
+        p = nonce_req_type_der;
+        nonce_req_type_asn1 = d2i_ASN1_TYPE(NULL, &p,
+                                            (long)nonce_req_type_der_len);
+        OPENSSL_free(nonce_req_type_der);
+        if (nonce_req_type_asn1 == NULL) {
+            LOG_err("Failed to round-trip NonceRequestTypeInfo");
+            goto err;
+        }
+        /* Outer: NonceRequest SEQUENCE { reqTypeInfo } */
+        nonce_req_seq = sk_ASN1_TYPE_new_null();
+        if (nonce_req_seq == NULL
+                || !sk_ASN1_TYPE_push(nonce_req_seq, nonce_req_type_asn1)) {
+            sk_ASN1_TYPE_free(nonce_req_seq);
+            ASN1_TYPE_free(nonce_req_type_asn1);
+            LOG_err("Failed to build NonceRequest SEQUENCE");
             goto err;
         }
         nonce_req_der_len = i2d_ASN1_SEQUENCE_ANY(nonce_req_seq, &nonce_req_der);
@@ -2881,7 +2920,6 @@ static CMP_err rats_parse_nonce_response(const OSSL_CMP_ITAV *itav,
     const unsigned char *seq_der;
     long seq_der_len;
     int nonce_seen = 0;
-    int octet_count = 0;
     int i;
 
     *rspinfo_out = NULL;
@@ -2906,12 +2944,25 @@ static CMP_err rats_parse_nonce_response(const OSSL_CMP_ITAV *itav,
     }
 
     /*
-     * NonceResponse ::= SEQUENCE {
-     *     nonce    OCTET STRING (SIZE(0 | 8..64)),
-     *     expiry   INTEGER OPTIONAL,
-     *     type     ATTESTATION-NONCE-RESPONSE.&id(...) OPTIONAL,
-     *     respInfo ATTESTATION-NONCE-RESPONSE.&Type(...) OPTIONAL
-     * }
+      NonceResponseTypeInfo ::= SEQUENCE {
+            type ATTESTATION-NONCE-RESPONSE.&id(
+                        {AttestationNonceResponseSet}),
+            -- identifies the nonce-response syntax for the selected
+            --   attestation statement type
+            respInfo ATTESTATION-NONCE-RESPONSE.&Type(
+                        {AttestationNonceResponseSet}{@type}) OPTIONAL
+            -- contains type-specific nonce-response information
+        }
+        NonceResponse ::= SEQUENCE {
+            nonce OCTET STRING (SIZE(0 | 8..64)),
+            -- Contains the nonce of length len
+            -- A zero-length OCTET String indicate that no freshness
+            -- proof is required
+            expiry INTEGER OPTIONAL,
+            -- Indicates how long in seconds the nonce issuer
+            --   considers the nonce valid
+            respTypeInfo NonceResponseTypeInfo OPTIONAL
+        }
      */
     rspsequence = ret_val->value.sequence;
     if (rspsequence == NULL) {
@@ -2933,30 +2984,52 @@ static CMP_err rats_parse_nonce_response(const OSSL_CMP_ITAV *itav,
 
         if (f->type == V_ASN1_INTEGER) {
             /* expiry: INTEGER OPTIONAL -- skip */
-        } else if (f->type == V_ASN1_OBJECT) {
-            /* type: OID OPTIONAL -- skip */
-            /* TODO - add the OID check */
         } else if (f->type == V_ASN1_OCTET_STRING) {
-            octet_count++;
-            if (octet_count == 1) {
-                /* nonce: first OCTET STRING (mandatory) */
-                if (f->value.octet_string == NULL) {
-                    LOG_err("NonceResponse: nonce field is NULL");
-                    goto err;
-                }
-                nonce_seen = 1;
-            } else if (octet_count == 2) {
-                /* respInfo: second OCTET STRING */
-                if (f->value.octet_string == NULL) {
-                    LOG_err("NonceResponse: respInfo field is NULL");
-                    goto err;
-                }
-                rspinfo = ASN1_OCTET_STRING_dup(f->value.octet_string);
-                if (rspinfo == NULL) {
-                    LOG_err("NonceResponse: out of memory copying respInfo");
-                    goto err;
+            /* nonce: OCTET STRING (mandatory, first field) */
+            if (nonce_seen) {
+                LOG_err("NonceResponse: unexpected extra OCTET STRING");
+                goto err;
+            }
+            if (f->value.octet_string == NULL) {
+                LOG_err("NonceResponse: nonce field is NULL");
+                goto err;
+            }
+            nonce_seen = 1;
+        } else if (f->type == V_ASN1_SEQUENCE) {
+            /*
+             * respTypeInfo: NonceResponseTypeInfo OPTIONAL
+             * NonceResponseTypeInfo ::= SEQUENCE { type OID, respInfo OPTIONAL }
+             */
+            ASN1_SEQUENCE_ANY *type_info_fields = NULL;
+            const unsigned char *ti_der;
+            long ti_der_len;
+
+            if (f->value.sequence == NULL) {
+                LOG_err("NonceResponse: respTypeInfo field is NULL");
+                goto err;
+            }
+            ti_der = ASN1_STRING_get0_data(f->value.sequence);
+            ti_der_len = (long)ASN1_STRING_length(f->value.sequence);
+            type_info_fields = d2i_ASN1_SEQUENCE_ANY(NULL, &ti_der, ti_der_len);
+            if (type_info_fields == NULL) {
+                LOG_err("NonceResponse: failed to decode NonceResponseTypeInfo");
+                goto err;
+            }
+            /* Extract respInfo: second field of NonceResponseTypeInfo */
+            if (sk_ASN1_TYPE_num(type_info_fields) >= 2) {
+                ASN1_TYPE *ri = sk_ASN1_TYPE_value(type_info_fields, 1);
+
+                if (ri->type == V_ASN1_OCTET_STRING
+                        && ri->value.octet_string != NULL) {
+                    rspinfo = ASN1_OCTET_STRING_dup(ri->value.octet_string);
+                    if (rspinfo == NULL) {
+                        sk_ASN1_TYPE_pop_free(type_info_fields, ASN1_TYPE_free);
+                        LOG_err("NonceResponse: out of memory copying respInfo");
+                        goto err;
+                    }
                 }
             }
+            sk_ASN1_TYPE_pop_free(type_info_fields, ASN1_TYPE_free);
         }
     }
 

@@ -453,9 +453,8 @@ bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt)
     for (; opt->name != NULL; opt++) {
         if (opt->varref_u.txt == NULL)
             continue; /* skip if no variable reference given */
-        switch(opt->type) {
+        switch(opt->type & ~(OPT_REQUIRED | OPT_EMPTY_OK)) {
         case OPT_NUM:
-        case OPT_NUM_REQUIRED:
             /* restores default value if empty string is given */
             str = conf_get_string(conf, sections, opt->name);
             if (str != NULL) {
@@ -471,7 +470,6 @@ bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt)
             }
             break;
         case OPT_TXT:
-        case OPT_TXT_REQUIRED:
             /* stores the value from the key opt->name in opt->varref_u.txt */
             str = conf_get_string(conf, sections, opt->name);
             if (str != NULL)
@@ -480,7 +478,6 @@ bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt)
                 ERR_clear_error(); /* option not provided */
             break;
         case OPT_BOOL:
-        case OPT_BOOL_REQUIRED:
             /* restores default value if empty string is given */
             str = conf_get_string(conf, sections, opt->name);
             if (str != NULL) {
@@ -549,7 +546,8 @@ bool CONF_read_check_options(const CONF *conf, const char *sections, const opt_t
                 LOG(FL_ERR, "Missing required entry '%s' in section(s): %s\n",
                     opt->name, sections);
                 ok = false;
-            } else if (val == NULL || val[0] == '\0') {
+            } else if ((opt->type & OPT_EMPTY_OK) == 0 &&
+                       val != NULL && val[0] == '\0') {
                 LOG(FL_ERR, "Empty value given for required entry '%s' in section(s) %s\n",
                     opt->name, sections);
                 ok = false;

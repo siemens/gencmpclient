@@ -98,7 +98,8 @@ typedef void uta_ctx; /* dummy */
 
 /* config.h: */
 /* extended from opt.h */
-#define OPT_REQUIRED 0x8000
+#define OPT_REQUIRED 0x8000U
+#define OPT_EMPTY_OK 0x4000U
 typedef enum
 {
     OPT_TXT, /** String variable receives a pointer to the option argument */

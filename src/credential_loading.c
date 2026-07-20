@@ -620,11 +620,10 @@ EVP_PKEY *CREDS_load_key(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *pro
     char *pass;
     EVP_PKEY *pkey = NULL;
 
-    if (desc == NULL)
-        desc = "private key";
-    LOG(FL_DEBUG, "Loading %s from %s", desc, uri != NULL ? uri : "<stdin>");
+    LOG(FL_DEBUG, "Loading %s from %s", desc != NULL ? desc : "private key",
+        uri != NULL ? uri : "<stdin>");
     pass = FILES_get_pass(source, desc);
-    (void)load_key_certs_crls(libctx, propq, uri, format, maybe_stdin, pass, desc, false,
+    (void)load_key_certs_crls(libctx, propq, uri, format, maybe_stdin, pass, desc, desc == NULL,
                               &pkey, NULL, NULL, NULL, NULL, 0, NULL, NULL, 0);
     UTIL_cleanse_free(pass);
     return pkey;
@@ -753,6 +752,7 @@ X509 *CREDS_load_cert(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
 {
     char *pass;
     X509 *cert = NULL;
+    const char *orig_desc = desc;
 
     if (desc == NULL)
         desc = "certificate";
@@ -770,7 +770,7 @@ X509 *CREDS_load_cert(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
         }
     } else {
         pass = FILES_get_pass(source, desc);
-        (void)load_key_certs_crls(libctx, propq, uri, format, maybe_stdin, pass, desc, false,
+        (void)load_key_certs_crls(libctx, propq, uri, format, maybe_stdin, pass, desc, orig_desc == NULL,
                                   NULL, NULL, NULL, &cert, NULL, 1, NULL, NULL, 0);
         UTIL_cleanse_free(pass);
     }
@@ -778,7 +778,7 @@ X509 *CREDS_load_cert(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
         X509_free(cert);
         cert = NULL;
     }
-    if (cert == NULL)
+    if (cert == NULL && orig_desc != NULL)
         LOG(FL_ERR, "Unable to load %s from %s\n", desc, uri_or_stdin);
     return cert;
 }
@@ -1012,14 +1012,14 @@ bool CREDS_load_credentials(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *
             *pkey = NULL;
         }
         if (key != NULL && pkey != NULL
-            && !load_key_certs_crls(libctx, propq, key, format, maybe_stdin, pass, desc, false,
+            && !load_key_certs_crls(libctx, propq, key, format, maybe_stdin, pass, desc, orig_desc == NULL,
                                     pkey, NULL, NULL, NULL, NULL, 0, NULL, NULL, 0))
             goto err;
         if (orig_desc == NULL)
             desc = "certificate(s)";
         if (certs != NULL && (cert != NULL || chain != NULL)) {
             if (!load_key_certs_crls(libctx, propq, certs,
-                                     format, maybe_stdin, pass, desc, false,
+                                     format, maybe_stdin, pass, desc, orig_desc == NULL,
                                      NULL, NULL, NULL, cert, chain, 1, NULL, NULL, 0))
                 goto err;
         }
@@ -1049,7 +1049,8 @@ err:
         *pkey = NULL;
     }
     UTIL_cleanse_free(pass);
-    LOG(FL_ERR, "Could not load %s from '%s%s%s'", desc, src1, sep, src2);
+    if (orig_desc != NULL)
+        LOG(FL_ERR, "Could not load %s from '%s%s%s'", desc, src1, sep, src2);
     return false;
 }
 

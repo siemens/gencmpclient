@@ -1425,9 +1425,12 @@ static size_t get_cert_filename(const X509 *cert, const char *prefix,
         return 0;
 
     char *p;
-    for (p = buf + len; *p != '\0'; p++)
+    for (p = buf + len; *p != '\0'; p++) {
         if (*p == ' ')
             *p = '_';
+        else if (*p == '/' || *p == '\\') /* prevent path traversal via cert CN (CWE-22) */
+            *p = '+';
+    }
     len += (size_t)ret;
     if ((ret = UTIL_safe_string_copy("_", buf + len, buf_len - len, NULL)) < 0)
         return 0;

@@ -1083,17 +1083,28 @@ static int selfsigned_verify_cb(int ok, X509_STORE_CTX *store_ctx)
         X509 *cert = sk_X509_value(chain, 0); /* target cert */
         X509 *issuer;
 
+        /*
+         * In the given caller contexts, so far the chain consists of just
+         * the target cert to be validated, which is either newWithNew
+         * or oldWithOld. The untrusted list contains exactly one cert,
+         * namely the transition cert newWithOld or oldWithNew, respectively.
+         * This gets added to the chain.
+         */
         for (i = 0; i < sk_X509_num(untrusted); i++) {
             cert = sk_X509_value(untrusted, i);
-            if (!X509_up_ref(cert) || !sk_X509_push(chain, cert))
+            if (!X509_add_cert(chain, cert, X509_ADD_FLAG_UP_REF))
                 return 0;
         }
 
+        /*
+         * Complete the chain by a cert from the trust store, which in the given
+         * caller contexts usually is oldWithOld or newWithNew, respectively.
+         */
         trust = X509_STORE_get1_all_certs(X509_STORE_CTX_get0_store(store_ctx));
         for (i = 0; i < sk_X509_num(trust); i++) {
             issuer = sk_X509_value(trust, i);
             if ((*check_issued)(store_ctx, cert, issuer)) {
-                if (X509_up_ref(cert) && sk_X509_push(chain, cert))
+                if (X509_add_cert(chain, issuer, X509_ADD_FLAG_UP_REF))
                     ok = 1;
                 break;
             }
@@ -1126,6 +1137,8 @@ static int validate_ss_cert(OSSL_LIB_CTX *libctx, const char *propq,
     if ((csc = X509_STORE_CTX_new_ex(libctx, propq)) == NULL
             || !X509_STORE_CTX_init(csc, ts, target, untrusted))
         goto err;
+    /* support not self-signed trusted certs (usually oldWithOld or newWithNew): */
+    X509_STORE_CTX_set_flags(csc, X509_V_FLAG_PARTIAL_CHAIN);
     X509_STORE_CTX_set_verify_cb(csc, selfsigned_verify_cb);
     ok = X509_verify_cert(csc) > 0;
 
@@ -1143,8 +1156,8 @@ static int ossl_x509_add_cert_new_(STACK_OF(X509) **p_sk, X509 *cert, int flags)
     return X509_add_cert(*p_sk, cert, flags);
 }
 
-static int verify_cert1(CMP_CTX *ctx, X509 *trusted, X509 *trans,
-                        X509 *target, const char *desc)
+static int verify_ss_cert_trans(CMP_CTX *ctx, X509 *trusted, X509 *trans,
+                                X509 *target, const char *desc)
 {
     X509_STORE *ts = OSSL_CMP_CTX_get0_trusted(ctx);
     STACK_OF(X509) *untrusted = NULL;
@@ -1202,16 +1215,16 @@ CMP_err CMPclient_rootCaCert(CMP_CTX *ctx,
 
     if (*newWithNew == NULL) /* no root CA cert update available */
         goto end;
-    if (!verify_cert1(ctx, (X509 *)oldWithOld, *newWithOld,
-                      *newWithNew, "newWithNew")) {
+    if (!verify_ss_cert_trans(ctx, (X509 *)oldWithOld, *newWithOld,
+                              *newWithNew, "newWithNew")) {
         err = CMP_R_INVALID_ROOTCAUPD;
         goto end;
     }
     if (*oldWithNew != NULL) {
         if (oldWithOld == NULL) {
             LOG(FL_WARN, "Received oldWithNew certificate in genp for verifying oldWithOld, but oldWithOld was not provided");
-        } else if (!verify_cert1(ctx, (X509 *)*newWithNew, *oldWithNew,
-                                 (X509 *)oldWithOld, "oldWithOld")) {
+        } else if (!verify_ss_cert_trans(ctx, (X509 *)*newWithNew, *oldWithNew,
+                                         (X509 *)oldWithOld, "oldWithOld")) {
             err = CMP_R_INVALID_ROOTCAUPD;
             goto end;
         }

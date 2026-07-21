@@ -950,7 +950,7 @@ static OSSL_CMP_ITAV *get_genm_itav(CMP_CTX *ctx,
             return itav;
         }
 
-        r = OBJ_obj2txt(name, sizeof(name), obj, 0);
+        r = OBJ_obj2txt(name, (int)sizeof(name), obj, 0);
         if (r < 0)
             LOG(FL_WARN, "Cannot get InfoType details while expecting %s from genp",
                 desc);

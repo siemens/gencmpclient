@@ -103,22 +103,28 @@ typedef void uta_ctx; /* dummy */
 typedef enum
 {
     OPT_TXT, /** String variable receives a pointer to the option argument */
-    OPT_NUM, /** Integer variable receives the decimal number given as argument */
+    OPT_NUM, /** Long integer variable receives the decimal number given as argument */
+    OPT_INT, /** As before, but regular integer variable */
+    OPT_POS_INT, /** As before, but restriction to positive integers */
     OPT_BOOL,/** Boolean variable receives a truth value */
     OPT_TXT_REQUIRED  = OPT_TXT  | OPT_REQUIRED,
     OPT_NUM_REQUIRED  = OPT_NUM  | OPT_REQUIRED,
+    OPT_INT_REQUIRED  = OPT_INT  | OPT_REQUIRED,
+    OPT_POS_INT_REQUIRED  = OPT_POS_INT | OPT_REQUIRED,
     OPT_BOOL_REQUIRED = OPT_BOOL | OPT_REQUIRED,
 } opttype_t; /** all possible selector values for union in below varref_union */
 
 union varval_union {
     const char *txt; /** String value */
-    long num;  /** Integer value, or vpm_opt */
+    long num;  /** Long integer value, or vpm_opt */
+    int  int1; /** Integer value, may be restricted to being positive */
     bool bit;  /** Boolean value */
 };
 
 union varref_union {
     const char **txt; /** Pointer to string variable, or null */
-    long *num;  /** Pointer to integer variable */
+    long *num;  /** Pointer to long integer variable */
+    int  *int1; /** Pointer to regular integer variable */
     bool *bit;  /** Pointer to Boolean variable */
 };
 

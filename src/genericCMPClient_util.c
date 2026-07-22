@@ -451,9 +451,19 @@ bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt)
     }
 
     for (; opt->name != NULL; opt++) {
+        opttype_t bare_type = opt->type & ~(OPT_REQUIRED | OPT_EMPTY_OK);
+
         if (opt->varref_u.txt == NULL)
             continue; /* skip if no variable reference given */
-        switch(opt->type & ~(OPT_REQUIRED | OPT_EMPTY_OK)) {
+        switch (bare_type) {
+        case OPT_TXT:
+            /* stores the value from the key opt->name in opt->varref_u.txt */
+            str = conf_get_string(conf, sections, opt->name);
+            if (str != NULL)
+                *opt->varref_u.txt = str[0] == '\0' ? opt->default_value.txt : str;
+            else
+                ERR_clear_error(); /* option not provided */
+            break;
         case OPT_NUM:
             /* restores default value if empty string is given */
             str = conf_get_string(conf, sections, opt->name);
@@ -469,13 +479,32 @@ bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt)
                 ERR_clear_error(); /* option not provided */
             }
             break;
-        case OPT_TXT:
-            /* stores the value from the key opt->name in opt->varref_u.txt */
+        case OPT_INT:
+        case OPT_POS_INT:
+            /* restores default value if empty string is given */
             str = conf_get_string(conf, sections, opt->name);
-            if (str != NULL)
-                *opt->varref_u.txt = str[0] == '\0' ? opt->default_value.txt : str;
-            else
+            if (str != NULL) {
+                if (str[0] == '\0') {
+                    *opt->varref_u.int1 = opt->default_value.int1;
+                    break;
+                }
+                /* stores the value from the key opt->name into the opt->varref_u.num */
+                if (!conf_get_number_e(conf, sections, opt->name, &val))
+                    return false;
+                if (val > INT_MAX) {
+                    LOG(FL_ERR, "section(s) '%s' option '%s' value %ld is too large, can be at most %d",
+                        sections, opt->name, val, INT_MAX);
+                    return false;
+                }
+                if (bare_type == OPT_POS_INT && val <= 0) {
+                    LOG(FL_ERR, "section(s) '%s' option '%s' value %ld must be positive (> 0)",
+                        sections, opt->name, val);
+                    return false;
+                }
+                *opt->varref_u.int1 = (int)val;
+            } else {
                 ERR_clear_error(); /* option not provided */
+            }
             break;
         case OPT_BOOL:
             /* restores default value if empty string is given */
@@ -488,7 +517,8 @@ bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt)
                 if (!conf_get_number_e(conf, sections, opt->name, &val))
                     return false;
                 if (val < 0 || val > 1) {
-                    LOG(FL_ERR, "value %ld is out of range for Boolean; must be 0 or 1", val);
+                    LOG(FL_ERR, "section(s) '%s' option '%s' value %ld is out of range for Boolean; must be 0 or 1",
+                        sections, opt->name, val);
                     return false;
                 }
                 *opt->varref_u.bit = (bool)val;
@@ -497,7 +527,8 @@ bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt)
             }
             break;
             default:
-                LOG(FL_ERR, "internal: unsupported type '%d' for option '%s'", opt->type, opt->name);
+                LOG(FL_ERR, "internal: section(s) '%' option '%s': unsupported type '%d'",
+                    sections, opt->name, opt->type);
                 return false;
                 break;
         }

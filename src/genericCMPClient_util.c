@@ -441,7 +441,8 @@ static bool conf_get_number_e(const CONF *conf, const char *sections,
     return str == NULL ? false : parse_long(str, p_result);
 }
 
-bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt)
+static bool CONF_read_options_ex(const CONF *conf, const char *source,
+                                 const char *sections, const opt_t *opt)
 {
     const char *str;
     long val = 0;
@@ -492,13 +493,13 @@ bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt)
                 if (!conf_get_number_e(conf, sections, opt->name, &val))
                     return false;
                 if (val > INT_MAX) {
-                    LOG(FL_ERR, "section(s) '%s' option '%s' value %ld is too large, can be at most %d",
-                        sections, opt->name, val, INT_MAX);
+                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s' value %ld is too large, can be at most %d",
+                        source, sections, opt->name, val, INT_MAX);
                     return false;
                 }
                 if (bare_type == OPT_POS_INT && val <= 0) {
-                    LOG(FL_ERR, "section(s) '%s' option '%s' value %ld must be positive (> 0)",
-                        sections, opt->name, val);
+                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s' value %ld must be positive (> 0)",
+                        source, sections, opt->name, val);
                     return false;
                 }
                 *opt->varref_u.int1 = (int)val;
@@ -517,8 +518,8 @@ bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt)
                 if (!conf_get_number_e(conf, sections, opt->name, &val))
                     return false;
                 if (val < 0 || val > 1) {
-                    LOG(FL_ERR, "section(s) '%s' option '%s' value %ld is out of range for Boolean; must be 0 or 1",
-                        sections, opt->name, val);
+                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s' value %ld is out of range for Boolean; must be 0 or 1",
+                        source, sections, opt->name, val);
                     return false;
                 }
                 *opt->varref_u.bit = (bool)val;
@@ -527,8 +528,8 @@ bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt)
             }
             break;
             default:
-                LOG(FL_ERR, "internal: section(s) '%' option '%s': unsupported type '%d'",
-                    sections, opt->name, opt->type);
+                LOG(FL_ERR, "internal: Config '%s' section(s) [%s] option '%s': unsupported type '0x%x'",
+                    source, sections, opt->name, opt->type);
                 return false;
                 break;
         }
@@ -538,15 +539,17 @@ bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt)
 }
 
 
-bool CONF_read_check_options(const CONF *conf, const char *sections, const opt_t *opts)
+bool CONF_read_check_options(const CONF *conf, const char *source,
+                             const char *sections, const opt_t *opts)
 {
     STACK_OF(CONF_VALUE) *sk;
     int i;
     const opt_t *opt;
     bool ok = true;
 
-    if (!CONF_read_options((CONF *)conf, sections, opts)) {
-        LOG(FL_ERR, "Failed reading and parsing [%s] section", sections);
+    if (!CONF_read_options_ex((CONF *)conf, source, sections, opts)) {
+        LOG(FL_ERR, "Failed reading and parsing [%s] section(s) of %s",
+            sections, source);
         return false;
     }
 
@@ -563,8 +566,8 @@ bool CONF_read_check_options(const CONF *conf, const char *sections, const opt_t
             }
         }
         if (!known) {
-            LOG(FL_WARN, "Ignoring unknown entry '%s' configured in section [%s]\n",
-                cv->name, sections);
+            LOG(FL_WARN, "Config '%s' section(s) [%s]: ignoring unknown option '%s'\n",
+                source, sections, cv->name);
         }
     }
 
@@ -574,13 +577,13 @@ bool CONF_read_check_options(const CONF *conf, const char *sections, const opt_t
             const char *val = conf_get_string(conf, sections, opt->name);
 
             if (!conf_entry_in_sections_or_default(conf, sections, opt->name)) {
-                LOG(FL_ERR, "Missing required entry '%s' in section(s): %s\n",
-                    opt->name, sections);
+                LOG(FL_ERR, "Config '%s' section(s) [%s]: missing required option '%s'\n",
+                    source, sections, opt->name);
                 ok = false;
             } else if ((opt->type & OPT_EMPTY_OK) == 0 &&
                        val != NULL && val[0] == '\0') {
-                LOG(FL_ERR, "Empty value given for required entry '%s' in section(s) %s\n",
-                    opt->name, sections);
+                LOG(FL_ERR, "Config '%s' section(s) [%s]: empty value given for required option '%s'\n",
+                    source, sections, opt->name);
                 ok = false;
             }
         }

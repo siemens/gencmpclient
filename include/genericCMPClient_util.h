@@ -140,8 +140,8 @@ typedef struct opt_t
 #define OPT_END { NULL, OPT_BOOL, {.bit = false}, {NULL}, NULL}
 CONF *CONF_load_config(OPTIONAL ossl_unused uta_ctx *ctx, const char *file);
 bool CONF_entry_in_sections(const CONF *conf, const char *sections, const char *entry);
-bool CONF_read_options(const CONF *conf, const char *sections, const opt_t *opt);
-bool CONF_read_check_options(const CONF *conf, const char *sections, const opt_t *opts);
+bool CONF_read_check_options(const CONF *conf, const char *source,
+                             const char *sections, const opt_t *opts);
 
 
 /* credentials.h: */

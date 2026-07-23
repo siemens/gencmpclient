@@ -456,18 +456,19 @@ static bool CONF_read_options_ex(const CONF *conf, const char *source,
 
         if (opt->varref_u.txt == NULL)
             continue; /* skip if no variable reference given */
+        ERR_set_mark();
         switch (bare_type) {
         case OPT_TXT:
-            /* stores the value from the key opt->name in opt->varref_u.txt */
             str = conf_get_string(conf, sections, opt->name);
-            if (str != NULL)
+            ERR_pop_to_mark();
+            if (str != NULL) {
                 *opt->varref_u.txt = str[0] == '\0' ? opt->default_value.txt : str;
-            else
-                ERR_clear_error(); /* option not provided */
+            }
             break;
         case OPT_NUM:
             /* restores default value if empty string is given */
             str = conf_get_string(conf, sections, opt->name);
+            ERR_pop_to_mark();
             if (str != NULL) {
                 if (str[0] == '\0') {
                     *opt->varref_u.num = opt->default_value.num;
@@ -476,14 +477,13 @@ static bool CONF_read_options_ex(const CONF *conf, const char *source,
                 /* stores the value from the key opt->name into the opt->varref_u.num */
                 if (!conf_get_number_e(conf, sections, opt->name, opt->varref_u.num))
                     return false;
-            } else {
-                ERR_clear_error(); /* option not provided */
             }
             break;
         case OPT_INT:
         case OPT_POS_INT:
             /* restores default value if empty string is given */
             str = conf_get_string(conf, sections, opt->name);
+            ERR_pop_to_mark();
             if (str != NULL) {
                 if (str[0] == '\0') {
                     *opt->varref_u.int1 = opt->default_value.int1;
@@ -503,13 +503,12 @@ static bool CONF_read_options_ex(const CONF *conf, const char *source,
                     return false;
                 }
                 *opt->varref_u.int1 = (int)val;
-            } else {
-                ERR_clear_error(); /* option not provided */
             }
             break;
         case OPT_BOOL:
             /* restores default value if empty string is given */
             str = conf_get_string(conf, sections, opt->name);
+            ERR_pop_to_mark();
             if (str != NULL) {
                 if (str[0] == '\0') {
                     *opt->varref_u.bit = opt->default_value.bit;
@@ -523,11 +522,10 @@ static bool CONF_read_options_ex(const CONF *conf, const char *source,
                     return false;
                 }
                 *opt->varref_u.bit = (bool)val;
-            } else {
-                ERR_clear_error(); /* option not provided */
             }
             break;
             default:
+                ERR_pop_to_mark();
                 LOG(FL_ERR, "internal: Config '%s' section(s) [%s] option '%s': unsupported type '0x%x'",
                     source, sections, opt->name, opt->type);
                 return false;

@@ -454,8 +454,11 @@ static bool CONF_read_options_ex(const CONF *conf, const char *source,
     for (; opt->name != NULL; opt++) {
         opttype_t bare_type = opt->type & ~(OPT_REQUIRED | OPT_EMPTY_OK);
 
-        if (opt->varref_u.txt == NULL)
-            continue; /* skip if no variable reference given */
+        if (opt->varref_u.txt == NULL) {
+            LOG(FL_ERR, "internal: Config '%s' section(s) [%s] option '%s': missing referene to the variable where to store the value",
+                    source, sections, opt->name);
+            return false;
+        }
         ERR_set_mark();
         switch (bare_type) {
         case OPT_TXT:
@@ -463,6 +466,38 @@ static bool CONF_read_options_ex(const CONF *conf, const char *source,
             ERR_pop_to_mark();
             if (str != NULL) {
                 *opt->varref_u.txt = str[0] == '\0' ? opt->default_value.txt : str;
+            }
+            break;
+        case OPT_SEL:
+            /* stores the selcetion from the key opt->name in opt->varref_u.int1 */
+            str = conf_get_string(conf, sections, opt->name);
+            ERR_pop_to_mark();
+            if (str != NULL) {
+                const char *const *sel = ((opt_t *)opt)->selectable;
+
+                ERR_pop_to_mark();
+                if (sel == NULL) {
+                    LOG(FL_ERR, "internal: Config '%s' section(s) [%s] option '%s' of type OPT_SEL: missing list of selectable values",
+                    source, sections, opt->name);
+                    return false;
+                }
+                if (str[0] == '\0') {
+                    *opt->varref_u.int1 = opt->default_value.int1;
+                    return true;
+                }
+                for (; *sel != NULL && strcmp(*sel, str) != 0; sel++)
+                    val++;
+                if (*sel == NULL) {
+                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s': illegal value '%s'",
+                        source, sections, opt->name, str);
+                    return false;
+                }
+                if (val > INT_MAX) {
+                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s' selection value %ld is too large, can be at most %d",
+                        source, sections, opt->name, val, INT_MAX);
+                    return false;
+                }
+                *opt->varref_u.int1 = (int)val;
             }
             break;
         case OPT_NUM:

@@ -99,15 +99,17 @@ typedef void uta_ctx; /* dummy */
 /* config.h: */
 /* extended from opt.h */
 #define OPT_REQUIRED 0x8000U
-#define OPT_EMPTY_OK 0x4000U
+#define OPT_EMPTY_OK 0x4000U /* ignored unless OPT_REQUIRED is set */
 typedef enum
 {
     OPT_TXT, /** String variable receives a pointer to the option argument */
+    OPT_SEL, /** enumeration of selectable tags, index returned in 'int1' choice */
     OPT_NUM, /** Long integer variable receives the decimal number given as argument */
     OPT_INT, /** As before, but regular integer variable */
     OPT_POS_INT, /** As before, but restriction to positive integers */
     OPT_BOOL,/** Boolean variable receives a truth value */
     OPT_TXT_REQUIRED  = OPT_TXT  | OPT_REQUIRED,
+    OPT_SEL_REQUIRED  = OPT_SEL  | OPT_REQUIRED,
     OPT_NUM_REQUIRED  = OPT_NUM  | OPT_REQUIRED,
     OPT_INT_REQUIRED  = OPT_INT  | OPT_REQUIRED,
     OPT_POS_INT_REQUIRED  = OPT_POS_INT | OPT_REQUIRED,
@@ -117,7 +119,7 @@ typedef enum
 union varval_union {
     const char *txt; /** String value */
     long num;  /** Long integer value, or vpm_opt */
-    int  int1; /** Integer value, may be restricted to being positive */
+    int  int1; /** Integer/selection value, may be restricted to being positive */
     bool bit;  /** Boolean value */
 };
 
@@ -135,9 +137,11 @@ typedef struct opt_t
     union varval_union default_value; /** default value for the option */
     union varref_union varref_u; /** reference to the variable to receive the option value */
     const char *help_str; /** a short description of the option for help output */
-} opt_t; /** an option with its name, type, default value, variable, and help string */
+    const char **selectable; /** values to choose from with OPT_SEL, NULL-terminated array */
+} opt_t; /** an option with its name, type, default value, variable,
+             optional help string, and optional selectable tags */
 
-#define OPT_END { NULL, OPT_BOOL, {.bit = false}, {NULL}, NULL}
+#define OPT_END { NULL, OPT_BOOL, {.bit = false}, {.bit = NULL}, NULL}
 CONF *CONF_load_config(OPTIONAL ossl_unused uta_ctx *ctx, const char *file);
 bool CONF_entry_in_sections(const CONF *conf, const char *sections, const char *entry);
 bool CONF_read_check_options(const CONF *conf, const char *source,

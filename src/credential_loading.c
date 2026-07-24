@@ -1063,13 +1063,19 @@ CREDENTIALS *CREDS_load(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *prop
     EVP_PKEY *pkey = NULL;
     X509 *cert = NULL;
     STACK_OF(X509) *chain = NULL;
-    CREDENTIALS *res;
+    CREDENTIALS *res = NULL;
 
     if (!CREDS_load_credentials(libctx, propq, certs, key, FORMAT_UNDEF, false /* maybe_stdin */,
                                 source, desc, -1, vpm, &pkey, &cert, &chain))
         return NULL;
 
-    res = CREDENTIALS_new(pkey, cert, chain, NULL, NULL);
+    if (pkey != NULL && cert != NULL && !X509_check_private_key(cert, pkey)) {
+        if (desc != NULL)
+            LOG(FL_ERR, "for %s, key from '%s' and cert from '%s' do not match",
+                desc, key, certs);
+    } else {
+        res = CREDENTIALS_new(pkey, cert, chain, NULL, NULL);
+    }
     EVP_PKEY_free(pkey);
     X509_free(cert);
     CERTS_free(chain);

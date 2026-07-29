@@ -53,7 +53,7 @@ char *UTIL_first_item(char *str)
         return NULL;
 
     /* skip any initial separators (comma or whitespace) */
-    while (*str == ',' || isspace(*str))
+    while (*str == ',' || isspace((unsigned char)*str))
         str++;
     return *str == '\0' ? NULL : str;
 }
@@ -61,7 +61,7 @@ char *UTIL_first_item(char *str)
 char *UTIL_next_item(char *opt) /* in list separated by comma and/or spaces */
 {
     /* advance to separator (comma or whitespace), if any */
-    while (*opt != '\0' && *opt != ',' && !isspace(*opt)) {
+    while (*opt != '\0' && *opt != ',' && !isspace((unsigned char)*opt)) {
         if (*opt == '\\' && opt[1] != '\0') {
             /* skip and unescape '\'-escaped char */
             memmove(opt, opt + 1, strlen(opt));
@@ -75,7 +75,7 @@ char *UTIL_next_item(char *opt) /* in list separated by comma and/or spaces */
         *opt++ = '\0';
         /* skip over any further separators, but only one comma */
         while ((!found_comma && *opt == ',' && (found_comma = 1))
-               || isspace(*opt))
+               || isspace((unsigned char)*opt))
             opt++;
     }
     return *opt == '\0' ? NULL : opt; /* NULL indicates end of input */
@@ -350,7 +350,7 @@ static const char *prev_item(char item[], const char *opt, const char *end)
     if (end == opt)
         return 0;
     const char *beg = end;
-    while (beg != opt && beg[-1] != ',' && !isspace(beg[-1]))
+    while (beg != opt && beg[-1] != ',' && !isspace((unsigned char)beg[-1]))
         beg--;
     size_t len = (size_t)(end - beg);
     if (len > SECTION_NAME_MAX)
@@ -363,7 +363,7 @@ static const char *prev_item(char item[], const char *opt, const char *end)
             "using only first %d characters of section name starting with \"%s\"",
             SECTION_NAME_MAX, item);
     }
-    while (beg != opt && (beg[-1] == ',' || isspace(beg[-1])))
+    while (beg != opt && (beg[-1] == ',' || isspace((unsigned char)beg[-1])))
         beg--;
     return beg;
 }

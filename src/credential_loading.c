@@ -842,7 +842,7 @@ STACK_OF(X509) *CREDS_load_certs(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const c
         }
     }
 
-    if (sk_X509_num(certs) < min_num) {
+    if (certs == NULL || sk_X509_num(certs) < min_num) {
         LOG(FL_ERR, "Could not load at least %d %s from %s\n", min_num, desc, srcs);
         goto err;
     }
@@ -939,7 +939,7 @@ STACK_OF(X509_CRL) *CREDS_load_crls(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL cons
         sk_X509_CRL_free(crls);
         crls = NULL;
     }
-    if (sk_X509_CRL_num(all_crls) < min_num) {
+    if (all_crls == NULL || sk_X509_CRL_num(all_crls) < min_num) {
         LOG(FL_ERR, "Could not load at least %d %s from %s", min_num, desc, srcs);
         goto err;
     }

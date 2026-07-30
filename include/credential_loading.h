@@ -115,10 +115,13 @@ X509_STORE *STORE_load_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
                         NULL, -1, source, desc, 1, vpm, NULL)
 
 #ifdef GENCMP_NO_SECUTILS
-bool FILES_store_key(const EVP_PKEY *pkey, const char *file, file_format_t format,
+bool FILES_store_key(const EVP_PKEY *pkey, const char *file, bool must_exist,
+                     file_format_t format,
                      OPTIONAL const char *source, OPTIONAL const char *desc);
 int FILES_store_certs(OPTIONAL const STACK_OF(X509) *certs, const char *file,
-                      file_format_t format, OPTIONAL const char *desc);
+                      bool must_exist, file_format_t format,
+                      OPTIONAL const char *desc);
 int FILES_store_crls(const STACK_OF(X509_CRL) *crls, const char *file,
-                     file_format_t format, OPTIONAL const char *desc);
+                     bool must_exist, file_format_t format,
+                     OPTIONAL const char *desc);
 #endif

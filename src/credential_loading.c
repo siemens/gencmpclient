@@ -1249,6 +1249,17 @@ static BIO *bio_open_default(const char *filename, char mode, file_format_t form
 }
 
 
+static bool file_exists(const char *filename)
+{
+    BIO *bio = bio_open_default(filename, 'r', FORMAT_UNDEF); /* could also use fopen() directly */
+
+    if (bio != NULL) {
+        BIO_free(bio);
+        return true;
+    }
+    return false;
+}
+
 static int password_callback(char *buf, int bufsiz, ossl_unused int verify, void *cb_tmp)
 {
     size_t len = 0;
@@ -1267,7 +1278,8 @@ static int password_callback(char *buf, int bufsiz, ossl_unused int verify, void
     return (int)len;
 }
 
-bool FILES_store_key(const EVP_PKEY *pkey, const char *file, file_format_t format,
+bool FILES_store_key(const EVP_PKEY *pkey, const char *file, bool must_exist,
+                     file_format_t format,
                      OPTIONAL const char *source, OPTIONAL const char *desc)
 {
     char mode = 'w';
@@ -1277,6 +1289,10 @@ bool FILES_store_key(const EVP_PKEY *pkey, const char *file, file_format_t forma
     bool result = false;
 
     LOG(FL_INFO, "Storing private key in file '%s'", file);
+    if (must_exist && !file_exists(file)) {
+        LOG(FL_ERR, "file '%s' does not exist", file);
+        goto end;
+    }
     if (format == FORMAT_PKCS12 && mode == 'w') {
         LOG(FL_ERR, "Writing keys in PKCS#12 file format not supported with GENCMP_NO_SECUTILS=");
         goto end;
@@ -1315,7 +1331,8 @@ bool FILES_store_key(const EVP_PKEY *pkey, const char *file, file_format_t forma
 }
 
 int FILES_store_certs(OPTIONAL const STACK_OF(X509) *certs, const char *file,
-                      file_format_t format, OPTIONAL const char *desc)
+                      bool must_exist, file_format_t format,
+                      OPTIONAL const char *desc)
 {
     int n = sk_X509_num(certs);
     BIO *bio = 0;
@@ -1326,6 +1343,11 @@ int FILES_store_certs(OPTIONAL const STACK_OF(X509) *certs, const char *file,
         n = 0;
     LOG(FL_INFO, "storing %d certificate%s%s%s in file '%s'", n, n == 1 ? "" : "s",
         desc == 0 ? "" : " of ", desc == 0 ? "" : desc, file);
+    if (must_exist && !file_exists(file)) {
+        LOG(FL_ERR, "file '%s' does not exist", file);
+        n = -1;
+        goto err;
+    }
     if (format == FORMAT_PKCS12) {
         LOG(FL_ERR, "Writing certs in PKCS#12 file format not supported with GENCMP_NO_SECUTILS=");
         return false;
@@ -1360,7 +1382,8 @@ err:
 }
 
 int FILES_store_crls(const STACK_OF(X509_CRL) *crls, const char *file,
-                     file_format_t format, OPTIONAL const char *desc)
+                     bool must_exist, file_format_t format,
+                     OPTIONAL const char *desc)
 {
     int n = sk_X509_CRL_num(crls);
     BIO *bio = 0;
@@ -1369,6 +1392,11 @@ int FILES_store_crls(const STACK_OF(X509_CRL) *crls, const char *file,
 
     LOG(FL_INFO, "storing %d CRL%s%s%s in file '%s'", n < 0 ? 0: n, n == 1 ? "" : "s",
         desc == 0 ? "" : " of ", desc == 0 ? "" : desc, file);
+    if (must_exist && !file_exists(file)) {
+        LOG(FL_ERR, "file '%s' does not exist", file);
+        n = -1;
+        goto err;
+    }
     if (format != FORMAT_ASN1 && format != FORMAT_PEM) {
         LOG(FL_ERR, "unsupported output format (%d) for %s", format, desc != NULL ? desc : "CRLs");
         n = -1;

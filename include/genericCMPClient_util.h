@@ -93,61 +93,6 @@ bool LOG_console(OPTIONAL const char *func, OPTIONAL const char *file,
 # define LOG_trace(msg) LOG(FL_TRACE, msg) /*!< simple trace message */
 void LOG_close(void);
 
-/* uta_api.h: */
-typedef void uta_ctx; /* dummy */
-
-/* config.h: */
-/* extended from opt.h */
-#define OPT_REQUIRED 0x8000U
-#define OPT_EMPTY_OK 0x4000U /* ignored unless OPT_REQUIRED is set */
-typedef enum
-{
-    OPT_TXT, /** String variable receives a pointer to the option argument */
-    OPT_SEL, /** enumeration of selectable tags, index returned in 'int1' choice */
-    OPT_NUM, /** Long integer variable receives the decimal number given as argument */
-    OPT_INT, /** As before, but regular integer variable */
-    OPT_POS_INT, /** As before, but restriction to positive integers */
-    OPT_BOOL,/** Boolean variable receives a truth value */
-    OPT_TXT_REQUIRED  = OPT_TXT  | OPT_REQUIRED,
-    OPT_SEL_REQUIRED  = OPT_SEL  | OPT_REQUIRED,
-    OPT_NUM_REQUIRED  = OPT_NUM  | OPT_REQUIRED,
-    OPT_INT_REQUIRED  = OPT_INT  | OPT_REQUIRED,
-    OPT_POS_INT_REQUIRED  = OPT_POS_INT | OPT_REQUIRED,
-    OPT_BOOL_REQUIRED = OPT_BOOL | OPT_REQUIRED,
-} opttype_t; /** all possible selector values for union in below varref_union */
-
-union varval_union {
-    const char *txt; /** String value */
-    long num;  /** Long integer value, or vpm_opt */
-    int  int1; /** Integer/selection value, may be restricted to being positive */
-    bool bit;  /** Boolean value */
-};
-
-union varref_union {
-    const char **txt; /** Pointer to string variable, or null */
-    long *num;  /** Pointer to long integer variable */
-    int  *int1; /** Pointer to regular integer variable */
-    bool *bit;  /** Pointer to Boolean variable */
-};
-
-typedef struct opt_t
-{
-    const char *name; /** option name */
-    opttype_t type;   /** option type, selects in below unions */
-    union varval_union default_value; /** default value for the option */
-    union varref_union varref_u; /** reference to the variable to receive the option value */
-    const char *help_str; /** a short description of the option for help output */
-    const char **selectable; /** values to choose from with OPT_SEL, NULL-terminated array */
-} opt_t; /** an option with its name, type, default value, variable,
-             optional help string, and optional selectable tags */
-
-#define OPT_END { NULL, OPT_BOOL, {.bit = false}, {.bit = NULL}, NULL}
-CONF *CONF_load_config(OPTIONAL ossl_unused uta_ctx *ctx, const char *file);
-bool CONF_entry_in_sections(const CONF *conf, const char *sections, const char *entry);
-bool CONF_read_check_options(const CONF *conf, const char *source,
-                             const char *sections, const opt_t *opts);
-
-
 /* credentials.h: */
 struct credentials
 {
@@ -201,8 +146,10 @@ char* FILES_get_pass(OPTIONAL const char* source, OPTIONAL const char* desc);
 EVP_PKEY *KEY_new_ex(const char *spec, OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq);
 #define SECUTILS_RSA_STR "RSA"
 #define SECUTILS_EC_STR  "EC"
+#ifdef GENCMP_NO_SECUTILS
 bool KEY_type_supported(const char *spec,
                         OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq);
+#endif
 #endif
 #define KEY_free EVP_PKEY_free
 
@@ -276,5 +223,63 @@ SSL_CTX *TLS_CTX_new(OPTIONAL SSL_CTX *ssl_ctx,
                      OPTIONAL X509_STORE_CTX_verify_cb verify_cb);
 #define TLS_CTX_free SSL_CTX_free
 #endif
+
+#ifdef GENCMP_NO_SECUTILS
+/* these compensate for config loading features from libSecUtils and partly extends them */
+
+/* uta_api.h: */
+typedef void uta_ctx; /* dummy */
+
+/* config.h: */
+/* extended from opt.h */
+#define OPT_REQUIRED 0x8000U
+#define OPT_EMPTY_OK 0x4000U /* ignored unless OPT_REQUIRED is set */
+typedef enum
+{
+    OPT_TXT, /** String variable receives a pointer to the option argument */
+    OPT_SEL, /** enumeration of selectable tags, index returned in 'int1' choice */
+    OPT_NUM, /** Long integer variable receives the decimal number given as argument */
+    OPT_INT, /** As before, but regular integer variable */
+    OPT_POS_INT, /** As before, but restriction to positive integers */
+    OPT_BOOL,/** Boolean variable receives a truth value */
+    OPT_TXT_REQUIRED  = OPT_TXT  | OPT_REQUIRED,
+    OPT_SEL_REQUIRED  = OPT_SEL  | OPT_REQUIRED,
+    OPT_NUM_REQUIRED  = OPT_NUM  | OPT_REQUIRED,
+    OPT_INT_REQUIRED  = OPT_INT  | OPT_REQUIRED,
+    OPT_POS_INT_REQUIRED  = OPT_POS_INT | OPT_REQUIRED,
+    OPT_BOOL_REQUIRED = OPT_BOOL | OPT_REQUIRED,
+} opttype_t; /** all possible selector values for union in below varref_union */
+
+union varval_union {
+    const char *txt; /** String value */
+    long num;  /** Long integer value, or vpm_opt */
+    int  int1; /** Integer/selection value, may be restricted to being positive */
+    bool bit;  /** Boolean value */
+};
+
+union varref_union {
+    const char **txt; /** Pointer to string variable, or null */
+    long *num;  /** Pointer to long integer variable */
+    int  *int1; /** Pointer to regular integer variable */
+    bool *bit;  /** Pointer to Boolean variable */
+};
+
+typedef struct opt_t
+{
+    const char *name; /** option name */
+    opttype_t type;   /** option type, selects in below unions */
+    union varval_union default_value; /** default value for the option */
+    union varref_union varref_u; /** reference to the variable to receive the option value */
+    const char *help_str; /** a short description of the option for help output */
+    const char **selectable; /** values to choose from with OPT_SEL, NULL-terminated array */
+} opt_t; /** an option with its name, type, default value, variable,
+             optional help string, and optional selectable tags */
+
+#define OPT_END { NULL, OPT_BOOL, {.bit = false}, {.bit = NULL}, NULL}
+CONF *CONF_load_config(OPTIONAL ossl_unused uta_ctx *ctx, const char *file);
+bool CONF_entry_in_sections(const CONF *conf, const char *sections, const char *entry);
+bool CONF_read_check_options(const CONF *conf, const char *source,
+                             const char *sections, const opt_t *opts);
+#endif /* def GENCMP_NO_SECUTILS */
 
 #endif /* GENERIC_CMP_CLIENT_UTIL_H */

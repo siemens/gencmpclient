@@ -313,317 +313,6 @@ bool LOG(OPTIONAL const char *func, OPTIONAL const char *file,
     return res;
 }
 
-/* config.c: */
-CONF *CONF_load_config(OPTIONAL ossl_unused uta_ctx *ctx, const char *file)
-{
-    CONF *conf = NULL;
-    long errorline = -1; /* line in the config file where a failure occurred */
-
-    if (ctx != NULL) {
-        LOG(FL_ERR, "ICV-based integrity projection not supported with GENCMP_NO_SECUTILS");
-        return NULL;
-    }
-
-#ifdef DEBUG
-    LOG(FL_ERR, "Loading configuration from file: %s", file);
-#endif
-    conf = NCONF_new(NCONF_default());
-    if (conf == NULL) {
-        LOG(FL_ERR, "Out of memory");
-        return NULL;
-    }
-    if (NCONF_load(conf, file, &errorline) <= 0) {
-        if (errorline <= 0)
-            LOG(FL_ERR, "Cannot open the config file: %s", file);
-        else
-            LOG(FL_ERR, "Error on line %ld in config file: %s", errorline, file);
-        NCONF_free(conf);
-        conf = NULL;
-    }
-    return conf;
-}
-
-#define SECTION_NAME_MAX 40 /* max length of section name */
-/* get previous name from a comma-separated list of names */
-static const char *prev_item(char item[], const char *opt, const char *end)
-{
-    if (end == opt)
-        return 0;
-    const char *beg = end;
-    while (beg != opt && beg[-1] != ',' && !isspace((unsigned char)beg[-1]))
-        beg--;
-    size_t len = (size_t)(end - beg);
-    if (len > SECTION_NAME_MAX)
-        len = SECTION_NAME_MAX;
-    if (len != 0)
-        strncpy(item, beg, len);
-    item[len] = '\0';
-    if (end - beg > SECTION_NAME_MAX) {
-        LOG(FL_WARN,
-            "using only first %d characters of section name starting with \"%s\"",
-            SECTION_NAME_MAX, item);
-    }
-    while (beg != opt && (beg[-1] == ',' || isspace((unsigned char)beg[-1])))
-        beg--;
-    return beg;
-}
-
-bool CONF_entry_in_sections(const CONF *conf, const char *sections, const char *entry)
-{
-    char section[SECTION_NAME_MAX+1];
-    const char *end = sections + strlen(sections);
-    while ((end = prev_item(section, sections, end)) != NULL) {
-        STACK_OF(CONF_VALUE) *entries = NCONF_get_section(conf, section);
-        int i, n = sk_CONF_VALUE_num(entries);
-
-        for (i = 0; i < n; ++i) {
-            CONF_VALUE *v = sk_CONF_VALUE_value(entries, i);
-            if (v != NULL && v->name != NULL && strcmp(v->name, entry) == 0)
-                return true;
-        }
-    }
-    return false;
-}
-
-/* also covers unnamed initial part of config file (implicit default section) */
-static bool conf_entry_in_sections_or_default(const CONF *conf,
-                                              const char *sections, const char *entry)
-{
-    return CONF_entry_in_sections(conf, sections, entry)
-        || ((strstr(sections, "default") == NULL)
-            && CONF_entry_in_sections(conf, "default", entry));
-}
-
-/* get str value for name from a comma-separated hierarchy of config sections */
-static const char *conf_get_string(const CONF *conf, const char *sections,
-                                   const char *name)
-{
-    char section[SECTION_NAME_MAX+1];
-    const char *end = sections + strlen(sections);
-    while ((end = prev_item(section, sections, end)) != NULL) {
-        const char *res;
-        if ((res = NCONF_get_string(conf, section, name)) != NULL)
-            return res;
-    }
-    return NULL;
-}
-
-/* Parse a long integer, put it into *result; return false on failure */
-static bool parse_long(const char *str, long *result)
-{
-    int errno_bak = errno;
-    long res = 0;
-    char *endp = 0;
-
-    if (str == NULL || result == NULL) {
-        LOG(FL_ERR, "null argument");
-        return false;
-    }
-    errno = 0;
-    res = strtol(str, &endp, 0);
-    if (*endp != '\0' || endp == str
-        || ((res == LONG_MAX || res == LONG_MIN) && errno == ERANGE)
-        || (res == 0 && errno != 0)) {
-        LOG(FL_ERR, "Can't parse \"%s\" as a long number", str);
-        errno = errno_bak;
-        return false;
-    }
-    *result = res;
-    errno = errno_bak;
-    return true;
-}
-
-/* get long val for name from a comma-separated hierarchy of config sections */
-static bool conf_get_number_e(const CONF *conf, const char *sections,
-                              const char *name, long *p_result)
-{
-    const char *str = conf_get_string(conf, sections, name);
-    return str == NULL ? false : parse_long(str, p_result);
-}
-
-static bool CONF_read_options_ex(const CONF *conf, const char *source,
-                                 const char *sections, const opt_t *opt)
-{
-    const char *str;
-    long val = 0;
-    if (conf == NULL || sections == NULL || opt == NULL) {
-        LOG(FL_ERR, "null argument");
-        return false;
-    }
-
-    for (; opt->name != NULL; opt++) {
-        opttype_t bare_type = opt->type & ~(OPT_REQUIRED | OPT_EMPTY_OK);
-
-        if (opt->varref_u.txt == NULL) {
-            LOG(FL_ERR, "internal: Config '%s' section(s) [%s] option '%s': missing referene to the variable where to store the value",
-                    source, sections, opt->name);
-            return false;
-        }
-        ERR_set_mark();
-        switch (bare_type) {
-        case OPT_TXT:
-            str = conf_get_string(conf, sections, opt->name);
-            ERR_pop_to_mark();
-            if (str != NULL) {
-                *opt->varref_u.txt = str[0] == '\0' ? opt->default_value.txt : str;
-            }
-            break;
-        case OPT_SEL:
-            /* stores the selcetion from the key opt->name in opt->varref_u.int1 */
-            str = conf_get_string(conf, sections, opt->name);
-            ERR_pop_to_mark();
-            if (str != NULL) {
-                const char *const *sel = ((opt_t *)opt)->selectable;
-
-                ERR_pop_to_mark();
-                if (sel == NULL) {
-                    LOG(FL_ERR, "internal: Config '%s' section(s) [%s] option '%s' of type OPT_SEL: missing list of selectable values",
-                    source, sections, opt->name);
-                    return false;
-                }
-                if (str[0] == '\0') {
-                    *opt->varref_u.int1 = opt->default_value.int1;
-                    return true;
-                }
-                for (; *sel != NULL && strcmp(*sel, str) != 0; sel++)
-                    val++;
-                if (*sel == NULL) {
-                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s': illegal value '%s'",
-                        source, sections, opt->name, str);
-                    return false;
-                }
-                if (val > INT_MAX) {
-                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s' selection value %ld is too large, can be at most %d",
-                        source, sections, opt->name, val, INT_MAX);
-                    return false;
-                }
-                *opt->varref_u.int1 = (int)val;
-            }
-            break;
-        case OPT_NUM:
-            /* restores default value if empty string is given */
-            str = conf_get_string(conf, sections, opt->name);
-            ERR_pop_to_mark();
-            if (str != NULL) {
-                if (str[0] == '\0') {
-                    *opt->varref_u.num = opt->default_value.num;
-                    break;
-                }
-                /* stores the value from the key opt->name into the opt->varref_u.num */
-                if (!conf_get_number_e(conf, sections, opt->name, opt->varref_u.num))
-                    return false;
-            }
-            break;
-        case OPT_INT:
-        case OPT_POS_INT:
-            /* restores default value if empty string is given */
-            str = conf_get_string(conf, sections, opt->name);
-            ERR_pop_to_mark();
-            if (str != NULL) {
-                if (str[0] == '\0') {
-                    *opt->varref_u.int1 = opt->default_value.int1;
-                    break;
-                }
-                /* stores the value from the key opt->name into the opt->varref_u.num */
-                if (!conf_get_number_e(conf, sections, opt->name, &val))
-                    return false;
-                if (val > INT_MAX) {
-                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s' value %ld is too large, can be at most %d",
-                        source, sections, opt->name, val, INT_MAX);
-                    return false;
-                }
-                if (bare_type == OPT_POS_INT && val <= 0) {
-                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s' value %ld must be positive (> 0)",
-                        source, sections, opt->name, val);
-                    return false;
-                }
-                *opt->varref_u.int1 = (int)val;
-            }
-            break;
-        case OPT_BOOL:
-            /* restores default value if empty string is given */
-            str = conf_get_string(conf, sections, opt->name);
-            ERR_pop_to_mark();
-            if (str != NULL) {
-                if (str[0] == '\0') {
-                    *opt->varref_u.bit = opt->default_value.bit;
-                    break;
-                }
-                if (!conf_get_number_e(conf, sections, opt->name, &val))
-                    return false;
-                if (val < 0 || val > 1) {
-                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s' value %ld is out of range for Boolean; must be 0 or 1",
-                        source, sections, opt->name, val);
-                    return false;
-                }
-                *opt->varref_u.bit = (bool)val;
-            }
-            break;
-            default:
-                ERR_pop_to_mark();
-                LOG(FL_ERR, "internal: Config '%s' section(s) [%s] option '%s': unsupported type '0x%x'",
-                    source, sections, opt->name, opt->type);
-                return false;
-                break;
-        }
-    }
-
-    return true;
-}
-
-
-bool CONF_read_check_options(const CONF *conf, const char *source,
-                             const char *sections, const opt_t *opts)
-{
-    STACK_OF(CONF_VALUE) *sk;
-    int i;
-    const opt_t *opt;
-    bool ok = true;
-
-    if (!CONF_read_options_ex((CONF *)conf, source, sections, opts)) {
-        LOG(FL_ERR, "Failed reading and parsing [%s] section(s) of %s",
-            sections, source);
-        return false;
-    }
-
-    /* give warnings on extra/unknown and thus unused section entries */
-    sk = NCONF_get_section(conf, sections);
-    for (i = 0; i < sk_CONF_VALUE_num(sk); i++) {
-        CONF_VALUE *cv = sk_CONF_VALUE_value(sk, i);
-        bool known = false;
-
-        for (opt = opts; opt->name != NULL; opt++) {
-            if (strcmp(cv->name, opt->name) == 0) {
-                known = true;
-                break;
-            }
-        }
-        if (!known) {
-            LOG(FL_WARN, "Config '%s' section(s) [%s]: ignoring unknown option '%s'\n",
-                source, sections, cv->name);
-        }
-    }
-
-    /* throw errors on missing required entries */
-    for (opt = opts; opt->name != NULL; opt++) {
-        if ((opt->type & OPT_REQUIRED) != 0) {
-            const char *val = conf_get_string(conf, sections, opt->name);
-
-            if (!conf_entry_in_sections_or_default(conf, sections, opt->name)) {
-                LOG(FL_ERR, "Config '%s' section(s) [%s]: missing required option '%s'\n",
-                    source, sections, opt->name);
-                ok = false;
-            } else if ((opt->type & OPT_EMPTY_OK) == 0 &&
-                       val != NULL && val[0] == '\0') {
-                LOG(FL_ERR, "Config '%s' section(s) [%s]: empty value given for required option '%s'\n",
-                    source, sections, opt->name);
-                ok = false;
-            }
-        }
-    }
-    return ok;
-}
-
 /* files.c: */
 static bool istext(file_format_t format)
 {
@@ -1509,3 +1198,318 @@ end:
 }
 
 #endif /* ndef GENCMP_NO_TLS */
+
+#ifdef GENCMP_NO_SECUTILS
+
+/* config.c: */
+CONF *CONF_load_config(OPTIONAL ossl_unused uta_ctx *ctx, const char *file)
+{
+    CONF *conf = NULL;
+    long errorline = -1; /* line in the config file where a failure occurred */
+
+    if (ctx != NULL) {
+        LOG(FL_ERR, "ICV-based integrity projection not supported with GENCMP_NO_SECUTILS");
+        return NULL;
+    }
+
+#ifdef DEBUG
+    LOG(FL_ERR, "Loading configuration from file: %s", file);
+#endif
+    conf = NCONF_new(NCONF_default());
+    if (conf == NULL) {
+        LOG(FL_ERR, "Out of memory");
+        return NULL;
+    }
+    if (NCONF_load(conf, file, &errorline) <= 0) {
+        if (errorline <= 0)
+            LOG(FL_ERR, "Cannot open the config file: %s", file);
+        else
+            LOG(FL_ERR, "Error on line %ld in config file: %s", errorline, file);
+        NCONF_free(conf);
+        conf = NULL;
+    }
+    return conf;
+}
+
+#define SECTION_NAME_MAX 40 /* max length of section name */
+/* get previous name from a comma-separated list of names */
+static const char *prev_item(char item[], const char *opt, const char *end)
+{
+    if (end == opt)
+        return 0;
+    const char *beg = end;
+    while (beg != opt && beg[-1] != ',' && !isspace((unsigned char)beg[-1]))
+        beg--;
+    size_t len = (size_t)(end - beg);
+    if (len > SECTION_NAME_MAX)
+        len = SECTION_NAME_MAX;
+    if (len != 0)
+        strncpy(item, beg, len);
+    item[len] = '\0';
+    if (end - beg > SECTION_NAME_MAX) {
+        LOG(FL_WARN,
+            "using only first %d characters of section name starting with \"%s\"",
+            SECTION_NAME_MAX, item);
+    }
+    while (beg != opt && (beg[-1] == ',' || isspace((unsigned char)beg[-1])))
+        beg--;
+    return beg;
+}
+
+bool CONF_entry_in_sections(const CONF *conf, const char *sections, const char *entry)
+{
+    char section[SECTION_NAME_MAX+1];
+    const char *end = sections + strlen(sections);
+    while ((end = prev_item(section, sections, end)) != NULL) {
+        STACK_OF(CONF_VALUE) *entries = NCONF_get_section(conf, section);
+        int i, n = sk_CONF_VALUE_num(entries);
+
+        for (i = 0; i < n; ++i) {
+            CONF_VALUE *v = sk_CONF_VALUE_value(entries, i);
+            if (v != NULL && v->name != NULL && strcmp(v->name, entry) == 0)
+                return true;
+        }
+    }
+    return false;
+}
+
+/* also covers unnamed initial part of config file (implicit default section) */
+static bool conf_entry_in_sections_or_default(const CONF *conf,
+                                              const char *sections, const char *entry)
+{
+    return CONF_entry_in_sections(conf, sections, entry)
+        || ((strstr(sections, "default") == NULL)
+            && CONF_entry_in_sections(conf, "default", entry));
+}
+
+/* get str value for name from a comma-separated hierarchy of config sections */
+static const char *conf_get_string(const CONF *conf, const char *sections,
+                                   const char *name)
+{
+    char section[SECTION_NAME_MAX+1];
+    const char *end = sections + strlen(sections);
+    while ((end = prev_item(section, sections, end)) != NULL) {
+        const char *res;
+        if ((res = NCONF_get_string(conf, section, name)) != NULL)
+            return res;
+    }
+    return NULL;
+}
+
+/* Parse a long integer, put it into *result; return false on failure */
+static bool parse_long(const char *str, long *result)
+{
+    int errno_bak = errno;
+    long res = 0;
+    char *endp = 0;
+
+    if (str == NULL || result == NULL) {
+        LOG(FL_ERR, "null argument");
+        return false;
+    }
+    errno = 0;
+    res = strtol(str, &endp, 0);
+    if (*endp != '\0' || endp == str
+        || ((res == LONG_MAX || res == LONG_MIN) && errno == ERANGE)
+        || (res == 0 && errno != 0)) {
+        LOG(FL_ERR, "Can't parse \"%s\" as a long number", str);
+        errno = errno_bak;
+        return false;
+    }
+    *result = res;
+    errno = errno_bak;
+    return true;
+}
+
+/* get long val for name from a comma-separated hierarchy of config sections */
+static bool conf_get_number_e(const CONF *conf, const char *sections,
+                              const char *name, long *p_result)
+{
+    const char *str = conf_get_string(conf, sections, name);
+    return str == NULL ? false : parse_long(str, p_result);
+}
+
+static bool CONF_read_options_ex(const CONF *conf, const char *source,
+                                 const char *sections, const opt_t *opt)
+{
+    const char *str;
+    long val = 0;
+    if (conf == NULL || sections == NULL || opt == NULL) {
+        LOG(FL_ERR, "null argument");
+        return false;
+    }
+
+    for (; opt->name != NULL; opt++) {
+        opttype_t bare_type = opt->type & ~(OPT_REQUIRED | OPT_EMPTY_OK);
+
+        if (opt->varref_u.txt == NULL) {
+            LOG(FL_ERR, "internal: Config '%s' section(s) [%s] option '%s': missing referene to the variable where to store the value",
+                    source, sections, opt->name);
+            return false;
+        }
+        ERR_set_mark();
+        switch (bare_type) {
+        case OPT_TXT:
+            str = conf_get_string(conf, sections, opt->name);
+            ERR_pop_to_mark();
+            if (str != NULL) {
+                *opt->varref_u.txt = str[0] == '\0' ? opt->default_value.txt : str;
+            }
+            break;
+        case OPT_SEL:
+            /* stores the selcetion from the key opt->name in opt->varref_u.int1 */
+            str = conf_get_string(conf, sections, opt->name);
+            ERR_pop_to_mark();
+            if (str != NULL) {
+                const char *const *sel = ((opt_t *)opt)->selectable;
+
+                ERR_pop_to_mark();
+                if (sel == NULL) {
+                    LOG(FL_ERR, "internal: Config '%s' section(s) [%s] option '%s' of type OPT_SEL: missing list of selectable values",
+                    source, sections, opt->name);
+                    return false;
+                }
+                if (str[0] == '\0') {
+                    *opt->varref_u.int1 = opt->default_value.int1;
+                    return true;
+                }
+                for (; *sel != NULL && strcmp(*sel, str) != 0; sel++)
+                    val++;
+                if (*sel == NULL) {
+                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s': illegal value '%s'",
+                        source, sections, opt->name, str);
+                    return false;
+                }
+                if (val > INT_MAX) {
+                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s' selection value %ld is too large, can be at most %d",
+                        source, sections, opt->name, val, INT_MAX);
+                    return false;
+                }
+                *opt->varref_u.int1 = (int)val;
+            }
+            break;
+        case OPT_NUM:
+            /* restores default value if empty string is given */
+            str = conf_get_string(conf, sections, opt->name);
+            ERR_pop_to_mark();
+            if (str != NULL) {
+                if (str[0] == '\0') {
+                    *opt->varref_u.num = opt->default_value.num;
+                    break;
+                }
+                /* stores the value from the key opt->name into the opt->varref_u.num */
+                if (!conf_get_number_e(conf, sections, opt->name, opt->varref_u.num))
+                    return false;
+            }
+            break;
+        case OPT_INT:
+        case OPT_POS_INT:
+            /* restores default value if empty string is given */
+            str = conf_get_string(conf, sections, opt->name);
+            ERR_pop_to_mark();
+            if (str != NULL) {
+                if (str[0] == '\0') {
+                    *opt->varref_u.int1 = opt->default_value.int1;
+                    break;
+                }
+                /* stores the value from the key opt->name into the opt->varref_u.num */
+                if (!conf_get_number_e(conf, sections, opt->name, &val))
+                    return false;
+                if (val > INT_MAX) {
+                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s' value %ld is too large, can be at most %d",
+                        source, sections, opt->name, val, INT_MAX);
+                    return false;
+                }
+                if (bare_type == OPT_POS_INT && val <= 0) {
+                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s' value %ld must be positive (> 0)",
+                        source, sections, opt->name, val);
+                    return false;
+                }
+                *opt->varref_u.int1 = (int)val;
+            }
+            break;
+        case OPT_BOOL:
+            /* restores default value if empty string is given */
+            str = conf_get_string(conf, sections, opt->name);
+            ERR_pop_to_mark();
+            if (str != NULL) {
+                if (str[0] == '\0') {
+                    *opt->varref_u.bit = opt->default_value.bit;
+                    break;
+                }
+                if (!conf_get_number_e(conf, sections, opt->name, &val))
+                    return false;
+                if (val < 0 || val > 1) {
+                    LOG(FL_ERR, "Config '%s' section(s) [%s] option '%s' value %ld is out of range for Boolean; must be 0 or 1",
+                        source, sections, opt->name, val);
+                    return false;
+                }
+                *opt->varref_u.bit = (bool)val;
+            }
+            break;
+            default:
+                ERR_pop_to_mark();
+                LOG(FL_ERR, "internal: Config '%s' section(s) [%s] option '%s': unsupported type '0x%x'",
+                    source, sections, opt->name, opt->type);
+                return false;
+                break;
+        }
+    }
+
+    return true;
+}
+
+
+bool CONF_read_check_options(const CONF *conf, const char *source,
+                             const char *sections, const opt_t *opts)
+{
+    STACK_OF(CONF_VALUE) *sk;
+    int i;
+    const opt_t *opt;
+    bool ok = true;
+
+    if (!CONF_read_options_ex((CONF *)conf, source, sections, opts)) {
+        LOG(FL_ERR, "Failed reading and parsing [%s] section(s) of %s",
+            sections, source);
+        return false;
+    }
+
+    /* give warnings on extra/unknown and thus unused section entries */
+    sk = NCONF_get_section(conf, sections);
+    for (i = 0; i < sk_CONF_VALUE_num(sk); i++) {
+        CONF_VALUE *cv = sk_CONF_VALUE_value(sk, i);
+        bool known = false;
+
+        for (opt = opts; opt->name != NULL; opt++) {
+            if (strcmp(cv->name, opt->name) == 0) {
+                known = true;
+                break;
+            }
+        }
+        if (!known) {
+            LOG(FL_WARN, "Config '%s' section(s) [%s]: ignoring unknown option '%s'\n",
+                source, sections, cv->name);
+        }
+    }
+
+    /* throw errors on missing required entries */
+    for (opt = opts; opt->name != NULL; opt++) {
+        if ((opt->type & OPT_REQUIRED) != 0) {
+            const char *val = conf_get_string(conf, sections, opt->name);
+
+            if (!conf_entry_in_sections_or_default(conf, sections, opt->name)) {
+                LOG(FL_ERR, "Config '%s' section(s) [%s]: missing required option '%s'\n",
+                    source, sections, opt->name);
+                ok = false;
+            } else if ((opt->type & OPT_EMPTY_OK) == 0 &&
+                       val != NULL && val[0] == '\0') {
+                LOG(FL_ERR, "Config '%s' section(s) [%s]: empty value given for required option '%s'\n",
+                    source, sections, opt->name);
+                ok = false;
+            }
+        }
+    }
+    return ok;
+}
+
+#endif /* def GENCMP_NO_SECUTILS */

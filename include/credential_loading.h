@@ -115,6 +115,7 @@ X509_STORE *STORE_load_check_ex(OSSL_LIB_CTX *libctx, const char *propq,
                         NULL, -1, source, desc, 1, vpm, NULL)
 
 #ifdef GENCMP_NO_SECUTILS
+/* these are actually not loading functions but they need code from credential_loading.c */
 bool FILES_store_key(const EVP_PKEY *pkey, const char *file, bool must_exist,
                      file_format_t format,
                      OPTIONAL const char *source, OPTIONAL const char *desc);

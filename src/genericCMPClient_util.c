@@ -407,14 +407,6 @@ EVP_PKEY *KEY_new_ex(const char *spec, OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL c
         LOG(FL_ERR, "null pointer argument");
         return NULL;
     }
-    if (libctx != NULL) {
-        LOG(FL_ERR, "libctx not supported by OpenSSL < 3.0");
-        return NULL;
-    }
-    if (propq != NULL) {
-        LOG(FL_ERR, "provider property query not supported by OpenSSL < 3.0");
-        return NULL;
-    }
 
     EVP_PKEY *pkey = NULL;
     int type = EVP_PKEY_NONE;

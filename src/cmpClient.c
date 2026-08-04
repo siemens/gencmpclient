@@ -33,7 +33,7 @@
 #include <secutils/certstatus/crl_mgmt.h> /* for CRLMGMT_load_crl_cb */
 #include <secutils/credentials/credentials.h> /* for CERT{,S}_save and CERTS_free */
 #include <secutils/credentials/cert.h> /* for UTIL_parse_name */
-#include "atglib-key-attestation-demo/libatg.h"
+#include "build/libatg.h"
 
 #ifdef LOCAL_DEFS
 # include "genericCMPClient_use.h"

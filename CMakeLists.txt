@@ -11,10 +11,14 @@ else()
   set(ATG_GO_LDFLAGS "GO_LDFLAGS=-s -w")
   set(ATG_GO_GCFLAGS "")
 endif()
+if(NOT DEFINED ATG_GIT_TAG)
+  set(ATG_GIT_TAG "main")
+endif()
+message(STATUS "ATG GIT_TAG: ${ATG_GIT_TAG}")
 ExternalProject_Add(
 atg 
 GIT_REPOSITORY https://code.siemens.com/ct-rda-cst-ses-de/remote-attestation/base-functionality/attestation-token-generator
-GIT_TAG rr/tcg-integration
+GIT_TAG ${ATG_GIT_TAG}
 CONFIGURE_COMMAND ""
 BUILD_COMMAND     make build-lib ${ATG_GO_LDFLAGS} ${ATG_GO_GCFLAGS}
 BUILD_IN_SOURCE   1

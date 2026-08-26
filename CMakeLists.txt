@@ -423,8 +423,52 @@ install(FILES doc/Generic_CMP_client_API.pdf
   )
 
 if(NOT DEFINED GENCMP_NO_CLI)
-include(./Pod2Man)
-POD2MAN("${CMAKE_CURRENT_SOURCE_DIR}/doc" cmpClient 1 "${CMAKE_INSTALL_MANDIR}" bin)
+  find_program(POD2MAN_EXECUTABLE pod2man)
+  if(NOT POD2MAN_EXECUTABLE)
+    find_package(Perl QUIET)
+    if(PERL_FOUND)
+      execute_process(COMMAND "${PERL_EXECUTABLE}" -MPod::Man -e "1"
+        RESULT_VARIABLE _pod_man_rc OUTPUT_QUIET ERROR_QUIET)
+      if(NOT _pod_man_rc EQUAL 0)
+        unset(PERL_FOUND)
+      endif()
+    endif()
+    if(NOT PERL_FOUND)
+      message(FATAL_ERROR "Need pod2man or perl with Pod::Man to generate man pages")
+    endif()
+  endif()
+  find_program(GZIP_EXECUTABLE gzip)
+  if(NOT GZIP_EXECUTABLE)
+    message(FATAL_ERROR "Need gzip to compress man pages")
+  endif()
+  set(_podfile "${CMAKE_CURRENT_SOURCE_DIR}/doc/cmpClient.pod")
+  if(NOT EXISTS "${_podfile}")
+    message(FATAL_ERROR "Could not find pod file ${_podfile} to generate man page")
+  endif()
+  set(_manout "${CMAKE_CURRENT_BINARY_DIR}/cmpClient.1")
+  if(POD2MAN_EXECUTABLE)
+    add_custom_command(OUTPUT "${_manout}"
+      DEPENDS "${_podfile}"
+      COMMAND ${POD2MAN_EXECUTABLE}
+              --section 1 --center ${CMAKE_PROJECT_NAME} --release --stderr --name cmpClient
+              ${_podfile} ${_manout})
+  else()
+    add_custom_command(OUTPUT "${_manout}"
+      DEPENDS "${_podfile}"
+      COMMAND ${PERL_EXECUTABLE} -MPod::Man -e
+              "Pod::Man->new(section=>'1',center=>'${CMAKE_PROJECT_NAME}',name=>'cmpClient')->parse_from_file('${_podfile}','${_manout}')")
+  endif()
+  add_custom_command(OUTPUT "${_manout}.gz"
+    COMMAND ${GZIP_EXECUTABLE} -cn9 ${_manout} > ${_manout}.gz
+    DEPENDS "${_manout}")
+  if(NOT TARGET doc)
+    add_custom_target(doc)
+  endif()
+  add_custom_target(man-cmpClient DEPENDS "${_manout}.gz")
+  add_dependencies(doc man-cmpClient)
+  install(FILES "${_manout}.gz"
+    DESTINATION "${CMAKE_INSTALL_MANDIR}/man1"
+    COMPONENT bin)
 endif()
 
 install(TARGETS ${LIBGENCMP_NAME}

@@ -148,125 +148,6 @@ The following OSS components are possibly used by the genCMPClient.
   all CMP features required for the given CMP application scenario,
   which can be indicated by setting the environment variable `USE_LIBCMP`.
 
-## CMP features and OpenSSL versions
-
-The full set of CMP features that could be implemented is given in
-[RFC 9810](https://www.rfc-editor.org/rfc/rfc9810.html).
-For an overview of CMP features relevant in industrial use cases see
-[LCMPP section 7.1](https://www.rfc-editor.org/rfc/rfc9483.html#section-7.1).
-
-CMP client (EE) features are supported by the genCMPClient as follows.
-
-The features defined with CMPv3
-in [RFC 9480 (CMP Updates)](https://www.rfc-editor.org/rfc/rfc9480)
-are fully covered when using the [intermediate CMP library `libcmp`](
-https://github.com/mpeylo/cmpossl) or when using at least OpenSSL 3.5.
-
-Since the intermediate CMP library `libcmp` constitutes an extra dependency
-and has been deprecated half a year after the release of OpenSSL 3.5,
-better avoid using it. This is possible if all the CMP features needed
-by the application scenario are covered by the OpenSSL version being used.
-
-* OpenSSL 3.0 sufficiently covers the CMPv2 features defined in
-[RFC 4210](https://www.rfc-editor.org/rfc/rfc4210).\
-  This includes most of the
-  "Generic Aspects of PKI Messages and PKI Management Operations",
-  IR, CR, KUR, P10CR, MAC, RR, and polling for certification responses.
-* In OpenSSL 3.2, "Get CA Certificates" and "Get Root CA Certificate Update"
-  were added.
-* In OpenSSL 3.3, support for certificate profiles and
-  generalized polling ("Handling Delayed Delivery") were added.
-* In OpenSSL 3.4, "Get Certificate Request Template" and "CRL Update Retrieval" were added.
-* In OpenSSL 3.5, support for central key generation was added.
-
-Hint: As long as your system provides a sufficiently recent version of OpenSSL
-and related development header files,
-better not manually install in addition a different OpenSSL version unless
-you need newer CMP features without using the intermediate CMP library `libcmp`.
-Such an extra installation can interfere with the more or less implicit references
-to the default locations of OpenSSL header files and binary library files.
-So unless knowing exactly what to do and being careful, one may receive version
-mismatch errors like the one mentioned [below](#sanity-checks-on-openssl).
-<!-- https://github.com/orgs/community/discussions/60861-->
-
-### Linux installation
-
-On a Debian or Ubuntu system the prerequisites may be installed simply as follows:
-
-```bash
-sudo apt install cmake libssl-dev libc-dev linux-libc-dev
-```
-
-while `sudo apt install git make gcc wget`
-usually is not needed as far as these tools are pre-installed.
-
-### macOS installation
-
-On macOS the prerequisites may be installed
-by executing the following in a terminal:
-
-```bash
-brew install git make openssl cmake wget perl
-```
-
-For making sure that OpenSSL version 3 is installed:
-
-```bash
-brew uninstall --ignore-dependencies openssl@3
-brew install openssl@3
-brew --prefix openssl@3
-```
-
-For using `gcc` (instead of `clang`) and `ccache`:
-
-```bash
-brew install gcc ccache
-```
-
-### Sanity checks on OpenSSL
-
-As a sanity check whether OpenSSL is usable for building the CMP client and libraries,
-you can execute in a shell on a Unix-like system:
-
-```bash
-git clone https://github.com/siemens/gencmpclient.git
-cd genCMPClient
-```
-or using some other way of obtaining the code, then
-
-```bash
-make -f OpenSSL_version.mk
-```
-
-This should give various diagnostic output,
-on success ending with a line giving the detected OpenSSL version like
-
-```bash
-...
-cc [...] OpenSSL_version.c -lcrypto -o OpenSSL_version
-...
-OpenSSL 3.0.13 30 Jan 2024 (0x300000d0)
-```
-
-You may need to set the variable `OPENSSL_DIR` first as described [below](#configuring), e.g.,
-
-```bash
-export OPENSSL_DIR=/usr/local
-```
-
-When having trouble building, which may be due to unsuitably set environment variables,
-this can provide useful information.
-
-When getting version mismatch errors like
-
-```bash
-OpenSSL runtime version 0x30400000 does not match version 0x300000d0 used by compiler
-```
-
-make sure that the system-level configuration for finding header and library files
-as well as the optional environment variables `OPENSSL_DIR` and `OPENSSL_LIB`
-described [below](#configuring) are set up in a consistent way.
-
 ## Getting the software
 
 For accessing the code repositories on GitHub
@@ -318,6 +199,7 @@ then also execute
 ```bash
 git submodule update
 ```
+
 or update the submodules by other means to a consistent state, then
 
 ```bash
@@ -333,7 +215,143 @@ The genCMPClient project itself can be used a git submodule as follows:
 git submodule add git@github.com:siemens/gencmpclient.git
 ```
 
-## Configuring
+## Building
+
+Since genCMPClient version 2, it is recommended to use CMake
+to produce the `Makefile`, for instance as follows:
+
+```bash
+cmake .
+```
+
+After modifying (i.e., setting or unsetting) relevant environment variables,
+it is recommended to remove `CMakeCache.txt` and re-run CMake.
+
+By default, CMake builds are in Release mode.
+This may also be enforced by defining the environment variable `NDEBUG`.
+For switching to Debug mode, use `cmake` with `-DCMAKE_BUILD_TYPE=Debug`.
+The chosen mode is remembered in `CMakeCache.txt`.
+
+Build the software with
+
+```bash
+make
+```
+
+(or `make -f Makefile_v1`).
+
+The result is in, for instance, `libgencmp.so.2.2`.
+On Linux and macOS, this also builds all required dependencies
+(such as `libsecutils.so.2.1` and possibly `libcmp.so.2.0`)
+and a CLI application (`./cmpClient`), which is intended
+for demonstration, test, and exploration purposes.
+
+When getting the compiler error: `'openssl/openssl_backport.h' file not found`
+likely `include/genericCMPClient_config.h` is outdated
+and contains `#define USE_LIBCMP` although the environment variable `USE_LIBCMP`
+is not set.
+In such situations, `make clean`  (or `make -f Makefile_v1 clean`) helps to reset it to a consistent state.
+
+### Choosing between shared and static library
+
+When using CMake, by default a **shared library** will be built,
+e.g., `libgencmp.so.2.2` on Linux, `libgencmp.2.2.dylib` on macOS, `gencmp.dll` on Windows.
+
+To build a **static library** instead, use the CMake option `-DGENCMP_STATIC_LIB=ON`, e.g.:
+
+```bash
+cmake -DGENCMP_STATIC_LIB=ON .
+```
+
+This selects producing a static library,
+e.g., `libgencmp.a` on Linux/macOS, `gencmp.lib` on Windows.
+
+### Platform Setup & Build Detours
+
+#### Linux installation
+
+On a Debian or Ubuntu system the prerequisites may be installed simply as follows:
+
+```bash
+sudo apt install cmake libssl-dev libc-dev linux-libc-dev
+```
+
+while `sudo apt install git make gcc wget`
+usually is not needed as far as these tools are pre-installed.
+
+#### macOS installation
+
+On macOS the prerequisites may be installed
+by executing the following in a terminal:
+
+```bash
+brew install git make openssl cmake wget perl
+```
+
+For making sure that OpenSSL version 3 is installed:
+
+```bash
+brew uninstall --ignore-dependencies openssl@3
+brew install openssl@3
+brew --prefix openssl@3
+```
+
+For using `gcc` (instead of `clang`) and `ccache`:
+
+```bash
+brew install gcc ccache
+```
+
+#### Building on Windows
+
+When using CMake, `libgencmp` can be built natively under Windows.
+This requires setting the environment variable `GENCMP_NO_SECUTILS`
+because libSecUtils and the CLI application are not supported there.
+When building on Windows without this option, CMake automatically implies `GENCMP_NO_SECUTILS=1`, showing the warning:
+
+```text
+Implying GENCMP_NO_SECUTILS because with native Windows builds, libSecUtils and CLI are not supported so far
+```
+
+**Example build on Windows using CMake:**
+
+```bash
+mkdir build
+cd build
+cmake -G "Visual Studio 17 2022" -A x64 ..
+cmake --build . --config Release
+```
+
+### Installing and uninstalling
+
+The software can be installed with, e.g.,
+
+```bash
+sudo make install
+```
+
+and uninstalled with
+
+```bash
+sudo make uninstall
+```
+
+The destination base directory is `/usr/local/`,\
+unless specified otherwise using `DESTDIR` or `ROOTFS`.
+With that directory, artifacts are placed in the usual subdirectories:
+
+* libraries below `lib/` with CMake file in the subdirectory `cmake/`
+* other binaries in `bin/`
+* documentation below `share/doc`
+* man pages below `share/man`
+* header files below `include/`
+
+### Cleaning up
+
+`make clean` removes part of the artifacts, while\
+`make clean_all` removes everything produced by `make` and `CMake`.
+
+## Advanced Configuration & Special Cases
 
 ### Finding OpenSSL
 
@@ -397,7 +415,93 @@ export OPENSSL_LIB=$(brew --prefix openssl@3)/lib
 
 After doing so, restart the terminal or copy&paste these line there, too.
 
-### Using of `libcmp` and `libsecutils`
+### Sanity checks on OpenSSL
+
+As a sanity check whether OpenSSL is usable for building the CMP client and libraries,
+you can execute in a shell on a Unix-like system:
+
+```bash
+git clone https://github.com/siemens/gencmpclient.git
+cd genCMPClient
+```
+
+or using some other way of obtaining the code, then
+
+```bash
+make -f OpenSSL_version.mk
+```
+
+This should give various diagnostic output,
+on success ending with a line giving the detected OpenSSL version like
+
+```bash
+...
+cc [...] OpenSSL_version.c -lcrypto -o OpenSSL_version
+...
+OpenSSL 3.0.13 30 Jan 2024 (0x300000d0)
+```
+
+You may need to set the variable `OPENSSL_DIR` first as described [below](#finding-openssl), e.g.,
+
+```bash
+export OPENSSL_DIR=/usr/local
+```
+
+When having trouble building, which may be due to unsuitably set environment variables,
+this can provide useful information.
+
+When getting version mismatch errors like
+
+```bash
+OpenSSL runtime version 0x30400000 does not match version 0x300000d0 used by compiler
+```
+
+make sure that the system-level configuration for finding header and library files
+as well as the optional environment variables `OPENSSL_DIR` and `OPENSSL_LIB`
+described [below](#finding-openssl) are set up in a consistent way.
+
+### CMP features and OpenSSL versions
+
+The full set of CMP features that could be implemented is given in
+[RFC 9810](https://www.rfc-editor.org/rfc/rfc9810.html).
+For an overview of CMP features relevant in industrial use cases see
+[LCMPP section 7.1](https://www.rfc-editor.org/rfc/rfc9483.html#section-7.1).
+
+CMP client (EE) features are supported by the genCMPClient as follows.
+
+The features defined with CMPv3
+in [RFC 9480 (CMP Updates)](https://www.rfc-editor.org/rfc/rfc9480)
+are fully covered when using the [intermediate CMP library `libcmp`](
+https://github.com/mpeylo/cmpossl) or when using at least OpenSSL 3.5.
+
+Since the intermediate CMP library `libcmp` constitutes an extra dependency
+and has been deprecated half a year after the release of OpenSSL 3.5,
+better avoid using it. This is possible if all the CMP features needed
+by the application scenario are covered by the OpenSSL version being used.
+
+* OpenSSL 3.0 sufficiently covers the CMPv2 features defined in
+[RFC 4210](https://www.rfc-editor.org/rfc/rfc4210).\
+  This includes most of the
+  "Generic Aspects of PKI Messages and PKI Management Operations",
+  IR, CR, KUR, P10CR, MAC, RR, and polling for certification responses.
+* In OpenSSL 3.2, "Get CA Certificates" and "Get Root CA Certificate Update"
+  were added.
+* In OpenSSL 3.3, support for certificate profiles and
+  generalized polling ("Handling Delayed Delivery") were added.
+* In OpenSSL 3.4, "Get Certificate Request Template" and "CRL Update Retrieval" were added.
+* In OpenSSL 3.5, support for central key generation was added.
+
+Hint: As long as your system provides a sufficiently recent version of OpenSSL
+and related development header files,
+better not manually install in addition a different OpenSSL version unless
+you need newer CMP features without using the intermediate CMP library `libcmp`.
+Such an extra installation can interfere with the more or less implicit references
+to the default locations of OpenSSL header files and binary library files.
+So unless knowing exactly what to do and being careful, one may receive version
+mismatch errors like the one mentioned [above](#sanity-checks-on-openssl).
+<!-- https://github.com/orgs/community/discussions/60861-->
+
+### Using `libcmp` and `libsecutils`
 
 Only if needed,
 define the environment variable `USE_LIBCMP` for using the latest CMP features
@@ -422,22 +526,7 @@ which may be produced using `util/icvutil`.
 * The TLS-related functions may be disabled by setting `SECUTILS_NO_TLS` or `GENCMP_NO_TLS`,
   which also needs to be done when calling `make` at build time.
 
-### Using CMake or `Makefile_v1`
-
-Since genCMPClient version 2, it is recommended to use CMake
-to produce the `Makefile`, for instance as follows:
-
-```bash
-cmake .
-```
-
-After modifying (i.e., setting or unsetting) relevant environment variables,
-it is recommended to remove `CMakeCache.txt` and re-run CMake.
-
-By default, CMake builds are in Release mode.
-This may also be enforced by defining the environment variable `NDEBUG`.
-For switching to Debug mode, use `cmake` with `-DCMAKE_BUILD_TYPE=Debug`.
-The chosen mode is remembered in `CMakeCache.txt`.
+### Using legacy `Makefile_v1`
 
 For backward compatibility it is also possible to use instead of CMake
 pre-defined [`Makefile_v1`](Makefile_v1); to this end symlink it to `Makefile`:
@@ -472,91 +561,7 @@ It is also possible to statically link with `libcmp.a`, by setting `STATIC_LIBCM
 For further details on optional environment variables,
 see the [`Makefile_v1`](Makefile_v1) and [`Makefile_src`](Makefile_src).
 
-### Choosing between shared and static library
-
-When using CMake, by default a **shared library** will be built,
-e.g., `libgencmp.so.2.2` on Linux, `libgencmp.2.2.dylib` on macOS, `gencmp.dll` on Windows.
-
-To build a **static library** instead, use the CMake option `-DGENCMP_STATIC_LIB=ON`, e.g.:
-
-```bash
-cmake -DGENCMP_STATIC_LIB=ON .
-```
-
-This selects producing a static library,
-e.g., `libgencmp.a` on Linux/macOS, `gencmp.lib` on Windows.
-
-## Building
-
-Build the software with
-
-```bash
-make
-```
-
-(or `make -f Makefile_v1`).
-
-The result is in, for instance, `libgencmp.so.2.2`.
-On Linux and macOS, this also builds all required dependencies
-(such as `libsecutils.so.2.1` and possibly `libcmp.so.2.0`)
-and a CLI application (`./cmpClient`), which is intended
-for demonstration, test, and exploration purposes.
-
-When getting the compiler error: `'openssl/openssl_backport.h' file not found`
-likely `include/genericCMPClient_config.h` is outdated
-and contains `#define USE_LIBCMP` although the environment variable `USE_LIBCMP`
-is not set.
-In such situations, `make clean`  (or `make -f Makefile_v1 clean`) helps to reset it to a consistent state.
-
-### Building on Windows
-
-When using CMake, `libgencmp` can be built natively under Windows.
-This requires setting the environment variable `GENCMP_NO_SECUTILS`
-because libSecUtils and the CLI application are not supported there.
-When building on Windows without this option, CMake automatically implies `GENCMP_NO_SECUTILS=1`, showing the warning:
-
-```
-Implying GENCMP_NO_SECUTILS because with native Windows builds, libSecUtils and CLI are not supported so far
-```
-
-**Example build on Windows using CMake:**
-```bash
-mkdir build
-cd build
-cmake -G "Visual Studio 17 2022" -A x64 ..
-cmake --build . --config Release
-```
-
-### Installing and uninstalling
-
-The software can be installed with, e.g.,
-
-```bash
-sudo make install
-```
-
-and uninstalled with
-
-```bash
-sudo make uninstall
-```
-
-The destination base directory is `/usr/local/`,\
-unless specified otherwise using `DESTDIR` or `ROOTFS`.
-With that directory, artifacts are placed in the usual subdirectories:
-
-* libraries below `lib/` with CMake file in the subdirectory `cmake/`
-* other binaries in `bin/`
-* documentation below `share/doc`
-* man pages below `share/man`
-* header files below `include/`
-
-### Cleaning up
-
-`make clean` removes part of the artifacts, while\
-`make clean_all` removes everything produced by `make` and `CMake`.
-
-## Building Debian packages (for use also with Ubuntu etc.)
+### Building Debian packages (for use also with Ubuntu etc.)
 
 On Linux, this repository can build the following binary and source packages.
 
@@ -596,39 +601,9 @@ The Debian packages may be installed for instance as follows:
 sudo dpkg -i libgencmp*deb cmpclient_*.deb
 ```
 
-## Using the CLI-based demo client
+### Alternative Demo CA Configurations
 
-The Command-Line Interface (CLI) of the CMP client is implemented in
-[`src/cmpClient.c`](src/cmpClient.c).
-It supports most of the features of the genCMPClient library.
-The CLI use with the available options are documented in [`cmpClient.pod`](doc/cmpClient.pod).
-An example configuration used by the below mentioned demo invocations
-can be found in [`demo.cnf`](config/demo.cnf).
-
-A demo making use of all supported CMP commands can be executed with, e.g.,
-
-```bash
-make -f Makefile_v1 demo
-```
-
-Among others, successful execution should produce new certificates at `creds/manufacturer.crt` and `creds/operational.crt`.
-You can view this certificate for instance by executing
-
-```bash
-openssl x509 -noout -text -in creds/manufacturer.crt
-```
-
-In order to obtain a trace of the HTTP messages being sent and received,
-one can use a build of OpenSSL configured with the `enable-trace` configuration option
-(or build the genCMPClient with `USE_LIBCMP=1`)
-and set the environment variable `OPENSSL_TRACE` to contain the string `"HTTP"`.
-For instance:
-
-```bash
-OPENSSL_TRACE=HTTP ./cmpClient imprint
-```
-
-### Demo use with a local EJBCA
+#### Demo use with a local EJBCA
 
 The demo uses by default a Docker instance of the EJBCA, which is included in the repository and launched locally on demo startup.
 This variant of the demo can be used explicitly as follows:
@@ -637,7 +612,7 @@ This variant of the demo can be used explicitly as follows:
 make -f Makefile_v1 demo_EJBCA
 ```
 
-### Demo use with the Cloud CA
+#### Demo use with the Cloud CA
 
 An alternative is to use the reference playground CA
 operated by Siemens over a cloud-based test RA.
@@ -668,7 +643,7 @@ CMP_PROFILE=PPKI%20Playground%20ECC
 
 an ECC-based CA hierarchy is used.
 
-### Demo use with the Insta CA
+#### Demo use with the Insta CA
 
 At least until end of 2025, also the Insta Certifier Demo CA server could be used.
 The respective variant of the demo can be started as follows:
@@ -695,6 +670,38 @@ A large set of CLI-based tests using the Insta Demo CA may be invoked using
 
 ```bash
 make -f Makefile_v1 test_Insta
+```
+
+## Using the CLI-based demo client
+
+The Command-Line Interface (CLI) of the CMP client is implemented in
+[`src/cmpClient.c`](src/cmpClient.c).
+It supports most of the features of the genCMPClient library.
+The CLI use with the available options are documented in [`cmpClient.pod`](doc/cmpClient.pod).
+An example configuration used by the below mentioned demo invocations
+can be found in [`demo.cnf`](config/demo.cnf).
+
+A demo making use of all supported CMP commands can be executed with, e.g.,
+
+```bash
+make -f Makefile_v1 demo
+```
+
+Among others, successful execution should produce new certificates at `creds/manufacturer.crt` and `creds/operational.crt`.
+You can view this certificate for instance by executing
+
+```bash
+openssl x509 -noout -text -in creds/manufacturer.crt
+```
+
+In order to obtain a trace of the HTTP messages being sent and received,
+one can use a build of OpenSSL configured with the `enable-trace` configuration option
+(or build the genCMPClient with `USE_LIBCMP=1`)
+and set the environment variable `OPENSSL_TRACE` to contain the string `"HTTP"`.
+For instance:
+
+```bash
+OPENSSL_TRACE=HTTP ./cmpClient imprint
 ```
 
 ## Using the library in own applications

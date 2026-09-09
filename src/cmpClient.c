@@ -1150,7 +1150,7 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
     if (opt_ocsp_last)
         X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_OCSP_LAST);
 
-    if (opt_secret != NULL || opt_key != NULL) {
+    if (opt_secret != NULL || opt_ref != NULL || opt_key != NULL) {
         const char *const creds_desc = "credentials for CMP level";
 
         if ((cmp_creds = app_load_creds(opt_cert, opt_key, opt_keypass,

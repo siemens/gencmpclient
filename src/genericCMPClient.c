@@ -120,6 +120,18 @@ static X509_NAME *parse_DN(const char *str, const char *desc)
     return name;
 }
 
+static int ossl_cmp_log_cb(const char *func, const char *file, int line,
+                           OSSL_CMP_severity level, const char *msg)
+{
+    return LOG(func, file, line, (severity)level, "%s", msg) ? 1 : 0;
+}
+
+static int ossl_cmp_log_console_cb(const char *func, const char *file, int line,
+                                   OSSL_CMP_severity level, const char *msg)
+{
+    return LOG_console(func, file, line, (severity)level, msg) ? 1 : 0;
+}
+
 static int certConf_caPubs_cb(OSSL_CMP_CTX *ctx, X509 *cert, int fail_info, const char **text)
 {
     X509_STORE *new_ts = NULL, *new_cert_truststore = OSSL_CMP_CTX_get_certConf_cb_arg(ctx);
@@ -167,9 +179,8 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
         return CMP_R_NULL_ARGUMENT;
     if ((ctx = OSSL_CMP_CTX_new(libctx, propq)) == NULL ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn != NULL ?
-                                 (OSSL_CMP_log_cb_t)log_fn :
-                                 /* difference is in 'int' vs. 'bool' and additional TRACE value */
-                                 (OSSL_CMP_log_cb_t)LOG_console))
+                                 ossl_cmp_log_cb :
+                                 ossl_cmp_log_console_cb))
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
     if (cmp_truststore != NULL
         && (!X509_STORE_up_ref(cmp_truststore) ||

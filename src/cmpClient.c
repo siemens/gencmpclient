@@ -21,6 +21,10 @@
 # error "cannot build cmpClient CLI app with OpenSSL version < 3.0"
 #endif
 
+#if OPENSSL_VERSION_NUMBER < 0x40100000L
+# define ASN1_STRING_set1_string(text, ptr) ASN1_STRING_set(text, ptr, -1)
+#endif
+
 #include <openssl/provider.h>
 #include <openssl/ssl.h>
 
@@ -974,8 +978,7 @@ static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
                 end = ptr + strlen(ptr);
             else
                 *end++ = '\0';
-            if ((text = ASN1_UTF8STRING_new()) == NULL
-                    || !ASN1_STRING_set(text, ptr, -1)) {
+            if ((text = ASN1_UTF8STRING_new()) == NULL || !ASN1_STRING_set1_string(text, ptr)) {
                 LOG_err("Out of memory");
                 goto err;
             }

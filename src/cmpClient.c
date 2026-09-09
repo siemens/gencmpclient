@@ -975,7 +975,11 @@ static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
             else
                 *end++ = '\0';
             if ((text = ASN1_UTF8STRING_new()) == NULL
+#if OPENSSL_VERSION_NUMBER >= 0x40100000L
+                    || !ASN1_STRING_set1_string(text, ptr)) {
+#else
                     || !ASN1_STRING_set(text, ptr, -1)) {
+#endif
                 LOG_err("Out of memory");
                 goto err;
             }

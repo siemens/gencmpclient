@@ -464,7 +464,7 @@ if(NOT DEFINED GENCMP_NO_CLI)
   if(NOT TARGET doc)
     add_custom_target(doc)
   endif()
-  add_custom_target(man-cmpClient DEPENDS "${_manout}.gz")
+  add_custom_target(man-cmpClient ALL DEPENDS "${_manout}.gz")
   add_dependencies(doc man-cmpClient)
   install(FILES "${_manout}.gz"
     DESTINATION "${CMAKE_INSTALL_MANDIR}/man1"

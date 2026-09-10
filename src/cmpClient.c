@@ -975,7 +975,11 @@ static int handle_opt_geninfo(OSSL_CMP_CTX *ctx)
             else
                 *end++ = '\0';
             if ((text = ASN1_UTF8STRING_new()) == NULL
+#if OPENSSL_VERSION_NUMBER >= 0x40100000L
+                    || !ASN1_STRING_set1_string(text, ptr)) {
+#else
                     || !ASN1_STRING_set(text, ptr, -1)) {
+#endif
                 LOG_err("Out of memory");
                 goto err;
             }
@@ -1150,7 +1154,7 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
     if (opt_ocsp_last)
         X509_VERIFY_PARAM_set_flags(vpm, X509_V_FLAG_OCSP_LAST);
 
-    if (opt_secret != NULL || opt_key != NULL) {
+    if (opt_secret != NULL || opt_ref != NULL || opt_key != NULL) {
         const char *const creds_desc = "credentials for CMP level";
 
         if ((cmp_creds = app_load_creds(opt_cert, opt_key, opt_keypass,

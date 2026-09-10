@@ -290,7 +290,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
 }
 
 /* also used internally by CMPclient_setup_HTTP() with rw == NULL */
-CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw, OPTIONAL const char *path,
+CMP_err CMPclient_setup_BIO(CMP_CTX *ctx, BIO *rw[2], OPTIONAL const char *path,
                             int keep_alive, int timeout)
 {
     if (ctx == NULL)

@@ -1171,8 +1171,11 @@ static CMP_err prepare_CMP_client(CMP_CTX **pctx, enum use_case use_case,
             }
             (void)CREDENTIALS_set_pwd(cmp_creds, secret);
         }
-        if (opt_ref != NULL)
+        if (opt_ref != NULL) {
+            if (opt_secret == NULL)
+                LOG_warn("Using the -ref option without -secret makes little sense");
             (void)CREDENTIALS_set_pwdref(cmp_creds, OPENSSL_strdup(opt_ref));
+        }
         if (opt_own_trusted != NULL) {
             if (opt_cert == NULL) {
                 LOG_warn("-own_trusted option is ignored since -cert not given");
@@ -1678,10 +1681,8 @@ static CMP_err check_options(enum use_case use_case)
             LOG(FL_INFO, "Given -subject '%s' is ignored in favor of the subject from '%s'",
                 opt_subject, opt_oldcert != NULL ? opt_oldcert : opt_csr != NULL ? opt_csr : opt_cert);
     } else {
-        if (opt_secret != NULL && (opt_cert != NULL || opt_key != NULL)) {
-            LOG_warn("Ignoring -cert and -key since -secret option selects MAC-based message protection");
-            opt_cert = opt_key = NULL;
-        }
+        if (opt_secret != NULL && (opt_cert != NULL || opt_key != NULL))
+            LOG_warn("Not using -cert and -key for protection since -secret option selects MAC-based message protection");
 
     }
     if (!opt_unprotected_requests && opt_secret == NULL && opt_key == NULL) {

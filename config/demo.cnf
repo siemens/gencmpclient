@@ -179,7 +179,7 @@ creds/trusted/isrgrootx1.pem
 # Tenant on server
 recipient = /CN=CloudPKI-Integration-Test
 caPubs = creds/trusted/caPubs.pem # filled in from caPubs field extracted from IP message
-trusted = $caPubs
+trusted = $caPubs,"creds/PPKIPlaygroundInfrastructureRootCAv20.crt" # the latter is needed as a workaroud for being able to validate error responses
 out_trusted = $caPubs
 own_trusted = $caPubs
 partial_chain = 1 # allow using also non-root trust anchor certs from caPubs

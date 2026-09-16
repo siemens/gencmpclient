@@ -589,10 +589,12 @@ else
 	$(GENERATE_OPERATIONAL)
 	$(OPENSSL) x509 -noout -text -in creds/operational.crt | sed -E '/^ *([0-9a-f]{2}:).*/d'
 	@echo :
+    ifneq ($(CA_SECTION),CloudCA) # on p10cr, CloudCA currently fails to validate the protection certificate
     ifneq ($(CA_SECTION),Insta) # on p10cr, Insta responds with an empty message PKIBody
 	@echo
 	@$(SLEEP)
 	$(CMPCLIENT) pkcs10 -section $(CA_SECTION) $(EXTRA_OPTS)
+    endif
     endif
 	@echo
 	@$(SLEEP)

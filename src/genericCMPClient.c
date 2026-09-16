@@ -24,6 +24,9 @@ typedef
 STACK_OF(X509_EXTENSION)
 *(*sk_X509_EXTENSION_copyfunc)(const STACK_OF(X509_EXTENSION) *a);
 #endif
+#if OPENSSL_VERSION_NUMBER < 0x40100000L
+# define ASN1_STRING_set1_data(s, d, l) ASN1_STRING_set(s, (const void *)(d), (int)(l))
+#endif
 
 #ifndef GENCMP_NO_SECUTILS
 # ifdef LOCAL_DEFS /* internal helper functions not documented in API spec */
@@ -562,17 +565,18 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
 
 #if OPENSSL_3_3_FEATURES
 static int ossl_cmp_sk_ASN1_UTF8STRING_push_str(STACK_OF(ASN1_UTF8STRING) *sk,
-                                                const char *text, int len)
+                                                const char *text, size_t len)
 {
     ASN1_UTF8STRING *utf8string;
 
-    if (sk == NULL || text == NULL) {
+    /* text == NULL with len == 0 is the canonical empty string and is valid */
+    if (sk == NULL || (text == NULL && len != 0)) {
         ERR_raise(ERR_LIB_CMP, CMP_R_NULL_ARGUMENT);
         return 0;
     }
     if ((utf8string = ASN1_UTF8STRING_new()) == NULL)
         return 0;
-    if (!ASN1_STRING_set(utf8string, text, len))
+    if (!ASN1_STRING_set1_data(utf8string, (const uint8_t *)text, len))
         goto err;
     if (!sk_ASN1_UTF8STRING_push(sk, utf8string))
         goto err;
@@ -599,7 +603,7 @@ CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name)
 
         if (sk == NULL)
             goto err;
-        if (!ossl_cmp_sk_ASN1_UTF8STRING_push_str(sk, name, (int)strlen(name))
+        if (!ossl_cmp_sk_ASN1_UTF8STRING_push_str(sk, name, strlen(name))
                 || (itav = OSSL_CMP_ITAV_new0_certProfile(sk)) == NULL) {
             sk_ASN1_UTF8STRING_pop_free(sk, ASN1_UTF8STRING_free);
             goto err;

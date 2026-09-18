@@ -179,7 +179,7 @@ creds/trusted/isrgrootx1.pem
 # Tenant on server
 recipient = /CN=CloudPKI-Integration-Test
 caPubs = creds/trusted/caPubs.pem # filled in from caPubs field extracted from IP message
-trusted = $caPubs,"creds/PPKIPlaygroundInfrastructureRootCAv20.crt" # the latter is needed as a workaroud for being able to validate error responses
+trusted = $caPubs,"creds/PPKIPlaygroundInfrastructureRootCAv20.crt" # the latter is needed as a workaround for being able to validate error responses
 out_trusted = $caPubs
 own_trusted = $caPubs
 partial_chain = 1 # allow using also non-root trust anchor certs from caPubs
@@ -193,6 +193,17 @@ subject = /CN=$ref/OU=PPKI Playground/OU=Corporate Technology/OU=For internal te
 cert = creds/manufacturer.crt
 key = creds/manufacturer.pem
 keypass = pass:12345
+
+[FDS_RA]
+server = "https://raservice.uat.dekher4823srv.de010.siemens.net"
+path = "/.well-known/cmp"
+tls_used = 1
+tls_trusted = creds/trusted/ATCSRootCAV202019.cer
+trusted = creds/PPKIPlaygroundInfrastructureRootCAv20.crt
+# untrusted = creds/PPKIPlaygroundInfrastructureIssuingCAv20.pem
+cert = creds/FDS_RA_cmp_client_cert.pem
+key = creds/FDS_RA_cmp_client_key.pem
+
 
 [imprint]
 # path = ${ENV::EJBCA_PATH}/${ENV::EJBCA_PATH_IMPRINT} # gets overridden by Makefile_v1 for EJBCA

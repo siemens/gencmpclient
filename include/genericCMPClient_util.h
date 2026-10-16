@@ -53,7 +53,7 @@ const char *UTIL_file_ext(OPTIONAL const char *filename);
 /* log.h: */
 extern BIO *bio_err; /* for low-level error output if verbosity >= LOG_DEBUG */
 extern BIO *bio_trace; /* for detailed debugging output if verbosity >= LOG_TRACE */
-typedef OSSL_CMP_severity severity;
+typedef int severity;   /*!< same as OSSL_CMP_severity */
 # define LOG_EMERG   0  /*!< A panic condition was reported to all processes */
 # define LOG_ALERT   1  /*!< A condition that should be corrected immediately */
 # define LOG_CRIT    2  /*!< A critical condition */

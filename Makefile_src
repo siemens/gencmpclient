@@ -143,8 +143,8 @@ endif
 override LIBS += -lcrypto
 ifndef GENCMP_NO_SECUTILS
   ifdef SECUTILS_USE_UTA
-    override LIBS += -luta
-  endif
+    override LIBS += -luta -L/usr/local/lib
+endif
 endif
 
 override LDFLAGS += $(DEBUG_FLAGS) # needed for -fsanitize=...

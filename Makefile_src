@@ -91,11 +91,13 @@ endif
 override CFLAGS += $(DEBUG_FLAGS) -fstack-protector -fno-omit-frame-pointer
 # override CFLAGS += -std=gnu90  # TODO maybe clean up code and re-enable flag
 override CFLAGS += \
-  -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch \
-  -Wsign-compare -Wformat -Wformat-security -Wtype-limits -Wundef -Wconversion \
-  -Wpointer-arith -Wunused-parameter -Wshadow \
+  -Wall -Woverflow -Wextra -Wswitch -Wmissing-prototypes -Wstrict-prototypes \
+  -Wsign-compare -Wformat -Wformat-security -Wtype-limits -Wundef \
+  -Wpointer-arith -Wunused-parameter \
+  -Wconversion -Wsign-conversion -Wshadow \
   -pedantic -DPEDANTIC
-override CFLAGS +=-Wno-c99-extensions -Wno-language-extension-token -Wno-declaration-after-statement -Wno-expansion-to-defined
+# Using here "no-" variants to cancel options potentially set in parent project(s):
+override CFLAGS +=-Wno-declaration-after-statement -Wno-expansion-to-defined
 ifeq ($(LPATH),)
   ifndef GENCMP_NO_SECUTILS
     override CFLAGS += -I$(SECUTILS_DIR)/src/libsecutils/include

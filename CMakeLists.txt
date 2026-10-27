@@ -310,11 +310,10 @@ else()
   # GCC/Clang compiler flags
   add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
   add_compile_options(
-    -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
-    -Wsign-compare -Wformat -Wtype-limits -Wundef -Wunused-parameter -Wformat-security
-    -Wpointer-arith # -Wc99-extensions -Wlanguage-extension-token
-    -Wconversion -Wshadow
-    # TODO clean up code and re-enable warnings instead:
+    -Wall -Woverflow -Wextra -Wswitch -Wmissing-prototypes -Wstrict-prototypes
+    -Wsign-compare -Wformat -Wformat-security -Wtype-limits -Wundef
+    -Wpointer-arith -Wunused-parameter # -Wc99-extensions -Wlanguage-extension-token
+    -Wconversion -Wsign-conversion -Wshadow
     # Using here "no-" variants to cancel options potentially set in parent project(s):
     -Wno-declaration-after-statement -Wno-expansion-to-defined
   )

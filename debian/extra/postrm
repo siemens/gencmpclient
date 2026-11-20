@@ -1,0 +1,3 @@
+#!/bin/sh
+# ldconfig is handled via the activate-noawait trigger; no direct call needed.
+set -e

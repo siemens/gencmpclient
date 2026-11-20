@@ -633,16 +633,38 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   # see above assignments
   # to CPACK_DEBIAN_PACKAGE_SHLIBDEPS_PRIVATE_DIRS or CMAKE_INSTALL_RPATH
 
+  set(_debian_control_dir "${CMAKE_CURRENT_BINARY_DIR}/debian-control")
+  set(_debian_control_triggers "${_debian_control_dir}/triggers")
+  set(_debian_control_postinst "${_debian_control_dir}/postinst")
+  set(_debian_control_postrm "${_debian_control_dir}/postrm")
+  file(MAKE_DIRECTORY "${_debian_control_dir}")
+  foreach(_debian_control_file IN ITEMS triggers postinst postrm)
+    configure_file(
+      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/${_debian_control_file}"
+      "${_debian_control_dir}/${_debian_control_file}" COPYONLY)
+  endforeach()
+  execute_process(
+    COMMAND chmod 0644 "${_debian_control_triggers}"
+    RESULT_VARIABLE _debian_control_chmod_result)
+  if(NOT _debian_control_chmod_result EQUAL 0)
+    message(FATAL_ERROR "Failed to set permissions on ${_debian_control_triggers}")
+  endif()
+  execute_process(
+    COMMAND chmod 0755 "${_debian_control_postinst}" "${_debian_control_postrm}"
+    RESULT_VARIABLE _debian_control_chmod_result)
+  if(NOT _debian_control_chmod_result EQUAL 0)
+    message(FATAL_ERROR "Failed to set permissions on maintainer scripts")
+  endif()
+
     set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_NAME "libgencmp2")
     set(CPACK_DEBIAN_LIBRARY_RUNTIME_FILE_NAME DEB-DEFAULT)
     set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_SECTION "libs")
     # see also https://gitlab.kitware.com/cmake/cmake/-/issues/21834
-    # Custom postinst/postrm suppress CPack's auto-generated ldconfig calls;
-    # ldconfig is handled by the activate-noawait trigger instead (maintscript-calls-ldconfig)
+    # Use dpkg's trigger to avoid calling ldconfig directly from maintainer scripts.
     set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_CONTROL_EXTRA
-      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/triggers"
-      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postinst"
-      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postrm")
+      "${_debian_control_triggers}"
+      "${_debian_control_postinst}"
+      "${_debian_control_postrm}")
     set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
 
     if(FALSE) # for now, disable dependencies to libs of subprojectx because their .so files for some reason already get included in the package:
@@ -669,9 +691,9 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   # see also https://gitlab.kitware.com/cmake/cmake/-/issues/21834
   # CPack Deb does not create postinst when installing to /usr/lib/x86_64-linux-gnu
   set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_EXTRA
-      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/triggers"
-      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postinst"
-      "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postrm")
+      "${_debian_control_triggers}"
+      "${_debian_control_postinst}"
+      "${_debian_control_postrm}")
   set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
 
 else(Linux)

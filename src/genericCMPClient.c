@@ -176,7 +176,7 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
     if ((ctx = OSSL_CMP_CTX_new(libctx, propq)) == NULL ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn != NULL ?
                                  (OSSL_CMP_log_cb_t)log_fn :
-                                 ossl_cmp_log_console_cb))
+                                 &ossl_cmp_log_console_cb))
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
 #pragma GCC diagnostic pop
     if (cmp_truststore != NULL

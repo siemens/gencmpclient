@@ -40,8 +40,18 @@
 #endif
 
 #include <credential_loading.h>
-#define load_certs_multifile(srcs, source, desc, type_CA, vpm) \
-    app_load_certs(srcs, NULL, -1 /* no HTTP(S) */, source, desc, type_CA,vpm)
+static STACK_OF(X509) *load_certs_multifile(const char *srcs, OPTIONAL const char *source,
+                                            OPTIONAL const char *desc, int type_CA,
+                                            OPTIONAL X509_VERIFY_PARAM *vpm)
+{
+    STACK_OF(X509) *certs = app_load_certs(srcs, NULL, -1 /* no HTTP(S) */,
+                                           source, desc, type_CA, vpm);
+
+    if (sk_X509_num(certs) == 0)
+        LOG(FL_WARN, "Obtained an empty list of %s from %s\n", desc, srcs);
+    return certs;
+}
+
 /*
  * Use cases are split between CMP use cases and others,
  * which do not use CMP and therefore do not need its complex setup.

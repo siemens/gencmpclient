@@ -453,14 +453,27 @@ bool load_key_certs_crls(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *pro
         int type, ok = 1;
 
         /*
-         * This can happen (for example) if we attempt to load a file with
-         * multiple different types of things in it - but the thing we just
-         * tried to load wasn't one of the ones we wanted, e.g. if we're trying
-         * to load a certificate but the file has both the private key and the
-         * certificate in it. We just retry until eof.
+         * info == NULL without error indication: just retry until eof.
+         * On error not at eof, e.g., due to a parse error, we fail,
+         * but only if we aim at loading a possibly empty list of certs or CRLs.
+         * Note that the file store loader with OpenSSL 3.x sets the error flag
+         * also on its final (failing) decode attempt at eof, which we ignore.
+         * Also note that with OSSL_STORE_expect() set to a single type, an item
+         * of a different type, e.g., a private key in a file from which a
+         * certificate is to be loaded, is reported as error, too, so it leads
+         * to failure, as there is no way to distinguish this from a parse error.
          */
-        if (info == NULL)
+        if (info == NULL) {
+            if (((pcerts != NULL && min_certs == 0)
+                || (pcrls != NULL && min_crls == 0))
+                && OSSL_STORE_error(ctx) && !OSSL_STORE_eof(ctx)) {
+                failed = FAIL_NAME;
+                if (!quiet)
+                    BIO_printf(bio_mem, "Error decoding");
+                break;
+            }
             continue;
+        }
 
         type = OSSL_STORE_INFO_get_type(info);
         switch (type) {

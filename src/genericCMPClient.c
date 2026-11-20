@@ -72,7 +72,7 @@ CMP_err CMPclient_init(OPTIONAL const char *name, OPTIONAL LOG_cb_t log_fn)
 {
     if (name != NULL || log_fn != NULL) {
         LOG_set_name(name != NULL ? name : CMPCLIENT_MODULE_NAME);
-        LOG_init((LOG_cb_t)log_fn); /* assumes that severity in SecUtils is same as in CMPforOpenSSL */
+        LOG_init(log_fn);
         LOG_set_verbosity(LOG_INFO);
     }
     if (name == NULL)
@@ -146,6 +146,12 @@ static int certConf_caPubs_cb(OSSL_CMP_CTX *ctx, X509 *cert, int fail_info, cons
     return ret;
 }
 
+static int ossl_cmp_log_console_cb(const char *func, const char *file, int line,
+                                   OSSL_CMP_severity level, const char *msg)
+{
+    return LOG_console(func, file, line, (severity)level, msg) ? 1 : 0;
+}
+
 CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
                           OSSL_LIB_CTX *libctx, const char *propq,
                           OPTIONAL LOG_cb_t log_fn,
@@ -165,12 +171,14 @@ CMP_err CMPclient_prepare(OSSL_CMP_CTX **pctx,
 
     if (pctx == NULL)
         return CMP_R_NULL_ARGUMENT;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
     if ((ctx = OSSL_CMP_CTX_new(libctx, propq)) == NULL ||
         !OSSL_CMP_CTX_set_log_cb(ctx, log_fn != NULL ?
                                  (OSSL_CMP_log_cb_t)log_fn :
-                                 /* difference is in 'int' vs. 'bool' and additional TRACE value */
-                                 (OSSL_CMP_log_cb_t)LOG_console))
+                                 ossl_cmp_log_console_cb))
         goto err; /* TODO make sure that proper error code it set by OSSL_CMP_CTX_set_log_cb() */
+#pragma GCC diagnostic pop
     if (cmp_truststore != NULL
         && (!X509_STORE_up_ref(cmp_truststore) ||
             !OSSL_CMP_CTX_set0_trustedStore(ctx, cmp_truststore)))

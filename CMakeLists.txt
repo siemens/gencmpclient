@@ -310,11 +310,10 @@ else()
   # GCC/Clang compiler flags
   add_compile_options(-pedantic) # -Werror is enabled only for development and CI, using Makefile_v1 without NDEBUG
   add_compile_options(
-    -Wall -Woverflow -Wextra -Wmissing-prototypes -Wstrict-prototypes -Wswitch
-    -Wsign-compare -Wformat -Wtype-limits -Wundef -Wunused-parameter -Wformat-security
-    -Wpointer-arith # -Wc99-extensions -Wlanguage-extension-token
-    -Wconversion -Wshadow
-    # TODO clean up code and re-enable warnings instead:
+    -Wall -Woverflow -Wextra -Wswitch -Wmissing-prototypes -Wstrict-prototypes
+    -Wsign-compare -Wformat -Wformat-security -Wtype-limits -Wundef
+    -Wpointer-arith -Wunused-parameter # -Wc99-extensions -Wlanguage-extension-token
+    -Wconversion -Wsign-conversion -Wshadow
     # Using here "no-" variants to cancel options potentially set in parent project(s):
     -Wno-declaration-after-statement -Wno-expansion-to-defined
   )
@@ -636,14 +635,16 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_NAME "libgencmp2")
     set(CPACK_DEBIAN_LIBRARY_RUNTIME_FILE_NAME DEB-DEFAULT)
     set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_SECTION "libs")
-    # see also https://gitlab.kitware.com/cmake/cmake/-/issues/21834
-    # Custom postinst/postrm suppress CPack's auto-generated ldconfig calls;
-    # ldconfig is handled by the activate-noawait trigger instead (maintscript-calls-ldconfig)
+  # CPack 4.4+ generates the ldconfig trigger itself; supplying it as an
+  # extra control file would incorrectly make it executable in strict mode.
+  if(CMAKE_VERSION VERSION_LESS "4.4")
+    # Older CPack versions need a custom trigger to avoid direct ldconfig calls.
     set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_CONTROL_EXTRA
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/triggers"
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postinst"
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postrm")
     set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
+  endif()
 
     if(FALSE) # for now, disable dependencies to libs of subprojectx because their .so files for some reason already get included in the package:
     if(NOT DEFINED GENCMP_NO_SECUTILS)
@@ -668,11 +669,16 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
   endif()
   # see also https://gitlab.kitware.com/cmake/cmake/-/issues/21834
   # CPack Deb does not create postinst when installing to /usr/lib/x86_64-linux-gnu
+  # CPack 4.4+ generates the ldconfig trigger itself; supplying it as an
+  # extra control file would incorrectly make it executable in strict mode.
+  if(CMAKE_VERSION VERSION_LESS "4.4")
+  # Older CPack versions need a custom trigger to avoid direct ldconfig calls.
   set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_EXTRA
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/triggers"
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postinst"
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postrm")
   set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
+  endif()
 
 else(Linux)
   #if(APPLE)

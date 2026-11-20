@@ -116,6 +116,7 @@ else()
   endif()
 endif()
 message(STATUS "build mode: ${CMAKE_BUILD_TYPE}")
+message(STATUS "using C compiler ${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION} (${CMAKE_C_COMPILER})")
 
 # improved from https://cmake.org/cmake/help/v3.6/module/FindOpenSSL.html
 if(NOT "$ENV{OPENSSL_DIR}" STREQUAL "")

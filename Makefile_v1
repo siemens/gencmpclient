@@ -416,6 +416,7 @@ endif
 
 ifneq ($(findstring build,$(MAKECMDGOALS))$(findstring default,$(MAKECMDGOALS)),)
     $(info Build info: source directory is '$(PWD)')
+    $(info using C compiler '$(CC)': $(shell $(CC) --version 2>/dev/null | head -n 1))
     $(info detected OpenSSL base directory '$(OPENSSL_DIR)')
     $(info detected OpenSSL lib  directory '$(OPENSSL_LIB)')
     $(info detected OpenSSL version         $(OPENSSL_VERSION))

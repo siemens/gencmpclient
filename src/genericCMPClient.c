@@ -611,8 +611,12 @@ CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name)
 
         if (sk == NULL)
             goto err;
-        if (!ossl_cmp_sk_ASN1_UTF8STRING_push_str(sk, name, strlen(name))
-                || (itav = OSSL_CMP_ITAV_new0_certProfile(sk)) == NULL) {
+        if (!ossl_cmp_sk_ASN1_UTF8STRING_push_str(sk, name, strlen(name))) {
+            sk_ASN1_UTF8STRING_pop_free(sk, ASN1_UTF8STRING_free);
+            goto err;
+        }
+        itav = OSSL_CMP_ITAV_new0_certProfile(sk);
+        if (itav == NULL) {
             sk_ASN1_UTF8STRING_pop_free(sk, ASN1_UTF8STRING_free);
             goto err;
         }

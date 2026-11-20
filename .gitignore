@@ -25,6 +25,7 @@ mk
 CMakeCache.txt
 Makefile
 *.cmake
+/libgencmp.pc
 install_manifest*.txt
 compile_commands.json
 changelog.gz

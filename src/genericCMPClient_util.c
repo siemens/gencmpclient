@@ -907,7 +907,7 @@ static char *CONN_get_host(const char *uri)
     char *str = NULL;
 
     if (uri != NULL) {
-        char *end;
+        const char *end;
         size_t len;
 
         uri = skip_scheme(uri);

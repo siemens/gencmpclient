@@ -643,7 +643,9 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/triggers"
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postinst"
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postrm")
-    set(CPACK_DEBIAN_LIBRARY_RUNTIME_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
+    # Do not set CPACK_DEBIAN_*_PACKAGE_CONTROL_STRICT_PERMISSION because it
+    # gives 'triggers' mode 0755 (lintian: control-file-has-bad-permissions);
+    # without it, CPack uses the original file permissions (0644 for 'triggers').
 
     if(FALSE) # for now, disable dependencies to libs of subprojectx because their .so files for some reason already get included in the package:
     if(NOT DEFINED GENCMP_NO_SECUTILS)
@@ -672,7 +674,7 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/triggers"
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postinst"
       "${CMAKE_CURRENT_SOURCE_DIR}/debian/extra/postrm")
-  set(CPACK_DEBIAN_LIB_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
+  # no CPACK_DEBIAN_LIB_PACKAGE_CONTROL_STRICT_PERMISSION; see above
 
 else(Linux)
   #if(APPLE)

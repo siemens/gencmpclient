@@ -1365,6 +1365,7 @@ static bool CONF_read_options_ex(const CONF *conf, const char *source,
                     *opt->varref_u.int1 = opt->default_value.int1;
                     return true;
                 }
+                val = 0; /* do not use any value left over from previous options */
                 for (; *sel != NULL && strcmp(*sel, str) != 0; sel++)
                     val++;
                 if (*sel == NULL) {

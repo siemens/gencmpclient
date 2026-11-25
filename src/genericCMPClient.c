@@ -572,31 +572,12 @@ CMP_err CMPclient_setup_HTTP(OSSL_CMP_CTX *ctx, const char *server, const char *
 }
 
 #if OPENSSL_3_3_FEATURES
-static int ossl_cmp_sk_ASN1_UTF8STRING_push_str(STACK_OF(ASN1_UTF8STRING) *sk,
-                                                const char *text, size_t len)
-{
-    ASN1_UTF8STRING *utf8string;
-
-    /* text == NULL with len == 0 is the canonical empty string and is valid */
-    if (sk == NULL || (text == NULL && len != 0)) {
-        ERR_raise(ERR_LIB_CMP, CMP_R_NULL_ARGUMENT);
-        return 0;
-    }
-    if ((utf8string = ASN1_UTF8STRING_new()) == NULL)
-        return 0;
-    if (!ASN1_STRING_set1_data(utf8string, (const uint8_t *)text, len))
-        goto err;
-    if (!sk_ASN1_UTF8STRING_push(sk, utf8string))
-        goto err;
-    return 1;
-
- err:
-    ASN1_UTF8STRING_free(utf8string);
-    return 0;
-}
-
 CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name)
 {
+    OSSL_CMP_ITAV *itav = NULL;
+    STACK_OF(ASN1_UTF8STRING) *sk = NULL;
+    ASN1_UTF8STRING *utf8string;
+
     if (ctx == NULL) {
         LOG(FL_ERR, "No ctx parameter given");
         return CMP_R_INVALID_CONTEXT;
@@ -606,20 +587,18 @@ CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name)
         if (!OSSL_CMP_CTX_reset_geninfo_ITAVs(ctx))
             goto err;
     } else {
-        OSSL_CMP_ITAV *itav = NULL;
-        STACK_OF(ASN1_UTF8STRING) *sk = sk_ASN1_UTF8STRING_new_reserve(NULL, 1);
-
-        if (sk == NULL)
+        if ((sk = sk_ASN1_UTF8STRING_new_reserve(NULL, 1)) == NULL)
             goto err;
-        if (!ossl_cmp_sk_ASN1_UTF8STRING_push_str(sk, name, strlen(name))) {
-            sk_ASN1_UTF8STRING_pop_free(sk, ASN1_UTF8STRING_free);
+        if ((utf8string = ASN1_UTF8STRING_new()) == NULL)
             goto err;
-        }
-        itav = OSSL_CMP_ITAV_new0_certProfile(sk);
-        if (itav == NULL) {
-            sk_ASN1_UTF8STRING_pop_free(sk, ASN1_UTF8STRING_free);
+        if (!ASN1_STRING_set1_data(utf8string, (const uint8_t *)name, strlen(name))) {
+            ASN1_STRING_free(utf8string);
             goto err;
         }
+        /* Due to sk_ASN1_UTF8STRING_new_reserve(NULL, 1), this surely succeeds: */
+        (void)sk_ASN1_UTF8STRING_push(sk, utf8string);
+        if ((itav = OSSL_CMP_ITAV_new0_certProfile(sk)) == NULL)
+            goto err;
         if (!OSSL_CMP_CTX_push0_geninfo_ITAV(ctx, itav)) {
             OSSL_CMP_ITAV_free(itav);
             goto err;
@@ -629,6 +608,7 @@ CMP_err CMPclient_add_certProfile(CMP_CTX *ctx, OPTIONAL const char *name)
     return CMP_OK;
 
  err:
+    sk_ASN1_UTF8STRING_pop_free(sk, ASN1_UTF8STRING_free);
     return CMPOSSL_error();
 }
 #endif /* OPENSSL_3_3_FEATURES */

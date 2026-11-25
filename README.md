@@ -137,7 +137,7 @@ The following development and network tools are needed or recommended.
 The following OSS components are possibly used by the genCMPClient.
 
 * Mandatory: [OpenSSL library](https://www.openssl-library.org/) development edition;<br>
-  currently supported versions: 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
+  currently supported versions: 3.0, 3.4, 3.5, 3.6, 4.0, 4.1
   <!-- (formerly also versions 1.0.2, 1.1.0, and 1.1.1) -->
 * Used by default: [Security Utilities (libsecutils)](https://github.com/siemens/libsecutils)
   for support of (not core) functionality needed mostly for the CLI and demo

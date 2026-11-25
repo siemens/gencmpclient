@@ -124,7 +124,7 @@ The core library can also be built and used natively under Windows.
 The following development and network tools are needed or recommended.
 
 * Git (for conveniently getting and updating the software, tested versions include 2.7.2, 2.11.0, 2.20, 2.34.1, 2.48.0, 2.53.0)
-* CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested versions include 3.18.4, 3.22.1, 3.27.7, 3.31.5, 4.3.0)
+* CMake (for using [`CMakeLists.txt`](CMakeLists.txt), tested versions include 3.18.4, 3.22.1, 3.27.7, 3.31.5, 4.3.0, 4.5.0)
 * GNU make (tested versions include 3.81, 4.1, 4.2.1, 4.3)
 * GNU C compiler (gcc, tested versions include 5.4.0, 7.3.0, 8.3.0, 10.2.1, 12.2.0, 15.3.0)
   or clang (tested versions include 14.0.3, 17.0.3, 19.1.1, 22.1.1)

@@ -64,7 +64,7 @@ STACK_OF(X509) *CREDS_load_certs(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const c
                                  int min_num, int type_CA, OPTIONAL X509_VERIFY_PARAM *vpm);
 #define app_load_certs(srcs, tls_ts, timeout, source, desc, type_CA, vpm) \
     CREDS_load_certs(app_get0_libctx(), app_get0_propq(), srcs, FORMAT_UNDEF, \
-                     false, tls_ts, timeout, source, desc, 1, type_CA, vpm)
+                     false, tls_ts, timeout, source, desc, 0, type_CA, vpm)
 
 X509_CRL *CREDS_load_crl(OPTIONAL OSSL_LIB_CTX *libctx, OPTIONAL const char *propq,
                          OPTIONAL const char *uri, file_format_t format, bool maybe_stdin,
